@@ -16,16 +16,8 @@ to restart the server without losing any commit information.
 Compilation
 -----------
 
-Omid uses Maven for its build system. The versions of zookeeper and bookkeeper are missing from mvn, so you have to
-manually install these dependencies.
-
-To install zookeeper:
-
-    $ mvn install:install-file -DgroupId=org.apache.zookeeper -DartifactId=zookeeper -Dversion=3.4.0 -Dpackaging=jar -Dfile=zookeeper-3.4.0.jar
-
-To install bookkeeper:
-
-    $ mvn install:install-file -DgroupId=org.apache.zookeeper -DartifactId=bookkeeper -Dversion=3.4.0 -Dpackaging=jar -Dfile=bookkeeper-3.4.0.jar
+Omid uses Maven for its build system. We are using a temporary repository for zookeeper and bookkeeper packages to ease
+the installation procedure
 
 Then to compile omid:
 
