@@ -185,6 +185,9 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
                     synchronized (sharedMsgBufLock) {
                         Channel channel = ctx.getChannel();
                         channel.write(new CommittedTransactionReport(sharedState.latestStartTimestamp, sharedState.latestCommitTimestamp));
+                        for (Long halfAborted : sharedState.hashmap.halfAborted) {
+                           channel.write(new AbortedTransactionReport(halfAborted));
+                        }
                         channel.write(new AbortedTransactionReport(sharedState.latestHalfAbortTimestamp));
                         channel.write(new FullAbortReport(sharedState.latestFullAbortTimestamp));
                         channel.write(new LargestDeletedTimestampReport(sharedState.largestDeletedTimestamp));

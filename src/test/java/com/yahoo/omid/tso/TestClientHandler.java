@@ -125,8 +125,8 @@ public class TestClientHandler extends SimpleChannelHandler {
 
    public void receiveBootstrap() {
       receiveMessage(CommittedTransactionReport.class);
-      receiveMessage(AbortedTransactionReport.class);
-      receiveMessage(FullAbortReport.class);
+      // receive all AbortedTransactionReport + one FullAbortReport
+      while (receiveMessage() instanceof AbortedTransactionReport);
       receiveMessage(LargestDeletedTimestampReport.class);
    }
 
