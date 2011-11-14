@@ -18,7 +18,6 @@ package com.yahoo.omid.tso.messages;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.jboss.netty.buffer.ChannelBuffer;
 

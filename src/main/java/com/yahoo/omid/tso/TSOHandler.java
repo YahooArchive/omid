@@ -46,6 +46,7 @@ import org.jboss.netty.channel.group.ChannelGroup;
 import org.jboss.netty.channel.group.DefaultChannelGroup;
 
 import com.yahoo.omid.tso.TSOSharedMessageBuffer.ReadingBuffer;
+import com.yahoo.omid.tso.messages.AbortRequest;
 import com.yahoo.omid.tso.messages.AbortedTransactionReport;
 import com.yahoo.omid.tso.messages.CommitQueryRequest;
 import com.yahoo.omid.tso.messages.CommitQueryResponse;
@@ -160,7 +161,18 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
          return;
       }
    }
-   
+
+   public void handle(AbortRequest msg, ChannelHandlerContext ctx) {
+      synchronized (sharedState) {
+         abortCount++;
+         sharedState.hashmap.setHalfAborted(msg.startTimestamp);
+         sharedState.uncommited.abort(msg.startTimestamp);
+         synchronized (sharedMsgBufLock) {
+            queueHalfAbort(msg.startTimestamp);
+        }
+      }
+   }
+
    /**
     * Handle the TimestampRequest message
     */

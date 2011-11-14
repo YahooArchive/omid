@@ -51,6 +51,7 @@ public interface TSOMessage {
    final public byte LargestDeletedTimestampReport = (byte) 0xc8;
    final public byte FullAbortReportByte = (byte) 0xc9;
    final public byte AbortedTransactionReportByte = (byte) 0xca;
+   final public byte AbortRequest = (byte) 0xcb;
 
    /*
     * Deserialize function

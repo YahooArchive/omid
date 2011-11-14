@@ -41,7 +41,6 @@ import org.jboss.netty.channel.ChannelFactory;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelFutureListener;
 import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelPipelineCoverage;
 import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
@@ -51,6 +50,7 @@ import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import com.yahoo.omid.tso.Committed;
 import com.yahoo.omid.tso.RowKey;
 import com.yahoo.omid.tso.TSOMessage;
+import com.yahoo.omid.tso.messages.AbortRequest;
 import com.yahoo.omid.tso.messages.AbortedTransactionReport;
 import com.yahoo.omid.tso.messages.CommitQueryRequest;
 import com.yahoo.omid.tso.messages.CommitQueryResponse;
@@ -64,7 +64,6 @@ import com.yahoo.omid.tso.messages.TimestampResponse;
 import com.yahoo.omid.tso.serialization.TSODecoder;
 import com.yahoo.omid.tso.serialization.TSOEncoder;
 
-@ChannelPipelineCoverage("one")
 public class TSOClient extends SimpleChannelHandler {
    private static final Log LOG = LogFactory.getLog(TSOClient.class);
    
@@ -99,7 +98,42 @@ public class TSOClient extends SimpleChannelHandler {
 
    private interface Op {
       public void execute(Channel channel);
+
       public void error(Exception e);
+   }
+
+   private class AbortOp implements Op {
+      long transactionId;
+
+      AbortOp(long transactionid) throws IOException {
+         this.transactionId = transactionid;
+      }
+
+      public void execute(Channel channel) {
+         try {
+            synchronized (commitCallbacks) {
+               if (commitCallbacks.containsKey(transactionId)) {
+                  throw new IOException("Already committing transaction " + transactionId);
+               }
+            }
+
+            AbortRequest ar = new AbortRequest();
+            ar.startTimestamp = transactionId;
+            ChannelFuture f = channel.write(ar);
+            f.addListener(new ChannelFutureListener() {
+               public void operationComplete(ChannelFuture future) {
+                  if (!future.isSuccess()) {
+                     error(new IOException("Error writing to socket"));
+                  }
+               }
+            });
+         } catch (Exception e) {
+            error(e);
+         }
+      }
+
+      public void error(Exception e) {
+      }
    }
 
    private class NewTimestampOp implements Op {
@@ -349,7 +383,11 @@ public class TSOClient extends SimpleChannelHandler {
          throws IOException {
       withConnection(new CommitQueryOp(startTimestamp, pendingWriteTimestamp, cb));
    }
-   
+
+   public void abort(long transactionId) throws IOException {
+       withConnection(new AbortOp(transactionId));
+   }
+
    public void commit(long transactionId, RowKey[] rows, CommitCallback cb) throws IOException {
       withConnection(new CommitOp(transactionId, rows, cb));
    }

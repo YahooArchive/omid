@@ -24,10 +24,10 @@ import org.apache.commons.logging.LogFactory;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelPipelineCoverage;
 import org.jboss.netty.handler.codec.frame.FrameDecoder;
 
 import com.yahoo.omid.tso.TSOMessage;
+import com.yahoo.omid.tso.messages.AbortRequest;
 import com.yahoo.omid.tso.messages.AbortedTransactionReport;
 import com.yahoo.omid.tso.messages.CommitQueryRequest;
 import com.yahoo.omid.tso.messages.CommitQueryResponse;
@@ -39,7 +39,6 @@ import com.yahoo.omid.tso.messages.LargestDeletedTimestampReport;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 
-@ChannelPipelineCoverage("one")
 public class TSODecoder extends FrameDecoder {
     private static final Log LOG = LogFactory.getLog(TSODecoder.class);
 
@@ -102,6 +101,9 @@ public class TSODecoder extends FrameDecoder {
                 case TSOMessage.LargestDeletedTimestampReport:
                     msg = new LargestDeletedTimestampReport();
                     break;
+                case TSOMessage.AbortRequest:
+                   msg = new AbortRequest();
+                   break;
                 default:
                     throw new Exception("Wrong type " + type + " " + ostream.toString().length());
                 }

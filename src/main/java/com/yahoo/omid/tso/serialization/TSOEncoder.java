@@ -23,11 +23,11 @@ import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelPipelineCoverage;
 import org.jboss.netty.handler.codec.oneone.OneToOneEncoder;
 
 import com.yahoo.omid.tso.BufferPool;
 import com.yahoo.omid.tso.TSOMessage;
+import com.yahoo.omid.tso.messages.AbortRequest;
 import com.yahoo.omid.tso.messages.AbortedTransactionReport;
 import com.yahoo.omid.tso.messages.CommitQueryRequest;
 import com.yahoo.omid.tso.messages.CommitQueryResponse;
@@ -39,7 +39,6 @@ import com.yahoo.omid.tso.messages.LargestDeletedTimestampReport;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 
-@ChannelPipelineCoverage("one")
 public class TSOEncoder extends OneToOneEncoder{
 
    //just override decode method
@@ -58,6 +57,8 @@ public class TSOEncoder extends OneToOneEncoder{
          objWrapper.writeByte(TSOMessage.CommitRequest);
       } else if (msg instanceof CommitResponse) {
          objWrapper.writeByte(TSOMessage.CommitResponse);
+      } else if (msg instanceof AbortRequest) {
+         objWrapper.writeByte(TSOMessage.AbortRequest);
       } else if (msg instanceof FullAbortReport) {
          objWrapper.writeByte(TSOMessage.FullAbortReport);
       } else if (msg instanceof CommitQueryRequest) {

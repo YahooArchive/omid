@@ -77,7 +77,7 @@ public class TransactionManager {
 
       return new TransactionState(cb.getStartTimestamp(), tsoclient);
    }
-   
+
    /**
     * Commits a transaction. If the transaction is aborted it automatically rollbacks the changes and
     * throws a {@link CommitUnsuccessfulException}.  
@@ -114,6 +114,31 @@ public class TransactionManager {
          throw new CommitUnsuccessfulException();
       }
       transactionState.setCommitTimestamp(cb.getCommitTimestamp());
+   }
+
+   /**
+    * Aborts a transaction and automatically rollbacks the changes.
+    * 
+    * @param transactionState Object identifying the transaction to be committed.
+    * @throws TransactionException
+    */
+   public void abort(TransactionState transactionState) throws TransactionException {
+      if (LOG.isTraceEnabled()) {
+         LOG.trace("abort " + transactionState.getStartTimestamp());
+      }
+      try {
+         tsoclient.abort(transactionState.getStartTimestamp());
+      } catch (Exception e) {
+         throw new TransactionException("Could not abort", e);
+      }
+
+      if (LOG.isTraceEnabled()) {
+         LOG.trace("doneAbort " + transactionState.getStartTimestamp());
+      }
+
+      // Make sure its commit timestamp is 0, so the cleanup does the right job
+      transactionState.setCommitTimestamp(0);
+      cleanup(transactionState);
    }
 
    private void cleanup(final TransactionState transactionState)
