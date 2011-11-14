@@ -17,10 +17,7 @@
 package com.yahoo.omid.tso;
 
 import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory; 
-
-import com.yahoo.omid.client.TSOClient;
-import com.yahoo.omid.client.TransactionalTable;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Class for Throughput Monitoring
@@ -44,74 +41,74 @@ public class ThroughputMonitor extends Thread {
       try {
          long oldCounter = TSOHandler.getTransferredBytes();
          long oldAbortCount = TSOHandler.abortCount;
-         long oldHitCount = TSOHandler.hitCount;
+//         long oldHitCount = TSOHandler.hitCount;
          long startTime = System.currentTimeMillis();
          //            long oldWaitTime = TSOHandler.waitTime; 
-         long oldtotalput = CommitHashMap.gettotalput(); 
-         long oldtotalget = CommitHashMap.gettotalget(); 
-         long oldtotalwalkforget = CommitHashMap.gettotalwalkforget(); 
-         long oldtotalwalkforput = CommitHashMap.gettotalwalkforput(); 
-         long oldfull = TSOMessageBuffer.itWasFull;
+//         long oldtotalput = CommitHashMap.gettotalput(); 
+//         long oldtotalget = CommitHashMap.gettotalget(); 
+//         long oldtotalwalkforget = CommitHashMap.gettotalwalkforget(); 
+//         long oldtotalwalkforput = CommitHashMap.gettotalwalkforput(); 
+//         long oldfull = TSOMessageBuffer.itWasFull;
 //         long oldflushes = TSOSharedMessageBuffer._flushes;
 //         long oldflusheSize = TSOSharedMessageBuffer._flSize;
-         long oldwaited = TSOMessageBuffer.waited;
-         long old1B = TSOSharedMessageBuffer._1B;
-         long old2B = TSOSharedMessageBuffer._2B;
-         long oldAB = TSOSharedMessageBuffer._AB;
-         long oldAS = TSOSharedMessageBuffer._AS;
-         long oldLL = TSOSharedMessageBuffer._LL;
-         long oldComs = TSOSharedMessageBuffer._Coms;
-         long oldHa = TSOSharedMessageBuffer._ha;
-         long oldFa = TSOSharedMessageBuffer._fa;
-         long oldLi = TSOSharedMessageBuffer._li;
-         long oldWrites = TSOSharedMessageBuffer._Writes;
-         long oldEmptyFlushes = TSOSharedMessageBuffer._emptyFlushes;
+//         long oldwaited = TSOMessageBuffer.waited;
+//         long old1B = TSOSharedMessageBuffer._1B;
+//         long old2B = TSOSharedMessageBuffer._2B;
+//         long oldAB = TSOSharedMessageBuffer._AB;
+//         long oldAS = TSOSharedMessageBuffer._AS;
+//         long oldLL = TSOSharedMessageBuffer._LL;
+//         long oldComs = TSOSharedMessageBuffer._Coms;
+//         long oldHa = TSOSharedMessageBuffer._ha;
+//         long oldFa = TSOSharedMessageBuffer._fa;
+//         long oldLi = TSOSharedMessageBuffer._li;
+//         long oldWrites = TSOSharedMessageBuffer._Writes;
+//         long oldEmptyFlushes = TSOSharedMessageBuffer._emptyFlushes;
          
-         long oldAskedTSO = TSOClient.askedTSO;
-         long oldQueries = TSOHandler.queries;
-         long oldElementsRead = TransactionalTable.elementsRead;
-         long oldExtraGetsPerformed = TransactionalTable.extraGetsPerformed;
+//         long oldAskedTSO = TSOClient.askedTSO;
+//         long oldQueries = TSOHandler.queries;
+//         long oldElementsRead = TransactionalTable.elementsRead;
+//         long oldExtraGetsPerformed = TransactionalTable.extraGetsPerformed;
          
-         long oldOverflow = TSOSharedMessageBuffer._overflows;
+//         long oldOverflow = TSOSharedMessageBuffer._overflows;
          for (;;) {
             Thread.sleep(3000);
             
             long endTime = System.currentTimeMillis();
             long newCounter = TSOHandler.getTransferredBytes();
             long newAbortCount = TSOHandler.abortCount;
-            long newHitCount = TSOHandler.hitCount;
+//            long newHitCount = TSOHandler.hitCount;
             //                long newWaitTime = TSOHandler.waitTime; 
-            long newtotalput = CommitHashMap.gettotalput(); 
-            long newtotalget = CommitHashMap.gettotalget(); 
-            long newtotalwalkforget = CommitHashMap.gettotalwalkforget(); 
-            long newtotalwalkforput = CommitHashMap.gettotalwalkforput();
-
-            long newfull = TSOMessageBuffer.itWasFull;
+//            long newtotalput = CommitHashMap.gettotalput(); 
+//            long newtotalget = CommitHashMap.gettotalget(); 
+//            long newtotalwalkforget = CommitHashMap.gettotalwalkforget(); 
+//            long newtotalwalkforput = CommitHashMap.gettotalwalkforput();
+//
+//            long newfull = TSOMessageBuffer.itWasFull;
 //            long newflushes = TSOSharedMessageBuffer._flushes;
 //            long newflusheSize = TSOSharedMessageBuffer._flSize;
-            long newwaited = TSOMessageBuffer.waited;
+//            long newwaited = TSOMessageBuffer.waited;
             
-            long new1B = TSOSharedMessageBuffer._1B;
-            long new2B = TSOSharedMessageBuffer._2B;
-            long newAB = TSOSharedMessageBuffer._AB;
-            long newAS = TSOSharedMessageBuffer._AS;
-            long newLL = TSOSharedMessageBuffer._LL;
-            long newComs = TSOSharedMessageBuffer._Coms;
-            long newHa = TSOSharedMessageBuffer._ha;
-            long newFa = TSOSharedMessageBuffer._fa;
-            long newLi = TSOSharedMessageBuffer._li;
-            long newWrites = TSOSharedMessageBuffer._Writes;
-            double avg = TSOSharedMessageBuffer._Avg;
-            double avg2 = TSOSharedMessageBuffer._Avg2;
-            
-            long newOverflow = TSOSharedMessageBuffer._overflows;
-            long newEmptyFlushes = TSOSharedMessageBuffer._emptyFlushes;
+//            long new1B = TSOSharedMessageBuffer._1B;
+//            long new2B = TSOSharedMessageBuffer._2B;
+//            long newAB = TSOSharedMessageBuffer._AB;
+//            long newAS = TSOSharedMessageBuffer._AS;
+//            long newLL = TSOSharedMessageBuffer._LL;
+//            long newComs = TSOSharedMessageBuffer._Coms;
+//            long newHa = TSOSharedMessageBuffer._ha;
+//            long newFa = TSOSharedMessageBuffer._fa;
+//            long newLi = TSOSharedMessageBuffer._li;
+//            long newWrites = TSOSharedMessageBuffer._Writes;
+//            double avg = TSOSharedMessageBuffer._Avg;
+//            double avg2 = TSOSharedMessageBuffer._Avg2;
+//            
+//            long newOverflow = TSOSharedMessageBuffer._overflows;
+//            long newEmptyFlushes = TSOSharedMessageBuffer._emptyFlushes;
             
 
-            long newQueries = TSOHandler.queries;
-            long newElementsRead = TransactionalTable.elementsRead;
-            long newExtraGetsPerformed = TransactionalTable.extraGetsPerformed;
-            long newAskedTSO = TSOClient.askedTSO;
+//            long newQueries = TSOHandler.queries;
+//            long newElementsRead = TransactionalTable.elementsRead;
+//            long newExtraGetsPerformed = TransactionalTable.extraGetsPerformed;
+//            long newAskedTSO = TSOClient.askedTSO;
             
             //System.err.format("%4.3f MiB/s%n", (newCounter - oldCounter) *
             //1000 / (endTime - startTime) / 1048576.0);
@@ -187,37 +184,37 @@ public class ThroughputMonitor extends Thread {
             
             oldCounter = newCounter;
             oldAbortCount = newAbortCount;
-            oldHitCount = newHitCount;
+//            oldHitCount = newHitCount;
             startTime = endTime;
             //                oldWaitTime = newWaitTime;
-            oldtotalget = newtotalget;
-            oldtotalput = newtotalput;
-            oldtotalwalkforget = newtotalwalkforget;
-            oldtotalwalkforput = newtotalwalkforput;
-            oldfull = newfull;
+//            oldtotalget = newtotalget;
+//            oldtotalput = newtotalput;
+//            oldtotalwalkforget = newtotalwalkforget;
+//            oldtotalwalkforput = newtotalwalkforput;
+//            oldfull = newfull;
 //            oldflushes = newflushes;
 //            oldflusheSize = newflusheSize;
-            oldwaited = newwaited;
-            oldOverflow = newOverflow;
+//            oldwaited = newwaited;
+//            oldOverflow = newOverflow;
+//            
+//
+//            old1B = new1B;
+//            old2B = new2B;
+//            oldAB = newAB;
+//            oldAS = newAS;
+//            oldLL = newLL;
+//            oldComs = newComs;
+//            oldHa = newHa;
+//            oldFa = newFa;
+//            oldLi = newLi;
+//            oldWrites = newWrites;
+//            oldEmptyFlushes = newEmptyFlushes;
             
 
-            old1B = new1B;
-            old2B = new2B;
-            oldAB = newAB;
-            oldAS = newAS;
-            oldLL = newLL;
-            oldComs = newComs;
-            oldHa = newHa;
-            oldFa = newFa;
-            oldLi = newLi;
-            oldWrites = newWrites;
-            oldEmptyFlushes = newEmptyFlushes;
-            
-
-            oldAskedTSO = newAskedTSO;
-            oldQueries = newQueries;
-            oldElementsRead = newElementsRead;
-            oldExtraGetsPerformed = newExtraGetsPerformed;
+//            oldAskedTSO = newAskedTSO;
+//            oldQueries = newQueries;
+//            oldElementsRead = newElementsRead;
+//            oldExtraGetsPerformed = newExtraGetsPerformed;
          }
       } catch (InterruptedException e) {
          // Stop monitoring asked

@@ -15,25 +15,15 @@
  */
 
 package com.yahoo.omid.tso;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.channel.ChannelEvent;
 import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelPipelineCoverage;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
-import org.jboss.netty.util.Timeout;
-import org.jboss.netty.util.Timer;
-import org.jboss.netty.util.TimerTask;
 
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-
-@ChannelPipelineCoverage("all")
 public class BandwidthMeterHandler extends SimpleChannelHandler {
-    private static final int RESOLUTION = 1000;
-    private static final int HISTORY_SIZE = 60; // Keep a 60 second history
 
     private AtomicLong bytesSent = new AtomicLong();
     private AtomicLong bytesReceived = new AtomicLong();

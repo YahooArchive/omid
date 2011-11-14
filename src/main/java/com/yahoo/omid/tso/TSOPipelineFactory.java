@@ -16,15 +16,12 @@
 
 package com.yahoo.omid.tso;
 
-import java.util.ArrayList;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executor;
 
 import org.jboss.netty.channel.ChannelHandler;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.Channels;
-import org.jboss.netty.channel.group.ChannelGroup;
 import org.jboss.netty.handler.execution.ExecutionHandler;
 import org.jboss.netty.handler.timeout.WriteTimeoutHandler;
 import org.jboss.netty.util.HashedWheelTimer;
@@ -79,7 +76,7 @@ public class TSOPipelineFactory implements ChannelPipelineFactory {
              timer = new HashedWheelTimer();
       }
       pipeline.addLast("pipelineExecutor", x);
-      pipeline.addLast("timeout", new WriteTimeoutHandler(timer, 1));
+      pipeline.addLast("timeout", new WriteTimeoutHandler(timer, 10));
       pipeline.addFirst("bw", bwhandler);
       
       pipeline.addLast("handler", handler);

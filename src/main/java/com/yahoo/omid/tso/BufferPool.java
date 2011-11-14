@@ -20,9 +20,6 @@ import java.io.ByteArrayOutputStream;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
-
 public class BufferPool {
 
     private static Deque<ByteArrayOutputStream> pool = new ArrayDeque<ByteArrayOutputStream>();

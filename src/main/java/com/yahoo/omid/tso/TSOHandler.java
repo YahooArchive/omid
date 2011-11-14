@@ -37,7 +37,6 @@ import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelPipelineCoverage;
 import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.ExceptionEvent;
@@ -62,7 +61,6 @@ import com.yahoo.omid.tso.messages.TimestampRequest;
  * @author maysam
  *
  */
-@ChannelPipelineCoverage("all")
 public class TSOHandler extends SimpleChannelHandler implements AddCallback {
 
    private static final Log LOG = LogFactory.getLog(TSOHandler.class);

@@ -18,13 +18,11 @@ package com.yahoo.omid.tso;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 
-import org.apache.hadoop.hbase.util.Bytes;
-import org.jboss.netty.buffer.ChannelBuffer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.MurmurHash;
-
-import java.util.Arrays;
+import org.jboss.netty.buffer.ChannelBuffer;
 
 public class RowKey {
    private byte[] rowId;

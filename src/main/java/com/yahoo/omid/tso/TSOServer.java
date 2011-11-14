@@ -29,8 +29,6 @@ import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 import org.jboss.netty.bootstrap.ServerBootstrap;
@@ -45,7 +43,6 @@ import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
  * TSO Server with serialization
  */
 public class TSOServer implements Runnable {
-    private static final Log LOG = LogFactory.getLog(TSOServer.class);
 
     private TSOState state;
     private int port;

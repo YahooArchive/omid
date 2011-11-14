@@ -31,7 +31,6 @@ import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelFutureListener;
 import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelPipelineCoverage;
 import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.ExceptionEvent;
@@ -56,7 +55,6 @@ import com.yahoo.omid.tso.serialization.TSOEncoder;
  * @author maysam
  *
  */
-@ChannelPipelineCoverage("one")
 public class ClientHandler extends SimpleChannelHandler {
 
    private static final Log LOG = LogFactory.getLog(ClientHandler.class);
