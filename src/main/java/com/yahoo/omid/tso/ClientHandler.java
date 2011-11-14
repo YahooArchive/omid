@@ -27,6 +27,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelFutureListener;
@@ -34,28 +35,22 @@ import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.ExceptionEvent;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.channel.SimpleChannelHandler;
 
-import com.yahoo.omid.tso.messages.AbortedTransactionReport;
-import com.yahoo.omid.tso.messages.CommitQueryRequest;
-import com.yahoo.omid.tso.messages.CommitRequest;
+import com.yahoo.omid.client.SyncAbortCompleteCallback;
+import com.yahoo.omid.client.SyncCommitCallback;
+import com.yahoo.omid.client.SyncCommitQueryCallback;
+import com.yahoo.omid.client.SyncCreateCallback;
+import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.tso.messages.CommitResponse;
-import com.yahoo.omid.tso.messages.CommittedTransactionReport;
-import com.yahoo.omid.tso.messages.FullAbortReport;
-import com.yahoo.omid.tso.messages.LargestDeletedTimestampReport;
-import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
-import com.yahoo.omid.tso.serialization.TSODecoder;
-import com.yahoo.omid.tso.serialization.TSOEncoder;
-
 
 /**
  * Example of ChannelHandler for the Transaction Client
+ * 
  * @author maysam
- *
+ * 
  */
-public class ClientHandler extends SimpleChannelHandler {
+public class ClientHandler extends TSOClient {
 
    private static final Log LOG = LogFactory.getLog(ClientHandler.class);
 
@@ -87,7 +82,6 @@ public class ClientHandler extends SimpleChannelHandler {
    /**
     * number of outstanding commit requests
     */
-   //private final AtomicInteger outstandingTransactions = new AtomicInteger(0);
    private int outstandingTransactions = 0;
 
    /**
@@ -107,22 +101,24 @@ public class ClientHandler extends SimpleChannelHandler {
 
    private Committed committed = new Committed();
    private Set<Long> aborted = Collections.synchronizedSet(new HashSet<Long>(100000));
-   
+
    /*
     * For statistial purposes
     */
-   public HashMap<Long, Long> wallClockTime = new HashMap<Long, Long>(); //from start timestmap to nonoTime
+   public HashMap<Long, Long> wallClockTime = new HashMap<Long, Long>(); 
 
    private long largestDeletedTimestamp = 0;
    private long connectionTimestamp;
-   private boolean hasConnectionTimestamp = false; 
-   
+   private boolean hasConnectionTimestamp = false;
+
    public long totalNanoTime = 0;
    public long totalTx = 0;
-   private TSODecoder _decoder;
+   
+   private Channel channel;
 
    /**
     * Method to wait for the final response
+    * 
     * @return success or not
     */
    public boolean waitForAll() {
@@ -137,10 +133,13 @@ public class ClientHandler extends SimpleChannelHandler {
 
    /**
     * Constructor
+    * 
     * @param nbMessage
     * @param inflight
+    * @throws IOException
     */
-   public ClientHandler(int nbMessage, int inflight, int localClients) {
+   public ClientHandler(Configuration conf, int nbMessage, int inflight) throws IOException {
+      super(conf);
       if (nbMessage < 0) {
          throw new IllegalArgumentException("nbMessage: " + nbMessage);
       }
@@ -150,109 +149,57 @@ public class ClientHandler extends SimpleChannelHandler {
    }
 
    /**
-    * Add the ObjectXxcoder to the Pipeline
-    */
-   @Override
-      public void channelOpen(ChannelHandlerContext ctx, ChannelStateEvent e) {
-         //e.getChannel().getPipeline().addLast("framer", new DelimiterBasedFrameDecoder(
-                  //1500, Delimiters.nulDelimiter()));
-       _decoder = new TSODecoder();
-         e.getChannel().getPipeline().addFirst("decoder", _decoder);
-         e.getChannel().getPipeline().addAfter("decoder", "encoder",
-               new TSOEncoder());
-      }
-
-   /**
     * Starts the traffic
     */
    @Override
-      public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) {
-//         logger.log(Level.INFO, "Start sending traffic");
-         startDate = new Date();
-         startTransaction(e.getChannel());
-      }
+   public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) {
+      super.channelConnected(ctx, e);
+      startDate = new Date();
+      channel = e.getChannel();
+      startTransaction();
+   }
 
    /**
     * If write of Commit Request was not possible before, just do it now
     */
    @Override
-      public void channelInterestChanged(ChannelHandlerContext ctx,
-            ChannelStateEvent e) {
-         startTransaction(e.getChannel());
-      }
+   public void channelInterestChanged(ChannelHandlerContext ctx, ChannelStateEvent e) {
+      startTransaction();
+   }
 
    /**
     * When the channel is closed, print result
     */
    @Override
-      public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e)
-      throws Exception {
+   public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+      super.channelClosed(ctx, e);
       stopDate = new Date();
-      String MB = String.format("Memory Used: %8.3f MB",
-            (Runtime.getRuntime().totalMemory() - Runtime.getRuntime()
-             .freeMemory()) / 1048576.0);
+      String MB = String.format("Memory Used: %8.3f MB", (Runtime.getRuntime().totalMemory() - Runtime.getRuntime()
+            .freeMemory()) / 1048576.0);
       String Mbs = String.format("%9.3f TPS",
-            ((nbMessage - curMessage) * 1000 / (float) (stopDate
-               .getTime() - (startDate!=null?startDate.getTime():0)) 
-            ));
+            ((nbMessage - curMessage) * 1000 / (float) (stopDate.getTime() - (startDate != null ? startDate.getTime()
+                  : 0))));
       System.out.println(MB + " " + Mbs);
-      }
+   }
 
    /**
     * When a message is received, handle it based on its type
+    * @throws IOException 
     */
    @Override
-   public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
-      Object msg = e.getMessage();
+   protected void processMessage(TSOMessage msg) {
       if (msg instanceof CommitResponse) {
-         handle((CommitResponse) msg, ctx.getChannel());
-         return;
+         handle((CommitResponse) msg);
       } else if (msg instanceof TimestampResponse) {
-         handle((TimestampResponse) msg, ctx.getChannel());
-         return;
-      } else if (msg instanceof AbortedTransactionReport) {
-         handle((AbortedTransactionReport) msg, ctx.getChannel());
-         return;
-      } else if (msg instanceof CommittedTransactionReport) {
-         handle((CommittedTransactionReport) msg, ctx.getChannel());
-         return;
-      } else if (msg instanceof FullAbortReport) {
-         handle((FullAbortReport) msg, ctx.getChannel());
-         return;
-      } else if (msg instanceof LargestDeletedTimestampReport) {
-         handle((LargestDeletedTimestampReport) msg, ctx.getChannel());
-         return;
+         handle((TimestampResponse) msg);
       }
-   }
-
-   public void handle(FullAbortReport msg, Channel channel) {
-      aborted.remove(msg.startTimestamp);
-   }
-
-   public void handle(AbortedTransactionReport msg, Channel channel) {
-      aborted.add(msg.startTimestamp);
-   }
-
-   public void handle(CommittedTransactionReport msg, Channel channel) {
-      committed.commit(msg.startTimestamp, msg.commitTimestamp);
-   }
-
-   public void handle(LargestDeletedTimestampReport msg, Channel channel) {
-//       System.out.println("Timestamps: " + msg.largestDeletedTimestamp + " " + _decoder.lastCommitTimestamp + " " + _decoder.lastStartTimestamp);
-       largestDeletedTimestamp = msg.largestDeletedTimestamp;
-       committed.raiseLargestDeletedTransaction(msg.largestDeletedTimestamp);
    }
 
    /**
     * Handle the TimestampResponse message
     */
-   public void handle(TimestampResponse msg, Channel channel) {
-      //System.out.println("Got: " + msg);
-      if (!hasConnectionTimestamp) {
-         hasConnectionTimestamp = true;
-         connectionTimestamp = msg.timestamp;
-      }
-      sendCommitRequest(msg.timestamp, channel);
+   public void handle(TimestampResponse timestampResponse) {
+      sendCommitRequest(timestampResponse.timestamp);
    }
 
    /**
@@ -261,126 +208,145 @@ public class ClientHandler extends SimpleChannelHandler {
    private long lasttotalTx = 0;
    private long lasttotalNanoTime = 0;
    private long lastTimeout = System.currentTimeMillis();
-   public void handle(CommitResponse msg, Channel channel) {
-      //outstandingTransactions.decrementAndGet();
+
+   public void handle(CommitResponse msg) {
+      // outstandingTransactions.decrementAndGet();
       outstandingTransactions--;
       long finishNanoTime = System.nanoTime();
       long startNanoTime = wallClockTime.remove(msg.startTimestamp);
       if (msg.committed) {
          totalNanoTime += (finishNanoTime - startNanoTime);
-         totalTx ++;
+         totalTx++;
          long timeout = System.currentTimeMillis();
-//         if (totalTx % 10000 == 0) {//print out
-         if (timeout - lastTimeout > 60*1000) { //print out
+         // if (totalTx % 10000 == 0) {//print out
+         if (timeout - lastTimeout > 60 * 1000) { // print out
             long difftx = totalTx - lasttotalTx;
             long difftime = totalNanoTime - lasttotalNanoTime;
-            System.out.format(" CLIENT: totalTx: %d totalNanoTime: %d microtime/tx: %4.3f tx/s %4.3f "
-                  + "Size Com: %d Size Aborted: %d Diff: %d  Memory Used: %8.3f KB TPS:  %9.3f \n",
-                  difftx, difftime, (difftime / (double) difftx / 1000), 1000 * difftx / ((double) (timeout - lastTimeout)),
-                  getSizeCom(), getSizeAborted(), largestDeletedTimestamp - _decoder.lastStartTimestamp,
+            System.out.format(
+                  " CLIENT: totalTx: %d totalNanoTime: %d microtime/tx: %4.3f tx/s %4.3f "
+                        + "Size Com: %d Size Aborted: %d Memory Used: %8.3f KB TPS:  %9.3f \n",
+                  difftx,
+                  difftime,
+                  (difftime / (double) difftx / 1000),
+                  1000 * difftx / ((double) (timeout - lastTimeout)),
+                  getSizeCom(),
+                  getSizeAborted(),
+//                  largestDeletedTimestamp - _decoder.lastStartTimestamp,
                   (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024.0,
-                  ((nbMessage - curMessage) * 1000 / (float) (new Date().getTime() - (startDate != null ? startDate.getTime() : 0))));
+                  ((nbMessage - curMessage) * 1000 / (float) (new Date().getTime() - (startDate != null ? startDate
+                        .getTime() : 0))));
             lasttotalTx = totalTx;
             lasttotalNanoTime = totalNanoTime;
             lastTimeout = timeout;
          }
-      } else {//aborted
-         FullAbortReport ack = new FullAbortReport(msg.startTimestamp);
-         Channels.write(channel, ack);
+      } else {// aborted
+         try {
+            super.completeAbort(msg.startTimestamp, new SyncAbortCompleteCallback());
+         } catch (IOException e) {
+            LOG.error("Couldn't send abort", e);
+         }
       }
-      startTransaction(channel);
+      startTransaction();
    }
-   
+
    private long getSizeCom() {
-       return committed.getSize();
+      return committed.getSize();
    }
-   
+
    private long getSizeAborted() {
-       return aborted.size() * 8 * 8;
+      return aborted.size() * 8 * 8;
    }
 
    @Override
-      public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) {
-         if (e.getCause() instanceof IOException) {
-            LOG.warn("IOException from downstream.", e.getCause());
-         } else {
-            LOG.warn("Unexpected exception from downstream.",
-                  e.getCause());
-         }
-         // Offer default object
-         answer.offer(false);
-         Channels.close(e.getChannel());
+   public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) {
+      if (e.getCause() instanceof IOException) {
+         LOG.warn("IOException from downstream.", e.getCause());
+      } else {
+         LOG.warn("Unexpected exception from downstream.", e.getCause());
       }
+      // Offer default object
+      answer.offer(false);
+      Channels.close(e.getChannel());
+   }
 
    private java.util.Random rnd;
 
    /**
     * Sends the CommitRequest message to the channel
+    * 
     * @param timestamp
     * @param channel
     */
-   private void sendCommitRequest(final long timestamp, final Channel channel) {
-      if ( !((channel.getInterestOps() & Channel.OP_WRITE) == 0) )
+   private void sendCommitRequest(final long timestamp) {
+      if (!((channel.getInterestOps() & Channel.OP_WRITE) == 0))
          return;
 
-      final CommitRequest cr = new CommitRequest();
-
-      //initialize rnd if it is not yet
+      // initialize rnd if it is not yet
       if (rnd == null) {
          long seed = System.currentTimeMillis();
-         seed *= channel.getId();//to make it channel dependent
+         seed *= channel.getId();// to make it channel dependent
          rnd = new java.util.Random(seed);
       }
 
-      byte size = (byte)rnd.nextInt(MAX_ROW);
-      cr.rows = new RowKey[size];
-      for (byte i = 0; i < cr.rows.length; i++) {
-         //long l = rnd.nextLong();
+      byte size = (byte) rnd.nextInt(MAX_ROW);
+      RowKey [] rows = new RowKey[size];
+      for (byte i = 0; i < rows.length; i++) {
+         // long l = rnd.nextLong();
          long l = rnd.nextInt(DB_SIZE);
-         byte [] b = new byte[8];
-         for(int iii= 0; iii < 8; iii++){
-            b[7 - iii] = (byte)(l >>> (iii * 8));
+         byte[] b = new byte[8];
+         for (int iii = 0; iii < 8; iii++) {
+            b[7 - iii] = (byte) (l >>> (iii * 8));
          }
          byte[] tableId = new byte[8];
-         cr.rows[i] = new RowKey(b, tableId);
+         rows[i] = new RowKey(b, tableId);
       }
 
-      cr.startTimestamp = timestamp;
-
-      //send a query once in a while
+      // send a query once in a while
       totalCommitRequestSent++;
-      if (totalCommitRequestSent % QUERY_RATE == 0 && cr.rows.length > 0) {
-         long queryTimeStamp = rnd.nextInt((int)timestamp);
-         CommitQueryRequest query = new CommitQueryRequest(timestamp, queryTimeStamp);
-         Channels.write(channel, query);
+      if (totalCommitRequestSent % QUERY_RATE == 0 && rows.length > 0) {
+         long queryTimeStamp = rnd.nextInt((int) timestamp);
+         try {
+            isCommitted(timestamp, queryTimeStamp, new SyncCommitQueryCallback());
+         } catch (IOException e) {
+            LOG.error("Couldn't send commit query", e);
+         }
       }
-      
-      //keep statistics
+
+      // keep statistics
       wallClockTime.put(timestamp, System.nanoTime());
-      Channels.write(channel, cr);
+
+      try {
+         commit(timestamp, rows, new SyncCommitCallback());
+      } catch (IOException e) {
+         LOG.error("Couldn't send commit", e);
+         e.printStackTrace();
+      }
    }
 
-   private long totalCommitRequestSent;//just to keep the total number of commitreqeusts sent
-   private int QUERY_RATE = 100;//send a query after this number of commit requests
-
+   private long totalCommitRequestSent;// just to keep the total number of
+                                       // commitreqeusts sent
+   private int QUERY_RATE = 100;// send a query after this number of commit
+                                // requests
 
    /**
     * Start a new transaction
+    * 
     * @param channel
+    * @throws IOException 
     */
-   private void startTransaction(Channel channel) {
-      while (true) {//fill the pipe with as much as request you can
-         if ( !((channel.getInterestOps() & Channel.OP_WRITE) == 0) )
+   private void startTransaction() {
+      while (true) {// fill the pipe with as much as request you can
+         if (!((channel.getInterestOps() & Channel.OP_WRITE) == 0))
             return;
 
-         //if (outstandingTransactions.intValue() >= MAX_IN_FLIGHT)
+         // if (outstandingTransactions.intValue() >= MAX_IN_FLIGHT)
          if (outstandingTransactions >= MAX_IN_FLIGHT)
             return;
 
          if (curMessage == 0) {
             LOG.warn("No more message");
-            //wait for all outstanding msgs and then close the channel
-            //if (outstandingTransactions.intValue() == 0) {
+            // wait for all outstanding msgs and then close the channel
+            // if (outstandingTransactions.intValue() == 0) {
             if (outstandingTransactions == 0) {
                LOG.warn("Close channel");
                channel.close().addListener(new ChannelFutureListener() {
@@ -391,25 +357,31 @@ public class ClientHandler extends SimpleChannelHandler {
             }
             return;
          }
-         curMessage --;
-         TimestampRequest tr = new TimestampRequest();
+         curMessage--;
+//         TimestampRequest tr = new TimestampRequest();
          outstandingTransactions++;
-         //outstandingTransactions.incrementAndGet();
-         Channels.write(channel, tr);
-         
+         // outstandingTransactions.incrementAndGet();
+//         Channels.write(channel, tr);
+         try {
+            super.getNewTimestamp(new SyncCreateCallback());
+         } catch (IOException e) {
+            LOG.error("Couldn't start transaction", e);
+         }
+
          Thread.yield();
       }
    }
-   
+
    public boolean validRead(long transaction, long startTimestamp) {
-      if (aborted.contains(transaction)) 
+      if (aborted.contains(transaction))
          return false;
       long commitTimestamp = committed.getCommit(transaction);
       if (commitTimestamp != -1)
          return commitTimestamp < startTimestamp;
       if (hasConnectionTimestamp && transaction > connectionTimestamp)
          return transaction <= largestDeletedTimestamp;
-      return askTSO(transaction, startTimestamp); // Could be half aborted and we didnt get notified
+      return askTSO(transaction, startTimestamp); // Could be half aborted and
+                                                  // we didnt get notified
    }
 
    private boolean askTSO(long transaction, long startTimestamp) {

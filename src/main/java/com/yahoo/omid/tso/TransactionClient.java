@@ -16,13 +16,12 @@
 
 package com.yahoo.omid.tso;
 
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 
-import org.jboss.netty.bootstrap.ClientBootstrap;
-import org.jboss.netty.channel.Channel;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.jboss.netty.channel.ChannelFactory;
 import org.jboss.netty.channel.group.ChannelGroup;
 import org.jboss.netty.channel.group.DefaultChannelGroup;
@@ -74,11 +73,6 @@ public class TransactionClient {
         if (args.length >= 5) {
            runs = Integer.parseInt(args[4]);
         }
-        
-        int totalClients = 1;
-        if (args.length >= 6) {
-            totalClients = Integer.parseInt(args[5]); 
-        }
 
         // *** Start the Netty configuration ***
 
@@ -91,30 +85,20 @@ public class TransactionClient {
                 TransactionClient.class.getName());
         
         List<ClientHandler> handlers = new ArrayList<ClientHandler>();
-        
+
+        Configuration conf = HBaseConfiguration.create();
+        conf.set("tso.host", host);
+        conf.setInt("tso.port", port);
+
         for(int i = 0; i < runs; ++i) {
-           // Create the bootstrap
-           ClientBootstrap bootstrap = new ClientBootstrap(factory);
            // Create the associated Handler
-           ClientHandler handler = new ClientHandler(nbMessage, inflight, runs);
-   
-           // Add the handler to the pipeline and set some options
-           bootstrap.getPipeline().addLast("handler", handler);
-           bootstrap.setOption("tcpNoDelay", false);
-           bootstrap.setOption("keepAlive", true);
-           bootstrap.setOption("reuseAddress", true);
-           bootstrap.setOption("connectTimeoutMillis", 100);
+           ClientHandler handler = new ClientHandler(conf, nbMessage, inflight);
    
            // *** Start the Netty running ***
    
            System.out.println("PARAM MAX_ROW: " + ClientHandler.MAX_ROW);
            System.out.println("PARAM DB_SIZE: " + ClientHandler.DB_SIZE);
    
-           // Connect to the server, wait for the connection and get back the channel
-           Channel channel = bootstrap.connect(new InetSocketAddress(host, port))
-                   .awaitUninterruptibly().getChannel();
-           // Add the parent channel to the group
-           channelGroup.add(channel);
            handlers.add(handler);
            
            if ((i - 1) % 20 == 0) Thread.sleep(1000);
@@ -123,8 +107,7 @@ public class TransactionClient {
         // Wait for the Traffic to finish
         for (ClientHandler handler : handlers) {
            boolean result = handler.waitForAll();
-           System.out
-                   .println("Result: " + result);
+           System.out.println("Result: " + result);
         }
 
         // *** Start the Netty shutdown ***

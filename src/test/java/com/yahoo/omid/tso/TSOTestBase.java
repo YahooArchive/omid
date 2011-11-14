@@ -17,7 +17,6 @@
 package com.yahoo.omid.tso;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.concurrent.Executors;
@@ -25,8 +24,8 @@ import java.util.concurrent.Executors;
 import org.apache.bookkeeper.util.LocalBookKeeper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.jboss.netty.bootstrap.ClientBootstrap;
-import org.jboss.netty.channel.Channel;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.jboss.netty.channel.ChannelFactory;
 import org.jboss.netty.channel.group.ChannelGroup;
 import org.jboss.netty.channel.group.DefaultChannelGroup;
@@ -36,11 +35,6 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
-import com.yahoo.omid.tso.ClientHandler;
-import com.yahoo.omid.tso.RowKey;
-import com.yahoo.omid.tso.TSOServer;
-import com.yahoo.omid.tso.TSOState;
-import com.yahoo.omid.tso.TransactionClient;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 
@@ -61,26 +55,22 @@ public class TSOTestBase {
    final static public RowKey r1 = new RowKey(new byte[] { 0xd, 0xe, 0xa, 0xd }, new byte[] { 0xb, 0xe, 0xe, 0xf });
    final static public RowKey r2 = new RowKey(new byte[] { 0xb, 0xa, 0xa, 0xd }, new byte[] { 0xc, 0xa, 0xf, 0xe });
 
-   public static void setupClient() {
+   public static void setupClient() throws IOException {
 
       // *** Start the Netty configuration ***
+      
+      Configuration conf = HBaseConfiguration.create();
+      conf.set("tso.host", "localhost");
+      conf.setInt("tso.port", 1234);
 
       // Start client with Nb of active threads = 3 as maximum.
       channelFactory = new NioClientSocketChannelFactory(Executors.newCachedThreadPool(),
             Executors.newCachedThreadPool(), 3);
       // Create the bootstrap
-      ClientBootstrap bootstrap = new ClientBootstrap(channelFactory);
       // Create the global ChannelGroup
       channelGroup = new DefaultChannelGroup(TransactionClient.class.getName());
       // Create the associated Handler
-      clientHandler = new TestClientHandler();
-
-      // Add the handler to the pipeline and set some options
-      bootstrap.getPipeline().addLast("handler", clientHandler);
-      bootstrap.setOption("tcpNoDelay", false);
-      bootstrap.setOption("keepAlive", true);
-      bootstrap.setOption("reuseAddress", true);
-      bootstrap.setOption("connectTimeoutMillis", 100);
+      clientHandler = new TestClientHandler(conf);
 
       // *** Start the Netty running ***
 
@@ -88,33 +78,15 @@ public class TSOTestBase {
       System.out.println("PARAM DB_SIZE: " + ClientHandler.DB_SIZE);
 
       // Connect to the server, wait for the connection and get back the channel
-      Channel channel = bootstrap.connect(new InetSocketAddress("localhost", 1234)).awaitUninterruptibly().getChannel();
       clientHandler.await();
       
-      // Add the parent channel to the group
-      channelGroup.add(channel);
-      
       // Second client handler
-      secondClientHandler = new TestClientHandler();
-      bootstrap = new ClientBootstrap(channelFactory);
-   // Add the handler to the pipeline and set some options
-      bootstrap.getPipeline().addLast("handler", secondClientHandler);
-      bootstrap.setOption("tcpNoDelay", false);
-      bootstrap.setOption("keepAlive", true);
-      bootstrap.setOption("reuseAddress", true);
-      bootstrap.setOption("connectTimeoutMillis", 100);
+      secondClientHandler = new TestClientHandler(conf);
 
       // *** Start the Netty running ***
 
       System.out.println("PARAM MAX_ROW: " + ClientHandler.MAX_ROW);
       System.out.println("PARAM DB_SIZE: " + ClientHandler.DB_SIZE);
-
-      // Connect to the server, wait for the connection and get back the channel
-      channel = bootstrap.connect(new InetSocketAddress("localhost", 1234)).awaitUninterruptibly().getChannel();
-      secondClientHandler.await();
-      
-      // Add the parent channel to the group
-      channelGroup.add(channel);
    }
    
    public static void teardownClient() {

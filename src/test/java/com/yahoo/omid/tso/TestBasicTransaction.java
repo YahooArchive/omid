@@ -20,6 +20,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
+
 import org.junit.Test;
 
 import com.yahoo.omid.tso.RowKey;
@@ -34,7 +36,7 @@ import com.yahoo.omid.tso.messages.TimestampResponse;
 public class TestBasicTransaction extends TSOTestBase {
 
    @Test
-   public void testConflicts() {
+   public void testConflicts() throws IOException {
       clientHandler.sendMessage(new TimestampRequest());
       clientHandler.receiveBootstrap();
       TimestampResponse tr1 = clientHandler.receiveMessage(TimestampResponse.class);

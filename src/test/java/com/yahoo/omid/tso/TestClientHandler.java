@@ -21,35 +21,36 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.naming.OperationNotSupportedException;
-
+import org.apache.hadoop.conf.Configuration;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.ExceptionEvent;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.channel.SimpleChannelHandler;
 
-import com.yahoo.omid.tso.Committed;
-import com.yahoo.omid.tso.TSOMessage;
+import com.google.protobuf.Descriptors.FieldDescriptor;
+import com.yahoo.omid.client.SyncAbortCompleteCallback;
+import com.yahoo.omid.client.SyncCommitCallback;
+import com.yahoo.omid.client.SyncCommitQueryCallback;
+import com.yahoo.omid.client.SyncCreateCallback;
+import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.tso.messages.AbortedTransactionReport;
+import com.yahoo.omid.tso.messages.CommitQueryRequest;
+import com.yahoo.omid.tso.messages.CommitQueryResponse;
+import com.yahoo.omid.tso.messages.CommitRequest;
 import com.yahoo.omid.tso.messages.CommitResponse;
 import com.yahoo.omid.tso.messages.CommittedTransactionReport;
 import com.yahoo.omid.tso.messages.FullAbortReport;
 import com.yahoo.omid.tso.messages.LargestDeletedTimestampReport;
+import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
-import com.yahoo.omid.tso.serialization.TSODecoder;
-import com.yahoo.omid.tso.serialization.TSOEncoder;
 
 /**
  * Example of ChannelHandler for the Transaction Client
@@ -57,7 +58,7 @@ import com.yahoo.omid.tso.serialization.TSOEncoder;
  * @author maysam
  * 
  */
-public class TestClientHandler extends SimpleChannelHandler {
+public class TestClientHandler extends TSOClient {
 
    private static final Logger logger = Logger.getLogger(TestClientHandler.class.getName());
 
@@ -66,18 +67,16 @@ public class TestClientHandler extends SimpleChannelHandler {
     */
    final BlockingQueue<Boolean> answer = new LinkedBlockingQueue<Boolean>();
    final BlockingQueue<TSOMessage> messageQueue = new LinkedBlockingQueue<TSOMessage>();
-
-   private Committed committed = new Committed();
-   private Set<Long> aborted = Collections.synchronizedSet(new HashSet<Long>(100000));
-
-   private long largestDeletedTimestamp = 0;
-   private long connectionTimestamp = Long.MAX_VALUE;
    
    private Channel channel;
 
    // Sends FullAbortReport upon receiving a CommitResponse with committed =
    // false
    private boolean autoFullAbort = true;
+   
+   public TestClientHandler(Configuration conf) throws IOException {
+      super(conf);
+   }
 
    /**
     * Method to wait for the final response
@@ -94,17 +93,19 @@ public class TestClientHandler extends SimpleChannelHandler {
       }
    }
 
-   /**
-    * Constructor
-    * 
-    * @param nbMessage
-    * @param inflight
-    */
-   public TestClientHandler() {
-   }
-
-   public void sendMessage(Object msg) {
-      channel.write(msg);
+   public void sendMessage(Object msg) throws IOException {
+      if (msg instanceof CommitRequest) {
+         CommitRequest cr = (CommitRequest) msg;
+         commit(cr.startTimestamp, cr.rows, new SyncCommitCallback());
+      } else if (msg instanceof TimestampRequest) {
+         getNewTimestamp(new SyncCreateCallback());
+      } else if (msg instanceof CommitQueryRequest) {
+         CommitQueryRequest cqr = (CommitQueryRequest) msg;
+         isCommitted(cqr.startTimestamp, cqr.queryTimestamp, new SyncCommitQueryCallback());
+      } else if (msg instanceof FullAbortReport) {
+         FullAbortReport atr = (FullAbortReport) msg;
+         completeAbort(atr.startTimestamp, new SyncAbortCompleteCallback());
+      }
    }
 
    public void clearMessages() {
@@ -122,10 +123,25 @@ public class TestClientHandler extends SimpleChannelHandler {
          }
       }
    }
+   
+   @Override
+   protected void processMessage(TSOMessage msg) {
+      if (msg instanceof CommitResponse) {
+         CommitResponse cr = (CommitResponse) msg;
+         if (!cr.committed && autoFullAbort) {
+            try {
+               completeAbort(cr.startTimestamp, new SyncAbortCompleteCallback());
+            } catch (IOException e) {
+               logger.log(Level.SEVERE, "Could not send Abort Complete mesagge.", e.getCause());
+            }
+         }
+      }
+      messageQueue.add(msg);
+   }
 
    public void receiveBootstrap() {
       receiveMessage(CommittedTransactionReport.class);
-      // receive all AbortedTransactionReport + one FullAbortReport
+      // Receive all AbortedTransactionReports + one FullAbortReport
       while (receiveMessage() instanceof AbortedTransactionReport);
       receiveMessage(LargestDeletedTimestampReport.class);
    }
@@ -153,19 +169,11 @@ public class TestClientHandler extends SimpleChannelHandler {
    }
 
    /**
-    * Add the ObjectXxcoder to the Pipeline
-    */
-   @Override
-   public void channelOpen(ChannelHandlerContext ctx, ChannelStateEvent e) {
-      e.getChannel().getPipeline().addFirst("decoder", new TSODecoder());
-      e.getChannel().getPipeline().addAfter("decoder", "encoder", new TSOEncoder());
-   }
-
-   /**
     * Starts the traffic
     */
    @Override
    public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) {
+      super.channelConnected(ctx, e);
       logger.log(Level.INFO, "Start sending traffic");
       synchronized (this) {
          this.channel = ctx.getChannel();
@@ -179,56 +187,6 @@ public class TestClientHandler extends SimpleChannelHandler {
     */
    @Override
    public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-   }
-
-   /**
-    * When a message is received, handle it based on its type
-    */
-   @Override
-   public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
-      Object msg = e.getMessage();
-      if (msg instanceof CommitResponse) {
-         handle((CommitResponse) msg, ctx.getChannel());
-      } else if (msg instanceof TimestampResponse) {
-         handle((TimestampResponse) msg, ctx.getChannel());
-      } else if (msg instanceof AbortedTransactionReport) {
-         handle((AbortedTransactionReport) msg, ctx.getChannel());
-      } else if (msg instanceof CommittedTransactionReport) {
-         handle((CommittedTransactionReport) msg, ctx.getChannel());
-      } else if (msg instanceof FullAbortReport) {
-         handle((FullAbortReport) msg, ctx.getChannel());
-      }
-      messageQueue.offer((TSOMessage) msg);
-   }
-
-   public void handle(TimestampResponse msg, Channel channel) {
-      if (msg.timestamp < connectionTimestamp) {
-         connectionTimestamp = msg.timestamp;
-      }
-   }
-
-   public void handle(FullAbortReport msg, Channel channel) {
-      aborted.remove(msg.startTimestamp);
-   }
-
-   public void handle(AbortedTransactionReport msg, Channel channel) {
-      aborted.add(msg.startTimestamp);
-   }
-
-   public void handle(CommittedTransactionReport msg, Channel channel) {
-      committed.commit(msg.startTimestamp, msg.commitTimestamp);
-   }
-
-   public void handle(CommitResponse msg, Channel channel) {
-      if (!msg.committed && autoFullAbort) {// aborted
-         FullAbortReport ack = new FullAbortReport(msg.startTimestamp);
-         Channels.write(channel, ack);
-      }
-   }
-
-   public void handle(LargestDeletedTimestampReport msg, Channel channel) {
-      largestDeletedTimestamp = msg.largestDeletedTimestamp;
-      committed.raiseLargestDeletedTransaction(msg.largestDeletedTimestamp);
    }
 
    @Override
@@ -249,33 +207,5 @@ public class TestClientHandler extends SimpleChannelHandler {
 
    public void setAutoFullAbort(boolean autoFullAbort) {
       this.autoFullAbort = autoFullAbort;
-   }
-
-   public boolean validRead(long transaction, long startTimestamp) {
-      if (aborted.contains(transaction)) 
-         return false;
-      
-      //
-      // Tx B is half aborted due to the increase of largestDeletedTimestamp (Tx A knows this)
-      // Tx A reads some values written by Tx B
-      // Tx B cleans its values, notfies TSO and Tx A learns this
-      // Tx A wonders if the values read before are valid
-      //    Nor on aborted (Tx B has been fully aborted and Tx A learned it)  
-      //    Nor committed
-      //    Because Tx B < largestDeletedTimestamp, Tx A thinks its committed.
-      // 
-      //
-      
-      
-      long commitTimestamp = committed.getCommit(transaction);
-      if (commitTimestamp != -1)
-         return commitTimestamp < startTimestamp;
-      if (transaction > connectionTimestamp)
-         return transaction <= largestDeletedTimestamp;
-      return askTSO(transaction, startTimestamp); // Could be half aborted and we didnt get notified
-   }
-
-   private boolean askTSO(long transaction, long startTimestamp) {
-      throw new RuntimeException(new OperationNotSupportedException("Must implement"));
    }
 }

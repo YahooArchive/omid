@@ -50,6 +50,7 @@ import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 
 import com.yahoo.omid.tso.Committed;
 import com.yahoo.omid.tso.RowKey;
+import com.yahoo.omid.tso.TSOMessage;
 import com.yahoo.omid.tso.messages.AbortedTransactionReport;
 import com.yahoo.omid.tso.messages.CommitQueryRequest;
 import com.yahoo.omid.tso.messages.CommitQueryResponse;
@@ -493,6 +494,7 @@ public class TSOClient extends SimpleChannelHandler {
       } else {
          LOG.error("Unknown message received " +  msg);
       }
+      processMessage((TSOMessage) msg);
    }
    
    @Override
@@ -564,6 +566,11 @@ public class TSOClient extends SimpleChannelHandler {
          } 
          isCommittedCallbacks.clear();
       }      
+   }
+
+   protected void processMessage(TSOMessage msg) {
+      // TODO Auto-generated method stub
+      
    }
 
 }
