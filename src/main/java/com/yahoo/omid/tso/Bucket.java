@@ -18,7 +18,6 @@
 package com.yahoo.omid.tso;
 import java.util.BitSet;
 import java.util.Set;
-import java.util.TreeSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -45,18 +44,16 @@ public class Bucket {
    }
 
 
-   public Set<Long> abortAllUncommited() {
-      Set<Long> result = abortUncommited(BUCKET_SIZE - 1);
+   public void abortAllUncommited(Set<Long> aborted) {
+      abortUncommited(BUCKET_SIZE - 1, aborted);
       closed = true;
-      return result;
    }
 
-   public synchronized Set<Long> abortUncommited(long id) {
+   public void abortUncommited(long id, Set<Long> aborted) {
       int lastCommited = (int) id % BUCKET_SIZE;
-      
-      Set<Long> aborted = new TreeSet<Long>();
+
       if (allCommited()) {
-         return aborted;
+         return;
       }
 
       LOG.debug("Performing scanning...");
@@ -68,11 +65,9 @@ public class Bucket {
       }
       
       firstUncommited = lastCommited + 1;
-
-      return aborted;
    }
 
-   public synchronized void commit(long id) {
+   public void commit(long id) {
       transactions.set((int) id % BUCKET_SIZE);
       ++transactionsCommited;
    }
