@@ -20,9 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -231,145 +229,108 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
     */
    public void handle(CommitRequest msg, ChannelHandlerContext ctx) {
       CommitResponse reply = new CommitResponse(msg.startTimestamp);
+      long time = 0;//System.nanoTime();
+      long timeAfter;
       ByteArrayOutputStream baos = sharedState.baos;
-      DataOutputStream toWAL = sharedState.toWAL;
-      reply.committed = true;
-      Set<Long> toAbort = null;
-      long oldmax = -1;
-      long newmax = -1;
-
-      for (RowKey r : msg.rows) {
-         r.index = (r.hashCode() & 0x7FFFFFFF) % TSOState.MAX_ITEMS;
-      }
-      Arrays.sort(msg.rows);
-
-      int lastrowlocked = -1;// last row that is locked, we need to unlock up to this row
-      int lastindex = -1;// last index that is locked, we should not lock it again
-
-      {
-         // 0. check if it sould abort
+      DataOutputStream toWAL  = sharedState.toWAL;
+      synchronized (sharedState) {
+         timeAfter = 0;//System.nanoTime();
+         waitTime += (timeAfter - time);
+         time = timeAfter;
+         //0. check if it sould abort
          if (msg.startTimestamp < timestampOracle.first()) {
             reply.committed = false;
             LOG.warn("Aborting transaction after restarting TSO");
          } else if (msg.startTimestamp < sharedState.largestDeletedTimestamp) {
             // Too old
-            reply.committed = false;// set as abort
-            LOG.warn("Too old starttimestamp: ST " + msg.startTimestamp + " MAX " + sharedState.largestDeletedTimestamp);
+            reply.committed = false;//set as abort
+            LOG.warn("Too old starttimestamp: ST "+ msg.startTimestamp +" MAX " + sharedState.largestDeletedTimestamp);
          } else {
-            // 1. check the write-write conflicts
-            for (RowKey r : msg.rows) {
+            //1. check the write-write conflicts
+            for (RowKey r: msg.rows) {
                long value;
-               // lock the index if it is not already locked
-               if (r.index != lastindex)
-                  sharedState.hashmap.lock(r.index);
-               lastindex = r.index;
-               // after locking, do the get
                value = sharedState.hashmap.get(r.getRow(), r.getTable(), r.hashCode());
-               // remember the last locked row, for unlocking time
-               lastrowlocked = r.index;
                if (value != 0 && value > msg.startTimestamp) {
-                  // System.out.println("Abort...............");
-                  reply.committed = false;// set as abort
+                  //System.out.println("Abort...............");
+                  reply.committed = false;//set as abort
+                  break;
+               } else if (value == 0 && sharedState.largestDeletedTimestamp > msg.startTimestamp) {
+                  //then it could have been committed after start timestamp but deleted by recycling
+                  System.out.println("Old............... " + sharedState.largestDeletedTimestamp + " " + msg.startTimestamp);
+                  reply.committed = false;//set as abort
                   break;
                }
             }
          }
 
+         timeAfter = 0;//System.nanoTime();
+         checkTime += (timeAfter - time);
+         time = timeAfter;
+
          if (reply.committed) {
+            //2. commit
             try {
-               long commitTimestamp;
-               synchronized (sharedState) {
-                  oldmax = sharedState.largestDeletedTimestamp;
-                  newmax = oldmax;
-                  commitTimestamp = timestampOracle.next(toWAL);
-                  sharedState.uncommited.commit(commitTimestamp);
-                  sharedState.uncommited.commit(msg.startTimestamp);
-                  reply.commitTimestamp = commitTimestamp;
-                  newmax = sharedState.hashmap.setCommitted(msg.startTimestamp, commitTimestamp, newmax);
-                  if (msg.rows.length > 0) {
-                     toWAL.writeLong(commitTimestamp);
-                     toWAL.writeByte(msg.rows.length);
-                     for (RowKey r : msg.rows) {
-                        toWAL.write(r.getRow(), 0, r.getRow().length);
-                     }
-                     if (newmax > sharedState.previousLargestDeletedTimestamp + TSOState.LARGEST_THRESHOLD) {
-                        toWAL.writeLong(newmax);
-                        toWAL.writeByte((byte) -2);
-                        sharedState.previousLargestDeletedTimestamp = newmax;
-                     }
+              long commitTimestamp = timestampOracle.next(toWAL);
+              sharedState.uncommited.commit(commitTimestamp);
+              sharedState.uncommited.commit(msg.startTimestamp);
+              reply.commitTimestamp = commitTimestamp;
+              if (msg.rows.length > 0) {
+                  toWAL.writeLong(commitTimestamp);
+                  toWAL.writeByte(msg.rows.length);
+   
+                  for (RowKey r: msg.rows) {
+                     toWAL.write(r.getRow(), 0, r.getRow().length);
+                     sharedState.largestDeletedTimestamp = sharedState.hashmap.put(r.getRow(), r.getTable(), commitTimestamp, r.hashCode(), sharedState.largestDeletedTimestamp);
                   }
-               }
-               if (msg.rows.length > 0) {
-                  for (RowKey r : msg.rows) {
-                     newmax = sharedState.hashmap.put(r.getRow(), r.getTable(), commitTimestamp, r.hashCode(), newmax);
-                  }
-                  if (newmax > sharedState.largestDeletedTimestamp) {
-                     if (toAbort == null) {
-                        toAbort = new HashSet<Long>();
-                     }
-                     sharedState.uncommited.raiseLargestDeletedTransaction(newmax, toAbort);
+                  sharedState.largestDeletedTimestamp = sharedState.hashmap.setCommitted(msg.startTimestamp, commitTimestamp, sharedState.largestDeletedTimestamp);
+                  if (sharedState.largestDeletedTimestamp > sharedState.previousLargestDeletedTimestamp) {
+                     toWAL.writeLong(sharedState.largestDeletedTimestamp);
+                     toWAL.writeByte((byte)-2);
+                     Set<Long> toAbort = sharedState.uncommited.raiseLargestDeletedTransaction(sharedState.largestDeletedTimestamp);
                      if (!toAbort.isEmpty()) {
-                        LOG.warn("Slow transactions after raising max");
+                         LOG.warn("Slow transactions after raising max");
                      }
+                     synchronized (sharedMsgBufLock) {
+                        for (Long id : toAbort) {
+                           sharedState.hashmap.setHalfAborted(id);
+                           queueHalfAbort(id);
+                        }
+                        queueLargestIncrease(sharedState.largestDeletedTimestamp);
+                     }
+                     sharedState.previousLargestDeletedTimestamp = sharedState.largestDeletedTimestamp;
                   }
-                  if (toAbort != null) {
-                     for (Long id : toAbort) {
-                        sharedState.hashmap.setHalfAborted(id);
-                     }
+                  synchronized (sharedMsgBufLock) {
+                      queueCommit(msg.startTimestamp, commitTimestamp);
                   }
                }
             } catch (IOException e) {
                e.printStackTrace();
             }
-         } else { // add it to the aborted list
+         } else { //add it to the aborted list
             abortCount++;
             sharedState.hashmap.setHalfAborted(msg.startTimestamp);
             sharedState.uncommited.abort(msg.startTimestamp);
+            synchronized (sharedMsgBufLock) {
+                queueHalfAbort(msg.startTimestamp);
+            }
          }
-      }
-
-      lastindex = -1;
-      for (RowKey r : msg.rows) {
-         if (r.index != lastindex)// do not unlock the same index twice
-            sharedState.hashmap.unlock(r.index);
-         lastindex = r.index;
-         // unlock till the locking point
-         if (lastrowlocked != -1 && lastrowlocked == r.index)
-            break;
-      }
          
-      TSOHandler.transferredBytes++;
+         TSOHandler.transferredBytes++;
 
-      //async write into WAL, callback function is addComplete
-      ChannelandMessage cam = new ChannelandMessage(ctx, reply);
+         timeAfter = 0;//System.nanoTime();
+         commitTime += (timeAfter - time);
+         time = timeAfter;
 
-      synchronized (sharedState) {         
+         //async write into WAL, callback function is addComplete
+         ChannelandMessage cam = new ChannelandMessage(ctx, reply);
+
          sharedState.nextBatch.add(cam);
          if (sharedState.baos.size() >= TSOState.BATCH_SIZE) {
             sharedState.lh.asyncAddEntry(baos.toByteArray(), this, sharedState.nextBatch);
             sharedState.nextBatch = new ArrayList<ChannelandMessage>(sharedState.nextBatch.size() + 5);
             sharedState.baos.reset();
          }
-      }
 
-      // Update replicated state on clients
-      if (reply.committed && msg.rows.length > 0) {
-         synchronized (sharedMsgBufLock) {
-            if (toAbort != null) {
-               for (Long id : toAbort) {
-                  queueHalfAbort(id);
-               }
-            }
-            if (newmax > sharedState.largestDeletedTimestamp) {
-               queueLargestIncrease(sharedState.largestDeletedTimestamp);
-               sharedState.largestDeletedTimestamp = newmax;
-            }
-            queueCommit(msg.startTimestamp, reply.commitTimestamp);
-         }
-      } else if (!reply.committed) {
-         synchronized (sharedMsgBufLock) {
-            queueHalfAbort(msg.startTimestamp);
-         }
       }
 
    }

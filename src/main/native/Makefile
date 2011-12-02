@@ -20,7 +20,7 @@
 OSTYPE := $(shell uname -s)
 CC = gcc 
 LDSHARED = $(CC) -shared -fPIC
-TSO_COMMITHASHMAP_SO = libtso-commithashmap.so
+TSO_COMMITHASHMAP_SO = libnativelib.so
 ifeq ($(OSTYPE),Darwin)
 TSO_COMMITHASHMAP_SO = libtso-commithashmap.jnilib
 endif

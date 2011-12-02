@@ -17,6 +17,7 @@
 
 package com.yahoo.omid.tso;
 import java.util.Set;
+import java.util.TreeSet;
 
 public class Uncommited {
    
@@ -58,20 +59,21 @@ public class Uncommited {
       return bucket.isUncommited(id);
    }
    
-   public synchronized Set<Long> raiseLargestDeletedTransaction(long id, Set<Long> aborted) {
+   public Set<Long> raiseLargestDeletedTransaction(long id) {
       int maxBucket = getPosition(id);
+      Set<Long> aborted = new TreeSet<Long>();
       // TODO fix this iteration. When it wraps its gonna break
       for (int i = firstUncommitedBucket; i < maxBucket; ++i) {
          Bucket bucket = buckets[i];
          if (bucket != null) {
-            bucket.abortAllUncommited(aborted);
+            aborted.addAll(bucket.abortAllUncommited());
             buckets[i] = null;
          }
       }
       
       Bucket bucket = buckets[maxBucket];
       if (bucket != null) {
-         bucket.abortUncommited(id, aborted);
+         aborted.addAll(bucket.abortUncommited(id));
       }
       
       increaseFirstUncommitedBucket();
@@ -79,7 +81,7 @@ public class Uncommited {
       return aborted;
    }
 
-   private void increaseFirstUncommitedBucket() {
+   private synchronized void increaseFirstUncommitedBucket() {
       while (firstUncommitedBucket != lastOpenedBucket &&
              buckets[firstUncommitedBucket] == null) {
          firstUncommitedBucket = (firstUncommitedBucket + 1) % BKT_NUMBER;

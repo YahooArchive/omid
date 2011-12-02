@@ -72,8 +72,6 @@ public class TSOState {
 //   static final public float LOAD_FACTOR = 0.2f;
    static final public float LOAD_FACTOR = 0.5f;
 
-   public static final long LARGEST_THRESHOLD = 100000;
-
    /**
     * Largest Deleted Timestamp
     */
