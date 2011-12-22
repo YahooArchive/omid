@@ -20,9 +20,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -81,9 +81,7 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
    private ChannelGroup channelGroup = null;
    private static ChannelGroup clientChannels = new DefaultChannelGroup("clients");
    
-   private ConcurrentMap<Channel, ReadingBuffer> messageBuffersMap = //new HashMap<Channel, ReadingBuffer>();
-   new ConcurrentHashMap<Channel, TSOSharedMessageBuffer.ReadingBuffer>();
-//   private List<TSOSharedMessageBuffer> messageBuffersList = new CopyOnWriteArrayList<TSOSharedMessageBuffer>();
+   private Map<Channel, ReadingBuffer> messageBuffersMap = new HashMap<Channel, ReadingBuffer>();
    
    /**
     * Timestamp Oracle
