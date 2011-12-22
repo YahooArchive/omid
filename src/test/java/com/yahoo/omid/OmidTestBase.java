@@ -17,6 +17,7 @@
 package com.yahoo.omid;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -26,18 +27,22 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.LocalHBaseCluster;
 import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 
-import com.google.common.io.Files;
 import com.yahoo.omid.tso.TSOServer;
 
 public class OmidTestBase {
@@ -47,6 +52,9 @@ public class OmidTestBase {
    protected static Configuration conf;
    private static Thread bkthread;
    private static Thread tsothread;
+   
+   protected static final String TEST_TABLE = "test";
+   protected static final String TEST_FAMILY = "data";
 
    @BeforeClass 
    public static void setupOmid() throws Exception {
@@ -83,16 +91,16 @@ public class OmidTestBase {
             }
          };
       conf = HBaseConfiguration.create();
+      conf.set("hbase.coprocessor.region.classes", 
+               "com.yahoo.omid.client.regionserver.Compacter");
+      conf.setInt("hbase.hregion.memstore.flush.size", 100*1024);
+      conf.setInt("hbase.regionserver.nbreservationblocks", 1);
       conf.set("tso.host", "localhost");
       conf.setInt("tso.port", 1234);
       final String rootdir = "/tmp/hbase.test.dir/";
       File rootdirFile = new File(rootdir);
       if (rootdirFile.exists()) {
-          try {
-              Files.deleteRecursively(new File(rootdir));
-          } catch (IOException e) {
-              LOG.warn("Couldn't delete " + rootdir);
-          }
+         delete(rootdirFile);
       }
       conf.set("hbase.rootdir", rootdir);
 
@@ -115,6 +123,15 @@ public class OmidTestBase {
          Thread.sleep(500);
       }
    }
+
+   private static void delete(File f) throws IOException {
+      if (f.isDirectory()) {
+        for (File c : f.listFiles())
+          delete(c);
+      }
+      if (!f.delete())
+        throw new FileNotFoundException("Failed to delete file: " + f);
+    }
    
    @AfterClass public static void teardownOmid() throws Exception {
       if (hbasecluster != null) {
@@ -132,6 +149,41 @@ public class OmidTestBase {
          bkthread.join();
       }
       waitForSocketNotListening("localhost", 1234);
+   }
+
+   @Before
+   public void setUp() throws Exception {
+      HBaseAdmin admin = new HBaseAdmin(conf);
+
+      if (!admin.tableExists(TEST_TABLE)) {
+         HTableDescriptor desc = new HTableDescriptor(TEST_TABLE);
+         HColumnDescriptor datafam = new HColumnDescriptor(TEST_FAMILY);
+         datafam.setMaxVersions(Integer.MAX_VALUE);
+         desc.addFamily(datafam);
+
+         admin.createTable(desc);
+      }
+
+      if (admin.isTableDisabled(TEST_TABLE)) {
+         admin.enableTable(TEST_TABLE);
+      }
+      HTableDescriptor[] tables = admin.listTables();
+      for (HTableDescriptor t : tables) {
+         LOG.info(t.getNameAsString());
+      }
+   }
+
+   @After
+   public void tearDown() {
+      try {
+         LOG.info("tearing Down");
+         HBaseAdmin admin = new HBaseAdmin(conf);
+         admin.disableTable(TEST_TABLE);
+         admin.deleteTable(TEST_TABLE);
+
+      } catch (Exception e) {
+         LOG.error("Error tearing down", e);
+      }
    }
 
    private static void waitForSocketListening(String host, int port) 

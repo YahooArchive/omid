@@ -16,67 +16,22 @@
 
 package com.yahoo.omid;
 
-import org.junit.Test;
-import org.junit.Before;
-import org.junit.After;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
-
-import org.apache.hadoop.hbase.filter.*;
-
-import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.Delete;
-import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.junit.Test;
 
 import com.yahoo.omid.client.TransactionManager;
 import com.yahoo.omid.client.TransactionState;
 import com.yahoo.omid.client.TransactionalTable;
 
-import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.HColumnDescriptor;
-
-import org.apache.hadoop.conf.Configuration;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory; 
-
 public class TestNonexistentRow extends OmidTestBase {
    private static final Log LOG = LogFactory.getLog(TestNonexistentRow.class);
-   
-   private static final String TEST_TABLE = "TestNonexistentRow";
-   private static final String TEST_FAMILY = "Family";
-   private static final String TEST_COL = "value";
-
-   @Before public void setup() throws Exception {
-      HBaseAdmin admin=new HBaseAdmin(conf);
-      if (!admin.tableExists(TEST_TABLE)) {
-         HTableDescriptor desc=new HTableDescriptor(TEST_TABLE);
-         HColumnDescriptor column=new HColumnDescriptor(TEST_FAMILY);
-         desc.addFamily(column);
-
-//         HColumnDescriptor delfam = new HColumnDescriptor(TransactionalTable.DELETE_STATUS_FAMILY);
-//         delfam.setMaxVersions(10);
-//         desc.addFamily(delfam);
-         admin.createTable(desc);
-         LOG.info("created table");
-      }
-   }
-    
-   @After public void tearDown() {
-      try {
-         HBaseAdmin admin = new HBaseAdmin(conf);
-         admin.disableTable(TEST_TABLE);
-         admin.deleteTable(TEST_TABLE);
-      } catch (Exception e) {
-         LOG.error("Error tearing down", e);
-      }
-   }
 
    @Test public void testMultiPutSameRow() throws Exception {
       try{

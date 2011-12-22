@@ -18,7 +18,6 @@ package com.yahoo.omid.client;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -237,8 +236,8 @@ public class TransactionalTable extends HTable {
       if (kvs == null) {
          return result;
       }
-      Map<ByteArray, Map<ByteArray, Integer>> occurrences = new HashMap<TransactionalTable.ByteArray, Map<ByteArray,Integer>>();
-      Map<ByteArray, Map<ByteArray, Long>> minTimestamp = new HashMap<TransactionalTable.ByteArray, Map<ByteArray,Long>>();
+      Map<ByteArray, Map<ByteArray, Integer>> occurrences = new HashMap<ByteArray, Map<ByteArray,Integer>>();
+      Map<ByteArray, Map<ByteArray, Long>> minTimestamp = new HashMap<ByteArray, Map<ByteArray,Long>>();
       List<KeyValue> nonDeletes = new ArrayList<KeyValue>();
       List<KeyValue> filtered = new ArrayList<KeyValue>();
       Map<ByteArray, Set<ByteArray>> read = new HashMap<ByteArray, Set<ByteArray>>();
@@ -248,7 +247,7 @@ public class TransactionalTable extends HTable {
          ByteArray qualifier = new ByteArray(kv.getQualifier());
          Set<ByteArray> readQualifiers = read.get(family);
          if (readQualifiers == null) {
-            readQualifiers = new HashSet<TransactionalTable.ByteArray>();
+            readQualifiers = new HashSet<ByteArray>();
             read.put(family, readQualifiers);
          } else if (readQualifiers.contains(qualifier)) continue;
 //         RowKey rk = new RowKey(kv.getRow(), getTableName());
@@ -280,8 +279,8 @@ public class TransactionalTable extends HTable {
             Map<ByteArray, Integer> occurrencesCols = occurrences.get(family);
             Map<ByteArray, Long> minTimestampCols = minTimestamp.get(family);
             if (occurrencesCols == null) {
-               occurrencesCols = new HashMap<TransactionalTable.ByteArray, Integer>();
-               minTimestampCols = new HashMap<TransactionalTable.ByteArray, Long>();
+               occurrencesCols = new HashMap<ByteArray, Integer>();
+               minTimestampCols = new HashMap<ByteArray, Long>();
                occurrences.put(family, occurrencesCols);
                minTimestamp.put(family, minTimestampCols);
             }
@@ -364,28 +363,6 @@ public class TransactionalTable extends HTable {
       }
    }
 
-   private class ByteArray {
-      public byte [] array;
-      
-      public ByteArray(byte [] array) {
-         this.array = array;
-      }
-      
-      @Override
-      public boolean equals(Object obj) {
-         if (obj instanceof ByteArray) {
-            ByteArray ba = (ByteArray) obj;
-            return Arrays.equals(array, ba.array);
-         }
-         return false;
-      }
-      
-      @Override
-      public int hashCode() {
-         return Arrays.hashCode(array);
-      }
-   }
-   
    protected class ClientScanner extends HTable.ClientScanner {
       private TransactionState state;
       private int maxVersions;

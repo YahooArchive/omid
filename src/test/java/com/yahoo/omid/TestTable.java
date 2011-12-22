@@ -24,8 +24,6 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 
-import com.yahoo.omid.client.TransactionalTable;
-
 public class TestTable {
    private static final Log LOG = LogFactory.getLog(TestTable.class);
    

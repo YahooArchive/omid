@@ -23,42 +23,6 @@ import com.yahoo.omid.client.TransactionalTable;
 public class TestAbortTransaction extends OmidTestBase {
    private static final Log LOG = LogFactory.getLog(TestAbortTransaction.class);
 
-   private static final String TEST_TABLE = "test";
-   private static final String TEST_FAMILY = "data";
-
-   @Before 
-   public void setUp() throws Exception {
-      HBaseAdmin admin = new HBaseAdmin(conf);
-      
-      if (!admin.tableExists(TEST_TABLE)) {
-         HTableDescriptor desc = new HTableDescriptor(TEST_TABLE);
-         HColumnDescriptor datafam = new HColumnDescriptor(TEST_FAMILY);
-         datafam.setMaxVersions(10);
-
-         desc.addFamily(datafam);
-         admin.createTable(desc);
-      }
-
-      admin.enableTable(TEST_TABLE);
-      HTableDescriptor[] tables = admin.listTables();
-      for (HTableDescriptor t : tables) {
-         LOG.info(t.getNameAsString());
-      }
-   }
-
-   @After
-   public void tearDown() {
-      try {
-         LOG.info("tearing Down");
-         HBaseAdmin admin = new HBaseAdmin(conf);
-         admin.disableTable(TEST_TABLE);
-         admin.deleteTable(TEST_TABLE);
-         
-      } catch (Exception e) {
-         LOG.error("Error tearing down", e);
-      }
-   }
-
    @Test public void runTestInterleaveScan() throws Exception {
       try {
          TransactionManager tm = new TransactionManager(conf);

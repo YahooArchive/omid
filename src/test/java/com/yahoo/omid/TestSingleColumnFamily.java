@@ -38,36 +38,6 @@ import com.yahoo.omid.client.TransactionalTable;
 
 public class TestSingleColumnFamily extends OmidTestBase {
    private static final Log LOG = LogFactory.getLog(TestSingleColumnFamily.class);
-   
-   private static final String TEST_TABLE = "TestHBaseSingleColumnFamily";
-   private static final String TEST_FAMILY = "data";
-
-   @Before public void setup() throws Exception {
-      HBaseAdmin admin=new HBaseAdmin(conf);
-      if (!admin.tableExists(TEST_TABLE)) {
-         HTableDescriptor desc=new HTableDescriptor(TEST_TABLE);
-         HColumnDescriptor datafam
-            = new HColumnDescriptor(TEST_FAMILY);
-         datafam.setMaxVersions(10);
-         desc.addFamily(datafam);
-
-//         HColumnDescriptor delfam = new HColumnDescriptor(TransactionalTable.DELETE_STATUS_FAMILY);
-//         delfam.setMaxVersions(10);
-//         desc.addFamily(delfam);
-         admin.createTable(desc);
-         LOG.info("created table");
-      }
-   }
-    
-   @After public void tearDown() {
-      try {
-         HBaseAdmin admin = new HBaseAdmin(conf);
-         admin.disableTable(TEST_TABLE);
-         admin.deleteTable(TEST_TABLE);
-      } catch (Exception e) {
-         LOG.error("Error tearing down", e);
-      }
-   }
 
    @Test public void testSingleColumnFamily() throws Exception {
       TransactionManager tm = new TransactionManager(conf);

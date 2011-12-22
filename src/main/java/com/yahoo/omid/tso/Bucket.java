@@ -85,4 +85,8 @@ public class Bucket {
       return BUCKET_SIZE;
    }
 
+   public long getFirstUncommitted() {
+      return position * BUCKET_SIZE + firstUncommited;
+   }
+
 }

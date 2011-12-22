@@ -31,13 +31,22 @@ import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.commons.lang.StringUtils;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
+import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFactory;
+import org.jboss.netty.channel.ChannelPipeline;
+import org.jboss.netty.channel.ChannelPipelineFactory;
+import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.group.ChannelGroup;
 import org.jboss.netty.channel.group.DefaultChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
+import org.jboss.netty.handler.codec.serialization.ObjectDecoder;
+import org.jboss.netty.handler.codec.serialization.ObjectEncoder;
 import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
+
+import com.yahoo.omid.tso.serialization.TSODecoder;
+import com.yahoo.omid.tso.serialization.TSOEncoder;
 
 /**
  * TSO Server with serialization
@@ -133,7 +142,7 @@ public class TSOServer implements Runnable {
             throw new RuntimeException(e);
         }
 
-        TSOHandler handler = new TSOHandler(channelGroup, timestampOracle, state);
+        final TSOHandler handler = new TSOHandler(channelGroup, timestampOracle, state);
 
         bootstrap.setPipelineFactory(new TSOPipelineFactory(pipelineExecutor, handler));
         bootstrap.setOption("tcpNoDelay", false);
@@ -150,6 +159,31 @@ public class TSOServer implements Runnable {
         // Add the parent channel to the group
         Channel channel = bootstrap.bind(new InetSocketAddress(port));
         channelGroup.add(channel);
+        
+        // Compacter handler
+        ChannelFactory comFactory = new NioServerSocketChannelFactory(Executors.newCachedThreadPool(),
+              Executors.newCachedThreadPool(), (Runtime.getRuntime().availableProcessors() * 2 + 1) * 2);
+        ServerBootstrap comBootstrap = new ServerBootstrap(comFactory);
+        ChannelGroup comGroup = new DefaultChannelGroup("compacter");
+        final CompacterHandler comHandler = new CompacterHandler(comGroup, state);
+        comBootstrap.setPipelineFactory(new ChannelPipelineFactory() {
+
+           @Override
+           public ChannelPipeline getPipeline() throws Exception {
+              ChannelPipeline pipeline = Channels.pipeline();
+              pipeline.addLast("decoder", new ObjectDecoder());
+              pipeline.addLast("encoder", new ObjectEncoder());
+              pipeline.addLast("handler", comHandler);
+              return pipeline;
+           }
+        });        
+        comBootstrap.setOption("tcpNoDelay", false);
+        comBootstrap.setOption("child.tcpNoDelay", false);
+        comBootstrap.setOption("child.keepAlive", true);
+        comBootstrap.setOption("child.reuseAddress", true);
+        comBootstrap.setOption("child.connectTimeoutMillis", 100);
+        comBootstrap.setOption("readWriteFair", true);
+        channel = comBootstrap.bind(new InetSocketAddress(port + 1));
 
         // Starts the monitor
         monitor.start();
@@ -165,6 +199,7 @@ public class TSOServer implements Runnable {
 
         timestampOracle.stop();
         handler.stop();
+        comHandler.stop();
 
         // *** Start the Netty shutdown ***
 
@@ -174,12 +209,14 @@ public class TSOServer implements Runnable {
         // Now close all channels
         System.out.println("End of channel group");
         channelGroup.close().awaitUninterruptibly();
+        comGroup.close().awaitUninterruptibly();
         // Close the executor for Pipeline
         System.out.println("End of pipeline executor");
         pipelineExecutor.shutdownNow();
         // Now release resources
         System.out.println("End of resources");
         factory.releaseExternalResources();
+        comFactory.releaseExternalResources();
     }
     
     private void recoverState() throws BKException, InterruptedException, KeeperException, IOException {

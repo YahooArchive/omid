@@ -21,7 +21,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
 import java.io.IOException;
-import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -35,7 +34,6 @@ import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.ExceptionEvent;
 
-import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.yahoo.omid.client.SyncAbortCompleteCallback;
 import com.yahoo.omid.client.SyncCommitCallback;
 import com.yahoo.omid.client.SyncCommitQueryCallback;
@@ -43,14 +41,12 @@ import com.yahoo.omid.client.SyncCreateCallback;
 import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.tso.messages.AbortedTransactionReport;
 import com.yahoo.omid.tso.messages.CommitQueryRequest;
-import com.yahoo.omid.tso.messages.CommitQueryResponse;
 import com.yahoo.omid.tso.messages.CommitRequest;
 import com.yahoo.omid.tso.messages.CommitResponse;
 import com.yahoo.omid.tso.messages.CommittedTransactionReport;
 import com.yahoo.omid.tso.messages.FullAbortReport;
 import com.yahoo.omid.tso.messages.LargestDeletedTimestampReport;
 import com.yahoo.omid.tso.messages.TimestampRequest;
-import com.yahoo.omid.tso.messages.TimestampResponse;
 
 /**
  * Example of ChannelHandler for the Transaction Client

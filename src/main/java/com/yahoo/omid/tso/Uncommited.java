@@ -80,6 +80,10 @@ public class Uncommited {
       
       return aborted;
    }
+   
+   public synchronized long getFirstUncommitted() {
+      return buckets[firstUncommitedBucket].getFirstUncommitted();
+   }
 
    private synchronized void increaseFirstUncommitedBucket() {
       while (firstUncommitedBucket != lastOpenedBucket &&

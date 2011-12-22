@@ -22,10 +22,7 @@ import static org.junit.Assert.fail;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -36,8 +33,6 @@ import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.RowFilter;
 import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.yahoo.omid.client.TransactionManager;
@@ -46,36 +41,8 @@ import com.yahoo.omid.client.TransactionalTable;
 
 public class TestUpdateScan extends OmidTestBase {
    private static final Log LOG = LogFactory.getLog(TestUpdateScan.class);
-   
-   private static final String TEST_TABLE = "TestHBaseScan";
-   private static final String TEST_FAMILY = "Family";
    private static final String TEST_COL = "value";
 
-   @Before public void setup() throws Exception {
-      HBaseAdmin admin=new HBaseAdmin(conf);
-      if (!admin.tableExists(TEST_TABLE)) {
-         HTableDescriptor desc=new HTableDescriptor(TEST_TABLE);
-         HColumnDescriptor column=new HColumnDescriptor(TEST_FAMILY);
-         desc.addFamily(column);
-
-//         HColumnDescriptor delfam = new HColumnDescriptor(TransactionalTable.DELETE_STATUS_FAMILY);
-//         delfam.setMaxVersions(10);
-//         desc.addFamily(delfam);
-         admin.createTable(desc);
-         LOG.info("created table");
-      }
-   }
-    
-   @After public void tearDown() {
-      try {
-         HBaseAdmin admin = new HBaseAdmin(conf);
-         admin.disableTable(TEST_TABLE);
-         admin.deleteTable(TEST_TABLE);
-      } catch (Exception e) {
-         LOG.error("Error tearing down", e);
-      }
-   }
-    
    @Test public void testGet() throws Exception {
       try{
          TransactionManager tm = new TransactionManager(conf);

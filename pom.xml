@@ -84,7 +84,7 @@
 	<artifactId>maven-surefire-plugin</artifactId>
 	<version>2.7.1</version>
 	<configuration>
-	  <!-- forkMode>pertest</forkMode -->
+	  <!-- forkMode>always</forkMode -->
 	  <argLine>-Djava.library.path=${basedir}/src/main/native</argLine>
 	</configuration>
       </plugin>
@@ -123,7 +123,7 @@
     <dependency>
     	<groupId>org.apache.hbase</groupId>
     	<artifactId>hbase</artifactId>
-    	<version>0.90.2</version>
+    	<version>0.93-SNAPSHOT</version>
     	<type>jar</type>
     	<scope>compile</scope>
     </dependency>
@@ -143,6 +143,20 @@
     	<groupId>org.jboss.netty</groupId>
     	<artifactId>netty</artifactId>
     	<version>3.2.6.Final</version>
+    	<scope>compile</scope>
+    </dependency>
+    <dependency>
+    	<groupId>org.apache.hadoop</groupId>
+    	<artifactId>hadoop-core</artifactId>
+    	<version>0.20.205.0</version>
+    	<type>jar</type>
+    	<scope>compile</scope>
+    </dependency>
+    <dependency>
+    	<groupId>org.hamcrest</groupId>
+    	<artifactId>hamcrest-library</artifactId>
+    	<version>1.2.1</version>
+    	<type>jar</type>
     	<scope>compile</scope>
     </dependency>
   </dependencies>

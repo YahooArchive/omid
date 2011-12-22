@@ -72,11 +72,11 @@ public class TSOPipelineFactory implements ChannelPipelineFactory {
               x = new ExecutionHandler(pipelineExecutor);
           if (bwhandler == null) 
               bwhandler = new BandwidthMeterHandler();
-          if (timer == null)
-             timer = new HashedWheelTimer();
+//          if (timer == null)
+//             timer = new HashedWheelTimer();
       }
       pipeline.addLast("pipelineExecutor", x);
-      pipeline.addLast("timeout", new WriteTimeoutHandler(timer, 10));
+//      pipeline.addLast("timeout", new WriteTimeoutHandler(timer, 10));
       pipeline.addFirst("bw", bwhandler);
       
       pipeline.addLast("handler", handler);
