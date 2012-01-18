@@ -2,6 +2,7 @@ Omid
 =====
 
 This project provides transactional support for HBase (or any other key-value store) using Snapshot Isolation.
+If you have any question, please contact us at omid-project@googlegroups.com
 
 Architecture
 ------------
