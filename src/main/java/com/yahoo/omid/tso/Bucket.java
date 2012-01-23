@@ -27,9 +27,9 @@ public class Bucket {
    
    private static final Log LOG = LogFactory.getLog(Bucket.class);
      
-   private static final int BUCKET_SIZE = 32768; // 2 ^ 15
+   private static final long BUCKET_SIZE = 32768; // 2 ^ 15
 
-   private BitSet transactions = new BitSet(BUCKET_SIZE);
+   private BitSet transactions = new BitSet((int) BUCKET_SIZE);
    
    private int transactionsCommited = 0;
    private int firstUncommited = 0;
@@ -41,7 +41,7 @@ public class Bucket {
    }
 
    public boolean isUncommited(long id) {
-      return !transactions.get((int) id % BUCKET_SIZE);
+      return !transactions.get((int) (id % BUCKET_SIZE));
    }
 
 
@@ -52,7 +52,7 @@ public class Bucket {
    }
 
    public synchronized Set<Long> abortUncommited(long id) {
-      int lastCommited = (int) id % BUCKET_SIZE;
+      int lastCommited = (int) (id % BUCKET_SIZE);
       
       Set<Long> aborted = new TreeSet<Long>();
       if (allCommited()) {
@@ -63,7 +63,7 @@ public class Bucket {
       
       for (int i = transactions.nextClearBit(firstUncommited); i >= 0
             && i <= lastCommited; i = transactions.nextClearBit(i + 1)) {
-         aborted.add(new Long(position * BUCKET_SIZE + i));
+         aborted.add(((long)position) * BUCKET_SIZE + i);
          commit(i);
       }
       
@@ -73,7 +73,7 @@ public class Bucket {
    }
 
    public synchronized void commit(long id) {
-      transactions.set((int) id % BUCKET_SIZE);
+      transactions.set((int) (id % BUCKET_SIZE));
       ++transactionsCommited;
    }
 
@@ -81,7 +81,7 @@ public class Bucket {
       return BUCKET_SIZE == transactionsCommited || closed;
    }
 
-   public static int getBucketSize() {
+   public static long getBucketSize() {
       return BUCKET_SIZE;
    }
 

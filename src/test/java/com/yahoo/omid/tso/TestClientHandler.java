@@ -155,7 +155,7 @@ public class TestClientHandler extends TSOClient {
    @SuppressWarnings("unchecked")
    public <T extends TSOMessage> T receiveMessage(Class<T> type) {
       try {
-         TSOMessage msg = messageQueue.poll(5, TimeUnit.SECONDS);
+         TSOMessage msg = messageQueue.poll(5000, TimeUnit.SECONDS);
          assertNotNull("Reception of message timed out", msg);
          assertThat(msg, is(type));
          return (T) msg;

@@ -28,6 +28,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
 import org.apache.bookkeeper.client.LedgerHandle;
@@ -69,8 +70,8 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
    /**
     * Bytes monitor
     */
-   //public static final AtomicLong transferredBytes = new AtomicLong();
-   public static int transferredBytes = 0;
+   public static final AtomicInteger transferredBytes = new AtomicInteger();
+//   public static int transferredBytes = 0;
    public static int abortCount = 0;
    public static int hitCount = 0;
    public static long queries = 0;
@@ -123,7 +124,7 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
     * @return the number of transferred bytes
     */
    public static long getTransferredBytes() {
-      return transferredBytes;
+      return transferredBytes.longValue();
    }
 
    /**
@@ -163,6 +164,13 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
 
    public void handle(AbortRequest msg, ChannelHandlerContext ctx) {
       synchronized (sharedState) {
+         DataOutputStream toWAL  = sharedState.toWAL;
+         try {
+            toWAL.writeByte((byte)-3);
+            toWAL.writeLong(msg.startTimestamp);
+         } catch (IOException e) {
+            e.printStackTrace();
+         }
          abortCount++;
          sharedState.hashmap.setHalfAborted(msg.startTimestamp);
          sharedState.uncommited.abort(msg.startTimestamp);
@@ -243,7 +251,7 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
          } else if (msg.startTimestamp < sharedState.largestDeletedTimestamp) {
             // Too old
             reply.committed = false;//set as abort
-            LOG.warn("Too old starttimestamp: ST "+ msg.startTimestamp +" MAX " + sharedState.largestDeletedTimestamp);
+//            LOG.warn("Too old starttimestamp: ST "+ msg.startTimestamp +" MAX " + sharedState.largestDeletedTimestamp);
          } else {
             //1. check the write-write conflicts
             for (RowKey r: msg.rows) {
@@ -283,12 +291,13 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
                   }
                   sharedState.largestDeletedTimestamp = sharedState.hashmap.setCommitted(msg.startTimestamp, commitTimestamp, sharedState.largestDeletedTimestamp);
                   if (sharedState.largestDeletedTimestamp > sharedState.previousLargestDeletedTimestamp) {
-                     toWAL.writeLong(sharedState.largestDeletedTimestamp);
                      toWAL.writeByte((byte)-2);
+                     toWAL.writeLong(sharedState.largestDeletedTimestamp);
                      Set<Long> toAbort = sharedState.uncommited.raiseLargestDeletedTransaction(sharedState.largestDeletedTimestamp);
-                     if (!toAbort.isEmpty()) {
-                         LOG.warn("Slow transactions after raising max");
-                     }
+//                     if (!toAbort.isEmpty()) {
+//                         LOG.warn("Slow transactions after raising max: " + toAbort);
+//                         System.out.println("largest deleted ts: " + sharedState.largestDeletedTimestamp);
+//                     }
                      synchronized (sharedMsgBufLock) {
                         for (Long id : toAbort) {
                            sharedState.hashmap.setHalfAborted(id);
@@ -307,6 +316,12 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
             }
          } else { //add it to the aborted list
             abortCount++;
+            try {
+               toWAL.writeByte((byte)-3);
+               toWAL.writeLong(msg.startTimestamp);
+            } catch (IOException e) {
+               e.printStackTrace();
+            }
             sharedState.hashmap.setHalfAborted(msg.startTimestamp);
             sharedState.uncommited.abort(msg.startTimestamp);
             synchronized (sharedMsgBufLock) {
@@ -314,7 +329,7 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
             }
          }
          
-         TSOHandler.transferredBytes++;
+         TSOHandler.transferredBytes.incrementAndGet();
 
          timeAfter = 0;//System.nanoTime();
          commitTime += (timeAfter - time);
@@ -415,6 +430,13 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
     */
    public void handle(FullAbortReport msg, ChannelHandlerContext ctx) {
       synchronized (sharedState) {
+         DataOutputStream toWAL  = sharedState.toWAL;
+         try {
+            toWAL.writeByte((byte)-4);
+            toWAL.writeLong(msg.startTimestamp);
+         } catch (IOException e) {
+            e.printStackTrace();
+         }
          sharedState.hashmap.setFullAborted(msg.startTimestamp);
       }
       synchronized (sharedMsgBufLock) {

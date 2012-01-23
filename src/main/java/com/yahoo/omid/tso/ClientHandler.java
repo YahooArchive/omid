@@ -23,7 +23,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -63,6 +67,8 @@ public class ClientHandler extends TSOClient {
     * The number of rows in database
     */
    static final int DB_SIZE = 20000000;
+
+   private static final long PAUSE_LENGTH = 50; // in ms
 
    /**
     * Maximum number if outstanding message
@@ -105,16 +111,14 @@ public class ClientHandler extends TSOClient {
    /*
     * For statistial purposes
     */
-   public HashMap<Long, Long> wallClockTime = new HashMap<Long, Long>(); 
-
-   private long largestDeletedTimestamp = 0;
-   private long connectionTimestamp;
-   private boolean hasConnectionTimestamp = false;
+   public ConcurrentHashMap<Long, Long> wallClockTime = new ConcurrentHashMap<Long, Long>(); 
 
    public long totalNanoTime = 0;
    public long totalTx = 0;
    
    private Channel channel;
+
+   private float percentReads;
 
    /**
     * Method to wait for the final response
@@ -138,7 +142,8 @@ public class ClientHandler extends TSOClient {
     * @param inflight
     * @throws IOException
     */
-   public ClientHandler(Configuration conf, int nbMessage, int inflight) throws IOException {
+   public ClientHandler(Configuration conf, int nbMessage, int inflight, boolean pauseClient, 
+         float percentReads) throws IOException {
       super(conf);
       if (nbMessage < 0) {
          throw new IllegalArgumentException("nbMessage: " + nbMessage);
@@ -146,6 +151,8 @@ public class ClientHandler extends TSOClient {
       this.MAX_IN_FLIGHT = inflight;
       this.nbMessage = nbMessage;
       this.curMessage = nbMessage;
+      this.pauseClient = pauseClient;
+      this.percentReads = percentReads;
    }
 
    /**
@@ -154,6 +161,11 @@ public class ClientHandler extends TSOClient {
    @Override
    public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) {
       super.channelConnected(ctx, e);
+      try {
+         Thread.sleep(15000);
+      } catch (InterruptedException e1) {
+         //ignore
+      }
       startDate = new Date();
       channel = e.getChannel();
       startTransaction();
@@ -271,6 +283,8 @@ public class ClientHandler extends TSOClient {
 
    private java.util.Random rnd;
 
+   private boolean pauseClient;
+
    /**
     * Sends the CommitRequest message to the channel
     * 
@@ -288,8 +302,10 @@ public class ClientHandler extends TSOClient {
          rnd = new java.util.Random(seed);
       }
 
-      byte size = (byte) rnd.nextInt(MAX_ROW);
-      RowKey [] rows = new RowKey[size];
+      boolean readOnly = (rnd.nextFloat() * 100) < percentReads;
+
+      byte size = readOnly ? 0 : (byte) rnd.nextInt(MAX_ROW);
+      final RowKey [] rows = new RowKey[size];
       for (byte i = 0; i < rows.length; i++) {
          // long l = rnd.nextLong();
          long l = rnd.nextInt(DB_SIZE);
@@ -304,7 +320,7 @@ public class ClientHandler extends TSOClient {
       // send a query once in a while
       totalCommitRequestSent++;
       if (totalCommitRequestSent % QUERY_RATE == 0 && rows.length > 0) {
-         long queryTimeStamp = rnd.nextInt((int) timestamp);
+         long queryTimeStamp = rnd.nextInt(Math.abs((int) timestamp));
          try {
             isCommitted(timestamp, queryTimeStamp, new SyncCommitQueryCallback());
          } catch (IOException e) {
@@ -312,16 +328,24 @@ public class ClientHandler extends TSOClient {
          }
       }
 
-      // keep statistics
-      wallClockTime.put(timestamp, System.nanoTime());
+      executor.schedule(new Runnable() {
+         @Override
+         public void run() {
+            // keep statistics
+            wallClockTime.put(timestamp, System.nanoTime());
 
-      try {
-         commit(timestamp, rows, new SyncCommitCallback());
-      } catch (IOException e) {
-         LOG.error("Couldn't send commit", e);
-         e.printStackTrace();
-      }
+            try {
+               commit(timestamp, rows, new SyncCommitCallback());
+            } catch (IOException e) {
+               LOG.error("Couldn't send commit", e);
+               e.printStackTrace();
+            }
+         }
+      }, pauseClient ? PAUSE_LENGTH : 0, TimeUnit.MILLISECONDS);
+
    }
+
+   private static ScheduledExecutorService executor = Executors.newScheduledThreadPool(20);
 
    private long totalCommitRequestSent;// just to keep the total number of
                                        // commitreqeusts sent
@@ -370,21 +394,5 @@ public class ClientHandler extends TSOClient {
 
          Thread.yield();
       }
-   }
-
-   public boolean validRead(long transaction, long startTimestamp) {
-      if (aborted.contains(transaction))
-         return false;
-      long commitTimestamp = committed.getCommit(transaction);
-      if (commitTimestamp != -1)
-         return commitTimestamp < startTimestamp;
-      if (hasConnectionTimestamp && transaction > connectionTimestamp)
-         return transaction <= largestDeletedTimestamp;
-      return askTSO(transaction, startTimestamp); // Could be half aborted and
-                                                  // we didnt get notified
-   }
-
-   private boolean askTSO(long transaction, long startTimestamp) {
-      throw (new UnsupportedOperationException("Must implement"));
    }
 }

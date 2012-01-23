@@ -16,8 +16,13 @@
 
 package com.yahoo.omid.tso;
 
+import java.util.Arrays;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import com.yahoo.omid.client.TSOClient;
+import com.yahoo.omid.client.TransactionalTable;
 
 /**
  * Class for Throughput Monitoring
@@ -27,10 +32,13 @@ import org.apache.commons.logging.LogFactory;
 public class ThroughputMonitor extends Thread {
    private static final Log LOG = LogFactory.getLog(ThroughputMonitor.class);
    
+   TSOState state;
+   
    /**
     * Constructor
     */
-   public ThroughputMonitor() {
+   public ThroughputMonitor(TSOState state) {
+      this.state = state;
    }
    
    @Override
@@ -41,74 +49,74 @@ public class ThroughputMonitor extends Thread {
       try {
          long oldCounter = TSOHandler.getTransferredBytes();
          long oldAbortCount = TSOHandler.abortCount;
-//         long oldHitCount = TSOHandler.hitCount;
+         long oldHitCount = TSOHandler.hitCount;
          long startTime = System.currentTimeMillis();
          //            long oldWaitTime = TSOHandler.waitTime; 
-//         long oldtotalput = CommitHashMap.gettotalput(); 
-//         long oldtotalget = CommitHashMap.gettotalget(); 
-//         long oldtotalwalkforget = CommitHashMap.gettotalwalkforget(); 
-//         long oldtotalwalkforput = CommitHashMap.gettotalwalkforput(); 
-//         long oldfull = TSOMessageBuffer.itWasFull;
-//         long oldflushes = TSOSharedMessageBuffer._flushes;
-//         long oldflusheSize = TSOSharedMessageBuffer._flSize;
-//         long oldwaited = TSOMessageBuffer.waited;
-//         long old1B = TSOSharedMessageBuffer._1B;
-//         long old2B = TSOSharedMessageBuffer._2B;
-//         long oldAB = TSOSharedMessageBuffer._AB;
-//         long oldAS = TSOSharedMessageBuffer._AS;
-//         long oldLL = TSOSharedMessageBuffer._LL;
-//         long oldComs = TSOSharedMessageBuffer._Coms;
-//         long oldHa = TSOSharedMessageBuffer._ha;
-//         long oldFa = TSOSharedMessageBuffer._fa;
-//         long oldLi = TSOSharedMessageBuffer._li;
-//         long oldWrites = TSOSharedMessageBuffer._Writes;
-//         long oldEmptyFlushes = TSOSharedMessageBuffer._emptyFlushes;
+         long oldtotalput = CommitHashMap.gettotalput(); 
+         long oldtotalget = CommitHashMap.gettotalget(); 
+         long oldtotalwalkforget = CommitHashMap.gettotalwalkforget(); 
+         long oldtotalwalkforput = CommitHashMap.gettotalwalkforput(); 
+         long oldfull = TSOMessageBuffer.itWasFull;
+         long oldflushes = TSOSharedMessageBuffer._flushes;
+         long oldflusheSize = TSOSharedMessageBuffer._flSize;
+         long oldwaited = TSOMessageBuffer.waited;
+         long old1B = TSOSharedMessageBuffer._1B;
+         long old2B = TSOSharedMessageBuffer._2B;
+         long oldAB = TSOSharedMessageBuffer._AB;
+         long oldAS = TSOSharedMessageBuffer._AS;
+         long oldLL = TSOSharedMessageBuffer._LL;
+         long oldComs = TSOSharedMessageBuffer._Coms;
+         long oldHa = TSOSharedMessageBuffer._ha;
+         long oldFa = TSOSharedMessageBuffer._fa;
+         long oldLi = TSOSharedMessageBuffer._li;
+         long oldWrites = TSOSharedMessageBuffer._Writes;
+         long oldEmptyFlushes = TSOSharedMessageBuffer._emptyFlushes;
          
-//         long oldAskedTSO = TSOClient.askedTSO;
-//         long oldQueries = TSOHandler.queries;
-//         long oldElementsRead = TransactionalTable.elementsRead;
-//         long oldExtraGetsPerformed = TransactionalTable.extraGetsPerformed;
+         long oldAskedTSO = TSOClient.askedTSO;
+         long oldQueries = TSOHandler.queries;
+         long oldElementsRead = TransactionalTable.elementsRead;
+         long oldExtraGetsPerformed = TransactionalTable.extraGetsPerformed;
          
-//         long oldOverflow = TSOSharedMessageBuffer._overflows;
+         long oldOverflow = TSOSharedMessageBuffer._overflows;
          for (;;) {
             Thread.sleep(3000);
             
             long endTime = System.currentTimeMillis();
             long newCounter = TSOHandler.getTransferredBytes();
             long newAbortCount = TSOHandler.abortCount;
-//            long newHitCount = TSOHandler.hitCount;
+            long newHitCount = TSOHandler.hitCount;
             //                long newWaitTime = TSOHandler.waitTime; 
-//            long newtotalput = CommitHashMap.gettotalput(); 
-//            long newtotalget = CommitHashMap.gettotalget(); 
-//            long newtotalwalkforget = CommitHashMap.gettotalwalkforget(); 
-//            long newtotalwalkforput = CommitHashMap.gettotalwalkforput();
-//
-//            long newfull = TSOMessageBuffer.itWasFull;
-//            long newflushes = TSOSharedMessageBuffer._flushes;
-//            long newflusheSize = TSOSharedMessageBuffer._flSize;
-//            long newwaited = TSOMessageBuffer.waited;
+            long newtotalput = CommitHashMap.gettotalput(); 
+            long newtotalget = CommitHashMap.gettotalget(); 
+            long newtotalwalkforget = CommitHashMap.gettotalwalkforget(); 
+            long newtotalwalkforput = CommitHashMap.gettotalwalkforput();
+
+            long newfull = TSOMessageBuffer.itWasFull;
+            long newflushes = TSOSharedMessageBuffer._flushes;
+            long newflusheSize = TSOSharedMessageBuffer._flSize;
+            long newwaited = TSOMessageBuffer.waited;
             
-//            long new1B = TSOSharedMessageBuffer._1B;
-//            long new2B = TSOSharedMessageBuffer._2B;
-//            long newAB = TSOSharedMessageBuffer._AB;
-//            long newAS = TSOSharedMessageBuffer._AS;
-//            long newLL = TSOSharedMessageBuffer._LL;
-//            long newComs = TSOSharedMessageBuffer._Coms;
-//            long newHa = TSOSharedMessageBuffer._ha;
-//            long newFa = TSOSharedMessageBuffer._fa;
-//            long newLi = TSOSharedMessageBuffer._li;
-//            long newWrites = TSOSharedMessageBuffer._Writes;
-//            double avg = TSOSharedMessageBuffer._Avg;
-//            double avg2 = TSOSharedMessageBuffer._Avg2;
-//            
-//            long newOverflow = TSOSharedMessageBuffer._overflows;
-//            long newEmptyFlushes = TSOSharedMessageBuffer._emptyFlushes;
+            long new1B = TSOSharedMessageBuffer._1B;
+            long new2B = TSOSharedMessageBuffer._2B;
+            long newAB = TSOSharedMessageBuffer._AB;
+            long newAS = TSOSharedMessageBuffer._AS;
+            long newLL = TSOSharedMessageBuffer._LL;
+            long newComs = TSOSharedMessageBuffer._Coms;
+            long newHa = TSOSharedMessageBuffer._ha;
+            long newFa = TSOSharedMessageBuffer._fa;
+            long newLi = TSOSharedMessageBuffer._li;
+            long newWrites = TSOSharedMessageBuffer._Writes;
+            double avg = TSOSharedMessageBuffer._Avg;
+            double avg2 = TSOSharedMessageBuffer._Avg2;
+            
+            long newOverflow = TSOSharedMessageBuffer._overflows;
+            long newEmptyFlushes = TSOSharedMessageBuffer._emptyFlushes;
             
 
-//            long newQueries = TSOHandler.queries;
-//            long newElementsRead = TransactionalTable.elementsRead;
-//            long newExtraGetsPerformed = TransactionalTable.extraGetsPerformed;
-//            long newAskedTSO = TSOClient.askedTSO;
+            long newQueries = TSOHandler.queries;
+            long newElementsRead = TransactionalTable.elementsRead;
+            long newExtraGetsPerformed = TransactionalTable.extraGetsPerformed;
+            long newAskedTSO = TSOClient.askedTSO;
             
             //System.err.format("%4.3f MiB/s%n", (newCounter - oldCounter) *
             //1000 / (endTime - startTime) / 1048576.0);
@@ -129,47 +137,51 @@ public class ThroughputMonitor extends Thread {
             if (TSOPipelineFactory.bwhandler != null) {
                 TSOPipelineFactory.bwhandler.measure();
             }
-            LOG.trace(String.format("SERVER: %4.3f TPS, %4.6f Abort/s  ",
-//                    + "1B: %2.2f 2B: %2.2f AB: %2.2f AS: %2.2f LL: %2.2f Avg commit: %2.4f Avg flush: %5.2f "
-//                    + "Avg write: %5.2f Tot writes: %d Avg diff flu: %5.2f Rec Bytes/s: %5.2fMBs Sent Bytes/s: %5.2fMBs",
+            LOG.trace(String.format("SERVER: %4.3f TPS, %4.6f Abort/s  "
+                    + "1B: %2.2f 2B: %2.2f AB: %2.2f AS: %2.2f LL: %2.2f Avg commit: %2.4f Avg flush: %5.2f "
+                    + "Avg write: %5.2f Tot writes: %d Avg diff flu: %5.2f Rec Bytes/s: %5.2fMBs Sent Bytes/s: %5.2fMBs %d ",
+//                    + "Abort Freqs: %s",
                     (newCounter - oldCounter) / (float)(endTime - startTime) * 1000,
-                    (newAbortCount - oldAbortCount) / (float)(endTime - startTime) * 1000)
-//                    (new1B - old1B) / (float)(newComs - oldComs) * 100,
-//                    (new2B - old2B) / (float)(newComs - oldComs) * 100,
-//                    (newAB - oldAB) / (float)(newComs - oldComs) * 100,
-//                    (newAS - oldAS) / (float)(newComs - oldComs) * 100,
-//                    (newLL - oldLL) / (float)(newComs - oldComs) * 100,
-//                    avg, 0,
-//                    (newflusheSize - oldflusheSize) / (float)(newflushes - oldflushes),
-//                    avg2,
-//                    (newWrites - oldWrites),
-//                    0,
+                    (newAbortCount - oldAbortCount) / (float)(endTime - startTime) * 1000,
+                    (new1B - old1B) / (float)(newComs - oldComs) * 100,
+                    (new2B - old2B) / (float)(newComs - oldComs) * 100,
+                    (newAB - oldAB) / (float)(newComs - oldComs) * 100,
+                    (newAS - oldAS) / (float)(newComs - oldComs) * 100,
+                    (newLL - oldLL) / (float)(newComs - oldComs) * 100,
+                    avg,
+                    (newflusheSize - oldflusheSize) / (float)(newflushes - oldflushes),
+                    avg2,
+                    (newWrites - oldWrites),
+                    0.0,
 //                    TSOSharedMessageBuffer._avgLT,
-//                    TSOPipelineFactory.bwhandler != null ? TSOPipelineFactory.bwhandler.getBytesReceivedPerSecond() / (double) (1024 * 1024) : 0,
-//                    TSOPipelineFactory.bwhandler != null ? TSOPipelineFactory.bwhandler.getBytesSentPerSecond() / (double) (1024 * 1024) : 0)
+                    TSOPipelineFactory.bwhandler != null ? TSOPipelineFactory.bwhandler.getBytesReceivedPerSecond() / (double) (1024 * 1024) : 0,
+                    TSOPipelineFactory.bwhandler != null ? TSOPipelineFactory.bwhandler.getBytesSentPerSecond() / (double) (1024 * 1024) : 0,
+                    state.largestDeletedTimestamp
+//                    Arrays.toString(TSOSharedMessageBuffer.freq)
+                    )
               );
-//            LOG.trace(String.format("SERVER: %4.3f TPS, %4.6f Abort/s  "
-//                    + "Co: %2.2f Ha: %2.2f Fa: %2.2f Li: %2.2f Avg commit: %2.4f Avg flush: %5.2f "
-//                    + "Avg write: %5.2f Tot overflows: %d Tot flushes: %d Tot empty flu: %d "
-//                    + "Queries: %d CurrentBuffers: %d ExtraGets: %d AskedTSO: %d",
-//                    (newCounter - oldCounter) / (float)(endTime - startTime) * 1000,
-//                    (newAbortCount - oldAbortCount) / (float)(endTime - startTime) * 1000,
-//                    (newComs - oldComs) / (float)(newWrites - oldWrites) * 100,
-//                    (newHa - oldHa) / (float)(newWrites - oldWrites) * 100,
-//                    (newFa - oldFa) / (float)(newWrites - oldWrites) * 100,
-//                    (newLi - oldLi) / (float)(newWrites - oldWrites) * 100,
-//                    avg, 0,
-////                    (newflusheSize - oldflusheSize) / (float)(newflushes - oldflushes),
-//                    avg2,
-//                    newOverflow - oldOverflow, 0,
-////                    (newflushes - oldflushes),
-//                    newEmptyFlushes - oldEmptyFlushes,
-//                    
-//                    newQueries - oldQueries,
-//                    TSOBuffer.nBuffers,
-//                    newExtraGetsPerformed - oldExtraGetsPerformed,
-//                    newAskedTSO - oldAskedTSO)
-//              );
+            LOG.trace(String.format("SERVER: %4.3f TPS, %4.6f Abort/s  "
+                    + "Co: %2.2f Ha: %2.2f Fa: %2.2f Li: %2.2f Avg commit: %2.4f Avg flush: %5.2f "
+                    + "Avg write: %5.2f Tot overflows: %d Tot flushes: %d Tot empty flu: %d "
+                    + "Queries: %d CurrentBuffers: %d ExtraGets: %d AskedTSO: %d",
+                    (newCounter - oldCounter) / (float)(endTime - startTime) * 1000,
+                    (newAbortCount - oldAbortCount) / (float)(endTime - startTime) * 1000,
+                    (newComs - oldComs) / (float)(newWrites - oldWrites) * 100,
+                    (newHa - oldHa) / (float)(newWrites - oldWrites) * 100,
+                    (newFa - oldFa) / (float)(newWrites - oldWrites) * 100,
+                    (newLi - oldLi) / (float)(newWrites - oldWrites) * 100,
+                    avg,
+                    (newflusheSize - oldflusheSize) / (float)(newflushes - oldflushes),
+                    avg2,
+                    newOverflow - oldOverflow,
+                    (newflushes - oldflushes),
+                    newEmptyFlushes - oldEmptyFlushes,
+                    
+                    newQueries - oldQueries,
+                    TSOBuffer.nBuffers,
+                    newExtraGetsPerformed - oldExtraGetsPerformed,
+                    newAskedTSO - oldAskedTSO)
+              );
 //            if (TSOPipelineFactory.bwhandler != null) {
 //                TSOPipelineFactory.bwhandler.reset();
 //            }
@@ -184,37 +196,37 @@ public class ThroughputMonitor extends Thread {
             
             oldCounter = newCounter;
             oldAbortCount = newAbortCount;
-//            oldHitCount = newHitCount;
+            oldHitCount = newHitCount;
             startTime = endTime;
             //                oldWaitTime = newWaitTime;
-//            oldtotalget = newtotalget;
-//            oldtotalput = newtotalput;
-//            oldtotalwalkforget = newtotalwalkforget;
-//            oldtotalwalkforput = newtotalwalkforput;
-//            oldfull = newfull;
-//            oldflushes = newflushes;
-//            oldflusheSize = newflusheSize;
-//            oldwaited = newwaited;
-//            oldOverflow = newOverflow;
-//            
-//
-//            old1B = new1B;
-//            old2B = new2B;
-//            oldAB = newAB;
-//            oldAS = newAS;
-//            oldLL = newLL;
-//            oldComs = newComs;
-//            oldHa = newHa;
-//            oldFa = newFa;
-//            oldLi = newLi;
-//            oldWrites = newWrites;
-//            oldEmptyFlushes = newEmptyFlushes;
+            oldtotalget = newtotalget;
+            oldtotalput = newtotalput;
+            oldtotalwalkforget = newtotalwalkforget;
+            oldtotalwalkforput = newtotalwalkforput;
+            oldfull = newfull;
+            oldflushes = newflushes;
+            oldflusheSize = newflusheSize;
+            oldwaited = newwaited;
+            oldOverflow = newOverflow;
             
 
-//            oldAskedTSO = newAskedTSO;
-//            oldQueries = newQueries;
-//            oldElementsRead = newElementsRead;
-//            oldExtraGetsPerformed = newExtraGetsPerformed;
+            old1B = new1B;
+            old2B = new2B;
+            oldAB = newAB;
+            oldAS = newAS;
+            oldLL = newLL;
+            oldComs = newComs;
+            oldHa = newHa;
+            oldFa = newFa;
+            oldLi = newLi;
+            oldWrites = newWrites;
+            oldEmptyFlushes = newEmptyFlushes;
+            
+
+            oldAskedTSO = newAskedTSO;
+            oldQueries = newQueries;
+            oldElementsRead = newElementsRead;
+            oldExtraGetsPerformed = newExtraGetsPerformed;
          }
       } catch (InterruptedException e) {
          // Stop monitoring asked

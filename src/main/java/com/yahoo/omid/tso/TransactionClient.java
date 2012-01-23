@@ -46,11 +46,11 @@ public class TransactionClient {
      */
     public static void main(String[] args) throws Exception {
         // Print usage if no argument is specified.
-        if (args.length < 2 || args.length > 5) {
+        if (args.length < 2 || args.length > 7) {
             System.err
                     .println("Usage: " +
                             TransactionClient.class.getSimpleName() +
-                            " <host> <port> [<number of messages>] [<MAX_IN_FLIGHT>] [<connections>]");
+                            " <host> <port> [<number of messages>] [<MAX_IN_FLIGHT>] [<connections>] [<pause>] [<% reads>]");
             return;
         }
 
@@ -74,6 +74,16 @@ public class TransactionClient {
            runs = Integer.parseInt(args[4]);
         }
 
+        boolean pauseClient = false;
+        if (args.length >= 6) {
+           pauseClient = Boolean.parseBoolean(args[5]);
+        }
+        
+        float percentRead = 0;
+        if (args.length >= 7) {
+           percentRead = Float.parseFloat(args[6]);
+        }
+
         // *** Start the Netty configuration ***
 
         // Start client with Nb of active threads = 3 as maximum.
@@ -89,15 +99,18 @@ public class TransactionClient {
         Configuration conf = HBaseConfiguration.create();
         conf.set("tso.host", host);
         conf.setInt("tso.port", port);
+        conf.setInt("tso.executor.threads", 10);
 
         for(int i = 0; i < runs; ++i) {
-           // Create the associated Handler
-           ClientHandler handler = new ClientHandler(conf, nbMessage, inflight);
+         // Create the associated Handler
+           ClientHandler handler = new ClientHandler(conf, nbMessage, inflight, pauseClient, percentRead);
    
            // *** Start the Netty running ***
    
            System.out.println("PARAM MAX_ROW: " + ClientHandler.MAX_ROW);
            System.out.println("PARAM DB_SIZE: " + ClientHandler.DB_SIZE);
+           System.out.println("pause " + pauseClient);
+           System.out.println("readPercent " + percentRead);
    
            handlers.add(handler);
            

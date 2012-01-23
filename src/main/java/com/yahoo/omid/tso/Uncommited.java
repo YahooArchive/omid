@@ -16,6 +16,7 @@
 
 
 package com.yahoo.omid.tso;
+import java.util.Collections;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -25,18 +26,32 @@ public class Uncommited {
 
    private Bucket buckets[] = new Bucket[BKT_NUMBER];
    private int firstUncommitedBucket = 0;
+   private long firstUncommitedAbsolute = 0;
    private int lastOpenedBucket = 0;
+   private final long first_start;
+   private boolean log = false;
 
    public Uncommited(long startTimestamp) {
-      lastOpenedBucket = firstUncommitedBucket = getPosition(startTimestamp);
-      commit(startTimestamp);
+      first_start = startTimestamp;
+      lastOpenedBucket = firstUncommitedBucket = getRelativePosition(startTimestamp);
+      firstUncommitedAbsolute = getAbsolutePosition(startTimestamp);
+      long ts = startTimestamp & ~(Bucket.getBucketSize() - 1);
+      System.out.println("Start TS : " + startTimestamp + " firstUncom: " + firstUncommitedBucket + " Mask:" + ts );
+      System.out.println("BKT_NUMBER : " + BKT_NUMBER + " BKT_SIZE: " + Bucket.getBucketSize());
+      for (; ts <= startTimestamp; ++ts)
+         commit(ts);
+      log = true;
    }
 
    public synchronized void commit(long id) {
-      int position = getPosition(id);
+      if (log && id < first_start) {
+         System.out.println("id: " + id);
+         Thread.dumpStack();
+      }
+      int position = getRelativePosition(id);
       Bucket bucket = buckets[position];
       if (bucket == null) {
-         bucket = new Bucket(position);
+         bucket = new Bucket(getAbsolutePosition(id));
          buckets[position] = bucket;
          lastOpenedBucket = position;
       }
@@ -52,7 +67,7 @@ public class Uncommited {
    }
    
    public boolean isUncommited(long id) {
-      Bucket bucket = buckets[getPosition(id)];
+      Bucket bucket = buckets[getRelativePosition(id)];
       if (bucket == null) {
          return false;
       }
@@ -60,13 +75,17 @@ public class Uncommited {
    }
    
    public Set<Long> raiseLargestDeletedTransaction(long id) {
-      int maxBucket = getPosition(id);
+      if (firstUncommitedAbsolute > getAbsolutePosition(id))
+         return Collections.emptySet();
+      int maxBucket = getRelativePosition(id);
       Set<Long> aborted = new TreeSet<Long>();
-      // TODO fix this iteration. When it wraps its gonna break
-      for (int i = firstUncommitedBucket; i < maxBucket; ++i) {
+      for (int i = firstUncommitedBucket; i != maxBucket ; i = (i+1) % BKT_NUMBER) {
          Bucket bucket = buckets[i];
          if (bucket != null) {
             aborted.addAll(bucket.abortAllUncommited());
+//            if (!aborted.isEmpty()) {
+//               System.out.println("FirstUncommited: " + firstUncommitedBucket + "Bucket with aborts: "+i + " max bucket: " +maxBucket + " id " + id);
+//            }
             buckets[i] = null;
          }
       }
@@ -89,10 +108,15 @@ public class Uncommited {
       while (firstUncommitedBucket != lastOpenedBucket &&
              buckets[firstUncommitedBucket] == null) {
          firstUncommitedBucket = (firstUncommitedBucket + 1) % BKT_NUMBER;
+         firstUncommitedAbsolute++;
       }
    }
-   
-   private int getPosition(long id) {
+
+   private int getRelativePosition(long id) {
       return ((int) (id / Bucket.getBucketSize())) % BKT_NUMBER;
+   }
+
+   private int getAbsolutePosition(long id) {
+      return (int) (id / Bucket.getBucketSize());
    }
 }

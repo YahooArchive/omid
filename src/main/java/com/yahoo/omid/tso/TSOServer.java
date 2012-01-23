@@ -149,13 +149,13 @@ public class TSOServer implements Runnable {
         bootstrap.setOption("child.tcpNoDelay", false);
         bootstrap.setOption("child.keepAlive", true);
         bootstrap.setOption("child.reuseAddress", true);
-        bootstrap.setOption("child.connectTimeoutMillis", 100);
+        bootstrap.setOption("child.connectTimeoutMillis", 60000);
         bootstrap.setOption("readWriteFair", true);
 
         // *** Start the Netty running ***
 
         // Create the monitor
-        ThroughputMonitor monitor = new ThroughputMonitor();
+        ThroughputMonitor monitor = new ThroughputMonitor(state);
         // Add the parent channel to the group
         Channel channel = bootstrap.bind(new InetSocketAddress(port));
         channelGroup.add(channel);

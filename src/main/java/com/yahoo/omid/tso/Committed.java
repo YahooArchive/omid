@@ -68,23 +68,23 @@ public class Committed {
 
 class CommitBucket {
      
-   static final int BUCKET_SIZE = 1<<14;
+   static final long BUCKET_SIZE = 1<<14;
 
-   private long transactions [] = new long [BUCKET_SIZE];
+   private long transactions [] = new long [(int)BUCKET_SIZE];
 
    public CommitBucket() {
       Arrays.fill(transactions, -1);
    }
 
    public long getCommit(long id) {
-      return transactions[(int) id % BUCKET_SIZE];
+      return transactions[(int) (id % BUCKET_SIZE)];
    }
 
    public void commit(long id, long timestamp) {
-      transactions[(int) id % BUCKET_SIZE] = timestamp;
+      transactions[(int) (id % BUCKET_SIZE)] = timestamp;
    }
 
-   public static int getBucketSize() {
+   public static long getBucketSize() {
       return BUCKET_SIZE;
    }
 

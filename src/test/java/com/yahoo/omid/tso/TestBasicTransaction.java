@@ -36,20 +36,20 @@ import com.yahoo.omid.tso.messages.TimestampResponse;
 public class TestBasicTransaction extends TSOTestBase {
 
    @Test
-   public void testConflicts() throws IOException {
+   public void testConflicts() throws IOException, InterruptedException {
       clientHandler.sendMessage(new TimestampRequest());
       clientHandler.receiveBootstrap();
       TimestampResponse tr1 = clientHandler.receiveMessage(TimestampResponse.class);
 
       clientHandler.sendMessage(new TimestampRequest());
-      clientHandler.receiveMessage(TimestampResponse.class);
+      TimestampResponse tr2 = clientHandler.receiveMessage(TimestampResponse.class);
 
       clientHandler.sendMessage(new CommitRequest(tr1.timestamp, new RowKey[] { r1 }));
       CommitResponse cr1 = clientHandler.receiveMessage(CommitResponse.class);
       assertTrue(cr1.committed);
       assertEquals(tr1.timestamp, cr1.startTimestamp);
 
-      clientHandler.sendMessage(new CommitRequest(tr1.timestamp, new RowKey[] { r1, r2 }));
+      clientHandler.sendMessage(new CommitRequest(tr2.timestamp, new RowKey[] { r1, r2 }));
       CommitResponse cr2 = clientHandler.receiveMessage(CommitResponse.class);
       assertFalse(cr2.committed);
 
@@ -79,8 +79,9 @@ public class TestBasicTransaction extends TSOTestBase {
       CommitResponse cr3 = clientHandler.receiveMessage(CommitResponse.class);
       assertTrue(cr3.committed);
       assertEquals(tr3.timestamp, cr3.startTimestamp);
-      
+
       clientHandler.sendMessage(new TimestampRequest());
+
       // Pending commit report
       CommittedTransactionReport ctr3 = clientHandler.receiveMessage(CommittedTransactionReport.class);
       assertEquals(cr3.startTimestamp, ctr3.startTimestamp);

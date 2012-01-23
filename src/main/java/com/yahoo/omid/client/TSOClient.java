@@ -46,6 +46,8 @@ import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+import org.jboss.netty.handler.execution.ExecutionHandler;
+import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
 
 import com.yahoo.omid.tso.Committed;
 import com.yahoo.omid.tso.RowKey;
@@ -319,6 +321,10 @@ public class TSOClient extends SimpleChannelHandler {
       // Create the bootstrap
       bootstrap = new ClientBootstrap(factory);
       
+      int executorThreads = conf.getInt("tso.executor.threads", 3);
+
+      bootstrap.getPipeline().addLast("executor", new ExecutionHandler(
+            new OrderedMemoryAwareThreadPoolExecutor(executorThreads, 1024*1024, 4*1024*1024)));
       bootstrap.getPipeline().addLast("handler", this);
       bootstrap.setOption("tcpNoDelay", false);
       bootstrap.setOption("keepAlive", true);

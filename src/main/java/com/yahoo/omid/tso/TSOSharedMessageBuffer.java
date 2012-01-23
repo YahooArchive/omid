@@ -40,6 +40,23 @@ public class TSOSharedMessageBuffer {
    ChannelBuffer writeBuffer = currentBuffer.buffer;
    Deque<TSOBuffer> futureBuffer = new ArrayDeque<TSOBuffer>();
    
+   static long _1B = 0;
+   static long _2B = 0;
+   static long _AB = 0;
+   static long _AS = 0;
+   static long _LL = 0;
+   static long _Coms = 0;
+   static long _Writes = 0;
+   static double _Avg = 0;
+   static double _Avg2 = 0;
+
+   static long _ha = 0;
+   static long _fa = 0;
+   static long _li = 0;
+
+   static long _overflows = 0;
+   static long _emptyFlushes = 0;
+
    class ReadingBuffer implements Comparable<ReadingBuffer> {
        private ChannelBuffer readBuffer;
        private int readerIndex = 0;
@@ -60,10 +77,14 @@ public class TSOSharedMessageBuffer {
        private void flush(boolean deleteRef, final boolean clearPast) {
           int readable = readBuffer.readableBytes() - readerIndex;
 
+          ++_flushes;
+          _flSize += readable;
           if (readable == 0 && readingBuffer != pastBuffer) {
-              if (!wrap) {
-                  return;
+             _emptyFlushes++;
+              if (wrap) {
+                 Channels.write(channel, tBuffer);
               }
+              return;
           }
 
           ChannelBuffer temp;
@@ -86,6 +107,7 @@ public class TSOSharedMessageBuffer {
              }
              Channels.write(channel, temp);
              readerIndex += readable;
+             _flSize += readable;
              if (deleteRef) {
                  pastBuffer.readingBuffers.remove(this);
              }
@@ -150,12 +172,17 @@ public class TSOSharedMessageBuffer {
       if (writeBuffer.writableBytes() < 30) {
          nextBuffer();
       }
+      ++_Coms;
+      ++_Writes;
+      int readBefore = writeBuffer.readableBytes();
       long startDiff = startTimestamp - state.latestStartTimestamp;
       long commitDiff = commitTimestamp - state.latestCommitTimestamp;
-      if (commitDiff == 1 && startDiff >= -64 && startDiff <= 63) {
-        startDiff &= 0x7f;
+      if (commitDiff == 1 && startDiff >= -32 && startDiff <= 31) {
+         ++_1B;
+        startDiff &= 0x3f;
         writeBuffer.writeByte((byte) startDiff);
     } else if (commitDiff == 1 && startDiff >= -8192 && startDiff <= 8191) {
+       ++_2B;
           byte high = m0x80;
           high |= (startDiff >> 8) & m0x3f; 
           byte low = (byte) (startDiff & m0xff);
@@ -163,12 +190,15 @@ public class TSOSharedMessageBuffer {
           writeBuffer.writeByte(low);
       } else if (commitDiff >= Byte.MIN_VALUE && commitDiff <= Byte.MAX_VALUE) {
           if (startDiff >= Byte.MIN_VALUE && startDiff <= Byte.MAX_VALUE) {
+             ++_AB;
               writeBuffer.writeByte(TSOMessage.CommittedTransactionReportByteByte);
               writeBuffer.writeByte((byte) startDiff);
           } else if (startDiff >= Short.MIN_VALUE && startDiff <= Short.MAX_VALUE) {
+             ++_AS;
               writeBuffer.writeByte(TSOMessage.CommittedTransactionReportShortByte);
               writeBuffer.writeShort((short) startDiff);
           } else if (startDiff >= Integer.MIN_VALUE && startDiff <= Integer.MAX_VALUE) {
+             ++_LL;
               writeBuffer.writeByte(TSOMessage.CommittedTransactionReportIntegerByte);
               writeBuffer.writeInt((int) startDiff);
           } else {
@@ -196,6 +226,10 @@ public class TSOSharedMessageBuffer {
           writeBuffer.writeLong(startTimestamp);
           writeBuffer.writeLong(commitTimestamp);
        }
+      int written = writeBuffer.readableBytes() - readBefore;
+      
+      _Avg2 += (written - _Avg2) / _Writes;
+      _Avg += (written - _Avg) / _Coms;
       state.latestStartTimestamp = startTimestamp;
       state.latestCommitTimestamp = commitTimestamp;
    }
@@ -204,43 +238,63 @@ public class TSOSharedMessageBuffer {
       if (writeBuffer.writableBytes() < 30) {
          nextBuffer();
       }
+      ++_Writes;
+      int readBefore = writeBuffer.readableBytes();
       long diff = startTimestamp - state.latestHalfAbortTimestamp;
-      if (diff >= Byte.MIN_VALUE && diff <= Byte.MAX_VALUE) {
+      if (diff >= -16 && diff <= 15) {
+         writeBuffer.writeByte((byte)((diff & 0x1f) | (0x40)));
+      } else if (diff >= Byte.MIN_VALUE && diff <= Byte.MAX_VALUE) {
           writeBuffer.writeByte(TSOMessage.AbortedTransactionReportByte);
           writeBuffer.writeByte((byte)diff);
       } else {
           writeBuffer.writeByte(TSOMessage.AbortedTransactionReport);
           writeBuffer.writeLong(startTimestamp);
       }
+      ++_ha;
       
       state.latestHalfAbortTimestamp = startTimestamp;
+      int written = writeBuffer.readableBytes() - readBefore;
+      _Avg2 += (written - _Avg2) / _Writes;
    }
-   
+
    public void writeFullAbort(long startTimestamp) {
       if (writeBuffer.writableBytes() < 30) {
          nextBuffer();
       }
+      ++_Writes;
+      int readBefore = writeBuffer.readableBytes();
       long diff = startTimestamp - state.latestFullAbortTimestamp;
-      if (diff >= Byte.MIN_VALUE && diff <= Byte.MAX_VALUE) {
+      if (diff >= -16 && diff <= 15) {
+         writeBuffer.writeByte((byte)((diff & 0x1f) | (0x60)));
+      } else if (diff >= Byte.MIN_VALUE && diff <= Byte.MAX_VALUE) {
           writeBuffer.writeByte(TSOMessage.FullAbortReportByte);
           writeBuffer.writeByte((byte)diff);
       } else {
           writeBuffer.writeByte(TSOMessage.FullAbortReport);
           writeBuffer.writeLong(startTimestamp);
       }
+      ++_fa;
       
       state.latestFullAbortTimestamp = startTimestamp;
+      int written = writeBuffer.readableBytes() - readBefore;
+      _Avg2 += (written - _Avg2) / _Writes;
    }
    
    public void writeLargestIncrease(long largestTimestamp) {
       if (writeBuffer.writableBytes() < 30) {
          nextBuffer();
       }
+      ++_Writes;
+      ++_li;
+      int readBefore = writeBuffer.readableBytes();
       writeBuffer.writeByte(TSOMessage.LargestDeletedTimestampReport);
       writeBuffer.writeLong(largestTimestamp);
+      int written = writeBuffer.readableBytes() - readBefore;
+      _Avg2 += (written - _Avg2) / _Writes;
    }
    
    private void nextBuffer() {      
+      _overflows++;
       LOG.debug("Switching buffers");
       Iterator<ReadingBuffer> it = pastBuffer.readingBuffers.iterator();
       boolean moreBuffers = it.hasNext();
@@ -262,6 +316,9 @@ public class TSOSharedMessageBuffer {
       }
       writeBuffer = currentBuffer.buffer;
    }
+
+   static long _flushes = 0;
+   static long _flSize = 0;
    
    public void reset() {
       if (pastBuffer != null) {

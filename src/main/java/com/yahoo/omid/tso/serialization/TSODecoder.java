@@ -21,12 +21,14 @@ import java.io.IOException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.io.HalfStoreFileReader;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.handler.codec.frame.FrameDecoder;
 
 import com.yahoo.omid.tso.TSOMessage;
+import com.yahoo.omid.tso.TSOSharedMessageBuffer;
 import com.yahoo.omid.tso.messages.AbortRequest;
 import com.yahoo.omid.tso.messages.AbortedTransactionReport;
 import com.yahoo.omid.tso.messages.CommitQueryRequest;
@@ -52,6 +54,9 @@ public class TSODecoder extends FrameDecoder {
         // The performance with ostream wrapper was bad!!
         // DataInputStream ostream = new DataInputStream( new
         // ChannelBufferInputStream( buf ) );
+        int slice = buf.readableBytes();
+        slice = slice > 16 ? 16 : slice;
+//        System.out.println("Decoding bytes: " + TSOSharedMessageBuffer.dumpHex(buf.slice(buf.readerIndex(), slice)));
         ChannelBuffer ostream = buf;
         TSOMessage msg;
         try {
@@ -59,10 +64,14 @@ public class TSODecoder extends FrameDecoder {
             if (LOG.isTraceEnabled()) {
                 LOG.trace("Decoding message : " + type);
             }
-            if (type >= TSOMessage.CommittedTransactionReport) {
-                return readCommittedTransactionReport(type, ostream);
+            if ((type & 0xC0) == 0x00) {
+               return readCommittedTransactionReport(type, ostream);
+            } else if ((type & 0xC0) == 0x40) {
+               return readAbortTransactionReport(type, ostream);
             } else if ((type & 0x40) == 0) {
-                return readCommittedTransactionReport(type, ostream);
+               return readCommittedTransactionReport(type, ostream);
+            } else if (type >= TSOMessage.CommittedTransactionReport) {
+               return readCommittedTransactionReport(type, ostream);
             } else {
                 switch (type) {
                 case TSOMessage.TimestampRequest:
@@ -105,18 +114,17 @@ public class TSODecoder extends FrameDecoder {
                    msg = new AbortRequest();
                    break;
                 default:
+//                   System.out.println("Wrong type " + type); System.out.flush();
                     throw new Exception("Wrong type " + type + " " + ostream.toString().length());
                 }
             }
             msg.readObject(ostream);
         } catch (IndexOutOfBoundsException e) {
-            // Not enough byte in the buffer, reset to the start for the next
-            // try
+            // Not enough byte in the buffer, reset to the start for the next try
             buf.resetReaderIndex();
             return null;
         } catch (EOFException e) {
-            // Not enough byte in the buffer, reset to the start for the next
-            // try
+            // Not enough byte in the buffer, reset to the start for the next try
             buf.resetReaderIndex();
             return null;
         }
@@ -124,7 +132,22 @@ public class TSODecoder extends FrameDecoder {
         return msg;
     }
 
-    public long lastStartTimestamp = 0;
+    private TSOMessage readAbortTransactionReport(byte type, ChannelBuffer ostream) {
+      int diff = (((type & 0x1f) << 27) >> 27);
+      TSOMessage msg;
+      if ((type & 0x20) == 0) {
+         // Half abort
+         lastHalfAbortedTimestamp += diff;
+         msg = new AbortedTransactionReport(lastHalfAbortedTimestamp);
+      } else {
+         // Full abort
+         lastFullAbortedTimestamp += diff;
+         msg =  new FullAbortReport(lastFullAbortedTimestamp);
+      }
+      return msg;
+   }
+
+   public long lastStartTimestamp = 0;
     long lastCommitTimestamp = 0;
 
     long lastHalfAbortedTimestamp = 0;
@@ -135,15 +158,13 @@ public class TSODecoder extends FrameDecoder {
         if (type == TSOMessage.AbortedTransactionReport) {
             msg = new AbortedTransactionReport();
             msg.readObject(ostream);
-//            System.out.println("Decoded half abort: "+ msg.startTimestamp);
         } else {
             msg = new AbortedTransactionReport();
             int diff = ostream.readByte();
             msg.startTimestamp = lastHalfAbortedTimestamp + diff;
-//            System.out.println("Decoded half abortdiff: "+ msg.startTimestamp + " Prev: " + lastHalfAbortedTimestamp + " Diff: " + diff);
         }
         lastHalfAbortedTimestamp = msg.startTimestamp;
-        
+
         return msg;
     }
     
@@ -152,15 +173,13 @@ public class TSODecoder extends FrameDecoder {
         if (type == TSOMessage.FullAbortReport) {
             msg = new FullAbortReport();
             msg.readObject(ostream);
-//        System.out.println("Decoded full abort: "+ msg.startTimestamp);
         } else {
             msg = new FullAbortReport();
             int diff = ostream.readByte();
             msg.startTimestamp = lastFullAbortedTimestamp + diff;
-//            System.out.println("Decoded full abortdiff: "+ msg.startTimestamp);
         }
         lastFullAbortedTimestamp = msg.startTimestamp;
-      
+
         return msg;
     }
 
@@ -169,7 +188,7 @@ public class TSODecoder extends FrameDecoder {
         long commitTimestamp = 0;
         if (high >= 0) {
 //            System.out.println("1 byte " + high);
-            high = (byte) ((high << 25) >> 25);
+            high = (byte) ((high << 26) >> 26);
             startTimestamp = lastStartTimestamp + high;
             commitTimestamp = lastCommitTimestamp + 1;
         } else if ((high & 0x40) == 0) {
@@ -227,9 +246,7 @@ public class TSODecoder extends FrameDecoder {
 
         lastStartTimestamp = startTimestamp;
         lastCommitTimestamp = commitTimestamp;
-//        
-//        System.out.println("Decoded: "+ startTimestamp + " " + commitTimestamp);
-        
+
         return new CommittedTransactionReport(startTimestamp, commitTimestamp);
     }
 
