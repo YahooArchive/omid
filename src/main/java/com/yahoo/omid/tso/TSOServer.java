@@ -222,7 +222,7 @@ public class TSOServer implements Runnable {
     private void recoverState() throws BKException, InterruptedException, KeeperException, IOException {
         String servers = StringUtils.join(zkservers, ',');
         ZooKeeper zooKeeper = new ZooKeeper(servers, 1000, null);
-        BookKeeper bookKeeper = new BookKeeper(zooKeeper);
+        BookKeeper bookKeeper = new BookKeeper(servers);
 
         List<String> children = zooKeeper.getChildren("/ledgers", false);
         children.remove("available");
