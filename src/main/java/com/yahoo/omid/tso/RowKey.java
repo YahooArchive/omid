@@ -52,6 +52,7 @@ public class RowKey {
 
    public static RowKey readObject(ChannelBuffer aInputStream) 
          throws IOException {
+      int hash = aInputStream.readInt();
       short len = aInputStream.readByte();
 //      byte[] rowId = RowKeyBuffer.nextRowKey(len);
       byte[] rowId = new byte[len];
@@ -60,11 +61,15 @@ public class RowKey {
 //      byte[] tableId = RowKeyBuffer.nextRowKey(len);
       byte[] tableId = new byte[len];
       aInputStream.readBytes(tableId, 0, len);
-      return new RowKey(rowId, tableId);
+      RowKey rk = new RowKey(rowId, tableId);
+      rk.hash = hash;
+      return rk;
    }
 
    public void writeObject(DataOutputStream aOutputStream)
          throws IOException {
+      hashCode();
+      aOutputStream.writeInt(hash);
       aOutputStream.writeByte(rowId.length);
       aOutputStream.write(rowId,0,rowId.length);
       aOutputStream.writeByte(tableId.length);
