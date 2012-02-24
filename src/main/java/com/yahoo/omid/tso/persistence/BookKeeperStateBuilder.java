@@ -35,6 +35,17 @@ import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.BuilderInitCallback;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.LoggerInitCallback;
 import com.yahoo.omid.tso.persistence.LoggerException.Code;
 
+
+/**
+ * Builds the TSO state from a BookKeeper ledger if there has been a previous 
+ * incarnation of TSO. Note that we need to make sure that the zookeeper session 
+ * is the same across builder and logger, so we create in builder and pass it
+ * to logger. This is the case to prevent two TSO instances from creating a lock
+ * and updating the ledger id after having lost the lock. This case constitutes
+ * leads to an invalid system state.
+ *
+ */
+
 public class BookKeeperStateBuilder implements StateBuilder {
     private static final Log LOG = LogFactory.getLog(BookKeeperStateBuilder.class);
 
@@ -100,7 +111,9 @@ public class BookKeeperStateBuilder implements StateBuilder {
                 ((BookKeeperStateBuilder.Context) ctx).setState(buildStateFromLedger());
             } else {
                 LOG.warn("Failed to set data. " + LoggerException.getMessage(rc)); 
-                ((BookKeeperStateBuilder.Context) ctx).setState(new TSOState(BookKeeperStateBuilder.this.largestDeletedTimestamp));
+                ((BookKeeperStateBuilder.Context) ctx).setState(
+                                                new TSOState(new BookKeeperStateLogger(zk), 
+                                                                                BookKeeperStateBuilder.this.largestDeletedTimestamp));
             }         
         }
         
