@@ -47,6 +47,8 @@ import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
 
 import com.yahoo.omid.tso.serialization.TSODecoder;
 import com.yahoo.omid.tso.serialization.TSOEncoder;
+import com.yahoo.omid.tso.persistence.BookKeeperStateBuilder;
+import com.yahoo.omid.tso.persistence.StateBuilder;
 
 /**
  * TSO Server with serialization
@@ -122,7 +124,7 @@ public class TSOServer implements Runnable {
         // TODO: make it singleton
         TimestampOracle timestampOracle = new TimestampOracle();
         // The wrapper for the shared state of TSO
-        state = new TSOState(timestampOracle.get());
+        state = BookKeeperStateBuilder.getState(timestampOracle.get());
         TSOState.BATCH_SIZE = batch;
         System.out.println("PARAM MAX_ITEMS: " + TSOState.MAX_ITEMS);
         System.out.println("PARAM BATCH_SIZE: " + TSOState.BATCH_SIZE);

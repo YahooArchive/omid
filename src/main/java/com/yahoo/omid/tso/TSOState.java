@@ -19,14 +19,10 @@ package com.yahoo.omid.tso;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
-import org.apache.bookkeeper.client.BookKeeper;
-import org.apache.bookkeeper.client.LedgerHandle;
+import com.yahoo.omid.tso.persistence.StateLogger;
+
 
 /**
  * The wrapper for different states of TSO
@@ -69,9 +65,20 @@ public class TSOState {
    /**
     * Hash map load factor
     */
-//   static final public float LOAD_FACTOR = 0.2f;
    static final public float LOAD_FACTOR = 0.5f;
+   
+   /**
+    * Object that implements the logic to log records
+    * for recoverability
+    */
+   
+   StateLogger logger;
 
+   public StateLogger getLogger(){
+       return logger;
+   }
+   
+   
    /**
     * Largest Deleted Timestamp
     */
@@ -92,11 +99,6 @@ public class TSOState {
 
    public Uncommited uncommited;
 
-   /**
-    * Reference to BookKeeper
-    */
-   public BookKeeper bookkeeper;
-   LedgerHandle lh;
 
    /*
     * WAL related pointers
@@ -106,9 +108,10 @@ public class TSOState {
    public DataOutputStream toWAL = new DataOutputStream(baos);
    public List<TSOHandler.ChannelandMessage> nextBatch = new ArrayList<TSOHandler.ChannelandMessage>();
    
-   public TSOState(long largestDeletedTimestamp) {
+   public TSOState(StateLogger logger, long largestDeletedTimestamp) {
       this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp = largestDeletedTimestamp;
       this.uncommited = new Uncommited(largestDeletedTimestamp);
+      this.logger = logger;
    }
 }
 
