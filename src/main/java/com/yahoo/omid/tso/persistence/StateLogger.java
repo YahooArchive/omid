@@ -39,5 +39,11 @@ public interface StateLogger {
      * @param ctx
      */
     void addRecord(byte[] record, AddRecordCallback cb, Object ctx);
+    
+    
+    /**
+     * Shut down logger.
+     */
+    void shutdown();
 
 }

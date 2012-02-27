@@ -60,6 +60,7 @@ import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
 import com.yahoo.omid.tso.persistence.LoggerException;
 import com.yahoo.omid.tso.persistence.LoggerException.Code;
+import com.yahoo.omid.tso.persistence.LoggerProtocol;
 
 /**
  * ChannelHandler for the TSO Server
@@ -169,14 +170,13 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
       synchronized (sharedState) {
          DataOutputStream toWAL  = sharedState.toWAL;
          try {
-            toWAL.writeByte((byte)-3);
+            toWAL.writeByte(LoggerProtocol.ABORT);
             toWAL.writeLong(msg.startTimestamp);
          } catch (IOException e) {
             e.printStackTrace();
          }
          abortCount++;
-         sharedState.hashmap.setHalfAborted(msg.startTimestamp);
-         sharedState.uncommited.abort(msg.startTimestamp);
+         sharedState.processAbort(msg.startTimestamp);
          synchronized (sharedMsgBufLock) {
             queueHalfAbort(msg.startTimestamp);
         }
@@ -294,11 +294,17 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
    
                   for (RowKey r: msg.rows) {
 //                     toWAL.write(r.getRow(), 0, r.getRow().length);
-                     sharedState.largestDeletedTimestamp = sharedState.hashmap.put(r.getRow(), r.getTable(), commitTimestamp, r.hashCode(), sharedState.largestDeletedTimestamp);
+                     sharedState.largestDeletedTimestamp = sharedState.hashmap.put(r.getRow(), 
+                                                     r.getTable(), 
+                                                     commitTimestamp, 
+                                                     r.hashCode(), 
+                                                     sharedState.largestDeletedTimestamp);
                   }
-                  sharedState.largestDeletedTimestamp = sharedState.hashmap.setCommitted(msg.startTimestamp, commitTimestamp, sharedState.largestDeletedTimestamp);
+                  sharedState.largestDeletedTimestamp = sharedState.hashmap.setCommitted(msg.startTimestamp, 
+                                                  commitTimestamp, 
+                                                  sharedState.largestDeletedTimestamp);
                   if (sharedState.largestDeletedTimestamp > sharedState.previousLargestDeletedTimestamp) {
-                     toWAL.writeByte((byte)-2);
+                     toWAL.writeByte(LoggerProtocol.COMMIT);
                      toWAL.writeLong(sharedState.largestDeletedTimestamp);
                      Set<Long> toAbort = sharedState.uncommited.raiseLargestDeletedTransaction(sharedState.largestDeletedTimestamp);
 //                     if (!toAbort.isEmpty()) {
@@ -324,13 +330,13 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
          } else { //add it to the aborted list
             abortCount++;
             try {
-               toWAL.writeByte((byte)-3);
+               toWAL.writeByte(LoggerProtocol.ABORT);
                toWAL.writeLong(msg.startTimestamp);
             } catch (IOException e) {
                e.printStackTrace();
             }
-            sharedState.hashmap.setHalfAborted(msg.startTimestamp);
-            sharedState.uncommited.abort(msg.startTimestamp);
+            sharedState.processAbort(msg.startTimestamp);
+            
             synchronized (sharedMsgBufLock) {
                 queueHalfAbort(msg.startTimestamp);
             }
@@ -342,7 +348,6 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
          commitTime += (timeAfter - time);
          time = timeAfter;
 
-         //async write into WAL, callback function is addComplete
          ChannelandMessage cam = new ChannelandMessage(ctx, reply);
 
          sharedState.nextBatch.add(cam);
@@ -458,12 +463,12 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
       synchronized (sharedState) {
          DataOutputStream toWAL  = sharedState.toWAL;
          try {
-            toWAL.writeByte((byte)-4);
+            toWAL.writeByte(LoggerProtocol.FULLABORT);
             toWAL.writeLong(msg.startTimestamp);
          } catch (IOException e) {
             e.printStackTrace();
          }
-         sharedState.hashmap.setFullAborted(msg.startTimestamp);
+         sharedState.processFullAbort(msg.startTimestamp);
       }
       synchronized (sharedMsgBufLock) {
          queueFullAbort(msg.startTimestamp);

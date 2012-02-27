@@ -31,6 +31,7 @@ import org.apache.bookkeeper.client.AsyncCallback.CreateCallback;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerHandle;
+import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Stat;
@@ -121,8 +122,7 @@ class BookKeeperStateLogger implements StateLogger {
      */
     BookKeeperStateLogger(ZooKeeper zk){
         this.zk = zk; 
-        this.bk = new BookKeeper(System.getProperty("ZKSERVERS"));
-
+        this.bk = new BookKeeper(new ClientConfiguration(), zk);
     }
     
     /**
@@ -192,7 +192,7 @@ class BookKeeperStateLogger implements StateLogger {
             return;
         }
         
-        bk.asyncAddEntry(record,
+        this.lh.asyncAddEntry(record,
             new AddCallback() {
             @Override
             public void addComplete(int rc, LedgerHandle lh, long entryId, Object ctx) {
@@ -212,7 +212,7 @@ class BookKeeperStateLogger implements StateLogger {
      * Shuts down this logger.
      * 
      */
-    void shutdown(){
+    public void shutdown(){
         enabled = false;
         if(this.bk != null) bk.close();
         if(this.zk != null) zk.close();

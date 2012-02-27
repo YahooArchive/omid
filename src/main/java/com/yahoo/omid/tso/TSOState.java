@@ -92,13 +92,40 @@ public class TSOState {
    public TSOSharedMessageBuffer sharedMessageBuffer = new TSOSharedMessageBuffer(this);
 
    /**
-    * The hash map to to keep track of recetly committed rows
+    * The hash map to to keep track of recently committed rows
     * each bucket is about 20 byte, so the initial capacity is 20MB
     */
    public CommitHashMap hashmap = new CommitHashMap(MAX_ITEMS, LOAD_FACTOR);
 
    public Uncommited uncommited;
 
+   /**
+    * Process commit request.
+    * 
+    * @param startTimestamp
+    */
+   protected void processCommit(long startTimestamp){
+       //TODO: Process commit;
+   }
+   
+   /**
+    * Process abort request.
+    * 
+    * @param startTimestamp
+    */
+   protected void processAbort(long startTimestamp){
+       hashmap.setHalfAborted(startTimestamp);
+       uncommited.abort(startTimestamp);
+   }
+   
+   /**
+    * Process full abort report.
+    * 
+    * @param startTimestamp
+    */
+   protected void processFullAbort(long startTimestamp){
+       hashmap.setFullAborted(startTimestamp);
+   }
 
    /*
     * WAL related pointers

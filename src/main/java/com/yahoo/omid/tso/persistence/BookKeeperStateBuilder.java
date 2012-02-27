@@ -19,7 +19,17 @@ package com.yahoo.omid.tso.persistence;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.nio.ByteBuffer;
+import java.util.Enumeration;
 
+import org.apache.bookkeeper.client.AsyncCallback.OpenCallback;
+import org.apache.bookkeeper.client.AsyncCallback.ReadCallback;
+import org.apache.bookkeeper.client.BKException;
+import org.apache.bookkeeper.client.BookKeeper;
+import org.apache.bookkeeper.client.LedgerEntry;
+import org.apache.bookkeeper.client.LedgerHandle;
+import org.apache.bookkeeper.conf.ClientConfiguration;
+import org.apache.zookeeper.AsyncCallback.DataCallback;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
@@ -28,6 +38,7 @@ import org.apache.zookeeper.AsyncCallback.StatCallback;
 import org.apache.zookeeper.AsyncCallback.StringCallback;
 import org.apache.zookeeper.ZooDefs.Ids;
 
+import com.sun.tools.javac.util.Log;
 import com.yahoo.omid.tso.TSOState;
 import com.yahoo.omid.tso.persistence.BookKeeperStateLogger.LedgerIdCreateCallback;
 import com.yahoo.omid.tso.persistence.BookKeeperStateLogger.LoggerWatcher;
@@ -46,13 +57,30 @@ import com.yahoo.omid.tso.persistence.LoggerException.Code;
  *
  */
 
-public class BookKeeperStateBuilder implements StateBuilder {
+public class BookKeeperStateBuilder extends StateBuilder {
     private static final Log LOG = LogFactory.getLog(BookKeeperStateBuilder.class);
 
     static TSOState getState(long largestDeletedTimestamp){
         return new BookKeeperStateBuilder(largestDeletedTimestamp).initialize();        
     }
+        
+    long largestDeletedTimestamp;
+    ZooKeeper zk;
+    LoggerProtocol lp;
+    boolean enabled;
     
+    BookKeeperStateBuilder(long largestDeletedTimestamp){
+        this.largestDeletedTimestamp = largestDeletedTimestamp;
+        this.zk = new ZooKeeper(System.getProperty("ZKSERVERS"), 
+                                        Integer.parseInt(System.getProperty("SESSIONTIMEOUT", Integer.toString(10000))), 
+                                        new LoggerWatcher()); 
+        
+    }
+
+    /**
+     * Context objects for callbacks.
+     *
+     */
     class Context {
         TSOState state = null;
         boolean ready = false;
@@ -68,18 +96,6 @@ public class BookKeeperStateBuilder implements StateBuilder {
         }
     }
     
-    long largestDeletedTimestamp;
-    ZooKeeper zk;
-    boolean enabled;
-    
-    BookKeeperStateBuilder(long largestDeletedTimestamp){
-        this.largestDeletedTimestamp = largestDeletedTimestamp;
-        this.zk = new ZooKeeper(System.getProperty("ZKSERVERS"), 
-                                        Integer.parseInt(System.getProperty("SESSIONTIMEOUT", Integer.toString(10000))), 
-                                        new LoggerWatcher()); 
-        
-    }
-    
     class LoggerWatcher implements Watcher{
         public void process(WatchedEvent event){
              if(event.getState() != Watcher.Event.KeeperState.SyncConnected)
@@ -93,22 +109,22 @@ public class BookKeeperStateBuilder implements StateBuilder {
         public void processResult(int rc, String path, Object ctx, String name){
             if(rc != Code.OK){
                 LOG.warn("Failed to create znode: " + name);
-                cb.builderInitComplete(Code.INITLOCKFAILED, null, ctx);
+                ((BookKeeperStateBuilder.Context) ctx).setState(null);
             } else {
-                zk.exists(LoggerConstants.OMID_LEDGER_ID_PATH, 
+                zk.getData(LoggerConstants.OMID_LEDGER_ID_PATH, 
                                                 false,
-                                                new LedgerIdReadCallback(cb),
+                                                new LedgerIdReadCallback(),
                                                 ctx);
             }         
         }
         
     }
     
-    class LedgerIdReadCallback implements StatCallback {
+    class LedgerIdReadCallback implements DataCallback {
                 
-        public void processResult(int rc, String path, Object ctx, Stat stat){
+        public void processResult(int rc, String path, Object ctx, byte[] data, Stat stat){
             if(rc == Code.OK){
-                ((BookKeeperStateBuilder.Context) ctx).setState(buildStateFromLedger());
+                buildStateFromLedger(data, ctx);
             } else {
                 LOG.warn("Failed to set data. " + LoggerException.getMessage(rc)); 
                 ((BookKeeperStateBuilder.Context) ctx).setState(
@@ -116,7 +132,37 @@ public class BookKeeperStateBuilder implements StateBuilder {
                                                                                 BookKeeperStateBuilder.this.largestDeletedTimestamp));
             }         
         }
-        
+    }
+    
+    /**
+     * Invoked after the execution of a ledger read. Instances are
+     * created in the open callback. 
+     *
+     */
+    class LoggerExecutor implements ReadCallback {
+        public void readComplete(int rc, LedgerHandle lh, Enumeration<LedgerEntry> entries, Object ctx){
+            if(rc != BKException.Code.OK){
+                LOG.error("Error while reading ledger entries." + BKException.getMessage(rc));
+                ((BookKeeperStateBuilder.Context) ctx).setState(null);
+            } else {
+                while(entries.hasMoreElements()){
+                    LedgerEntry le = entries.nextElement();
+                    ByteBuffer bb = ByteBuffer.wrap(le.getEntry());
+                    boolean done = false;
+                    
+                    while(!done){
+                        byte id = bb.get();
+                        long value = bb.getLong();
+                        lp.execute(id, value);
+                        done = !bb.hasRemaining();
+                    }
+                    
+                    if(le.getEntryId() == lh.getLastAddConfirmed()){
+                        ((BookKeeperStateBuilder.Context) ctx).setState(lp.getState());
+                    }
+                }
+            }
+        }
     }
     
     @Override
@@ -146,20 +192,62 @@ public class BookKeeperStateBuilder implements StateBuilder {
         return ctx.state;
     }
 
+
     /**
-     * Build the state from a
+     * Builds state from a ledger.
      * 
-     * @param cb
+     * 
+     * @param data
      * @param ctx
+     * @return
      */
-    private TSOState buildStateFromLedger(){
+    private TSOState buildStateFromLedger(byte[] data, Object ctx){
+        if(data == null){
+            LOG.error("No data on znode, can't determine ledger id");
+            ((BookKeeperStateBuilder.Context) ctx).setState(null);
+        }
+        
+       /*
+        * Instantiates LoggerProtocol        
+        */
+        this.lp = new LoggerProtocol(new BookKeeperStateLogger(this.zk), this.largestDeletedTimestamp); 
+        
+        
         /*
-         * TODO: Build state
+         * Open ledger for reading.
+         */
+        BookKeeper bk = new BookKeeper(new ClientConfiguration(), this.zk);    
+        ByteBuffer bb = ByteBuffer.wrap(data);
+        bk.asyncOpenLedger(bb.getLong(), BookKeeper.DigestType.CRC32, 
+                                        "flavio was here".getBytes(), 
+                                        new OpenCallback(){
+            public void openComplete(int rc, LedgerHandle lh, Object ctx){
+                if(rc != BKException.Code.OK){
+                    LOG.error("Could not open ledger for reading." + BKException.getMessage(rc));
+                    ((BookKeeperStateBuilder.Context) ctx).setState(null);
+                } else {
+                    long last = lh.getLastAddConfirmed();
+                    long counter = 0;
+                    while(counter < last){
+                        long nextBatch = Math.min(counter + 1000, last);
+                        lh.asyncReadEntries(counter, nextBatch, new LoggerExecutor(), ctx);
+                    }
+                }   
+            }
+        }, ctx);
+        
+        /*
+         * Wait until operation completes.
          */
         
-        TSOState state = new TSOState(new BookKeeperStateLogger(this.zk), this.largestDeletedTimestamp); 
-     
-        return state; 
+        synchronized(ctx){
+            while(!((Context) ctx).isReady()){
+                ctx.wait();
+            }
+        }
+        
+        
+        return lp.getState(); 
     }
     
     /**
