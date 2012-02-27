@@ -67,7 +67,7 @@ import com.yahoo.omid.tso.persistence.LoggerProtocol;
  * @author maysam
  *
  */
-public class TSOHandler extends SimpleChannelHandler implements AddCallback {
+public class TSOHandler extends SimpleChannelHandler {
 
    private static final Log LOG = LogFactory.getLog(TSOHandler.class);
 
@@ -353,7 +353,7 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
          sharedState.nextBatch.add(cam);
          if (sharedState.baos.size() >= TSOState.BATCH_SIZE) {
             //sharedState.lh.asyncAddEntry(baos.toByteArray(), this, sharedState.nextBatch);
-            sharedState.getLogger().addRecord(baos.toByteArray(), 
+            sharedState.addRecord(baos.toByteArray(), 
                                             new AddRecordCallback() {
                 @Override
                 public void addRecordComplete(int rc, Object ctx) {
@@ -413,8 +413,25 @@ public class TSOHandler extends SimpleChannelHandler implements AddCallback {
    }
 
    public void flush() {
-      synchronized (sharedState) {
-         sharedState.lh.asyncAddEntry(sharedState.baos.toByteArray(), this, sharedState.nextBatch);
+      synchronized (sharedState) {          
+         sharedState.addRecord(sharedState.baos.toByteArray(), new AddRecordCallback() {
+             @Override
+             public void addRecordComplete(int rc, Object ctx) {
+                 if (rc != Code.OK) {
+                     LOG.warn("Write failed: " + LoggerException.getMessage(rc));
+                     
+                 } else {
+                     synchronized (callbackLock) {
+                        @SuppressWarnings("unchecked")
+                        ArrayList<ChannelandMessage> theBatch = (ArrayList<ChannelandMessage>) ctx;
+                        for (ChannelandMessage cam : theBatch) {
+                           Channels.write(cam.ctx, Channels.succeededFuture(cam.ctx.getChannel()), cam.msg);
+                        }
+                     }
+                     
+                 }
+             }
+         }, sharedState.nextBatch);
          sharedState.nextBatch = new ArrayList<ChannelandMessage>(sharedState.nextBatch.size() + 5);
          sharedState.baos.reset();
          if (flushFuture.cancel(false)) {

@@ -26,7 +26,7 @@ import com.yahoo.omid.tso.TSOState;
  *
  */
 
-abstract class StateBuilder {
+public abstract class StateBuilder {
 
     /**
      * Logger protocol object. Implements the logic to execute 

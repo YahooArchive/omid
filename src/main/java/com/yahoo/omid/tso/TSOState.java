@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.yahoo.omid.tso.persistence.StateLogger;
+import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
 
 
 /**
@@ -127,6 +128,19 @@ public class TSOState {
        hashmap.setFullAborted(startTimestamp);
    }
 
+   /**
+    * If logger is disabled, then this call is a noop.
+    * 
+    * @param record
+    * @param cb
+    * @param ctx
+    */
+   public void addRecord(byte[] record, final AddRecordCallback cb, Object ctx) {
+       if(logger != null){
+           logger.addRecord(record, cb, ctx);
+       }
+   }
+   
    /*
     * WAL related pointers
     */
@@ -140,5 +154,11 @@ public class TSOState {
       this.uncommited = new Uncommited(largestDeletedTimestamp);
       this.logger = logger;
    }
+   
+   public TSOState(long largestDeletedTimestamp) {
+       this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp = largestDeletedTimestamp;
+       this.uncommited = new Uncommited(largestDeletedTimestamp);
+       this.logger = null;
+    }
 }
 

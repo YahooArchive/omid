@@ -24,6 +24,7 @@ package com.yahoo.omid.tso.persistence;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.IOException;
 
 import org.apache.bookkeeper.client.AsyncCallback;
 import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
@@ -34,7 +35,7 @@ import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.Stat;
+import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.AsyncCallback.StringCallback;
 import org.apache.zookeeper.AsyncCallback.StatCallback;
@@ -120,7 +121,11 @@ class BookKeeperStateLogger implements StateLogger {
     /**
      * Constructor creates a zookeeper and a bookkeeper objects.
      */
-    BookKeeperStateLogger(ZooKeeper zk){
+    BookKeeperStateLogger(ZooKeeper zk) 
+    throws IOException, 
+    BKException, 
+    InterruptedException,
+    KeeperException{
         this.zk = zk; 
         this.bk = new BookKeeper(new ClientConfiguration(), zk);
     }
@@ -157,18 +162,23 @@ class BookKeeperStateLogger implements StateLogger {
             @Override
             public void createComplete(int rc, LedgerHandle lh, Object ctx){
                 if(rc == BKException.Code.OK){
-                    BookKeeperStateLogger.this.lh = lh;
+                    try{
+                        BookKeeperStateLogger.this.lh = lh;
                     
-                    ByteArrayOutputStream bos = new ByteArrayOutputStream();  
-                    DataOutputStream dos = new DataOutputStream(bos);  
-                    dos.writeLong(lh.getId());
+                        ByteArrayOutputStream bos = new ByteArrayOutputStream();  
+                        DataOutputStream dos = new DataOutputStream(bos);  
+                        dos.writeLong(lh.getId());
                   
-                    zk.create(LoggerConstants.OMID_LEDGER_ID_PATH,
+                        zk.create(LoggerConstants.OMID_LEDGER_ID_PATH,
                                                     bos.toByteArray(),
                                                     Ids.OPEN_ACL_UNSAFE, 
                                                     CreateMode.PERSISTENT,
                                                     new LedgerIdCreateCallback(cb, bos.toByteArray()),
-                                                    ctx);                    
+                                                    ctx);     
+                    } catch (IOException e) {
+                        LOG.error("Failed to write to zookeeper. ", e );
+                        cb.loggerInitComplete(Code.BKOPFAILED, ctx);
+                    }
                 } else {
                     LOG.error("Failed to create ledger. " + BKException.getMessage(rc));
                     cb.loggerInitComplete(Code.BKOPFAILED, ctx);
@@ -214,8 +224,14 @@ class BookKeeperStateLogger implements StateLogger {
      */
     public void shutdown(){
         enabled = false;
-        if(this.bk != null) bk.close();
-        if(this.zk != null) zk.close();
+        try{
+            if(this.bk != null) bk.close();
+            if(this.zk != null) zk.close();
+        } catch (InterruptedException e) {
+            LOG.warn("Interrupted while closing logger.", e);
+        } catch (BKException e) {
+            LOG.warn("Exception while closing BookKeeper object.", e);
+        }
     }
    
 }
