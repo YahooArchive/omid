@@ -21,6 +21,7 @@ import java.io.DataOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.yahoo.omid.tso.persistence.LoggerException.Code;
 import com.yahoo.omid.tso.persistence.StateLogger;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
 
@@ -79,6 +80,14 @@ public class TSOState {
        return logger;
    }
    
+   /**
+    * Only timestamp oracle instance in the system.
+    */
+   private TimestampOracle timestampOracle;
+   
+   protected TimestampOracle getSO(){
+       return timestampOracle;
+   }
    
    /**
     * Largest Deleted Timestamp
@@ -105,8 +114,17 @@ public class TSOState {
     * 
     * @param startTimestamp
     */
-   protected void processCommit(long startTimestamp){
-       //TODO: Process commit;
+   protected void processCommit(long startTimestamp, long commitTimestamp){
+       hashmap.setCommitted(startTimestamp, commitTimestamp, largestDeletedTimestamp);
+   }
+   
+   /**
+    * Process largest deleted timestamp.
+    * 
+    * @param largestDeletedTimestamp
+    */
+   protected synchronized void processLargestDeletedTimestamp(long largestDeletedTimestamp){
+       this.largestDeletedTimestamp = Math.max(largestDeletedTimestamp, this.largestDeletedTimestamp);
    }
    
    /**
@@ -138,6 +156,8 @@ public class TSOState {
    public void addRecord(byte[] record, final AddRecordCallback cb, Object ctx) {
        if(logger != null){
            logger.addRecord(record, cb, ctx);
+       } else{
+           cb.addRecordComplete(Code.OK, ctx);
        }
    }
    
@@ -153,12 +173,14 @@ public class TSOState {
       this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp = largestDeletedTimestamp;
       this.uncommited = new Uncommited(largestDeletedTimestamp);
       this.logger = logger;
+      this.timestampOracle = new TimestampOracle();
    }
    
    public TSOState(long largestDeletedTimestamp) {
        this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp = largestDeletedTimestamp;
        this.uncommited = new Uncommited(largestDeletedTimestamp);
        this.logger = null;
+       this.timestampOracle = new TimestampOracle();
     }
 }
 

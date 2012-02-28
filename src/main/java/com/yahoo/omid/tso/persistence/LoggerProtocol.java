@@ -16,6 +16,8 @@
 
 package com.yahoo.omid.tso.persistence;
 
+import java.nio.ByteBuffer;
+
 import com.yahoo.omid.tso.TSOState;
 
 public class LoggerProtocol extends TSOState{
@@ -23,9 +25,11 @@ public class LoggerProtocol extends TSOState{
     /*
      * Protocol flags. Used to identify fields of the logger records.
      */
+    public final static byte TIMESTAMPORACLE = (byte) -1;
     public final static byte COMMIT = (byte) -2;
-    public final static byte ABORT = (byte) -3;
-    public final static byte FULLABORT = (byte) -4;
+    public final static byte LARGESTDELETEDTIMESTAMP = (byte) -3;
+    public final static byte ABORT = (byte) -4;
+    public final static byte FULLABORT = (byte) -5;
     
     
     /**
@@ -39,18 +43,40 @@ public class LoggerProtocol extends TSOState{
         super(logger, largestDeletedTimestamp);
     }
     
-    void execute(int op, long value){
-     switch(op){
-     case COMMIT:
-         processCommit(value);
-         break;
-     case ABORT:
-         processAbort(value);
-         break;
-     case FULLABORT:
-         processFullAbort(value);
-     }
-        
+    void execute(ByteBuffer bb){
+        boolean done = false;
+        while(!done){
+            byte op = bb.get();
+            long timestamp, startTimestamp, commitTimestamp;
+                
+            switch(op){
+            case TIMESTAMPORACLE:
+                timestamp = bb.getLong();
+                this.getSO().initialize(timestamp);
+                break;
+            case COMMIT:
+                startTimestamp = bb.getLong();
+                commitTimestamp = bb.getLong();
+                processCommit(startTimestamp, commitTimestamp);
+                
+                break;
+            case LARGESTDELETEDTIMESTAMP:
+                timestamp = bb.getLong();
+                processLargestDeletedTimestamp(timestamp);
+                
+                break;
+            case ABORT:
+                timestamp = bb.getLong();
+                processAbort(timestamp);
+                
+                break;
+            case FULLABORT:
+                timestamp = bb.getLong();
+                processFullAbort(timestamp);
+                
+                break;
+            }
+        }
     }
     
     /**

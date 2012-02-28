@@ -28,12 +28,15 @@ import java.io.IOException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.yahoo.omid.tso.persistence.LoggerProtocol;
+
 /**
  * The Timestamp Oracle that gives monotonically increasing timestamps
  * 
  * @author maysam
  * 
  */
+
 public class TimestampOracle {
 
     private static final Log LOG = LogFactory.getLog(TimestampOracle.class);
@@ -48,12 +51,7 @@ public class TimestampOracle {
     private long last;
     private long first;
 
-    private boolean finish;
-
-    // public long next() {
-    // last ++;
-    // return last;
-    // }
+    private boolean enabled;    
 
     /**
      * Must be called holding an exclusive lock
@@ -64,7 +62,7 @@ public class TimestampOracle {
         last++;
         if (last >= maxTimestamp) {
             toWal.writeLong(last);
-            toWal.writeByte((byte) -1);
+            toWal.writeByte(LoggerProtocol.TIMESTAMPORACLE);
             maxTimestamp += TIMESTAMP_BATCH;
         }
         return last;
@@ -78,14 +76,41 @@ public class TimestampOracle {
         return first;
     }
 
-    private static final String BACKUP = "/tmp/tso-persist.backup";
-    private static final String PERSIST = "/tmp/tso-persist.txt";
+    //private static final String BACKUP = "/tmp/tso-persist.backup";
+    //private static final String PERSIST = "/tmp/tso-persist.txt";
 
+    
+    /**
+     * Constructor
+     */
+    public TimestampOracle(){
+        LOG.info("Starting timestamp oracle"); 
+        this.enabled = false;
+        this.last = 0;
+    }
+    
+    /**
+     * Starts from scratch.
+     */
+    public void initialize(){
+       this.enabled = true;
+    }
+    
+    /**
+     * Starts with a given timestamp.
+     * 
+     * @param timestamp
+     */
+    public void initialize(long timestamp){
+        this.last = this.first = Math.max(this.last, timestamp);
+        initialize();
+    }
+    
     /**
      * Constructor initialize the last timestamp TODO: initialize from the last
      * persisted timestamp + wallclock time
      */
-    public TimestampOracle() {
+ /*   public TimestampOracle() {
         BufferedReader reader = null;
         try {
             reader = new BufferedReader(new FileReader(PERSIST));
@@ -147,9 +172,9 @@ public class TimestampOracle {
         });
         flusher.start();
     }
-    
+*/    
     public void stop() {
-        this.finish = true;
+        this.enabled = false;
     }
 
     @Override

@@ -63,6 +63,12 @@ import com.yahoo.omid.tso.persistence.LoggerException.Code;
 
 public class BookKeeperStateBuilder extends StateBuilder {
     private static final Log LOG = LogFactory.getLog(BookKeeperStateBuilder.class);
+    
+    /*
+     * Assuming that each entry is 1k bytes, we read 50k bytes at each call.
+     * It provides a good degree of parallelism.
+     */
+    private static final long BKREADBATCHSIZE = 50;
 
     public static TSOState getState(long largestDeletedTimestamp){
         TSOState returnValue;
@@ -173,16 +179,8 @@ public class BookKeeperStateBuilder extends StateBuilder {
             } else {
                 while(entries.hasMoreElements()){
                     LedgerEntry le = entries.nextElement();
-                    ByteBuffer bb = ByteBuffer.wrap(le.getEntry());
-                    boolean done = false;
-                    
-                    while(!done){
-                        byte id = bb.get();
-                        long value = bb.getLong();
-                        lp.execute(id, value);
-                        done = !bb.hasRemaining();
-                    }
-                    
+                    lp.execute(ByteBuffer.wrap(le.getEntry()));
+                                       
                     if(le.getEntryId() == lh.getLastAddConfirmed()){
                         ((BookKeeperStateBuilder.Context) ctx).setState(lp.getState());
                     }
@@ -267,11 +265,11 @@ public class BookKeeperStateBuilder extends StateBuilder {
                     LOG.error("Could not open ledger for reading." + BKException.getMessage(rc));
                     ((BookKeeperStateBuilder.Context) ctx).setState(null);
                 } else {
-                    long last = lh.getLastAddConfirmed();
-                    long counter = 0;
-                    while(counter < last){
-                        long nextBatch = Math.min(counter + 1000, last);
-                        lh.asyncReadEntries(counter, nextBatch, new LoggerExecutor(), ctx);
+                    long counter = lh.getLastAddConfirmed();
+                    while(counter > 0){
+                        long nextBatch = Math.max(counter - BKREADBATCHSIZE, 0);
+                        lh.asyncReadEntries(nextBatch, counter, new LoggerExecutor(), ctx);
+                        counter -= BKREADBATCHSIZE;
                     }
                 }   
             }

@@ -251,7 +251,7 @@ public class TSOHandler extends SimpleChannelHandler {
          timeAfter = 0;//System.nanoTime();
          waitTime += (timeAfter - time);
          time = timeAfter;
-         //0. check if it sould abort
+         //0. check if it should abort
          if (msg.startTimestamp < timestampOracle.first()) {
             reply.committed = false;
             LOG.warn("Aborting transaction after restarting TSO");
@@ -289,6 +289,8 @@ public class TSOHandler extends SimpleChannelHandler {
               sharedState.uncommited.commit(msg.startTimestamp);
               reply.commitTimestamp = commitTimestamp;
               if (msg.rows.length > 0) {
+                  toWAL.writeByte(LoggerProtocol.COMMIT);
+                  toWAL.writeLong(msg.startTimestamp);
                   toWAL.writeLong(commitTimestamp);
 //                  toWAL.writeByte(msg.rows.length);
    
@@ -300,11 +302,10 @@ public class TSOHandler extends SimpleChannelHandler {
                                                      r.hashCode(), 
                                                      sharedState.largestDeletedTimestamp);
                   }
-                  sharedState.largestDeletedTimestamp = sharedState.hashmap.setCommitted(msg.startTimestamp, 
-                                                  commitTimestamp, 
-                                                  sharedState.largestDeletedTimestamp);
+
+                  sharedState.processCommit(msg.startTimestamp, commitTimestamp);
                   if (sharedState.largestDeletedTimestamp > sharedState.previousLargestDeletedTimestamp) {
-                     toWAL.writeByte(LoggerProtocol.COMMIT);
+                     toWAL.writeByte(LoggerProtocol.LARGESTDELETEDTIMESTAMP);
                      toWAL.writeLong(sharedState.largestDeletedTimestamp);
                      Set<Long> toAbort = sharedState.uncommited.raiseLargestDeletedTransaction(sharedState.largestDeletedTimestamp);
 //                     if (!toAbort.isEmpty()) {
