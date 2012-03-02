@@ -20,7 +20,7 @@ import com.yahoo.omid.tso.TSOState;
 
 public interface LoggerAsyncCallback {
     public interface LoggerInitCallback{
-        void loggerInitComplete(int rc, Object ctx);
+        void loggerInitComplete(int rc, StateLogger sl, Object ctx);
     }
     
     public interface BuilderInitCallback{

@@ -65,17 +65,19 @@ public class TSOServer implements Runnable {
     private int batch;
     private int ensemble;
     private int quorum;
-    private String[] zkservers;
+    private String zkservers;
     private boolean finish;
     private Object lock;
 
-    public TSOServer(int port, int batch, int ensemble, int quorum, String[] zkservers) {
+    public TSOServer(int port, int batch, int ensemble, int quorum, String zkservers) {
         super();
         this.port = port;
         this.batch = batch;
         this.ensemble = ensemble;
         this.quorum = quorum;
         this.zkservers = zkservers;
+        System.setProperty("ZKSERVERS", zkservers);
+        
         this.finish = false;
         this.lock = new Object();
     }
@@ -103,9 +105,9 @@ public class TSOServer implements Runnable {
         int port = Integer.parseInt(args[0]);
         int batch = Integer.parseInt(args[1]);
         int ensSize = Integer.parseInt(args[2]), qSize = Integer.parseInt(args[3]);
-        String[] bookies = Arrays.copyOfRange(args, 4, args.length);
+        String zkservers = args[4];
 
-        new TSOServer(port, batch, ensSize, qSize, bookies).run();
+        new TSOServer(port, batch, ensSize, qSize, zkservers).run();
     }
 
     @Override

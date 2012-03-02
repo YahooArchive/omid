@@ -39,8 +39,8 @@ public class LoggerProtocol extends TSOState{
      * @param logger
      * @param largestDeletedTimestamp
      */
-    LoggerProtocol(StateLogger logger, long largestDeletedTimestamp){
-        super(logger, largestDeletedTimestamp);
+    LoggerProtocol(long largestDeletedTimestamp){
+        super(largestDeletedTimestamp);
     }
     
     void execute(ByteBuffer bb){

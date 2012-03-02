@@ -75,6 +75,8 @@ public abstract class LoggerException extends Exception {
             return "BookKeeper operation failed";
         case Code.ZKOPFAILED:
             return "ZooKeeper operation failed";
+        case Code.LOGGERDISABLED:
+            return "Logger disabled";
         default:
             return "Invalid operation";
         }
@@ -95,6 +97,12 @@ public abstract class LoggerException extends Exception {
     public static class LoggerDisabledException extends LoggerException {
         public LoggerDisabledException() {
             super(Code.LOGGERDISABLED);
+        }
+    }
+    
+    public static class BKOpFailedException extends LoggerException {
+        public BKOpFailedException() {
+            super(Code.BKOPFAILED);
         }
     }
     

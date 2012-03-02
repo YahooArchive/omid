@@ -22,8 +22,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.yahoo.omid.tso.persistence.LoggerException.Code;
+import com.yahoo.omid.tso.persistence.BookKeeperStateBuilder;
 import com.yahoo.omid.tso.persistence.StateLogger;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 
 /**
@@ -32,6 +36,9 @@ import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
  * @author maysam
  */
 public class TSOState {
+    private static final Log LOG = LogFactory.getLog(TSOState.class);
+    
+    
    /**
     * The maximum entries kept in TSO
     */
@@ -78,6 +85,10 @@ public class TSOState {
 
    public StateLogger getLogger(){
        return logger;
+   }
+   
+   public void setLogger(StateLogger logger){
+       this.logger = logger;
    }
    
    /**
@@ -155,6 +166,7 @@ public class TSOState {
     */
    public void addRecord(byte[] record, final AddRecordCallback cb, Object ctx) {
        if(logger != null){
+           LOG.warn("Adding record");
            logger.addRecord(record, cb, ctx);
        } else{
            cb.addRecordComplete(Code.OK, ctx);

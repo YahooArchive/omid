@@ -28,7 +28,7 @@ public interface StateLogger {
      * @param cb
      * @param ctx
      */
-    void initialize(LoggerInitCallback cb, Object ctx);
+    void initialize(LoggerInitCallback cb, Object ctx) throws LoggerException;
 
     
     /**
