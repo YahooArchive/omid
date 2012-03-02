@@ -78,7 +78,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
             returnValue = new TSOState(largestDeletedTimestamp);
         } else {
             try{
-                returnValue = new BookKeeperStateBuilder(largestDeletedTimestamp).initialize();
+                returnValue = new BookKeeperStateBuilder(largestDeletedTimestamp).buildState();
             } catch (Throwable e) {
                 LOG.error("Error while building the state.", e);
                 returnValue = null;
@@ -190,7 +190,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
     }
     
     @Override
-    public TSOState initialize() 
+    public TSOState buildState() 
     throws LoggerException {    
         /*
          * Create ZooKeeper lock

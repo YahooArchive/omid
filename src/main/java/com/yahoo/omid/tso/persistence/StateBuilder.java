@@ -44,7 +44,7 @@ public abstract class StateBuilder {
      * 
      * @return a new TSOState
      */
-    abstract TSOState initialize() 
+    abstract TSOState buildState() 
     throws LoggerException;
     
 }
