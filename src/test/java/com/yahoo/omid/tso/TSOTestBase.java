@@ -145,7 +145,7 @@ public class TSOTestBase {
    public void setupTSO() throws Exception {
       Thread.sleep(10);
       
-      tso = new TSOServer(1234, 0, 4, 2, new String[] {"localhost:2181"});
+      tso = new TSOServer(1234, 0, 4, 2, new String("localhost:2181"));
       tsothread = new Thread(tso);
       
       LOG.info("Starting TSO");

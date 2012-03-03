@@ -82,6 +82,18 @@ public class TSOServer implements Runnable {
         this.lock = new Object();
     }
 
+    public TSOServer(int port, int batch) {
+        super();
+        this.port = port;
+        this.batch = batch;
+        this.ensemble = -1;
+        this.quorum = -1;
+        this.zkservers = "";
+        
+        this.finish = false;
+        this.lock = new Object();
+    }
+    
     public TSOState getState() {
         return state;
     }
@@ -201,6 +213,7 @@ public class TSOServer implements Runnable {
         timestampOracle.stop();
         handler.stop();
         comHandler.stop();
+        state.stop();
 
         // *** Start the Netty shutdown ***
 

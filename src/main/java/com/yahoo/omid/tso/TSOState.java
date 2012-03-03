@@ -173,6 +173,15 @@ public class TSOState {
        }
    }
    
+   /**
+    * Closes this state object.
+    */
+   void stop(){
+       if(logger != null){
+           logger.shutdown();
+       }
+   }
+   
    /*
     * WAL related pointers
     */

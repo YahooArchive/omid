@@ -82,7 +82,7 @@ class BookKeeperStateLogger implements StateLogger {
         
         public void processResult(int rc, String path, Object ctx, String name){
             if(rc == KeeperException.Code.OK.intValue()){
-                LOG.warn("Created znode succesfully: " + name);
+                LOG.debug("Created znode succesfully: " + name);
                 BookKeeperStateLogger.this.enabled = true;
                 cb.loggerInitComplete(Code.OK, BookKeeperStateLogger.this, ctx);
             } else if(rc != KeeperException.Code.NODEEXISTS.intValue()){
@@ -107,7 +107,7 @@ class BookKeeperStateLogger implements StateLogger {
         
         public void processResult(int rc, String path, Object ctx, Stat stat){
             if(rc == KeeperException.Code.OK.intValue()){
-                LOG.warn("Set ledger id");
+                LOG.debug("Set ledger id");
                 BookKeeperStateLogger.this.enabled = true;
                 cb.loggerInitComplete(Code.OK, BookKeeperStateLogger.this, ctx);
             } else {
@@ -126,7 +126,7 @@ class BookKeeperStateLogger implements StateLogger {
      * Constructor creates a zookeeper and a bookkeeper objects.
      */
     BookKeeperStateLogger(ZooKeeper zk) {
-        LOG.info("Constructing Logger");
+        LOG.debug("Constructing Logger");
         this.zk = zk; 
     }
     
@@ -216,7 +216,7 @@ class BookKeeperStateLogger implements StateLogger {
             @Override
             public void addComplete(int rc, LedgerHandle lh, long entryId, Object ctx) {
                 if (rc != BKException.Code.OK) {
-                    LOG.warn("Asynchronous add entry failed: " + BKException.getMessage(rc));
+                    LOG.error("Asynchronous add entry failed: " + BKException.getMessage(rc));
                     cb.addRecordComplete(Code.ADDFAILED, ctx);
                 } else {
                     cb.addRecordComplete(Code.OK, ctx);
