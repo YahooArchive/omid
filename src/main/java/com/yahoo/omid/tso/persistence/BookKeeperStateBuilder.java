@@ -77,11 +77,15 @@ public class BookKeeperStateBuilder extends StateBuilder {
             LOG.warn("Logger is disabled");
             returnValue = new TSOState(largestDeletedTimestamp);
         } else {
+            BookKeeperStateBuilder builder = new BookKeeperStateBuilder(largestDeletedTimestamp);
+            
             try{
-                returnValue = new BookKeeperStateBuilder(largestDeletedTimestamp).buildState();
+                returnValue = builder.buildState();
             } catch (Throwable e) {
                 LOG.error("Error while building the state.", e);
                 returnValue = null;
+            } finally {
+                builder.shutdown();
             }
         }
         return returnValue;        
@@ -92,13 +96,8 @@ public class BookKeeperStateBuilder extends StateBuilder {
     LoggerProtocol lp;
     boolean enabled;
     
-    BookKeeperStateBuilder(long largestDeletedTimestamp) 
-    throws IOException, InterruptedException, KeeperException{
-        this.largestDeletedTimestamp = largestDeletedTimestamp;
-        this.zk = new ZooKeeper(System.getProperty("ZKSERVERS"), 
-                                        Integer.parseInt(System.getProperty("SESSIONTIMEOUT", Integer.toString(10000))), 
-                                        new LoggerWatcher()); 
-        
+    BookKeeperStateBuilder(long largestDeletedTimestamp) {
+        this.largestDeletedTimestamp = largestDeletedTimestamp; 
     }
 
     /**
@@ -108,11 +107,24 @@ public class BookKeeperStateBuilder extends StateBuilder {
     class Context {
         TSOState state = null;
         boolean ready = false;
+        StateLogger logger;
+        
         
         synchronized void setState(TSOState state){
             this.state = state;
-            this.ready = true;
-            this.notify();
+            validate();
+        }
+        
+        synchronized void setLogger(StateLogger logger){
+            this.logger = logger;
+            validate();
+        }
+        
+        synchronized private void validate(){
+            if(logger != null && state != null){
+                this.ready = true;
+                notify();
+            }
         }
         
         synchronized boolean isReady(){
@@ -121,9 +133,16 @@ public class BookKeeperStateBuilder extends StateBuilder {
     }
     
     class LoggerWatcher implements Watcher{
+        CountDownLatch latch;
+        
+        LoggerWatcher(CountDownLatch latch){
+            this.latch = latch;
+        }
         public void process(WatchedEvent event){
              if(event.getState() != Watcher.Event.KeeperState.SyncConnected)
                  shutdown();
+             else 
+                 latch.countDown();
          }
      }
        
@@ -191,7 +210,22 @@ public class BookKeeperStateBuilder extends StateBuilder {
     
     @Override
     public TSOState buildState() 
-    throws LoggerException {    
+    throws LoggerException { 
+        try{
+            CountDownLatch latch = new CountDownLatch(1);
+            
+            this.zk = new ZooKeeper(System.getProperty("ZKSERVERS"), 
+                                            Integer.parseInt(System.getProperty("SESSIONTIMEOUT", Integer.toString(10000))), 
+                                            new LoggerWatcher(latch));
+            
+            latch.await();
+        } catch (Exception e) {
+            LOG.error("Exception while starting zookeeper client", e);
+            this.zk = null;
+            throw LoggerException.create(Code.ZKOPFAILED);
+        }
+        
+        
         /*
          * Create ZooKeeper lock
          */
@@ -204,6 +238,16 @@ public class BookKeeperStateBuilder extends StateBuilder {
                                         CreateMode.EPHEMERAL, 
                                         new LockCreateCallback(),
                                         ctx);
+        
+        new BookKeeperStateLogger(zk).initialize(new LoggerInitCallback(){
+            public void loggerInitComplete(int rc, StateLogger sl, Object ctx){
+                if(rc == Code.OK){
+                    ((Context) ctx).setLogger(sl); 
+                }
+            }
+        
+        }, ctx);
+        
         try{
             synchronized(ctx){
                 int counter = 0;
@@ -216,17 +260,6 @@ public class BookKeeperStateBuilder extends StateBuilder {
         } catch (InterruptedException e) {
             LOG.error("Interrupted while waiting for state to build up.", e);
             ctx.setState(null);
-        }
-
-        if(ctx.state != null){
-            new BookKeeperStateLogger(zk).initialize(new LoggerInitCallback(){
-                public void loggerInitComplete(int rc, StateLogger sl, Object ctx){
-                    if(rc == Code.OK){
-                        ((Context) ctx).state.setLogger(sl); 
-                    }
-                }
-            
-            }, ctx);
         }
         
         return ctx.state;
@@ -242,6 +275,8 @@ public class BookKeeperStateBuilder extends StateBuilder {
      * @return
      */
     private TSOState buildStateFromLedger(byte[] data, Object ctx){
+        LOG.info("Building state from ledger");
+        
         if(data == null){
             LOG.error("No data on znode, can't determine ledger id");
             ((BookKeeperStateBuilder.Context) ctx).setState(null);

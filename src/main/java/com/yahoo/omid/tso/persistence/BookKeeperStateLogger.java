@@ -81,8 +81,9 @@ class BookKeeperStateLogger implements StateLogger {
         }
         
         public void processResult(int rc, String path, Object ctx, String name){
+            LOG.info("Process result of ledger creation " + name);
             if(rc == KeeperException.Code.OK.intValue()){
-                LOG.debug("Created znode succesfully: " + name);
+                LOG.info("Created znode succesfully: " + name);
                 BookKeeperStateLogger.this.enabled = true;
                 cb.loggerInitComplete(Code.OK, BookKeeperStateLogger.this, ctx);
             } else if(rc != KeeperException.Code.NODEEXISTS.intValue()){
@@ -163,27 +164,29 @@ class BookKeeperStateLogger implements StateLogger {
             throw new LoggerException.BKOpFailedException();  
         } 
         
-        
+        LOG.info("Creating ledger for writing");
         bk.asyncCreateLedger(3, 2,
                                         BookKeeper.DigestType.CRC32, 
                                         "flavio was here".getBytes(),
-                                        new CreateCallback() {  
+                                        new CreateCallback(){            
             @Override
             public void createComplete(int rc, LedgerHandle lh, Object ctx){
+                LOG.info("Completing creation");
                 if(rc == BKException.Code.OK){
                     try{
                         BookKeeperStateLogger.this.lh = lh;
-                    
+                                                    
                         ByteArrayOutputStream bos = new ByteArrayOutputStream();  
                         DataOutputStream dos = new DataOutputStream(bos);  
                         dos.writeLong(lh.getId());
-                  
+                                                  
+                        LOG.info("Creating Znode");
                         zk.create(LoggerConstants.OMID_LEDGER_ID_PATH,
-                                                    bos.toByteArray(),
-                                                    Ids.OPEN_ACL_UNSAFE, 
-                                                    CreateMode.PERSISTENT,
-                                                    new LedgerIdCreateCallback(cb, bos.toByteArray()),
-                                                    ctx);     
+                                                        bos.toByteArray(),
+                                                        Ids.OPEN_ACL_UNSAFE, 
+                                                        CreateMode.PERSISTENT,
+                                                        new LedgerIdCreateCallback(cb, bos.toByteArray()),
+                                                        ctx);     
                     } catch (IOException e) {
                         LOG.error("Failed to write to zookeeper. ", e );
                         cb.loggerInitComplete(Code.BKOPFAILED, BookKeeperStateLogger.this, ctx);
@@ -193,9 +196,9 @@ class BookKeeperStateLogger implements StateLogger {
                     cb.loggerInitComplete(Code.BKOPFAILED, BookKeeperStateLogger.this, ctx);
                 }
             }
-        }, ctx); 
+        }, ctx);
     }
-
+    
     
     /**
      * Adds a record to the log of operations. The record is a byte array.
@@ -210,6 +213,7 @@ class BookKeeperStateLogger implements StateLogger {
             cb.addRecordComplete(Code.LOGGERDISABLED, ctx);
             return;
         }
+        LOG.warn("Adding record.");
         
         this.lh.asyncAddEntry(record,
             new AddCallback() {

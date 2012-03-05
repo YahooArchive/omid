@@ -34,7 +34,6 @@ public abstract class StateBuilder {
      */
     LoggerProtocol protocol;
     
-    
     /**
      * This call should create a new TSOState object and populate
      * it accordingly. If there was an incarnation of TSO in the past,
@@ -46,5 +45,10 @@ public abstract class StateBuilder {
      */
     abstract TSOState buildState() 
     throws LoggerException;
+    
+    /**
+     * Shuts down state builder.
+     */
+    abstract void shutdown();
     
 }

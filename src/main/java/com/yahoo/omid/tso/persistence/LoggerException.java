@@ -47,6 +47,12 @@ public abstract class LoggerException extends Exception {
         switch(code) {
         case Code.ADDFAILED:
             return new AddFailedException();
+        case Code.INITLOCKFAILED:
+            return new InitLockFailedException();
+        case Code.BKOPFAILED:
+            return new BKOpFailedException();
+        case Code.ZKOPFAILED:
+            return new ZKOpFailedException();
         case Code.LOGGERDISABLED:
             return new LoggerDisabledException();
         default:
@@ -88,9 +94,9 @@ public abstract class LoggerException extends Exception {
         }
     }
     
-    public static class IllegalOpException extends LoggerException {
-        public IllegalOpException() {
-            super(Code.ILLEGALOP);
+    public static class InitLockFailedException extends LoggerException {
+        public InitLockFailedException() {
+            super(Code.INITLOCKFAILED);
         }
     }
     
@@ -103,6 +109,18 @@ public abstract class LoggerException extends Exception {
     public static class BKOpFailedException extends LoggerException {
         public BKOpFailedException() {
             super(Code.BKOPFAILED);
+        }
+    }
+    
+    public static class ZKOpFailedException extends LoggerException {
+        public ZKOpFailedException() {
+            super(Code.ZKOPFAILED);
+        }
+    }
+    
+    public static class IllegalOpException extends LoggerException {
+        public IllegalOpException() {
+            super(Code.ILLEGALOP);
         }
     }
     
