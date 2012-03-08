@@ -289,6 +289,7 @@ public class TSOHandler extends SimpleChannelHandler {
               sharedState.uncommited.commit(msg.startTimestamp);
               reply.commitTimestamp = commitTimestamp;
               if (msg.rows.length > 0) {
+                  LOG.info("Adding to WAL");
                   toWAL.writeByte(LoggerProtocol.COMMIT);
                   toWAL.writeLong(msg.startTimestamp);
                   toWAL.writeLong(commitTimestamp);
@@ -414,7 +415,8 @@ public class TSOHandler extends SimpleChannelHandler {
    }
 
    public void flush() {
-      synchronized (sharedState) {          
+      synchronized (sharedState) {
+          LOG.info("Adding record");
          sharedState.addRecord(sharedState.baos.toByteArray(), new AddRecordCallback() {
              @Override
              public void addRecordComplete(int rc, Object ctx) {

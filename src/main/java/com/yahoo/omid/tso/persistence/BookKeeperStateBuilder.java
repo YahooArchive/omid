@@ -81,6 +81,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
             
             try{
                 returnValue = builder.buildState();
+                LOG.info("State built");
             } catch (Throwable e) {
                 LOG.error("Error while building the state.", e);
                 returnValue = null;
@@ -166,6 +167,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
     class LedgerIdReadCallback implements DataCallback {
                 
         public void processResult(int rc, String path, Object ctx, byte[] data, Stat stat){
+            LOG.info("Read ledger id");
             if(rc == Code.OK){
                 buildStateFromLedger(data, ctx);
             } else if (rc == KeeperException.Code.NONODE.intValue()) {
@@ -208,6 +210,8 @@ public class BookKeeperStateBuilder extends StateBuilder {
         }
     }
     
+    BookKeeper bk;
+    
     @Override
     public TSOState buildState() 
     throws LoggerException { 
@@ -223,6 +227,15 @@ public class BookKeeperStateBuilder extends StateBuilder {
             LOG.error("Exception while starting zookeeper client", e);
             this.zk = null;
             throw LoggerException.create(Code.ZKOPFAILED);
+        }
+        
+        LOG.info("Creating bookkeeper client");
+        
+        try{
+            bk = new BookKeeper(new ClientConfiguration(), this.zk);    
+        } catch (Exception e) {
+            LOG.error("Error while creating bookkeeper object", e);
+            return null;
         }
         
         
@@ -274,7 +287,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
      * @param ctx
      * @return
      */
-    private TSOState buildStateFromLedger(byte[] data, Object ctx){
+    private void buildStateFromLedger(byte[] data, Object ctx){
         LOG.info("Building state from ledger");
         
         if(data == null){
@@ -285,59 +298,43 @@ public class BookKeeperStateBuilder extends StateBuilder {
        /*
         * Instantiates LoggerProtocol        
         */
+        LOG.info("Creating logger protocol object");
         try{
             this.lp = new LoggerProtocol(this.largestDeletedTimestamp); 
         } catch (Exception e) {
             LOG.error("Error while creating state logger for logger protocol.", e);
-            return null;
+            ((BookKeeperStateBuilder.Context) ctx).setState(null);
         }
         
         /*
          * Open ledger for reading.
          */
 
-        BookKeeper bk;
-        try{
-            bk = new BookKeeper(new ClientConfiguration(), this.zk);    
-        } catch (Exception e) {
-            LOG.error("Error while creating bookkeeper object", e);
-            return null;
-        }
         ByteBuffer bb = ByteBuffer.wrap(data);
-        bk.asyncOpenLedger(bb.getLong(), BookKeeper.DigestType.CRC32, 
+        long ledgerId = bb.getLong();
+        LOG.info("Opening ledger for writing: now calling open: " + ledgerId);
+        
+        bk.asyncOpenLedger(ledgerId, BookKeeper.DigestType.CRC32, 
                                         "flavio was here".getBytes(), 
                                         new OpenCallback(){
             public void openComplete(int rc, LedgerHandle lh, Object ctx){
+                LOG.info("Open complete");
                 if(rc != BKException.Code.OK){
                     LOG.error("Could not open ledger for reading." + BKException.getMessage(rc));
                     ((BookKeeperStateBuilder.Context) ctx).setState(null);
                 } else {
                     long counter = lh.getLastAddConfirmed();
                     while(counter > 0){
+                        LOG.info("Reading entries");
                         long nextBatch = Math.max(counter - BKREADBATCHSIZE, 0);
                         lh.asyncReadEntries(nextBatch, counter, new LoggerExecutor(), ctx);
                         counter -= BKREADBATCHSIZE;
                     }
-                }   
+                }
+                LOG.info("Finish callback");
             }
         }, ctx);
-        
-        /*
-         * Wait until operation completes.
-         */
-        
-        synchronized(ctx){
-            try{
-                while(!((Context) ctx).isReady()){
-                    ctx.wait();
-                }
-            } catch (Exception e) {
-                LOG.error("Error while creating bookkeeper object", e);
-                return null;
-            }
-        }
-        
-        return lp.getState(); 
+       
     }
     
     /**

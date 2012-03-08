@@ -21,39 +21,60 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import com.yahoo.omid.tso.RowKey;
+import com.yahoo.omid.tso.messages.AbortedTransactionReport;
 import com.yahoo.omid.tso.messages.CommitRequest;
 import com.yahoo.omid.tso.messages.CommitResponse;
+import com.yahoo.omid.tso.messages.CommittedTransactionReport;
+import com.yahoo.omid.tso.messages.FullAbortReport;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 public class TestPersistence extends TSOTestBase {
+    private static final Log LOG = LogFactory.getLog(TestPersistence.class);
    
    @Test
    public void testCommit() throws Exception {
-      clientHandler.sendMessage(new TimestampRequest());
-      clientHandler.receiveBootstrap();
-      TimestampResponse tr1 = clientHandler.receiveMessage(TimestampResponse.class);
+        
+       clientHandler.sendMessage(new TimestampRequest());
+       clientHandler.receiveBootstrap();
+       TimestampResponse tr1 = clientHandler.receiveMessage(TimestampResponse.class);
 
-      clientHandler.sendMessage(new CommitRequest(tr1.timestamp));
-      CommitResponse cr1 = clientHandler.receiveMessage(CommitResponse.class);
-      assertTrue(cr1.committed);
-      assertTrue(cr1.commitTimestamp > tr1.timestamp);
-      assertEquals(tr1.timestamp, cr1.startTimestamp);
-      
-      teardownTSO();
-      setupTSO();
-      
-      clientHandler.sendMessage(new TimestampRequest());
-      clientHandler.receiveBootstrap();
-      TimestampResponse tr2 = clientHandler.receiveMessage(TimestampResponse.class);
+       clientHandler.sendMessage(new CommitRequest(tr1.timestamp, new RowKey[] { r1 }));
+       CommitResponse cr1 = clientHandler.receiveMessage(CommitResponse.class);
+       
+       clientHandler.sendMessage(new TimestampRequest());
+       // Pending commit report
+       CommittedTransactionReport ctr1 = clientHandler.receiveMessage(CommittedTransactionReport.class);
+       assertEquals(cr1.startTimestamp, ctr1.startTimestamp);
+       assertEquals(cr1.commitTimestamp, ctr1.commitTimestamp);
+       
+       tr1 = clientHandler.receiveMessage(TimestampResponse.class);
 
-      clientHandler.sendMessage(new CommitRequest(tr1.timestamp));
-      CommitResponse cr2 = clientHandler.receiveMessage(CommitResponse.class);
-      assertTrue(cr2.committed);
-      assertTrue(cr2.commitTimestamp > tr2.timestamp);
-      assertEquals(tr2.timestamp, cr2.startTimestamp);
+       clientHandler.sendMessage(new CommitRequest(tr1.timestamp, new RowKey[] { r1, r2 }));
+       cr1 = clientHandler.receiveMessage(CommitResponse.class);
+       
+       LOG.info("Going to shut down TSO");
+       teardownTSO();
       
-      assertTrue(tr2.timestamp > tr1.timestamp);
+       LOG.info("Going to restart TSO");
+       setupTSO();
+      
+       LOG.info("TSO started, going to process transactions");
+       clientHandler.sendMessage(new TimestampRequest());
+       clientHandler.receiveBootstrap();
+       TimestampResponse tr2 = clientHandler.receiveMessage(TimestampResponse.class);
+
+       clientHandler.sendMessage(new CommitRequest(tr1.timestamp, new RowKey[] { r1 }));  
+       CommitResponse cr2 = clientHandler.receiveMessage(CommitResponse.class);
+       assertTrue(cr2.committed);
+       assertTrue(cr2.commitTimestamp > tr2.timestamp);
+       assertEquals(tr2.timestamp, cr2.startTimestamp);
+      
+       assertTrue(tr2.timestamp > tr1.timestamp);
       
    }
    

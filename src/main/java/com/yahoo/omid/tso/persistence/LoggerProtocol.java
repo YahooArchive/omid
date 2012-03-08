@@ -19,8 +19,11 @@ package com.yahoo.omid.tso.persistence;
 import java.nio.ByteBuffer;
 
 import com.yahoo.omid.tso.TSOState;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class LoggerProtocol extends TSOState{
+    private static final Log LOG = LogFactory.getLog(LoggerProtocol.class);
     
     /*
      * Protocol flags. Used to identify fields of the logger records.
@@ -44,6 +47,7 @@ public class LoggerProtocol extends TSOState{
     }
     
     void execute(ByteBuffer bb){
+        LOG.info("Executing...");
         boolean done = false;
         while(!done){
             byte op = bb.get();
