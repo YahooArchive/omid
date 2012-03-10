@@ -289,7 +289,9 @@ public class TSOHandler extends SimpleChannelHandler {
               sharedState.uncommited.commit(msg.startTimestamp);
               reply.commitTimestamp = commitTimestamp;
               if (msg.rows.length > 0) {
-                  LOG.info("Adding commit to WAL");
+                  if(LOG.isDebugEnabled()){
+                      LOG.debug("Adding commit to WAL");
+                  }
                   toWAL.writeByte(LoggerProtocol.COMMIT);
                   toWAL.writeLong(msg.startTimestamp);
                   toWAL.writeLong(commitTimestamp);
@@ -352,16 +354,16 @@ public class TSOHandler extends SimpleChannelHandler {
 
          ChannelandMessage cam = new ChannelandMessage(ctx, reply);
 
-         LOG.info("Adding to next batch");
          sharedState.nextBatch.add(cam);
          if (sharedState.baos.size() >= TSOState.BATCH_SIZE) {
-             LOG.info("Going to add record");
+             if(LOG.isDebugEnabled()){
+                 LOG.debug("Going to add record of size " + sharedState.baos.size());
+             }
             //sharedState.lh.asyncAddEntry(baos.toByteArray(), this, sharedState.nextBatch);
             sharedState.addRecord(baos.toByteArray(), 
                                             new AddRecordCallback() {
                 @Override
                 public void addRecordComplete(int rc, Object ctx) {
-                    LOG.info("Add record complete");
                     if (rc != Code.OK) {
                         LOG.warn("Write failed: " + LoggerException.getMessage(rc));
                         

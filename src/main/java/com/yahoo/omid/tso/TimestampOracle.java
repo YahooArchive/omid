@@ -65,7 +65,10 @@ public class TimestampOracle {
             toWal.writeLong(last);
             maxTimestamp += TIMESTAMP_BATCH;
         }
-        LOG.info("Next timestamp: " + last + ", isEnabled: " + enabled);
+        if(LOG.isTraceEnabled()){
+            LOG.trace("Next timestamp: " + last);
+        }
+        
         return last;
     }
 
@@ -85,7 +88,6 @@ public class TimestampOracle {
      * Constructor
      */
     public TimestampOracle(){
-        LOG.info("#### Starting timestamp oracle ####"); 
         this.enabled = false;
         this.last = 0;
     }

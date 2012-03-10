@@ -49,13 +49,13 @@ public class LoggerProtocol extends TSOState{
     }
     
     void execute(ByteBuffer bb){
-        LOG.info("ByteBuffer size" + bb.capacity());
         boolean done = false;
         while(!done){
             byte op = bb.get();
             long timestamp, startTimestamp, commitTimestamp;
-            LOG.info("Executing: " + op);
-            
+            if(LOG.isTraceEnabled()){
+                LOG.trace("Operation: " + op);
+            }
             switch(op){
             case TIMESTAMPORACLE:
                 timestamp = bb.getLong();

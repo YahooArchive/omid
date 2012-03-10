@@ -175,7 +175,6 @@ public class BookKeeperStateBuilder extends StateBuilder {
     class LedgerIdReadCallback implements DataCallback {
                 
         public void processResult(int rc, String path, Object ctx, byte[] data, Stat stat){
-            LOG.info("Read ledger id");
             if(rc == Code.OK){
                 buildStateFromLedger(data, ctx);
             } else if (rc == KeeperException.Code.NONODE.intValue()) {
@@ -202,7 +201,6 @@ public class BookKeeperStateBuilder extends StateBuilder {
      */
     class LoggerExecutor implements ReadCallback {
         public void readComplete(int rc, LedgerHandle lh, Enumeration<LedgerEntry> entries, Object ctx){
-            LOG.info("Completed reads");
             if(rc != BKException.Code.OK){
                 LOG.error("Error while reading ledger entries." + BKException.getMessage(rc));
                 ((BookKeeperStateBuilder.Context) ctx).setState(null);
@@ -262,11 +260,14 @@ public class BookKeeperStateBuilder extends StateBuilder {
                                         ctx);
         
         new BookKeeperStateLogger(zk).initialize(new LoggerInitCallback(){
-            public void loggerInitComplete(int rc, StateLogger sl, Object ctx){
-                LOG.info("Completed initialization of logger.");
+            public void loggerInitComplete(int rc, StateLogger sl, Object ctx){                
                 if(rc == Code.OK){
-                    LOG.info("Logger is ok.");
+                    if(LOG.isDebugEnabled()){
+                        LOG.debug("Logger is ok.");
+                    }
                     ((Context) ctx).setLogger(sl); 
+                } else {
+                    LOG.error("Error when initializing logger: " + LoggerException.getMessage(rc));
                 }
             }
         
@@ -298,7 +299,9 @@ public class BookKeeperStateBuilder extends StateBuilder {
      * @return
      */
     private void buildStateFromLedger(byte[] data, Object ctx){
-        LOG.info("Building state from ledger");
+        if(LOG.isDebugEnabled()){
+            LOG.debug("Building state from ledger");
+        }
         
         if(data == null){
             LOG.error("No data on znode, can't determine ledger id");
@@ -308,7 +311,9 @@ public class BookKeeperStateBuilder extends StateBuilder {
        /*
         * Instantiates LoggerProtocol        
         */
-        LOG.info("Creating logger protocol object");
+        if(LOG.isDebugEnabled()){
+            LOG.debug("Creating logger protocol object");
+        }
         try{
             this.lp = new LoggerProtocol(timestampOracle); 
         } catch (Exception e) {
@@ -322,26 +327,25 @@ public class BookKeeperStateBuilder extends StateBuilder {
 
         ByteBuffer bb = ByteBuffer.wrap(data);
         long ledgerId = bb.getLong();
-        LOG.info("Opening ledger for writing: now calling open: " + ledgerId);
         
         bk.asyncOpenLedger(ledgerId, BookKeeper.DigestType.CRC32, 
                                         "flavio was here".getBytes(), 
                                         new OpenCallback(){
             public void openComplete(int rc, LedgerHandle lh, Object ctx){
-                LOG.info("Open complete");
+                if(LOG.isDebugEnabled()){
+                    LOG.debug("Open complete, ledger id: " + lh.getId());
+                }
                 if(rc != BKException.Code.OK){
                     LOG.error("Could not open ledger for reading." + BKException.getMessage(rc));
                     ((BookKeeperStateBuilder.Context) ctx).setState(null);
                 } else {
                     long counter = lh.getLastAddConfirmed();
                     while(counter > 0){
-                        LOG.info("Reading entries");
                         long nextBatch = Math.max(counter - BKREADBATCHSIZE, 0);
                         lh.asyncReadEntries(nextBatch, counter, new LoggerExecutor(), ctx);
                         counter -= BKREADBATCHSIZE;
                     }
                 }
-                LOG.info("Finish callback");
             }
         }, ctx);
        

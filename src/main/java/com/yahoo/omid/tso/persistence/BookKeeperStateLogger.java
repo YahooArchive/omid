@@ -81,9 +81,11 @@ class BookKeeperStateLogger implements StateLogger {
         }
         
         public void processResult(int rc, String path, Object ctx, String name){
-            LOG.info("Process result of ledger creation " + name);
             if(rc == KeeperException.Code.OK.intValue()){
-                LOG.info("Created znode succesfully: " + name);
+                if(LOG.isDebugEnabled()){
+                    LOG.debug("Created znode succesfully: " + name);
+                }
+                
                 BookKeeperStateLogger.this.enabled = true;
                 cb.loggerInitComplete(Code.OK, BookKeeperStateLogger.this, ctx);
             } else if(rc != KeeperException.Code.NODEEXISTS.intValue()){
@@ -127,7 +129,10 @@ class BookKeeperStateLogger implements StateLogger {
      * Constructor creates a zookeeper and a bookkeeper objects.
      */
     BookKeeperStateLogger(ZooKeeper zk) {
-        LOG.debug("Constructing Logger");
+        if(LOG.isDebugEnabled()){
+            LOG.debug("Constructing Logger");
+        }
+        
         this.zk = zk; 
     }
     
@@ -164,14 +169,12 @@ class BookKeeperStateLogger implements StateLogger {
             throw new LoggerException.BKOpFailedException();  
         } 
         
-        LOG.info("Creating ledger for writing");
         bk.asyncCreateLedger(3, 2,
                                         BookKeeper.DigestType.CRC32, 
                                         "flavio was here".getBytes(),
                                         new CreateCallback(){            
             @Override
             public void createComplete(int rc, LedgerHandle lh, Object ctx){
-                LOG.info("Completing ledger creation: " + lh.getId());
                 if(rc == BKException.Code.OK){
                     try{
                         BookKeeperStateLogger.this.lh = lh;
@@ -180,7 +183,6 @@ class BookKeeperStateLogger implements StateLogger {
                         DataOutputStream dos = new DataOutputStream(bos);  
                         dos.writeLong(lh.getId());
                                                   
-                        LOG.info("Creating Znode");
                         zk.create(LoggerConstants.OMID_LEDGER_ID_PATH,
                                                         bos.toByteArray(),
                                                         Ids.OPEN_ACL_UNSAFE, 
@@ -209,18 +211,22 @@ class BookKeeperStateLogger implements StateLogger {
      */
     @Override
     public void addRecord(byte[] record, final AddRecordCallback cb, Object ctx) {
-        LOG.warn("Adding record.");
+        if(LOG.isDebugEnabled()){
+            LOG.debug("Adding record.");
+        }
+        
         if(!enabled){
             cb.addRecordComplete(Code.LOGGERDISABLED, ctx);
             return;
         }
-        LOG.warn("Going to do the actual write.");
         
         this.lh.asyncAddEntry(record,
             new AddCallback() {
             @Override
             public void addComplete(int rc, LedgerHandle lh, long entryId, Object ctx) {
-                LOG.info("Add to ledger complete: " + lh.getId() + ", " + entryId);
+                if(LOG.isDebugEnabled()){
+                    LOG.info("Add to ledger complete: " + lh.getId() + ", " + entryId);
+                }
                 if (rc != BKException.Code.OK) {
                     LOG.error("Asynchronous add entry failed: " + BKException.getMessage(rc));
                     cb.addRecordComplete(Code.ADDFAILED, ctx);
@@ -244,7 +250,7 @@ class BookKeeperStateLogger implements StateLogger {
                     zk.delete(LoggerConstants.OMID_LEDGER_ID_PATH, -1);
                 }
             } catch (Exception e) {
-                LOG.info("Exception while deleting lock znode", e);
+                LOG.warn("Exception while deleting lock znode", e);
             }
             if(this.bk != null) bk.close();
             if(this.zk != null) zk.close();
