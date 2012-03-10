@@ -240,7 +240,9 @@ class BookKeeperStateLogger implements StateLogger {
         enabled = false;
         try{
             try{
-                zk.delete(LoggerConstants.OMID_LEDGER_ID_PATH, -1);
+                if(zk.getState() == ZooKeeper.States.CONNECTED){
+                    zk.delete(LoggerConstants.OMID_LEDGER_ID_PATH, -1);
+                }
             } catch (Exception e) {
                 LOG.info("Exception while deleting lock znode", e);
             }
