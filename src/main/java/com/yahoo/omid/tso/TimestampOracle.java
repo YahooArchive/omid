@@ -61,10 +61,11 @@ public class TimestampOracle {
     public long next(DataOutputStream toWal) throws IOException {
         last++;
         if (last >= maxTimestamp) {
-            toWal.writeLong(last);
             toWal.writeByte(LoggerProtocol.TIMESTAMPORACLE);
+            toWal.writeLong(last);
             maxTimestamp += TIMESTAMP_BATCH;
         }
+        LOG.info("Next timestamp: " + last + ", isEnabled: " + enabled);
         return last;
     }
 
@@ -84,7 +85,7 @@ public class TimestampOracle {
      * Constructor
      */
     public TimestampOracle(){
-        LOG.info("Starting timestamp oracle"); 
+        LOG.info("#### Starting timestamp oracle ####"); 
         this.enabled = false;
         this.last = 0;
     }
@@ -102,7 +103,10 @@ public class TimestampOracle {
      * @param timestamp
      */
     public void initialize(long timestamp){
-        this.last = this.first = Math.max(this.last, timestamp);
+        LOG.info("Initializing timestamp oracle");
+        this.last = this.first = Math.max(this.last, TIMESTAMP_BATCH);
+        maxTimestamp = this.first;
+        LOG.info("First: " + this.first + ", Last: " + this.last);
         initialize();
     }
     

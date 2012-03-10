@@ -56,7 +56,7 @@ public class TestPersistence extends TSOTestBase {
 
        clientHandler.sendMessage(new CommitRequest(tr1.timestamp, new RowKey[] { r1, r2 }));
        cr1 = clientHandler.receiveMessage(CommitResponse.class);
-       
+             
        LOG.info("Going to shut down TSO");
        teardownTSO();
       
@@ -68,12 +68,12 @@ public class TestPersistence extends TSOTestBase {
        clientHandler.receiveBootstrap();
        TimestampResponse tr2 = clientHandler.receiveMessage(TimestampResponse.class);
 
-       clientHandler.sendMessage(new CommitRequest(tr1.timestamp, new RowKey[] { r1 }));  
+       clientHandler.sendMessage(new CommitRequest(tr2.timestamp, new RowKey[] { r1 }));  
        CommitResponse cr2 = clientHandler.receiveMessage(CommitResponse.class);
+       LOG.info("Timestamps: start " + tr2.timestamp + ", commit" + cr2.startTimestamp);
        assertTrue(cr2.committed);
-       assertTrue(cr2.commitTimestamp > tr2.timestamp);
+       assertTrue(cr2.commitTimestamp > tr2.timestamp);       
        assertEquals(tr2.timestamp, cr2.startTimestamp);
-      
        assertTrue(tr2.timestamp > tr1.timestamp);
       
    }

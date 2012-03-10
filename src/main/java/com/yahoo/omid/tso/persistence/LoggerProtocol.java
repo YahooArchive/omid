@@ -19,6 +19,8 @@ package com.yahoo.omid.tso.persistence;
 import java.nio.ByteBuffer;
 
 import com.yahoo.omid.tso.TSOState;
+import com.yahoo.omid.tso.TimestampOracle;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -42,17 +44,18 @@ public class LoggerProtocol extends TSOState{
      * @param logger
      * @param largestDeletedTimestamp
      */
-    LoggerProtocol(long largestDeletedTimestamp){
-        super(largestDeletedTimestamp);
+    LoggerProtocol(TimestampOracle timestampOracle){
+        super(timestampOracle);
     }
     
     void execute(ByteBuffer bb){
-        LOG.info("Executing...");
+        LOG.info("ByteBuffer size" + bb.capacity());
         boolean done = false;
         while(!done){
             byte op = bb.get();
             long timestamp, startTimestamp, commitTimestamp;
-                
+            LOG.info("Executing: " + op);
+            
             switch(op){
             case TIMESTAMPORACLE:
                 timestamp = bb.getLong();
@@ -80,6 +83,7 @@ public class LoggerProtocol extends TSOState{
                 
                 break;
             }
+            if(bb.remaining() == 0) done = true;
         }
     }
     

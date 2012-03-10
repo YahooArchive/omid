@@ -106,9 +106,9 @@ public class TSOHandler extends SimpleChannelHandler {
     * Constructor
     * @param channelGroup
     */
-   public TSOHandler(ChannelGroup channelGroup, TimestampOracle to, TSOState state) {
+   public TSOHandler(ChannelGroup channelGroup, TSOState state) {
       this.channelGroup = channelGroup;
-      this.timestampOracle = to;
+      this.timestampOracle = state.getSO();
       this.sharedState = state;
       this.flushThread = new FlushThread();
       this.executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
@@ -289,7 +289,7 @@ public class TSOHandler extends SimpleChannelHandler {
               sharedState.uncommited.commit(msg.startTimestamp);
               reply.commitTimestamp = commitTimestamp;
               if (msg.rows.length > 0) {
-                  LOG.info("Adding to WAL");
+                  LOG.info("Adding commit to WAL");
                   toWAL.writeByte(LoggerProtocol.COMMIT);
                   toWAL.writeLong(msg.startTimestamp);
                   toWAL.writeLong(commitTimestamp);
@@ -352,13 +352,16 @@ public class TSOHandler extends SimpleChannelHandler {
 
          ChannelandMessage cam = new ChannelandMessage(ctx, reply);
 
+         LOG.info("Adding to next batch");
          sharedState.nextBatch.add(cam);
          if (sharedState.baos.size() >= TSOState.BATCH_SIZE) {
+             LOG.info("Going to add record");
             //sharedState.lh.asyncAddEntry(baos.toByteArray(), this, sharedState.nextBatch);
             sharedState.addRecord(baos.toByteArray(), 
                                             new AddRecordCallback() {
                 @Override
                 public void addRecordComplete(int rc, Object ctx) {
+                    LOG.info("Add record complete");
                     if (rc != Code.OK) {
                         LOG.warn("Write failed: " + LoggerException.getMessage(rc));
                         
@@ -452,6 +455,9 @@ public class TSOHandler extends SimpleChannelHandler {
          if (sharedState.nextBatch.size() > 0) {
             synchronized (sharedState) {
                if (sharedState.nextBatch.size() > 0) {
+                   if(LOG.isDebugEnabled()){
+                       LOG.debug("Flushing log batch.");
+                   }
                   flush();
                }
             }

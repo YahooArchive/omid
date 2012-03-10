@@ -45,6 +45,7 @@ import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import com.yahoo.omid.tso.TSOState;
+import com.yahoo.omid.tso.TimestampOracle;
 import com.yahoo.omid.tso.persistence.BookKeeperStateLogger.LedgerIdCreateCallback;
 import com.yahoo.omid.tso.persistence.BookKeeperStateLogger.LoggerWatcher;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.BuilderInitCallback;
@@ -71,13 +72,13 @@ public class BookKeeperStateBuilder extends StateBuilder {
      */
     private static final long BKREADBATCHSIZE = 50;
 
-    public static TSOState getState(long largestDeletedTimestamp){
+    public static TSOState getState(){
         TSOState returnValue;
         if(System.getProperty("ZKSERVERS") == null){
             LOG.warn("Logger is disabled");
-            returnValue = new TSOState(largestDeletedTimestamp);
+            returnValue = new TSOState(new TimestampOracle());
         } else {
-            BookKeeperStateBuilder builder = new BookKeeperStateBuilder(largestDeletedTimestamp);
+            BookKeeperStateBuilder builder = new BookKeeperStateBuilder();
             
             try{
                 returnValue = builder.buildState();
@@ -92,13 +93,13 @@ public class BookKeeperStateBuilder extends StateBuilder {
         return returnValue;        
     }
         
-    long largestDeletedTimestamp;
+    TimestampOracle timestampOracle;
     ZooKeeper zk;
     LoggerProtocol lp;
     boolean enabled;
     
-    BookKeeperStateBuilder(long largestDeletedTimestamp) {
-        this.largestDeletedTimestamp = largestDeletedTimestamp; 
+    BookKeeperStateBuilder() {
+        this.timestampOracle = new TimestampOracle(); 
     }
 
     /**
@@ -108,21 +109,28 @@ public class BookKeeperStateBuilder extends StateBuilder {
     class Context {
         TSOState state = null;
         boolean ready = false;
+        boolean hasState = false;
+        boolean hasLogger = false;
         StateLogger logger;
-        
         
         synchronized void setState(TSOState state){
             this.state = state;
+            hasState = true;
             validate();
         }
         
         synchronized void setLogger(StateLogger logger){
             this.logger = logger;
+            hasLogger = true;
             validate();
         }
         
         synchronized private void validate(){
             if(logger != null && state != null){
+                state.setLogger(logger);
+            }
+
+            if(hasLogger && hasState){
                 this.ready = true;
                 notify();
             }
@@ -174,7 +182,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
                 LOG.warn("No node exists. " + KeeperException.Code.get(rc).toString()); 
                 TSOState tempState; 
                 try{
-                    tempState = new TSOState(BookKeeperStateBuilder.this.largestDeletedTimestamp);
+                    tempState = new TSOState(timestampOracle);
                 } catch (Exception e) {
                     LOG.error("Error while creating state logger.", e);
                     tempState = null;
@@ -194,6 +202,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
      */
     class LoggerExecutor implements ReadCallback {
         public void readComplete(int rc, LedgerHandle lh, Enumeration<LedgerEntry> entries, Object ctx){
+            LOG.info("Completed reads");
             if(rc != BKException.Code.OK){
                 LOG.error("Error while reading ledger entries." + BKException.getMessage(rc));
                 ((BookKeeperStateBuilder.Context) ctx).setState(null);
@@ -254,7 +263,9 @@ public class BookKeeperStateBuilder extends StateBuilder {
         
         new BookKeeperStateLogger(zk).initialize(new LoggerInitCallback(){
             public void loggerInitComplete(int rc, StateLogger sl, Object ctx){
+                LOG.info("Completed initialization of logger.");
                 if(rc == Code.OK){
+                    LOG.info("Logger is ok.");
                     ((Context) ctx).setLogger(sl); 
                 }
             }
@@ -267,8 +278,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
                 while(!ctx.isReady() || (counter > 10)){
                     ctx.wait(1000);
                     counter++;
-                }
-            
+                }           
             }
         } catch (InterruptedException e) {
             LOG.error("Interrupted while waiting for state to build up.", e);
@@ -300,7 +310,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
         */
         LOG.info("Creating logger protocol object");
         try{
-            this.lp = new LoggerProtocol(this.largestDeletedTimestamp); 
+            this.lp = new LoggerProtocol(timestampOracle); 
         } catch (Exception e) {
             LOG.error("Error while creating state logger for logger protocol.", e);
             ((BookKeeperStateBuilder.Context) ctx).setState(null);

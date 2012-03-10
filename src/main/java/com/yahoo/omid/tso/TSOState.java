@@ -62,7 +62,7 @@ public class TSOState {
       }
    };
 
-   static public int FLUSH_TIMEOUT = 5;
+   static public int FLUSH_TIMEOUT = 10;
    static {
       try {
          FLUSH_TIMEOUT = Integer.valueOf(System.getProperty("omid.flushTimeout"));
@@ -166,7 +166,6 @@ public class TSOState {
     */
    public void addRecord(byte[] record, final AddRecordCallback cb, Object ctx) {
        if(logger != null){
-           LOG.warn("Adding record");
            logger.addRecord(record, cb, ctx);
        } else{
            cb.addRecordComplete(Code.OK, ctx);
@@ -190,18 +189,18 @@ public class TSOState {
    public DataOutputStream toWAL = new DataOutputStream(baos);
    public List<TSOHandler.ChannelandMessage> nextBatch = new ArrayList<TSOHandler.ChannelandMessage>();
    
-   public TSOState(StateLogger logger, long largestDeletedTimestamp) {
-      this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp = largestDeletedTimestamp;
-      this.uncommited = new Uncommited(largestDeletedTimestamp);
-      this.logger = logger;
-      this.timestampOracle = new TimestampOracle();
+   public TSOState(StateLogger logger, TimestampOracle timestampOracle) {
+       this.timestampOracle = timestampOracle;
+       this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp = this.timestampOracle.get();
+       this.uncommited = new Uncommited(largestDeletedTimestamp);
+       this.logger = logger;
    }
    
-   public TSOState(long largestDeletedTimestamp) {
-       this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp = largestDeletedTimestamp;
+   public TSOState(TimestampOracle timestampOracle) {
+       this.timestampOracle = timestampOracle;
+       this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp = timestampOracle.get();
        this.uncommited = new Uncommited(largestDeletedTimestamp);
        this.logger = null;
-       this.timestampOracle = new TimestampOracle();
     }
 }
 

@@ -141,9 +141,9 @@ public class TSOServer implements Runnable {
 
         // This is the only object of timestamp oracle
         // TODO: make it singleton
-        TimestampOracle timestampOracle = new TimestampOracle();
+        //TimestampOracle timestampOracle = new TimestampOracle();
         // The wrapper for the shared state of TSO
-        state = BookKeeperStateBuilder.getState(timestampOracle.get());
+        state = BookKeeperStateBuilder.getState();
         
         if(state == null){
             LOG.error("Couldn't build state");
@@ -155,7 +155,7 @@ public class TSOServer implements Runnable {
         System.out.println("PARAM LOAD_FACTOR: " + TSOState.LOAD_FACTOR);
         System.out.println("PARAM MAX_THREADS: " + maxThreads);
 
-        final TSOHandler handler = new TSOHandler(channelGroup, timestampOracle, state);
+        final TSOHandler handler = new TSOHandler(channelGroup, state);
 
         bootstrap.setPipelineFactory(new TSOPipelineFactory(pipelineExecutor, handler));
         bootstrap.setOption("tcpNoDelay", false);
@@ -210,7 +210,7 @@ public class TSOServer implements Runnable {
             }
         }
 
-        timestampOracle.stop();
+        //timestampOracle.stop();
         handler.stop();
         comHandler.stop();
         state.stop();
