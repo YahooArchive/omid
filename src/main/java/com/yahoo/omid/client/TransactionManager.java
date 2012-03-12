@@ -32,7 +32,7 @@ import org.apache.hadoop.hbase.client.HTable;
 
 /**
  * Provides the methods necessary to create and commit transactions.
- * 
+ *
  * @see TransactionalTable
  *
  */
@@ -56,10 +56,10 @@ public class TransactionManager {
 
    /**
     * Starts a new transaction.
-    * 
+    *
     * This method returns an opaque {@link TransactionState} object, used by {@link TransactionalTable}'s methods
     * for performing operations on a given transaction.
-    * 
+    *
     * @return Opaque object which identifies one transaction.
     * @throws TransactionException
     */
@@ -70,18 +70,18 @@ public class TransactionManager {
          cb.await();
       } catch (Exception e) {
          throw new TransactionException("Could not get new timestamp", e);
-      } 
+      }
       if (cb.getException() != null) {
          throw new TransactionException("Error retrieving timestamp", cb.getException());
-      }      
+      }
 
       return new TransactionState(cb.getStartTimestamp(), tsoclient);
    }
 
    /**
     * Commits a transaction. If the transaction is aborted it automatically rollbacks the changes and
-    * throws a {@link CommitUnsuccessfulException}.  
-    * 
+    * throws a {@link CommitUnsuccessfulException}.
+    *
     * @param transactionState Object identifying the transaction to be committed.
     * @throws CommitUnsuccessfulException
     * @throws TransactionException
@@ -101,7 +101,7 @@ public class TransactionManager {
       }
       if (cb.getException() != null) {
          throw new TransactionException("Error committing", cb.getException());
-      }      
+      }
 
       if (LOG.isTraceEnabled()) {
          LOG.trace("doneCommit " + transactionState.getStartTimestamp() +
@@ -118,7 +118,7 @@ public class TransactionManager {
 
    /**
     * Aborts a transaction and automatically rollbacks the changes.
-    * 
+    *
     * @param transactionState Object identifying the transaction to be committed.
     * @throws TransactionException
     */
@@ -169,6 +169,13 @@ public class TransactionManager {
          } catch (IOException ioe) {
             throw new TransactionException("Could not clean up for table " + entry.getKey(), ioe);
          }
+      }
+      AbortCompleteCallback cb = new SyncAbortCompleteCallback();
+      try {
+         tsoclient.completeAbort(transactionState.getStartTimestamp(), cb );
+      } catch (IOException ioe) {
+         throw new TransactionException("Could not notify TSO about cleanup completion for transaction " +
+               transactionState.getStartTimestamp(), ioe);
       }
    }
 }
