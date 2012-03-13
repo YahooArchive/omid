@@ -16,22 +16,13 @@
 
 package com.yahoo.omid.tso;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.bookkeeper.client.BKException;
-import org.apache.bookkeeper.client.BookKeeper;
-import org.apache.bookkeeper.client.LedgerHandle;
-import org.apache.commons.lang.StringUtils;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.ZooKeeper;
-import org.jboss.netty.bootstrap.ClientBootstrap;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFactory;
@@ -45,13 +36,7 @@ import org.jboss.netty.handler.codec.serialization.ObjectDecoder;
 import org.jboss.netty.handler.codec.serialization.ObjectEncoder;
 import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
 
-import com.yahoo.omid.tso.serialization.TSODecoder;
-import com.yahoo.omid.tso.serialization.TSOEncoder;
 import com.yahoo.omid.tso.persistence.BookKeeperStateBuilder;
-import com.yahoo.omid.tso.persistence.StateBuilder;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 /**
  * TSO Server with serialization
@@ -157,7 +142,7 @@ public class TSOServer implements Runnable {
         // Create the monitor
         ThroughputMonitor monitor = new ThroughputMonitor(state);
         // Add the parent channel to the group
-        Channel channel = bootstrap.bind(new InetSocketAddress(config.getPort())));
+        Channel channel = bootstrap.bind(new InetSocketAddress(config.getPort()));
         channelGroup.add(channel);
         
         // Compacter handler

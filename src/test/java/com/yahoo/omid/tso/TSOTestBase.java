@@ -98,8 +98,6 @@ public class TSOTestBase {
       channelFactory.releaseExternalResources();
    }
 
-   static LocalBookKeeper localBK;
-   
    @BeforeClass
    public static void setupBookkeeper() throws Exception {
       System.out.println("PATH : "
@@ -113,7 +111,7 @@ public class TSOTestBase {
                   String[] args = new String[1];
                   args[0] = "5";
                   LOG.info("Starting bk");
-                  localBK.main(args);
+                  LocalBookKeeper.main(args);
                } catch (InterruptedException e) {
                   // go away quietly
                } catch (Exception e) {
@@ -151,7 +149,7 @@ public class TSOTestBase {
         */
        Thread.sleep(500);
        
-      tso = new TSOServer(1234, 0, 4, 2, new String("localhost:2181"));
+      tso = new TSOServer(TSOServerConfig.configFactory(1234, 0, false, 4, 2, new String("localhost:2181")));
       tsothread = new Thread(tso);
       
       LOG.info("Starting TSO");
