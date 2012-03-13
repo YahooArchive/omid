@@ -108,15 +108,21 @@ public class TestTransactionConflict extends OmidTestBase {
         Put p2 = new Put(row);
         p2.add(fam, col, data2);
         tt.put(t2, p2);
-        
+
         r = tt.get(g);
         assertEquals("Unexpected size for read.", 2, r.size());
+        r = tt.get(t2, g);
+        assertEquals("Unexpected size for read.", 1, r.size());
+        assertTrue(
+              "Unexpected value for read: "
+              + Bytes.toString(r.getValue(fam, col)),
+              Bytes.equals(data2, r.getValue(fam, col)));
 
-        tm.tryCommit(t2);
+        tm.tryCommit(t1);
 
         boolean aborted = false;
         try {
-            tm.tryCommit(t1);
+            tm.tryCommit(t2);
             assertTrue("Transaction commited successfully", false);
         } catch (CommitUnsuccessfulException e) {
             aborted = true;
@@ -128,7 +134,7 @@ public class TestTransactionConflict extends OmidTestBase {
         assertTrue(
                 "Unexpected value for read: "
                 + Bytes.toString(r.getValue(fam, col)),
-                Bytes.equals(data2, r.getValue(fam, col)));
+                Bytes.equals(data1, r.getValue(fam, col)));
     }
 
 
