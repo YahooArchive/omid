@@ -25,17 +25,6 @@
   <name>omid</name>
   <url>http://maven.apache.org</url>
 
-  <repositories>
-    <repository>
-      <id>apache.snapshots</id>
-      <name>Temporary repo waiting for HBase 0.92.0 release</name>
-       <url>https://repository.apache.org/content/groups/snapshots-group/</url>
-       <snapshots>
-         <enabled>true</enabled>
-       </snapshots>
-    </repository>
-  </repositories>
-
   <build>
      <plugins>
       <plugin>
@@ -122,7 +111,7 @@
     <dependency>
     	<groupId>org.apache.hbase</groupId>
     	<artifactId>hbase</artifactId>
-    	<version>0.92.0-SNAPSHOT</version>
+    	<version>0.92.0</version>
     	<type>jar</type>
     	<scope>compile</scope>
     </dependency>
