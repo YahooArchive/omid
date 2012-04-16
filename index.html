@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="Omid : Transactional Support for HBase" />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Omid</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/yahoo/omid">Fork Me on GitHub</a>
+
+          <h1 id="project_title">Omid</h1>
+          <h2 id="project_tagline">Transactional Support for HBase</h2>
+
+          <section id="downloads">
+            <a class="zip_download_link" href="https://github.com/yahoo/omid/zipball/master">Download this project as a .zip file</a>
+            <a class="tar_download_link" href="https://github.com/yahoo/omid/tarball/master">Download this project as a tar.gz file</a>
+          </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h1>Omid</h1>
+
+<p>This project provides transactional support for HBase (or any other key-value store) using Snapshot Isolation.
+If you have any question, please contact us at omid-project@googlegroups.com</p>
+
+<h2>Architecture</h2>
+
+<p>Omid is composed by a server (the Status Oracle) and several clients. The server contains all the information
+needed to manage transactions and replicates it to the clients which just contact the server when they want
+to start a transaction or commit it.</p>
+
+<p>The server uses BookKeeper as a Writer Ahead Log where it dumps all its state. In case of crash it is possible
+to restart the server without losing any commit information.</p>
+
+<h2>Compilation</h2>
+
+<p>Omid uses Maven for its build system. We are using a temporary repository for zookeeper and bookkeeper packages to ease
+the installation procedure</p>
+
+<p>Then to compile omid:</p>
+
+<pre><code>$ tar jxvf omid-1.0-SNAPSHOT.tar.bz2
+$ cd omid-1.0-SNAPSHOT
+$ mvn install
+</code></pre>
+
+<p>Tests should run cleanly.</p>
+
+<h2>Running</h2>
+
+<p>You need to run four components before running the transactional
+client. They are bookkeeper, zookeeper, omid tso and
+hbase. Bookkeeper is needed by the TSO. Zookeeper is needed by
+bookkeeper and hbase. The TSO is needed by hbase. Hence, the order of
+starting should be: 
+     1. Zookeeper
+     2. Bookkeeper
+     3. TSO
+     4. Hbase</p>
+
+<h3>Zookeeper &amp; Bookkeeper</h3>
+
+<p>For simplicity we've included a utility script which starts zookeeper
+and bookkeeper. Run:</p>
+
+<pre><code>$ bin/omid.sh bktest
+</code></pre>
+
+<p>Omid doesn't use anything special in zookeeper or bookkeeper, so you
+can use any install for these. However, if you are running this
+anywhere but localhost, you need to update the setting for hbase and 
+TSO. See the hbase docs for changing the zookeeper quorum. For TSO,
+you need to modify bin/omid.sh.</p>
+
+<h3>TSO</h3>
+
+<p>To start the TSO, run:</p>
+
+<pre><code>$ bin/omid.sh tso
+</code></pre>
+
+<h3>Benchmark</h3>
+
+<p>To benchmark the TSO alone, run:</p>
+
+<pre><code>$ bin/omid.sh tsobench
+</code></pre>
+
+<h3>HBase</h3>
+
+<p>We've included a utility script to start a HBase cluster on your local
+machine. Run:</p>
+
+<pre><code>$ bin/omid.sh tran-hbase
+</code></pre>
+
+<p>For running in a cluster</p>
+
+<h2>API</h2>
+
+<p>The public api is in</p>
+
+<pre><code>src/main/java/com/yahoo/omid/client/TransactionalTable.java
+src/main/java/com/yahoo/omid/client/TransactionState.java
+src/main/java/com/yahoo/omid/client/TransactionManager.java
+</code></pre>
+
+<p>For an example of usage, look in</p>
+
+<pre><code>src/test/java/com/yahoo/omid/TestBasicTransaction.java
+</code></pre>
+
+<h2>Logging </h2>
+
+<p>Logging can be adjusted in src/main/resource/log4j.properties.</p>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Omid maintained by <a href="https://github.com/yahoo">yahoo</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
