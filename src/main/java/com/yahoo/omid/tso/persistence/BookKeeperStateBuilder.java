@@ -211,9 +211,9 @@ public class BookKeeperStateBuilder extends StateBuilder {
             } else {
                 while(entries.hasMoreElements()){
                     LedgerEntry le = entries.nextElement();
-                    lp.execute(ByteBuffer.wrap(le.getEntry()));
+                    boolean recovered = lp.execute(ByteBuffer.wrap(le.getEntry()));
                                        
-                    if(le.getEntryId() == 0){
+                    if(recovered || le.getEntryId() == 0){
                         ((BookKeeperStateBuilder.Context) ctx).setState(lp.getState());
                     }
                 }
@@ -279,10 +279,8 @@ public class BookKeeperStateBuilder extends StateBuilder {
         
         try{
             synchronized(ctx){
-                int counter = 0;
-                while(!ctx.isReady() || (counter > 10)){
-                    ctx.wait(1000);
-                    counter++;
+                while(!ctx.isReady()){
+                    ctx.wait();
                 }           
             }
         } catch (InterruptedException e) {
