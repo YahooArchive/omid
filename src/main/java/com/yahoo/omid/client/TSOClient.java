@@ -333,8 +333,8 @@ public class TSOClient extends SimpleChannelHandler {
       
       String host = conf.get("tso.host");
       int port = conf.getInt("tso.port", 1234);
-      max_retries = conf.getInt("tso.max_retries", 10);
-      retry_delay_ms = conf.getInt("tso.retry_delay_ms", 3000); 
+      max_retries = conf.getInt("tso.max_retries", 100);
+      retry_delay_ms = conf.getInt("tso.retry_delay_ms", 1000);
 
       if (host == null) {
          throw new IOException("tso.host missing from configuration");
@@ -359,7 +359,12 @@ public class TSOClient extends SimpleChannelHandler {
             throw e;
          }
          retries++;
-         bootstrap.connect(addr);
+         bootstrap.connect(addr).addListener(new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture future) throws Exception {
+               LOG.debug("Connection completed. Success: " + future.isSuccess());
+            }
+         });
          state = State.CONNECTING;
          return state;
       }
@@ -422,6 +427,7 @@ public class TSOClient extends SimpleChannelHandler {
          retries = 0;
       }
       clearState();
+      LOG.debug("Channel connected");
       Op o = queuedOps.poll();;
       while (o != null && state == State.CONNECTED) {
          o.execute(channel);
@@ -442,8 +448,24 @@ public class TSOClient extends SimpleChannelHandler {
    public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e)
          throws Exception {
       synchronized(state) {
+         LOG.debug("Channel disconnected");
          channel = null;
          state = State.DISCONNECTED;
+         for (CreateCallback cb : createCallbacks) {
+            cb.error(new IOException("Channel Disconnected"));
+         }
+         for (CommitCallback cb : commitCallbacks.values()) {
+            cb.error(new IOException("Channel Disconnected"));
+         }
+         for (List<CommitQueryCallback> lcqb : isCommittedCallbacks.values()) {
+            for (CommitQueryCallback cqb : lcqb) {
+               cqb.error(new IOException("Channel Disconnected"));
+            }
+         }
+         createCallbacks.clear();
+         commitCallbacks.clear();
+         isCommittedCallbacks.clear();
+         connectIfNeeded();
       }
    }
 
@@ -547,13 +569,14 @@ public class TSOClient extends SimpleChannelHandler {
          throws Exception {
       System.out.println("Unexpected exception " + e.getCause());
       e.getCause().printStackTrace();
+//      e.getChannel().disconnect();
 
       synchronized(state) {
          
          if (state == State.CONNECTING) {
             state = State.RETRY_CONNECT_WAIT;
-            if (LOG.isTraceEnabled()) {
-               LOG.trace("Retrying connect in " + retry_delay_ms + "ms " + retries);
+            if (LOG.isDebugEnabled()) {
+               LOG.debug("Retrying connect in " + retry_delay_ms + "ms " + retries);
             }
             try {
                retryTimer.schedule(new TimerTask() {

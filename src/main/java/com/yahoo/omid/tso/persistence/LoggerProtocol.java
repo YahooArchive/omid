@@ -48,14 +48,16 @@ public class LoggerProtocol extends TSOState{
         super(timestampOracle);
     }
     
+    private boolean commits;
+    private boolean oracle;
+    
     /**
      * Execute a logged entry (several logged ops)
      * @param bb Serialized operations
      * @return true if the recovery is finished
      */
-    boolean execute(ByteBuffer bb){
+    synchronized boolean execute(ByteBuffer bb){
         boolean done = !bb.hasRemaining();
-        boolean recovered = false;
         while(!done){
             byte op = bb.get();
             long timestamp, startTimestamp, commitTimestamp;
@@ -66,13 +68,14 @@ public class LoggerProtocol extends TSOState{
             case TIMESTAMPORACLE:
                 timestamp = bb.getLong();
                 this.getSO().initialize(timestamp);
+                oracle = true;
                 break;
             case COMMIT:
                 startTimestamp = bb.getLong();
                 commitTimestamp = bb.getLong();
                 processCommit(startTimestamp, commitTimestamp);
-                if (commitTimestamp < largestDeletedTimestamp) {
-                   recovered = true;
+                if (commitTimestamp < largestDeletedTimestamp.get()) {
+                   commits = true;
                 }
                 break;
             case LARGESTDELETEDTIMESTAMP:
@@ -93,7 +96,7 @@ public class LoggerProtocol extends TSOState{
             }
             if(bb.remaining() == 0) done = true;
         }
-        return recovered;
+        return oracle && commits;
     }
     
     /**

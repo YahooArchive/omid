@@ -61,9 +61,10 @@ public class TimestampOracle {
     public long next(DataOutputStream toWal) throws IOException {
         last++;
         if (last >= maxTimestamp) {
-            toWal.writeByte(LoggerProtocol.TIMESTAMPORACLE);
-            toWal.writeLong(last);
             maxTimestamp += TIMESTAMP_BATCH;
+            toWal.writeByte(LoggerProtocol.TIMESTAMPORACLE);
+            toWal.writeLong(maxTimestamp);
+            LOG.warn("Loggin timestamporacle " + maxTimestamp);
         }
         if(LOG.isTraceEnabled()){
             LOG.trace("Next timestamp: " + last);
@@ -106,8 +107,8 @@ public class TimestampOracle {
      */
     public void initialize(long timestamp){
         LOG.info("Initializing timestamp oracle");
-        this.last = this.first = Math.max(this.last, TIMESTAMP_BATCH);
-        maxTimestamp = this.first;
+        this.last = this.first = Math.max(this.last, timestamp + TIMESTAMP_BATCH);
+        maxTimestamp = this.first; // max timestamp will be persisted
         LOG.info("First: " + this.first + ", Last: " + this.last);
         initialize();
     }

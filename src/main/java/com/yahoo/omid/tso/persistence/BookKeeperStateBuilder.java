@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Enumeration;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Semaphore;
 
 import org.apache.bookkeeper.client.AsyncCallback.OpenCallback;
 import org.apache.bookkeeper.client.AsyncCallback.ReadCallback;
@@ -73,6 +74,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
      * It provides a good degree of parallelism.
      */
     private static final long BKREADBATCHSIZE = 50;
+    private static final int PARALLEL_READS = 4;
 
     public static TSOState getState(TSOServerConfig config){
         TSOState returnValue;
@@ -99,11 +101,13 @@ public class BookKeeperStateBuilder extends StateBuilder {
     ZooKeeper zk;
     LoggerProtocol lp;
     boolean enabled;
+    Semaphore throttleReads;
     TSOServerConfig config;
     
     BookKeeperStateBuilder(TSOServerConfig config) {
         this.timestampOracle = new TimestampOracle();
         this.config = config;
+        this.throttleReads = new Semaphore(PARALLEL_READS);
     }
 
     /**
@@ -205,6 +209,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
      */
     class LoggerExecutor implements ReadCallback {
         public void readComplete(int rc, LedgerHandle lh, Enumeration<LedgerEntry> entries, Object ctx){
+            throttleReads.release();
             if(rc != BKException.Code.OK){
                 LOG.error("Error while reading ledger entries." + BKException.getMessage(rc));
                 ((BookKeeperStateBuilder.Context) ctx).setState(null);
@@ -343,6 +348,12 @@ public class BookKeeperStateBuilder extends StateBuilder {
                 } else {
                     long counter = lh.getLastAddConfirmed();
                     while(counter >= 0){
+                        try {
+                           throttleReads.acquire();
+                        } catch (InterruptedException e) {
+                           // ignore
+                        }
+                        if (((Context) ctx).isReady()) break;
                         long nextBatch = Math.max(counter - BKREADBATCHSIZE + 1, 0);
                         lh.asyncReadEntries(nextBatch, counter, new LoggerExecutor(), ctx);
                         counter -= BKREADBATCHSIZE;

@@ -82,7 +82,7 @@ public class TestCommitQuery extends TSOTestBase {
       TimestampResponse tr3 = clientHandler.receiveMessage(TimestampResponse.class);
       assertTrue(tr3.timestamp > tr2.timestamp);
 
-      state.largestDeletedTimestamp = 1000000;
+      state.largestDeletedTimestamp.set(1000000);
 
       //
       // Test Commit query of half aborted transaction

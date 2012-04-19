@@ -175,8 +175,8 @@ public class TSOSharedMessageBuffer {
       ++_Coms;
       ++_Writes;
       int readBefore = writeBuffer.readableBytes();
-      long startDiff = startTimestamp - state.latestStartTimestamp;
-      long commitDiff = commitTimestamp - state.latestCommitTimestamp;
+      long startDiff = startTimestamp - state.latestStartTimestamp.get();
+      long commitDiff = commitTimestamp - state.latestCommitTimestamp.get();
       if (commitDiff == 1 && startDiff >= -32 && startDiff <= 31) {
          ++_1B;
         startDiff &= 0x3f;
@@ -230,8 +230,8 @@ public class TSOSharedMessageBuffer {
       
       _Avg2 += (written - _Avg2) / _Writes;
       _Avg += (written - _Avg) / _Coms;
-      state.latestStartTimestamp = startTimestamp;
-      state.latestCommitTimestamp = commitTimestamp;
+      state.latestStartTimestamp.set(startTimestamp);
+      state.latestCommitTimestamp.set(commitTimestamp);
    }
 
    public void writeHalfAbort(long startTimestamp) {
@@ -240,7 +240,7 @@ public class TSOSharedMessageBuffer {
       }
       ++_Writes;
       int readBefore = writeBuffer.readableBytes();
-      long diff = startTimestamp - state.latestHalfAbortTimestamp;
+      long diff = startTimestamp - state.latestHalfAbortTimestamp.get();
       if (diff >= -16 && diff <= 15) {
          writeBuffer.writeByte((byte)((diff & 0x1f) | (0x40)));
       } else if (diff >= Byte.MIN_VALUE && diff <= Byte.MAX_VALUE) {
@@ -252,7 +252,7 @@ public class TSOSharedMessageBuffer {
       }
       ++_ha;
       
-      state.latestHalfAbortTimestamp = startTimestamp;
+      state.latestHalfAbortTimestamp.set(startTimestamp);
       int written = writeBuffer.readableBytes() - readBefore;
       _Avg2 += (written - _Avg2) / _Writes;
    }
@@ -263,7 +263,7 @@ public class TSOSharedMessageBuffer {
       }
       ++_Writes;
       int readBefore = writeBuffer.readableBytes();
-      long diff = startTimestamp - state.latestFullAbortTimestamp;
+      long diff = startTimestamp - state.latestFullAbortTimestamp.get();
       if (diff >= -16 && diff <= 15) {
          writeBuffer.writeByte((byte)((diff & 0x1f) | (0x60)));
       } else if (diff >= Byte.MIN_VALUE && diff <= Byte.MAX_VALUE) {
@@ -275,7 +275,7 @@ public class TSOSharedMessageBuffer {
       }
       ++_fa;
       
-      state.latestFullAbortTimestamp = startTimestamp;
+      state.latestFullAbortTimestamp.set(startTimestamp);
       int written = writeBuffer.readableBytes() - readBefore;
       _Avg2 += (written - _Avg2) / _Writes;
    }

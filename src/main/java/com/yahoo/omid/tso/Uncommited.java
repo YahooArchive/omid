@@ -44,6 +44,7 @@ public class Uncommited {
    }
 
    public synchronized void commit(long id) {
+//      System.out.println("Committing uncommitted " + id);
       if (log && id < first_start) {
          System.out.println("id: " + id);
          Thread.dumpStack();

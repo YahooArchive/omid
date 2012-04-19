@@ -79,7 +79,7 @@ public class ThroughputMonitor extends Thread {
          
          long oldOverflow = TSOSharedMessageBuffer._overflows;
          for (;;) {
-            Thread.sleep(3000);
+            Thread.sleep(1000);
             
             long endTime = System.currentTimeMillis();
             long newCounter = TSOHandler.getTransferredBytes();
@@ -156,32 +156,32 @@ public class ThroughputMonitor extends Thread {
 //                    TSOSharedMessageBuffer._avgLT,
                     TSOPipelineFactory.bwhandler != null ? TSOPipelineFactory.bwhandler.getBytesReceivedPerSecond() / (double) (1024 * 1024) : 0,
                     TSOPipelineFactory.bwhandler != null ? TSOPipelineFactory.bwhandler.getBytesSentPerSecond() / (double) (1024 * 1024) : 0,
-                    state.largestDeletedTimestamp
+                    state.largestDeletedTimestamp.get()
 //                    Arrays.toString(TSOSharedMessageBuffer.freq)
                     )
               );
-            LOG.trace(String.format("SERVER: %4.3f TPS, %4.6f Abort/s  "
-                    + "Co: %2.2f Ha: %2.2f Fa: %2.2f Li: %2.2f Avg commit: %2.4f Avg flush: %5.2f "
-                    + "Avg write: %5.2f Tot overflows: %d Tot flushes: %d Tot empty flu: %d "
-                    + "Queries: %d CurrentBuffers: %d ExtraGets: %d AskedTSO: %d",
-                    (newCounter - oldCounter) / (float)(endTime - startTime) * 1000,
-                    (newAbortCount - oldAbortCount) / (float)(endTime - startTime) * 1000,
-                    (newComs - oldComs) / (float)(newWrites - oldWrites) * 100,
-                    (newHa - oldHa) / (float)(newWrites - oldWrites) * 100,
-                    (newFa - oldFa) / (float)(newWrites - oldWrites) * 100,
-                    (newLi - oldLi) / (float)(newWrites - oldWrites) * 100,
-                    avg,
-                    (newflusheSize - oldflusheSize) / (float)(newflushes - oldflushes),
-                    avg2,
-                    newOverflow - oldOverflow,
-                    (newflushes - oldflushes),
-                    newEmptyFlushes - oldEmptyFlushes,
-                    
-                    newQueries - oldQueries,
-                    TSOBuffer.nBuffers,
-                    newExtraGetsPerformed - oldExtraGetsPerformed,
-                    newAskedTSO - oldAskedTSO)
-              );
+//            LOG.trace(String.format("SERVER: %4.3f TPS, %4.6f Abort/s  "
+//                    + "Co: %2.2f Ha: %2.2f Fa: %2.2f Li: %2.2f Avg commit: %2.4f Avg flush: %5.2f "
+//                    + "Avg write: %5.2f Tot overflows: %d Tot flushes: %d Tot empty flu: %d "
+//                    + "Queries: %d CurrentBuffers: %d ExtraGets: %d AskedTSO: %d",
+//                    (newCounter - oldCounter) / (float)(endTime - startTime) * 1000,
+//                    (newAbortCount - oldAbortCount) / (float)(endTime - startTime) * 1000,
+//                    (newComs - oldComs) / (float)(newWrites - oldWrites) * 100,
+//                    (newHa - oldHa) / (float)(newWrites - oldWrites) * 100,
+//                    (newFa - oldFa) / (float)(newWrites - oldWrites) * 100,
+//                    (newLi - oldLi) / (float)(newWrites - oldWrites) * 100,
+//                    avg,
+//                    (newflusheSize - oldflusheSize) / (float)(newflushes - oldflushes),
+//                    avg2,
+//                    newOverflow - oldOverflow,
+//                    (newflushes - oldflushes),
+//                    newEmptyFlushes - oldEmptyFlushes,
+//                    
+//                    newQueries - oldQueries,
+//                    TSOBuffer.nBuffers,
+//                    newExtraGetsPerformed - oldExtraGetsPerformed,
+//                    newAskedTSO - oldAskedTSO)
+//              );
 //            if (TSOPipelineFactory.bwhandler != null) {
 //                TSOPipelineFactory.bwhandler.reset();
 //            }

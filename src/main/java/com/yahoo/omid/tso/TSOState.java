@@ -20,14 +20,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.util.ArrayList;
 import java.util.List;
-
-import com.yahoo.omid.tso.persistence.LoggerException.Code;
-import com.yahoo.omid.tso.persistence.BookKeeperStateBuilder;
-import com.yahoo.omid.tso.persistence.StateLogger;
-import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
+import com.yahoo.omid.tso.persistence.LoggerException.Code;
+import com.yahoo.omid.tso.persistence.StateLogger;
 
 
 /**
@@ -103,12 +103,12 @@ public class TSOState {
    /**
     * Largest Deleted Timestamp
     */
-   public long largestDeletedTimestamp = 0;
-   public long previousLargestDeletedTimestamp = 0;
-   public long latestCommitTimestamp = 0;
-   public long latestStartTimestamp = 0;
-   public long latestHalfAbortTimestamp = 0;
-   public long latestFullAbortTimestamp = 0;
+   public AtomicLong largestDeletedTimestamp = new AtomicLong();
+   public AtomicLong previousLargestDeletedTimestamp = new AtomicLong();
+   public AtomicLong latestCommitTimestamp = new AtomicLong();
+   public AtomicLong latestStartTimestamp = new AtomicLong();
+   public AtomicLong latestHalfAbortTimestamp = new AtomicLong();
+   public AtomicLong latestFullAbortTimestamp = new AtomicLong();
    
    public TSOSharedMessageBuffer sharedMessageBuffer = new TSOSharedMessageBuffer(this);
 
@@ -125,8 +125,8 @@ public class TSOState {
     * 
     * @param startTimestamp
     */
-   protected void processCommit(long startTimestamp, long commitTimestamp){
-       largestDeletedTimestamp = hashmap.setCommitted(startTimestamp, commitTimestamp, largestDeletedTimestamp);
+   protected synchronized void processCommit(long startTimestamp, long commitTimestamp){
+       largestDeletedTimestamp.set(hashmap.setCommitted(startTimestamp, commitTimestamp, largestDeletedTimestamp.get()));
    }
    
    /**
@@ -135,7 +135,7 @@ public class TSOState {
     * @param largestDeletedTimestamp
     */
    protected synchronized void processLargestDeletedTimestamp(long largestDeletedTimestamp){
-       this.largestDeletedTimestamp = Math.max(largestDeletedTimestamp, this.largestDeletedTimestamp);
+       this.largestDeletedTimestamp.set(Math.max(largestDeletedTimestamp, this.largestDeletedTimestamp.get()));
    }
    
    /**
@@ -143,7 +143,7 @@ public class TSOState {
     * 
     * @param startTimestamp
     */
-   protected void processAbort(long startTimestamp){
+   protected synchronized void processAbort(long startTimestamp){
        hashmap.setHalfAborted(startTimestamp);
        uncommited.abort(startTimestamp);
    }
@@ -153,7 +153,7 @@ public class TSOState {
     * 
     * @param startTimestamp
     */
-   protected void processFullAbort(long startTimestamp){
+   protected synchronized void processFullAbort(long startTimestamp){
        hashmap.setFullAborted(startTimestamp);
    }
 
@@ -191,16 +191,14 @@ public class TSOState {
    
    public TSOState(StateLogger logger, TimestampOracle timestampOracle) {
        this.timestampOracle = timestampOracle;
-       this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp = this.timestampOracle.get();
-       this.uncommited = new Uncommited(largestDeletedTimestamp);
+       this.previousLargestDeletedTimestamp.set(this.timestampOracle.get());
+       this.largestDeletedTimestamp.set(this.previousLargestDeletedTimestamp.get());
+       this.uncommited = new Uncommited(largestDeletedTimestamp.get());
        this.logger = logger;
    }
    
    public TSOState(TimestampOracle timestampOracle) {
-       this.timestampOracle = timestampOracle;
-       this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp = timestampOracle.get();
-       this.uncommited = new Uncommited(largestDeletedTimestamp);
-       this.logger = null;
+       this(null, timestampOracle);
     }
 }
 

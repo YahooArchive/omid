@@ -16,6 +16,11 @@
 
 package com.yahoo.omid.tso;
 
+import java.util.Collections;
+import java.util.Set;
+
+import org.jboss.netty.util.internal.ConcurrentHashMap;
+
 /**
  * A hash map that uses byte[] for the key rather than longs.
  * 
@@ -138,7 +143,7 @@ class CommitHashMap {
    
    // set of half aborted transactions
    // TODO: set the initial capacity in a smarter way
-   java.util.HashSet<Long> halfAborted = new java.util.HashSet<Long>(10000);
+   Set<Long> halfAborted = Collections.newSetFromMap(new ConcurrentHashMap<Long, Boolean>(10000));
 
    // add a new half aborted transaction
    void setHalfAborted(long startTimestamp) {
