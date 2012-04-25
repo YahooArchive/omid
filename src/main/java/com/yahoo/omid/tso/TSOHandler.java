@@ -149,11 +149,9 @@ public class TSOHandler extends SimpleChannelHandler {
    public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
       Object msg = e.getMessage();
       if (msg instanceof TimestampRequest) {
-         // System.out.println("Receive TimestampRequest .......................");
          handle((TimestampRequest) msg, ctx);
          return;
       } else if (msg instanceof CommitRequest) {
-         // System.out.println("Receive CommitRequest .......................");
          handle((CommitRequest) msg, ctx);
          return;
       } else if (msg instanceof FullAbortReport) {
@@ -247,14 +245,9 @@ public class TSOHandler extends SimpleChannelHandler {
     */
    public void handle(CommitRequest msg, ChannelHandlerContext ctx) {
       CommitResponse reply = new CommitResponse(msg.startTimestamp);
-      long time = 0;//System.nanoTime();
-      long timeAfter;
       ByteArrayOutputStream baos = sharedState.baos;
       DataOutputStream toWAL  = sharedState.toWAL;
       synchronized (sharedState) {
-         timeAfter = 0;//System.nanoTime();
-         waitTime += (timeAfter - time);
-         time = timeAfter;
          //0. check if it should abort
          if (msg.startTimestamp < timestampOracle.first()) {
             reply.committed = false;
@@ -269,27 +262,21 @@ public class TSOHandler extends SimpleChannelHandler {
                long value;
                value = sharedState.hashmap.get(r.getRow(), r.getTable(), r.hashCode());
                if (value != 0 && value > msg.startTimestamp) {
-                  //System.out.println("Abort...............");
                   reply.committed = false;//set as abort
                   break;
                } else if (value == 0 && sharedState.largestDeletedTimestamp.get() > msg.startTimestamp) {
                   //then it could have been committed after start timestamp but deleted by recycling
-                  LOG.warn("Old............... " + sharedState.largestDeletedTimestamp + " " + msg.startTimestamp);
+                  LOG.warn("Old transaction {Start timestamp  "  + msg.startTimestamp + "} {Largest deleted timestamp " + sharedState.largestDeletedTimestamp + "}");
                   reply.committed = false;//set as abort
                   break;
                }
             }
          }
 
-         timeAfter = 0;//System.nanoTime();
-         checkTime += (timeAfter - time);
-         time = timeAfter;
-
          if (reply.committed) {
             //2. commit
             try {
               long commitTimestamp = timestampOracle.next(toWAL);
-//              System.out.println(" Committing " + msg.startTimestamp + " with ts " + commitTimestamp);
               sharedState.uncommited.commit(commitTimestamp);
               sharedState.uncommited.commit(msg.startTimestamp);
               reply.commitTimestamp = commitTimestamp;
@@ -316,10 +303,6 @@ public class TSOHandler extends SimpleChannelHandler {
                      toWAL.writeByte(LoggerProtocol.LARGESTDELETEDTIMESTAMP);
                      toWAL.writeLong(sharedState.largestDeletedTimestamp.get());
                      Set<Long> toAbort = sharedState.uncommited.raiseLargestDeletedTransaction(sharedState.largestDeletedTimestamp.get());
-//                     if (!toAbort.isEmpty()) {
-//                         LOG.warn("Slow transactions after raising max: " + toAbort);
-//                         System.out.println("largest deleted ts: " + sharedState.largestDeletedTimestamp);
-//                     }
                      synchronized (sharedMsgBufLock) {
                         for (Long id : toAbort) {
                            sharedState.hashmap.setHalfAborted(id);
@@ -352,10 +335,6 @@ public class TSOHandler extends SimpleChannelHandler {
          }
          
          TSOHandler.transferredBytes.incrementAndGet();
-
-         timeAfter = 0;//System.nanoTime();
-         commitTime += (timeAfter - time);
-         time = timeAfter;
 
          ChannelandMessage cam = new ChannelandMessage(ctx, reply);
 

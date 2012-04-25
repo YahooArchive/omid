@@ -35,6 +35,11 @@ import com.yahoo.omid.tso.messages.TimestampResponse;
 public class TestPersistence extends TSOTestBase {
     private static final Log LOG = LogFactory.getLog(TestPersistence.class);
    
+   @Override
+   protected boolean recoveryEnabled() {
+      return true;
+   }
+    
    @Test
    public void testCommit() throws Exception {
         

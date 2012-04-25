@@ -35,6 +35,7 @@ public class LoggerProtocol extends TSOState{
     public final static byte LARGESTDELETEDTIMESTAMP = (byte) -3;
     public final static byte ABORT = (byte) -4;
     public final static byte FULLABORT = (byte) -5;
+    public final static byte LOGSTART = (byte) -6;
     
     
     /**
@@ -50,7 +51,8 @@ public class LoggerProtocol extends TSOState{
     
     private boolean commits;
     private boolean oracle;
-    
+    private boolean consumed;
+
     /**
      * Execute a logged entry (several logged ops)
      * @param bb Serialized operations
@@ -93,10 +95,13 @@ public class LoggerProtocol extends TSOState{
                 processFullAbort(timestamp);
                 
                 break;
+            case LOGSTART:
+                consumed = true;
+                break;
             }
             if(bb.remaining() == 0) done = true;
         }
-        return oracle && commits;
+        return (oracle && commits) || consumed;
     }
     
     /**

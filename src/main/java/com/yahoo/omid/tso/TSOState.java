@@ -143,7 +143,7 @@ public class TSOState {
     * 
     * @param startTimestamp
     */
-   protected synchronized void processAbort(long startTimestamp){
+   protected void processAbort(long startTimestamp){
        hashmap.setHalfAborted(startTimestamp);
        uncommited.abort(startTimestamp);
    }
@@ -153,7 +153,7 @@ public class TSOState {
     * 
     * @param startTimestamp
     */
-   protected synchronized void processFullAbort(long startTimestamp){
+   protected void processFullAbort(long startTimestamp){
        hashmap.setFullAborted(startTimestamp);
    }
 

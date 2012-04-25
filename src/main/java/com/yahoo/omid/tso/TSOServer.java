@@ -37,6 +37,8 @@ import org.jboss.netty.handler.codec.serialization.ObjectEncoder;
 import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
 
 import com.yahoo.omid.tso.persistence.BookKeeperStateBuilder;
+import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
+import com.yahoo.omid.tso.persistence.LoggerProtocol;
 
 /**
  * TSO Server with serialization
@@ -121,6 +123,13 @@ public class TSOServer implements Runnable {
             LOG.error("Couldn't build state");
             return;
         }
+
+        state.addRecord(new byte[] { LoggerProtocol.LOGSTART }, new AddRecordCallback() {
+            @Override
+            public void addRecordComplete(int rc, Object ctx) {
+            }
+        }, null);
+
         TSOState.BATCH_SIZE = config.getBatchSize();
         System.out.println("PARAM MAX_ITEMS: " + TSOState.MAX_ITEMS);
         System.out.println("PARAM BATCH_SIZE: " + TSOState.BATCH_SIZE);

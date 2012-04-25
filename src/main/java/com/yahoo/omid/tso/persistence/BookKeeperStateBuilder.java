@@ -17,9 +17,6 @@
 
 package com.yahoo.omid.tso.persistence;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Enumeration;
 import java.util.concurrent.CountDownLatch;
@@ -32,26 +29,21 @@ import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.conf.ClientConfiguration;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.zookeeper.AsyncCallback.DataCallback;
+import org.apache.zookeeper.AsyncCallback.StringCallback;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.AsyncCallback.StatCallback;
-import org.apache.zookeeper.AsyncCallback.StringCallback;
-import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.ZooDefs.Ids;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
 
 import com.yahoo.omid.tso.TSOServerConfig;
 import com.yahoo.omid.tso.TSOState;
 import com.yahoo.omid.tso.TimestampOracle;
-import com.yahoo.omid.tso.persistence.BookKeeperStateLogger.LedgerIdCreateCallback;
-import com.yahoo.omid.tso.persistence.BookKeeperStateLogger.LoggerWatcher;
-import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.BuilderInitCallback;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.LoggerInitCallback;
 import com.yahoo.omid.tso.persistence.LoggerException.Code;
 
@@ -78,7 +70,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
 
     public static TSOState getState(TSOServerConfig config){
         TSOState returnValue;
-        if(config.getZkServers() == null){
+        if(!config.isRecoveryEnabled()){
             LOG.warn("Logger is disabled");
             returnValue = new TSOState(new TimestampOracle());
         } else {
@@ -116,6 +108,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
      */
     class Context {
         TSOState state = null;
+        TSOServerConfig config = null;
         boolean ready = false;
         boolean hasState = false;
         boolean hasLogger = false;
@@ -143,7 +136,13 @@ public class BookKeeperStateBuilder extends StateBuilder {
                 notify();
             }
         }
-        
+
+        synchronized void abort() {
+           this.ready = true;
+           this.state = null;
+           notify();
+        }
+
         synchronized boolean isReady(){
             return ready;
         }
@@ -260,6 +259,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
          */
               
         Context ctx = new Context();
+        ctx.config = this.config;
         
         zk.create(LoggerConstants.OMID_LOCK_PATH, 
                                         new byte[0], 
@@ -284,7 +284,8 @@ public class BookKeeperStateBuilder extends StateBuilder {
         
         try{
             synchronized(ctx){
-                while(!ctx.isReady()){
+                if(!ctx.isReady()){
+                    // TODO make configurable maximum waiting
                     ctx.wait();
                 }           
             }
@@ -351,7 +352,9 @@ public class BookKeeperStateBuilder extends StateBuilder {
                         try {
                            throttleReads.acquire();
                         } catch (InterruptedException e) {
-                           // ignore
+                           LOG.error("Couldn't build state", e);
+                           ((Context) ctx).abort();
+                           break;
                         }
                         if (((Context) ctx).isReady()) break;
                         long nextBatch = Math.max(counter - BKREADBATCHSIZE + 1, 0);

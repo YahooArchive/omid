@@ -32,8 +32,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.Channel;
@@ -48,6 +46,8 @@ import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.handler.execution.ExecutionHandler;
 import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.tso.Committed;
 import com.yahoo.omid.tso.RowKey;
@@ -67,7 +67,7 @@ import com.yahoo.omid.tso.serialization.TSODecoder;
 import com.yahoo.omid.tso.serialization.TSOEncoder;
 
 public class TSOClient extends SimpleChannelHandler {
-   private static final Log LOG = LogFactory.getLog(TSOClient.class);
+   private static final Logger LOG = LoggerFactory.getLogger(TSOClient.class);
    
    public static long askedTSO = 0;
 
@@ -567,9 +567,7 @@ public class TSOClient extends SimpleChannelHandler {
    public void exceptionCaught(ChannelHandlerContext ctx,
                                ExceptionEvent e)
          throws Exception {
-      System.out.println("Unexpected exception " + e.getCause());
-      e.getCause().printStackTrace();
-//      e.getChannel().disconnect();
+      LOG.error("Unexpected exception", e.getCause());
 
       synchronized(state) {
          
