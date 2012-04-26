@@ -73,6 +73,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
         if(!config.isRecoveryEnabled()){
             LOG.warn("Logger is disabled");
             returnValue = new TSOState(new TimestampOracle());
+            returnValue.initialize();
         } else {
             BookKeeperStateBuilder builder = new BookKeeperStateBuilder(config);
             
@@ -112,6 +113,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
         boolean ready = false;
         boolean hasState = false;
         boolean hasLogger = false;
+        int pending = 0;
         StateLogger logger;
         
         synchronized void setState(TSOState state){
@@ -137,6 +139,14 @@ public class BookKeeperStateBuilder extends StateBuilder {
             }
         }
 
+        synchronized private void incrementPending(){
+           pending++;
+        }
+
+        synchronized private void decrementPending(){
+           pending--;
+        }
+
         synchronized void abort() {
            this.ready = true;
            this.state = null;
@@ -145,6 +155,10 @@ public class BookKeeperStateBuilder extends StateBuilder {
 
         synchronized boolean isReady(){
             return ready;
+        }
+
+        synchronized boolean isFinished(){
+           return ready && pending == 0;
         }
     }
     
@@ -221,6 +235,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
                         ((BookKeeperStateBuilder.Context) ctx).setState(lp.getState());
                     }
                 }
+                ((BookKeeperStateBuilder.Context) ctx).decrementPending();
             }
         }
     }
@@ -284,7 +299,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
         
         try{
             synchronized(ctx){
-                if(!ctx.isReady()){
+                if(!ctx.isFinished()){
                     // TODO make configurable maximum waiting
                     ctx.wait();
                 }           
@@ -357,6 +372,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
                            break;
                         }
                         if (((Context) ctx).isReady()) break;
+                        ((Context) ctx).incrementPending();
                         long nextBatch = Math.max(counter - BKREADBATCHSIZE + 1, 0);
                         lh.asyncReadEntries(nextBatch, counter, new LoggerExecutor(), ctx);
                         counter -= BKREADBATCHSIZE;

@@ -36,6 +36,7 @@ public class LoggerProtocol extends TSOState{
     public final static byte ABORT = (byte) -4;
     public final static byte FULLABORT = (byte) -5;
     public final static byte LOGSTART = (byte) -6;
+    public final static byte SNAPSHOT = (byte) -7;
     
     
     /**
@@ -51,7 +52,10 @@ public class LoggerProtocol extends TSOState{
     
     private boolean commits;
     private boolean oracle;
+    private boolean aborts;
     private boolean consumed;
+    private boolean hasSnapshot;
+    private int snapshot = -1;
 
     /**
      * Execute a logged entry (several logged ops)
@@ -70,6 +74,7 @@ public class LoggerProtocol extends TSOState{
             case TIMESTAMPORACLE:
                 timestamp = bb.getLong();
                 this.getSO().initialize(timestamp);
+                this.initialize();
                 oracle = true;
                 break;
             case COMMIT:
@@ -98,10 +103,20 @@ public class LoggerProtocol extends TSOState{
             case LOGSTART:
                 consumed = true;
                 break;
+            case SNAPSHOT:
+                int snapshot = (int) bb.getLong();
+                if (snapshot > this.snapshot) {
+                   this.snapshot = snapshot;
+                   this.hasSnapshot = true;
+                }
+                if (hasSnapshot && snapshot < this.snapshot) {
+                   this.aborts = true;
+                }
+                break;
             }
             if(bb.remaining() == 0) done = true;
         }
-        return (oracle && commits) || consumed;
+        return (oracle && commits && aborts) || consumed;
     }
     
     /**

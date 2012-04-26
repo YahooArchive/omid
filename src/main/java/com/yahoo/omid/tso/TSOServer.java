@@ -137,6 +137,7 @@ public class TSOServer implements Runnable {
         System.out.println("PARAM MAX_THREADS: " + maxThreads);
 
         final TSOHandler handler = new TSOHandler(channelGroup, state);
+        handler.start();
 
         bootstrap.setPipelineFactory(new TSOPipelineFactory(pipelineExecutor, handler));
         bootstrap.setOption("tcpNoDelay", false);
