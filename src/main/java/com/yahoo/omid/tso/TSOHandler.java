@@ -204,17 +204,14 @@ public class TSOHandler extends SimpleChannelHandler {
         synchronized (messageBuffersMap) {
             buffer = messageBuffersMap.get(ctx.getChannel());
             if (buffer == null) {
-//                synchronized (sharedState) {
-                    synchronized (sharedMsgBufLock) {
-                        bootstrap = true;
-                        channel = ctx.getChannel();
-                        buffer = sharedState.sharedMessageBuffer.new ReadingBuffer(channel);
-                        messageBuffersMap.put(channel, buffer);
-                        channelGroup.add(channel);
-//                        clientChannels.add(channel);
-                        LOG.warn("Channel connected: " + messageBuffersMap.size());
-                    }
-//                }
+                 synchronized (sharedMsgBufLock) {
+                     bootstrap = true;
+                     channel = ctx.getChannel();
+                     buffer = sharedState.sharedMessageBuffer.new ReadingBuffer(channel);
+                     messageBuffersMap.put(channel, buffer);
+                     channelGroup.add(channel);
+                     LOG.warn("Channel connected: " + messageBuffersMap.size());
+                 }
             }
         }
         if (bootstrap) {
