@@ -101,21 +101,6 @@ public class TSOHandler extends SimpleChannelHandler {
 
    private ExecutorService executor;
 
-   public volatile static float tsreqTime;
-   public volatile static int tsreqTot;
-   public volatile static float fabTime;
-   public volatile static int fabTot;
-   public volatile static float cqTime;
-   public volatile static int cqTot;
-   public volatile static float flushTime;
-   public volatile static int flushTot;
-   public volatile static float replyTime;
-   public volatile static int replyTot;
-
-   public volatile static float messageTime;
-
-   public volatile static int messageTot;
-
    /**
     * Constructor
     * @param channelGroup
@@ -167,26 +152,17 @@ public class TSOHandler extends SimpleChannelHandler {
    @Override
    public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
       Object msg = e.getMessage();
-      long before = System.nanoTime();
       if (msg instanceof TimestampRequest) {
          handle((TimestampRequest) msg, ctx);
-         tsreqTot++;
-         tsreqTime += (System.nanoTime() - before) / (float) 1000000;
          return;
       } else if (msg instanceof CommitRequest) {
          handle((CommitRequest) msg, ctx);
-         messageTot++;
-         messageTime += (System.nanoTime() - before) / (float) 1000000;
          return;
       } else if (msg instanceof FullAbortReport) {
          handle((FullAbortReport) msg, ctx);
-         fabTot++;
-         fabTime += (System.nanoTime() - before) / (float) 1000000;
          return;
       } else if (msg instanceof CommitQueryRequest) {
          handle((CommitQueryRequest) msg, ctx);
-         cqTot++;
-         cqTime += (System.nanoTime() - before) / (float) 1000000;
          return;
       }
    }
@@ -440,14 +416,11 @@ public class TSOHandler extends SimpleChannelHandler {
                         
                     } else {
                         synchronized (callbackLock) {
-                           long before = System.nanoTime();
                            @SuppressWarnings("unchecked")
                            ArrayList<ChannelandMessage> theBatch = (ArrayList<ChannelandMessage>) ctx;
                            for (ChannelandMessage cam : theBatch) {
                               Channels.write(cam.ctx, Channels.succeededFuture(cam.ctx.getChannel()), cam.msg);
                            }
-                           replyTot++;
-                           replyTime += (System.nanoTime() - before) / (float) 1000000;
                         }
                         
                     }
@@ -494,7 +467,6 @@ public class TSOHandler extends SimpleChannelHandler {
    }
 
    public void flush() {
-      long before = System.nanoTime();
       synchronized (sharedState) {
           if(LOG.isTraceEnabled()){
               LOG.trace("Adding record, size: " + sharedState.baos.size());
@@ -523,8 +495,6 @@ public class TSOHandler extends SimpleChannelHandler {
             flushFuture = scheduledExecutor.schedule(flushThread, TSOState.FLUSH_TIMEOUT, TimeUnit.MILLISECONDS);
          }
       }
-      flushTot++;
-      flushTime += (System.nanoTime() - before) / (float) 1000000;
    }
 
    public class FlushThread implements Runnable {
