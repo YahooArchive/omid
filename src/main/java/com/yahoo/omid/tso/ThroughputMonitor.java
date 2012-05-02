@@ -179,19 +179,6 @@ public class ThroughputMonitor extends Thread {
                     newExtraGetsPerformed - oldExtraGetsPerformed,
                     newAskedTSO - oldAskedTSO)
               );
-            LOG.trace(String.format("   `--2 "
-                  + "UncmtTot: %d UncmtTime: %.4f AbSnapTto: %d AbSnapTime: %.4f",
-                  TSOHandler.uncommittedTotal,
-                  TSOHandler.uncommittedTime,
-                  TSOHandler.abSnapTot,
-                  TSOHandler.abSnapTime
-                  )
-              );
-
-            TSOHandler.uncommittedTotal = 0;
-            TSOHandler.uncommittedTime = 0;
-            TSOHandler.abSnapTime = 0;
-            TSOHandler.abSnapTot = 0;
 //            if (TSOPipelineFactory.bwhandler != null) {
 //                TSOPipelineFactory.bwhandler.reset();
 //            }

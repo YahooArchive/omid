@@ -261,10 +261,6 @@ public class TSOHandler extends SimpleChannelHandler {
       }
    };
 
-   public volatile static long abSnapTot;
-
-   public volatile static float abSnapTime;
-
    public void createAbortedSnapshot() {
 
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -272,7 +268,6 @@ public class TSOHandler extends SimpleChannelHandler {
 
       long snapshot = sharedState.hashmap.getAndIncrementAbortedSnapshot();
 
-      long before = System.nanoTime();
       try {
          toWAL.writeByte(LoggerProtocol.SNAPSHOT);
          toWAL.writeLong(snapshot);
@@ -289,12 +284,7 @@ public class TSOHandler extends SimpleChannelHandler {
       }
 
       sharedState.addRecord(baos.toByteArray(), noCallback, null);
-      abSnapTot++;
-      abSnapTime += (System.nanoTime() - before) / (float) 1000000;
    }
-
-   public volatile static float uncommittedTime = 0;
-   public volatile static long uncommittedTotal = 0;
    
    /**
     * Handle the CommitRequest message
@@ -358,10 +348,10 @@ public class TSOHandler extends SimpleChannelHandler {
                   if (sharedState.largestDeletedTimestamp > oldLargestDeletedTimestamp) {
                      toWAL.writeByte(LoggerProtocol.LARGESTDELETEDTIMESTAMP);
                      toWAL.writeLong(sharedState.largestDeletedTimestamp);
-                     uncommittedTotal++;
-                     long before = System.nanoTime();
                      Set<Long> toAbort = sharedState.uncommited.raiseLargestDeletedTransaction(sharedState.largestDeletedTimestamp);
-                     uncommittedTime += ((System.nanoTime() - before)) / (float) 1000000;
+                     if (LOG.isWarnEnabled() && !toAbort.isEmpty()) {
+                        LOG.warn("Slow transactions after raising max: " + toAbort.size());
+                     }
                      synchronized (sharedMsgBufLock) {
                         for (Long id : toAbort) {
                            sharedState.hashmap.setHalfAborted(id);
@@ -371,8 +361,8 @@ public class TSOHandler extends SimpleChannelHandler {
                      }
                   }
                   if (sharedState.largestDeletedTimestamp > sharedState.previousLargestDeletedTimestamp + TSOState.MAX_ITEMS) {
-                     executor.submit(createAbortedSnaphostTask);
                      // schedule snapshot
+                     executor.submit(createAbortedSnaphostTask);
                      sharedState.previousLargestDeletedTimestamp = sharedState.largestDeletedTimestamp;
                   }
                   synchronized (sharedMsgBufLock) {

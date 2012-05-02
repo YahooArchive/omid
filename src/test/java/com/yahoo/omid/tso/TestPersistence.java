@@ -94,12 +94,9 @@ public class TestPersistence extends TSOTestBase {
             ;
 
          TimestampResponse tr1 = (TimestampResponse) msg;
-         LOG.info("trt " + msg);
 
          clientHandler.sendMessage(new CommitRequest(tr1.timestamp, new RowKey[] { r1, r2 }));
-         CommitResponse cr = clientHandler.receiveMessage(CommitResponse.class);
-         assertTrue(cr.committed);
-         LOG.info("cr " + cr);
+         clientHandler.receiveMessage(CommitResponse.class);
          clientHandler.sendMessage(new TimestampRequest());
       }
       clientHandler.clearMessages();
@@ -110,7 +107,6 @@ public class TestPersistence extends TSOTestBase {
       LOG.info("Going to restart TSO");
       setupTSO();
 
-      clientHandler.clearMessages();
       clientHandler.sendMessage(new TimestampRequest());
       clientHandler.receiveBootstrap();
       clientHandler.receiveMessage(TimestampResponse.class);
