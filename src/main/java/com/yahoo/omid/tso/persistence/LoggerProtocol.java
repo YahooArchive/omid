@@ -81,7 +81,7 @@ public class LoggerProtocol extends TSOState{
                 startTimestamp = bb.getLong();
                 commitTimestamp = bb.getLong();
                 processCommit(startTimestamp, commitTimestamp);
-                if (commitTimestamp < largestDeletedTimestamp.get()) {
+                if (commitTimestamp < largestDeletedTimestamp) {
                    commits = true;
                 }
                 break;

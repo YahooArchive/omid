@@ -103,12 +103,12 @@ public class TSOState {
    /**
     * Largest Deleted Timestamp
     */
-   public AtomicLong largestDeletedTimestamp = new AtomicLong();
-   public AtomicLong previousLargestDeletedTimestamp = new AtomicLong();
-   public AtomicLong latestCommitTimestamp = new AtomicLong();
-   public AtomicLong latestStartTimestamp = new AtomicLong();
-   public AtomicLong latestHalfAbortTimestamp = new AtomicLong();
-   public AtomicLong latestFullAbortTimestamp = new AtomicLong();
+   public long largestDeletedTimestamp = 0;
+   public long previousLargestDeletedTimestamp = 0;
+   public long latestCommitTimestamp = 0;
+   public long latestStartTimestamp = 0;
+   public long latestHalfAbortTimestamp = 0;
+   public long latestFullAbortTimestamp = 0;
    
    public TSOSharedMessageBuffer sharedMessageBuffer = new TSOSharedMessageBuffer(this);
 
@@ -126,7 +126,7 @@ public class TSOState {
     * @param startTimestamp
     */
    protected synchronized void processCommit(long startTimestamp, long commitTimestamp){
-       largestDeletedTimestamp.set(hashmap.setCommitted(startTimestamp, commitTimestamp, largestDeletedTimestamp.get()));
+       largestDeletedTimestamp = hashmap.setCommitted(startTimestamp, commitTimestamp, largestDeletedTimestamp);
    }
    
    /**
@@ -135,7 +135,7 @@ public class TSOState {
     * @param largestDeletedTimestamp
     */
    protected synchronized void processLargestDeletedTimestamp(long largestDeletedTimestamp){
-       this.largestDeletedTimestamp.set(Math.max(largestDeletedTimestamp, this.largestDeletedTimestamp.get()));
+       this.largestDeletedTimestamp = Math.max(largestDeletedTimestamp, this.largestDeletedTimestamp);
    }
    
    /**
@@ -191,8 +191,8 @@ public class TSOState {
    
    public TSOState(StateLogger logger, TimestampOracle timestampOracle) {
        this.timestampOracle = timestampOracle;
-       this.previousLargestDeletedTimestamp.set(this.timestampOracle.get());
-       this.largestDeletedTimestamp.set(this.previousLargestDeletedTimestamp.get());
+       this.previousLargestDeletedTimestamp = this.timestampOracle.get();
+       this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp;
        this.uncommited = new Uncommited(timestampOracle.first());
        this.logger = logger;
    }

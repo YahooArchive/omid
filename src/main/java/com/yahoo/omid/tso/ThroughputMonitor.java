@@ -156,11 +156,11 @@ public class ThroughputMonitor extends Thread {
 //                    TSOSharedMessageBuffer._avgLT,
                     TSOPipelineFactory.bwhandler != null ? TSOPipelineFactory.bwhandler.getBytesReceivedPerSecond() / (double) (1024 * 1024) : 0,
                     TSOPipelineFactory.bwhandler != null ? TSOPipelineFactory.bwhandler.getBytesSentPerSecond() / (double) (1024 * 1024) : 0,
-                    state.largestDeletedTimestamp.get()
+                    state.largestDeletedTimestamp
 //                    Arrays.toString(TSOSharedMessageBuffer.freq)
                     )
               );
-            LOG.trace(String.format("   `--- "
+            LOG.trace(String.format("   `--1 "
                     + "Co: %2.2f Ha: %2.2f Fa: %2.2f Li: %2.2f Avg commit: %2.4f Avg flush: %5.2f "
                     + "Avg write: %5.2f Tot overflows: %d Tot flushes: %d Tot empty flu: %d "
                     + "Queries: %d CurrentBuffers: %d ExtraGets: %d AskedTSO: %d",
@@ -179,6 +179,54 @@ public class ThroughputMonitor extends Thread {
                     newExtraGetsPerformed - oldExtraGetsPerformed,
                     newAskedTSO - oldAskedTSO)
               );
+            LOG.trace(String.format("   `--2 "
+                  + "UncmtTot: %d UncmtTime: %.4f AbSnapTto: %d AbSnapTime: %.4f MesgTot: %d MesgTime: %.4f" +
+                  " MesgT/M: %.6f tsreqTot: %d tsreqTime: %.4f tsreqT/M: %.6f fabTot: %d fabTime: %.4f fabT/M: %.6f",
+                  TSOHandler.uncommittedTotal,
+                  TSOHandler.uncommittedTime,
+                  TSOHandler.abSnapTot,
+                  TSOHandler.abSnapTime,
+                  TSOHandler.messageTot,
+                  TSOHandler.messageTime,
+                  TSOHandler.messageTime / TSOHandler.messageTot,
+                  TSOHandler.tsreqTot,
+                  TSOHandler.tsreqTime,
+                  TSOHandler.tsreqTime / TSOHandler.tsreqTot,
+                  TSOHandler.fabTot,
+                  TSOHandler.fabTime,
+                  TSOHandler.fabTime / TSOHandler.fabTot
+                  )
+              );
+            LOG.trace(String.format("   `--3 " +
+                  " cqTot: %d cqTime: %.4f cqT/M: %.6f flushTot: %d flushTime: %.4f flushT/M: %.6f repTot: %d repTime: %.4f repT/M: %.6f",
+                  TSOHandler.cqTot,
+                  TSOHandler.cqTime,
+                  TSOHandler.cqTime / TSOHandler.cqTot,
+                  TSOHandler.flushTot,
+                  TSOHandler.flushTime,
+                  TSOHandler.flushTime / TSOHandler.flushTot,
+                  TSOHandler.replyTot,
+                  TSOHandler.replyTime,
+                  TSOHandler.replyTime / TSOHandler.replyTot
+                  )
+              );
+
+            TSOHandler.uncommittedTotal = 0;
+            TSOHandler.uncommittedTime = 0;
+            TSOHandler.abSnapTime = 0;
+            TSOHandler.abSnapTot = 0;
+            TSOHandler.messageTime = 0;
+            TSOHandler.messageTot = 0;
+            TSOHandler.tsreqTot = 0;
+            TSOHandler.tsreqTime = 0;
+            TSOHandler.fabTot = 0;
+            TSOHandler.fabTime = 0;
+            TSOHandler.cqTot = 0;
+            TSOHandler.cqTime = 0;
+            TSOHandler.flushTot = 0;
+            TSOHandler.flushTime = 0;
+            TSOHandler.replyTot = 0;
+            TSOHandler.replyTime = 0;
 //            if (TSOPipelineFactory.bwhandler != null) {
 //                TSOPipelineFactory.bwhandler.reset();
 //            }
