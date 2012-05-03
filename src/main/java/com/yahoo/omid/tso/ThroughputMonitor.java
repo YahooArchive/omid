@@ -21,7 +21,7 @@ import org.apache.commons.logging.LogFactory;
 
 import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.client.TransactionalTable;
-import com.yahoo.omid.replication.ReferenceCountedBuffer;
+import com.yahoo.omid.replication.ReadersAwareBuffer;
 
 /**
  * Class for Throughput Monitoring
@@ -72,7 +72,7 @@ public class ThroughputMonitor extends Thread {
                     TSOPipelineFactory.bwhandler != null ? TSOPipelineFactory.bwhandler.getBytesSentPerSecond() / (double) (1024 * 1024) : 0,
                     state.largestDeletedTimestamp,
                     newQueries - oldQueries,
-                    ReferenceCountedBuffer.nBuffers
+                    ReadersAwareBuffer.nBuffers
                     )
               );
             

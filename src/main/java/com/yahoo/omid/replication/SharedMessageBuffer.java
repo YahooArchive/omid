@@ -16,102 +16,94 @@
 
 package com.yahoo.omid.replication;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.Iterator;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelFutureListener;
+import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.Channels;
-
-import com.yahoo.omid.tso.TSOMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SharedMessageBuffer {
 
-    private static final Log LOG = LogFactory.getLog(SharedMessageBuffer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SharedMessageBuffer.class);
 
-    ReferenceCountedBuffer pastBuffer = new ReferenceCountedBuffer();
-    ReferenceCountedBuffer currentBuffer = new ReferenceCountedBuffer();
+    ReadersAwareBuffer pastBuffer = new ReadersAwareBuffer();
+    ReadersAwareBuffer currentBuffer = new ReadersAwareBuffer();
     ChannelBuffer writeBuffer = currentBuffer.buffer;
-    Deque<ReferenceCountedBuffer> futureBuffer = new ArrayDeque<ReferenceCountedBuffer>();
+    BlockingQueue<ReadersAwareBuffer> bufferPool = new LinkedBlockingQueue<ReadersAwareBuffer>();
     Zipper zipper = new Zipper();
+    Set<ReadingBuffer> readingBuffers = new TreeSet<SharedMessageBuffer.ReadingBuffer>();
 
     public class ReadingBuffer implements Comparable<ReadingBuffer> {
         private ChannelBuffer readBuffer;
         private int readerIndex = 0;
-        private ReferenceCountedBuffer readingBuffer;
+        private ReadersAwareBuffer readingBuffer;
+        private ChannelHandlerContext ctx;
         private Channel channel;
 
-        public ReadingBuffer(Channel channel) {
-            this.channel = channel;
+        private ReadingBuffer(ChannelHandlerContext ctx) {
+            this.channel = ctx.getChannel();
+            this.ctx = ctx;
         }
 
         public void initializeIndexes() {
-            this.readingBuffer = currentBuffer.reading(this);
+            this.readingBuffer = currentBuffer;
             this.readBuffer = readingBuffer.buffer;
             this.readerIndex = readBuffer.writerIndex();
         }
 
-        public void flush() {
-            flush(true, false);
-        }
-
-        private void flush(boolean deleteRef, final boolean clearPast) {
+        /**
+         * Computes and returns the deltaSO for the associated client.
+         * 
+         * This function registers some callbacks in the future passed for cleanup purposes, so the ChannelFuture object
+         * must be notified after the communication is finished.
+         * 
+         * @param future It registers some callbacks on it
+         * @return the deltaSO for the associated client
+         */
+        public ChannelBuffer flush(ChannelFuture future) {
             int readable = readBuffer.readableBytes() - readerIndex;
 
             if (readable == 0 && readingBuffer != pastBuffer) {
-                if (wrap) {
-                    Channels.write(channel, tBuffer);
-                }
-                return;
+                return ChannelBuffers.EMPTY_BUFFER;
             }
 
-            ChannelBuffer temp;
-            if (wrap && readingBuffer != pastBuffer) {
-                temp = ChannelBuffers.wrappedBuffer(readBuffer.slice(readerIndex, readable), tBuffer);
-            } else {
-                temp = readBuffer.slice(readerIndex, readable);
-            }
-            ChannelFuture future = Channels.write(channel, temp);
+            ChannelBuffer deltaSO = readBuffer.slice(readerIndex, readable);
+            addFinishedWriteListener(future, readingBuffer);
+            readingBuffer.increaseReaders();
             readerIndex += readable;
             if (readingBuffer == pastBuffer) {
-                readingBuffer = currentBuffer.reading(this);
+                readingBuffer = currentBuffer;
                 readBuffer = readingBuffer.buffer;
                 readerIndex = 0;
                 readable = readBuffer.readableBytes();
-                if (wrap) {
-                    temp = ChannelBuffers.wrappedBuffer(readBuffer.slice(readerIndex, readable), tBuffer);
-                } else {
-                    temp = readBuffer.slice(readerIndex, readable);
-                }
-                Channels.write(channel, temp);
+                deltaSO = readBuffer.slice(readerIndex, readable);
+                addFinishedWriteListener(future, readingBuffer);
+                readingBuffer.increaseReaders();
                 readerIndex += readable;
-                if (deleteRef) {
-                    pastBuffer.readingBuffers.remove(this);
-                }
-                pastBuffer.incrementPending();
-                final ReferenceCountedBuffer pendingBuffer = pastBuffer;
-                future.addListener(new ChannelFutureListener() {
-                    @Override
-                    public void operationComplete(ChannelFuture future) throws Exception {
-                        if (clearPast) {
-                            pendingBuffer.readingBuffers.clear();
-                        }
-                        if (pendingBuffer.decrementPending() && pendingBuffer.readingBuffers.size() == 0) {
-                            pendingBuffer.buffer.clear();
-                            synchronized (futureBuffer) {
-                                futureBuffer.add(pendingBuffer);
-                            }
-                        }
-                    }
-                });
             }
 
+            return deltaSO;
+        }
+
+        private void addFinishedWriteListener(ChannelFuture future, final ReadersAwareBuffer buffer) {
+            future.addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    buffer.decreaseReaders();
+                    if (buffer.isReadyForPool()) {
+                        bufferPool.add(buffer);
+                    }
+                }
+            });
         }
 
         public ZipperState getZipperState() {
@@ -133,18 +125,10 @@ public class SharedMessageBuffer {
 
     }
 
-    private ChannelBuffer tBuffer;
-    private boolean wrap = false;
-
-    public void writeTimestamp(long timestamp) {
-        wrap = true;
-        tBuffer = ChannelBuffers.buffer(9);
-        tBuffer.writeByte(TSOMessage.TimestampResponse);
-        tBuffer.writeLong(timestamp);
-    }
-
-    public void rollBackTimestamp() {
-        wrap = false;
+    public ReadingBuffer getReadingBuffer(ChannelHandlerContext ctx) {
+        ReadingBuffer rb = new ReadingBuffer(ctx);
+        readingBuffers.add(rb);
+        return rb;
     }
 
     public void writeCommit(long startTimestamp, long commitTimestamp) {
@@ -177,35 +161,23 @@ public class SharedMessageBuffer {
 
     private void nextBuffer() {
         LOG.debug("Switching buffers");
-        Iterator<ReadingBuffer> it = pastBuffer.readingBuffers.iterator();
-        boolean moreBuffers = it.hasNext();
-        while (moreBuffers) {
-            ReadingBuffer buf = it.next();
-            moreBuffers = it.hasNext();
-            buf.flush(false, !moreBuffers);
+
+        // mark past buffer as scheduled for pool when all pending operations finish
+        pastBuffer.scheduleForPool();
+
+        for (final ReadingBuffer rb : readingBuffers) {
+            if (rb.readingBuffer == pastBuffer) {
+                ChannelFuture future = Channels.future(rb.channel);
+                ChannelBuffer cb = rb.flush(future);
+                Channels.write(rb.ctx, future, cb);
+            }
         }
 
         pastBuffer = currentBuffer;
-        currentBuffer = null;
-        synchronized (futureBuffer) {
-            if (!futureBuffer.isEmpty()) {
-                currentBuffer = futureBuffer.removeLast();
-            }
-        }
+        currentBuffer = bufferPool.poll();
         if (currentBuffer == null) {
-            currentBuffer = new ReferenceCountedBuffer();
+            currentBuffer = new ReadersAwareBuffer();
         }
         writeBuffer = currentBuffer.buffer;
-    }
-
-    public void reset() {
-        if (pastBuffer != null) {
-            pastBuffer.readingBuffers.clear();
-            pastBuffer.buffer.clear();
-        }
-        if (currentBuffer != null) {
-            currentBuffer.readingBuffers.clear();
-            currentBuffer.buffer.clear();
-        }
     }
 }

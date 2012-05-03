@@ -16,47 +16,47 @@
 
 package com.yahoo.omid.replication;
 
-import java.util.TreeSet;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 
 
-public class ReferenceCountedBuffer {
-   private static final Log LOG = LogFactory.getLog(ReferenceCountedBuffer.class);
+public class ReadersAwareBuffer {
+   private static final Log LOG = LogFactory.getLog(ReadersAwareBuffer.class);
 
    private static final int CAPACITY = 1024*1024;
    
    public ChannelBuffer buffer;
-   public TreeSet<SharedMessageBuffer.ReadingBuffer> readingBuffers = new TreeSet<SharedMessageBuffer.ReadingBuffer>();
-   private int pendingWrites = 0;
+   private int pendingReaders = 0;
+   private boolean scheduledForPool;
    
    public static long nBuffers;
-   
-   
-   public ReferenceCountedBuffer() {
-      this(true);
-   }
-   
-   public ReferenceCountedBuffer(boolean allocateBuffer) {
+
+   public ReadersAwareBuffer() {
       nBuffers++;
       LOG.warn("Allocated buffer");
-      if (allocateBuffer)
-         buffer = ChannelBuffers.directBuffer(CAPACITY);
+      buffer = ChannelBuffers.directBuffer(CAPACITY);
    }
    
-   public ReferenceCountedBuffer reading(SharedMessageBuffer.ReadingBuffer buf) {
-      readingBuffers.add(buf);
-      return this;
+   public synchronized void increaseReaders() {
+      pendingReaders++;
    }
    
-   public synchronized void incrementPending() {
-      ++pendingWrites;
+   public synchronized void decreaseReaders() {
+      pendingReaders--;
    }
-   
-   public synchronized boolean decrementPending() {
-      return --pendingWrites == 0;
+
+   public synchronized boolean isReadyForPool() {
+       return scheduledForPool && pendingReaders == 0;
+   }
+
+   public synchronized void scheduleForPool() {
+       scheduledForPool = true;
+   }
+
+   public synchronized void reset() {
+       pendingReaders = 0;
+       scheduledForPool = false;
    }
 }

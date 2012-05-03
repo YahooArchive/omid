@@ -36,6 +36,7 @@ import org.apache.commons.logging.LogFactory;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.Channels;
@@ -51,10 +52,9 @@ import com.yahoo.omid.tso.messages.CommitQueryRequest;
 import com.yahoo.omid.tso.messages.CommitQueryResponse;
 import com.yahoo.omid.tso.messages.CommitRequest;
 import com.yahoo.omid.tso.messages.CommitResponse;
-import com.yahoo.omid.tso.messages.CommittedTransactionReport;
 import com.yahoo.omid.tso.messages.FullAbortRequest;
-import com.yahoo.omid.tso.messages.LargestDeletedTimestampReport;
 import com.yahoo.omid.tso.messages.TimestampRequest;
+import com.yahoo.omid.tso.messages.TimestampResponse;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
 import com.yahoo.omid.tso.persistence.LoggerException;
 import com.yahoo.omid.tso.persistence.LoggerException.Code;
@@ -199,15 +199,14 @@ public class TSOHandler extends SimpleChannelHandler {
         }
 
         ReadingBuffer buffer;
-        Channel channel = null;
+        Channel channel = ctx.getChannel();
         boolean bootstrap = false;
         synchronized (messageBuffersMap) {
             buffer = messageBuffersMap.get(ctx.getChannel());
             if (buffer == null) {
                  synchronized (sharedMsgBufLock) {
                      bootstrap = true;
-                     channel = ctx.getChannel();
-                     buffer = sharedState.sharedMessageBuffer.new ReadingBuffer(channel);
+                     buffer = sharedState.sharedMessageBuffer.getReadingBuffer(ctx);
                      messageBuffersMap.put(channel, buffer);
                      channelGroup.add(channel);
                      LOG.warn("Channel connected: " + messageBuffersMap.size());
@@ -225,11 +224,13 @@ public class TSOHandler extends SimpleChannelHandler {
               channel.write(new AbortedTransactionReport(halfAborted.getStartTimestamp()));
            }
         }
+        ChannelBuffer cb;
+        ChannelFuture future = Channels.future(channel);
         synchronized (sharedMsgBufLock) {
-            sharedState.sharedMessageBuffer.writeTimestamp(timestamp);
-            buffer.flush();
-            sharedState.sharedMessageBuffer.rollBackTimestamp();
+            cb = buffer.flush(future);
         }
+        Channels.write(ctx, future, cb);
+        Channels.write(channel, new TimestampResponse(timestamp));
    }
    
    ChannelBuffer cb = ChannelBuffers.buffer(10);
