@@ -24,6 +24,7 @@ import org.junit.Test;
 
 import com.yahoo.omid.tso.RowKey;
 import com.yahoo.omid.tso.messages.AbortedTransactionReport;
+import com.yahoo.omid.tso.messages.CleanedTransactionReport;
 import com.yahoo.omid.tso.messages.CommitQueryRequest;
 import com.yahoo.omid.tso.messages.CommitRequest;
 import com.yahoo.omid.tso.messages.CommitResponse;
@@ -91,18 +92,18 @@ public class TestCommitAbortedReport extends TSOTestBase {
       secondClientHandler.receiveMessage();
       
       //
-      // Full Aborted Transaction Report
+      // Cleaned Transaction Report
       //
       clientHandler.sendMessage(new TimestampRequest());
-      FullAbortRequest far1 = clientHandler.receiveMessage(FullAbortRequest.class);
-      assertEquals(tr2.timestamp, far1.startTimestamp);      
+      CleanedTransactionReport cltr1 = clientHandler.receiveMessage(CleanedTransactionReport.class);
+      assertEquals(tr2.timestamp, cltr1.startTimestamp);      
       
       //
-      // Full Aborted Transaction Report
+      // Cleaned Transaction Report
       //
       secondClientHandler.sendMessage(new TimestampRequest());
-      FullAbortRequest far2 = secondClientHandler.receiveMessage(FullAbortRequest.class);
-      assertEquals(tr2.timestamp, far2.startTimestamp);      
+      CleanedTransactionReport cltr2 = secondClientHandler.receiveMessage(CleanedTransactionReport.class);
+      assertEquals(tr2.timestamp, cltr2.startTimestamp);      
    }
    
 }
