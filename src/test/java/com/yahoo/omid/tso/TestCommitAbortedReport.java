@@ -28,7 +28,7 @@ import com.yahoo.omid.tso.messages.CommitQueryRequest;
 import com.yahoo.omid.tso.messages.CommitRequest;
 import com.yahoo.omid.tso.messages.CommitResponse;
 import com.yahoo.omid.tso.messages.CommittedTransactionReport;
-import com.yahoo.omid.tso.messages.FullAbortReport;
+import com.yahoo.omid.tso.messages.FullAbortRequest;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 
@@ -84,7 +84,7 @@ public class TestCommitAbortedReport extends TSOTestBase {
 
       secondClientHandler.receiveMessage(TimestampResponse.class);
       
-      secondClientHandler.sendMessage(new FullAbortReport(tr2.timestamp));
+      secondClientHandler.sendMessage(new FullAbortRequest(tr2.timestamp));
       
       // Let the TSO receive and process the FullAbortReport
       secondClientHandler.sendMessage(new CommitQueryRequest(0, 0));
@@ -94,14 +94,14 @@ public class TestCommitAbortedReport extends TSOTestBase {
       // Full Aborted Transaction Report
       //
       clientHandler.sendMessage(new TimestampRequest());
-      FullAbortReport far1 = clientHandler.receiveMessage(FullAbortReport.class);
+      FullAbortRequest far1 = clientHandler.receiveMessage(FullAbortRequest.class);
       assertEquals(tr2.timestamp, far1.startTimestamp);      
       
       //
       // Full Aborted Transaction Report
       //
       secondClientHandler.sendMessage(new TimestampRequest());
-      FullAbortReport far2 = secondClientHandler.receiveMessage(FullAbortReport.class);
+      FullAbortRequest far2 = secondClientHandler.receiveMessage(FullAbortRequest.class);
       assertEquals(tr2.timestamp, far2.startTimestamp);      
    }
    

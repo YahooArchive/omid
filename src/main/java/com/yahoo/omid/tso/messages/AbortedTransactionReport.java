@@ -24,11 +24,10 @@ import org.jboss.netty.buffer.ChannelBuffer;
 import com.yahoo.omid.tso.TSOMessage;
 
 /**
- * The message object for sending a commit request to TSO
- * @author maysam
- *
+ * The message object that notifies clients of an aborted transaction
+ * 
  */
-public class AbortedTransactionReport implements TSOMessage {   
+public class AbortedTransactionReport implements TSOMessage {
    /**
     * Starting timestamp
     */
@@ -36,33 +35,29 @@ public class AbortedTransactionReport implements TSOMessage {
 
    public AbortedTransactionReport() {
    }
-   
+
    public AbortedTransactionReport(long startTimestamp) {
       this.startTimestamp = startTimestamp;
    }
 
    @Override
-      public String toString() {
-         return "Aborted Transaction Report: T_s:" + startTimestamp;
-      }
+   public String toString() {
+      return "Aborted Transaction Report: T_s:" + startTimestamp;
+   }
 
    @Override
-   public void readObject(ChannelBuffer aInputStream)
-      throws IOException {
-      
+   public void readObject(ChannelBuffer aInputStream) {
+
       startTimestamp = aInputStream.readLong();
    }
 
    @Override
-  public void writeObject(DataOutputStream aOutputStream)
-      throws IOException {
+   public void writeObject(DataOutputStream aOutputStream) throws IOException {
       aOutputStream.writeLong(startTimestamp);
    }
 
    @Override
-  public void writeObject(ChannelBuffer buffer)
-      {
+   public void writeObject(ChannelBuffer buffer) {
       buffer.writeLong(startTimestamp);
    }
 }
-

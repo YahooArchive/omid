@@ -28,7 +28,7 @@ import com.yahoo.omid.tso.messages.AbortedTransactionReport;
 import com.yahoo.omid.tso.messages.CommitRequest;
 import com.yahoo.omid.tso.messages.CommitResponse;
 import com.yahoo.omid.tso.messages.CommittedTransactionReport;
-import com.yahoo.omid.tso.messages.FullAbortReport;
+import com.yahoo.omid.tso.messages.FullAbortRequest;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 
@@ -69,7 +69,7 @@ public class TestBasicTransaction extends TSOTestBase {
       AbortedTransactionReport atr = clientHandler.receiveMessage(AbortedTransactionReport.class);
       assertEquals(cr2.startTimestamp, atr.startTimestamp);
       // Full Abort report
-      FullAbortReport far = clientHandler.receiveMessage(FullAbortReport.class);
+      FullAbortRequest far = clientHandler.receiveMessage(FullAbortRequest.class);
       assertEquals(cr2.startTimestamp, far.startTimestamp);
       
       TimestampResponse tr3 = clientHandler.receiveMessage(TimestampResponse.class);

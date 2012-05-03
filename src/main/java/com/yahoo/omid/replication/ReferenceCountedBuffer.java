@@ -14,7 +14,7 @@
  * limitations under the License. See accompanying LICENSE file.
  */
 
-package com.yahoo.omid.tso;
+package com.yahoo.omid.replication;
 
 import java.util.TreeSet;
 
@@ -23,30 +23,31 @@ import org.apache.commons.logging.LogFactory;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 
-public class TSOBuffer {
-   private static final Log LOG = LogFactory.getLog(TSOBuffer.class);
+
+public class ReferenceCountedBuffer {
+   private static final Log LOG = LogFactory.getLog(ReferenceCountedBuffer.class);
 
    private static final int CAPACITY = 1024*1024;
    
    public ChannelBuffer buffer;
-   public TreeSet<TSOSharedMessageBuffer.ReadingBuffer> readingBuffers = new TreeSet<TSOSharedMessageBuffer.ReadingBuffer>();
+   public TreeSet<SharedMessageBuffer.ReadingBuffer> readingBuffers = new TreeSet<SharedMessageBuffer.ReadingBuffer>();
    private int pendingWrites = 0;
    
    public static long nBuffers;
    
    
-   public TSOBuffer() {
+   public ReferenceCountedBuffer() {
       this(true);
    }
    
-   public TSOBuffer(boolean allocateBuffer) {
+   public ReferenceCountedBuffer(boolean allocateBuffer) {
       nBuffers++;
       LOG.warn("Allocated buffer");
       if (allocateBuffer)
          buffer = ChannelBuffers.directBuffer(CAPACITY);
    }
    
-   public TSOBuffer reading(TSOSharedMessageBuffer.ReadingBuffer buf) {
+   public ReferenceCountedBuffer reading(SharedMessageBuffer.ReadingBuffer buf) {
       readingBuffers.add(buf);
       return this;
    }

@@ -49,6 +49,8 @@ import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.yahoo.omid.replication.Zipper;
+import com.yahoo.omid.replication.ZipperState;
 import com.yahoo.omid.tso.Committed;
 import com.yahoo.omid.tso.RowKey;
 import com.yahoo.omid.tso.TSOMessage;
@@ -59,7 +61,7 @@ import com.yahoo.omid.tso.messages.CommitQueryResponse;
 import com.yahoo.omid.tso.messages.CommitRequest;
 import com.yahoo.omid.tso.messages.CommitResponse;
 import com.yahoo.omid.tso.messages.CommittedTransactionReport;
-import com.yahoo.omid.tso.messages.FullAbortReport;
+import com.yahoo.omid.tso.messages.FullAbortRequest;
 import com.yahoo.omid.tso.messages.LargestDeletedTimestampReport;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
@@ -275,7 +277,7 @@ public class TSOClient extends SimpleChannelHandler {
 
       public void execute(Channel channel) {
          try {
-            FullAbortReport far = new FullAbortReport();
+            FullAbortRequest far = new FullAbortRequest();
             far.startTimestamp = transactionId;
 
             ChannelFuture f = channel.write(far);
@@ -410,7 +412,7 @@ public class TSOClient extends SimpleChannelHandler {
    @Override
    synchronized
    public void channelOpen(ChannelHandlerContext ctx, ChannelStateEvent e) {
-      e.getChannel().getPipeline().addFirst("decoder", new TSODecoder());
+      e.getChannel().getPipeline().addFirst("decoder", new TSODecoder(new Zipper()));
       e.getChannel().getPipeline().addAfter("decoder", "encoder",
                                             new TSOEncoder());
    }
@@ -481,8 +483,6 @@ public class TSOClient extends SimpleChannelHandler {
          return transaction <= largestDeletedTimestamp;
       if (transaction <= largestDeletedTimestamp)
          return true;
-//      System.out.format("Asking TSO... hasConnectionTimestamp: %s connectionTimestamp: %d transaction: %d startTimestamp: %d\n",
-//            Boolean.valueOf(hasConnectionTimestamp).toString(), connectionTimestamp, transaction, startTimestamp);
       askedTSO++;
       SyncCommitQueryCallback cb = new SyncCommitQueryCallback();
       isCommitted(startTimestamp, transaction, cb);
@@ -547,8 +547,8 @@ public class TSOClient extends SimpleChannelHandler {
       } else if (msg instanceof CommittedTransactionReport) {
          CommittedTransactionReport ctr = (CommittedTransactionReport) msg;
          committed.commit(ctr.startTimestamp, ctr.commitTimestamp);
-      } else if (msg instanceof FullAbortReport) {
-         FullAbortReport r = (FullAbortReport) msg;
+      } else if (msg instanceof FullAbortRequest) {
+         FullAbortRequest r = (FullAbortRequest) msg;
          aborted.remove(r.startTimestamp);
       } else if (msg instanceof AbortedTransactionReport) {
          AbortedTransactionReport r = (AbortedTransactionReport) msg;
@@ -557,6 +557,8 @@ public class TSOClient extends SimpleChannelHandler {
          LargestDeletedTimestampReport r = (LargestDeletedTimestampReport) msg;
          largestDeletedTimestamp = r.largestDeletedTimestamp;
          committed.raiseLargestDeletedTransaction(r.largestDeletedTimestamp);
+      } else if (msg instanceof ZipperState) {
+         // ignore
       } else {
          LOG.error("Unknown message received " +  msg);
       }
@@ -634,8 +636,6 @@ public class TSOClient extends SimpleChannelHandler {
    }
 
    protected void processMessage(TSOMessage msg) {
-      // TODO Auto-generated method stub
-      
    }
 
 }

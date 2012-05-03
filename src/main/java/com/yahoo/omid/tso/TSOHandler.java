@@ -44,7 +44,7 @@ import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.group.ChannelGroup;
 
-import com.yahoo.omid.tso.TSOSharedMessageBuffer.ReadingBuffer;
+import com.yahoo.omid.replication.SharedMessageBuffer.ReadingBuffer;
 import com.yahoo.omid.tso.messages.AbortRequest;
 import com.yahoo.omid.tso.messages.AbortedTransactionReport;
 import com.yahoo.omid.tso.messages.CommitQueryRequest;
@@ -52,7 +52,7 @@ import com.yahoo.omid.tso.messages.CommitQueryResponse;
 import com.yahoo.omid.tso.messages.CommitRequest;
 import com.yahoo.omid.tso.messages.CommitResponse;
 import com.yahoo.omid.tso.messages.CommittedTransactionReport;
-import com.yahoo.omid.tso.messages.FullAbortReport;
+import com.yahoo.omid.tso.messages.FullAbortRequest;
 import com.yahoo.omid.tso.messages.LargestDeletedTimestampReport;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
@@ -158,8 +158,8 @@ public class TSOHandler extends SimpleChannelHandler {
       } else if (msg instanceof CommitRequest) {
          handle((CommitRequest) msg, ctx);
          return;
-      } else if (msg instanceof FullAbortReport) {
-         handle((FullAbortReport) msg, ctx);
+      } else if (msg instanceof FullAbortRequest) {
+         handle((FullAbortRequest) msg, ctx);
          return;
       } else if (msg instanceof CommitQueryRequest) {
          handle((CommitQueryRequest) msg, ctx);
@@ -217,10 +217,7 @@ public class TSOHandler extends SimpleChannelHandler {
         if (bootstrap) {
            synchronized (sharedState) {
               synchronized (sharedMsgBufLock) {
-                 channel.write(new CommittedTransactionReport(sharedState.latestStartTimestamp, sharedState.latestCommitTimestamp));
-                 channel.write(new AbortedTransactionReport(sharedState.latestHalfAbortTimestamp));
-                 channel.write(new FullAbortReport(sharedState.latestFullAbortTimestamp));
-                 channel.write(new LargestDeletedTimestampReport(sharedState.largestDeletedTimestamp));
+                 channel.write(buffer.getZipperState());
                  buffer.initializeIndexes();
               }
            }
@@ -523,7 +520,7 @@ public class TSOHandler extends SimpleChannelHandler {
    /**
     * Handle the FullAbortReport message
     */
-   public void handle(FullAbortReport msg, ChannelHandlerContext ctx) {
+   public void handle(FullAbortRequest msg, ChannelHandlerContext ctx) {
       synchronized (sharedState) {
          DataOutputStream toWAL  = sharedState.toWAL;
          try {

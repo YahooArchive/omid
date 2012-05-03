@@ -16,62 +16,48 @@
 
 package com.yahoo.omid.tso.messages;
 
-import java.io.*;
-import java.nio.ByteBuffer;
+import java.io.DataOutputStream;
+import java.io.IOException;
 
 import org.jboss.netty.buffer.ChannelBuffer;
 
 import com.yahoo.omid.tso.TSOMessage;
 
 /**
- * The message object for reporting the finish of cleanup after an abort
- * @author maysam
- *
+ * The message object that notifies clients of a cleaned up aborted transaction
+ * 
  */
-public class FullAbortReport implements TSOMessage {
-
+public class CleanedTransactionReport implements TSOMessage {
    /**
-    * the start timestamp of the fully aborted transaction
+    * Starting timestamp
     */
    public long startTimestamp;
 
-   /**
-    * Constructor from timestamp
-    */
-   public FullAbortReport() {
+   public CleanedTransactionReport() {
    }
 
-   /**
-    * Constructor from timestamp
-    * @param t
-    */
-   public FullAbortReport(long t) {
-      startTimestamp = t;
+   public CleanedTransactionReport(long startTimestamp) {
+      this.startTimestamp = startTimestamp;
    }
 
    @Override
-      public String toString() {
-         return "FullAbortReport: T_s:" + startTimestamp;
-      }
+   public String toString() {
+      return "Cleaned up Transaction Report: T_s:" + startTimestamp;
+   }
 
    @Override
-      public void readObject(ChannelBuffer aInputStream) 
-      throws IOException {
+   public void readObject(ChannelBuffer aInputStream) {
+
       startTimestamp = aInputStream.readLong();
-      }
+   }
 
    @Override
-      public void writeObject(DataOutputStream aOutputStream) 
-      throws IOException {
+   public void writeObject(DataOutputStream aOutputStream) throws IOException {
       aOutputStream.writeLong(startTimestamp);
-      }
+   }
 
-   
    @Override
-  public void writeObject(ChannelBuffer buffer)
- {
+   public void writeObject(ChannelBuffer buffer) {
       buffer.writeLong(startTimestamp);
    }
 }
-
-

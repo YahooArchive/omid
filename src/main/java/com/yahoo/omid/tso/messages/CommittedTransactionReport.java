@@ -18,121 +18,45 @@ package com.yahoo.omid.tso.messages;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.jboss.netty.buffer.ChannelBuffer;
 
 import com.yahoo.omid.tso.TSOMessage;
 
 /**
- * The message object for sending a commit request to TSO
- * @author maysam
- *
+ * The message object that notifies clients of a committed transaction
+ * 
  */
-public class CommittedTransactionReport implements TSOMessage {   
+public class CommittedTransactionReport implements TSOMessage {
    /**
     * Starting timestamp
     */
    public long startTimestamp;
    public long commitTimestamp;
-   private byte high;
-   
-   long lastStartTimestamp = 0;
-   long lastCommitTimestamp = 0;
-   
+
    public CommittedTransactionReport() {
    }
-   
-   public CommittedTransactionReport(byte high) {
-       this.high = high;
-   }
-   
+
    public CommittedTransactionReport(long startTimestamp, long commitTimestamp) {
       this.startTimestamp = startTimestamp;
       this.commitTimestamp = commitTimestamp;
    }
 
    @Override
-      public String toString() {
-         return "Committed Transaction Report: T_s:" + startTimestamp + " T_c:" + commitTimestamp;
-      }
+   public String toString() {
+      return "Committed Transaction Report: T_s:" + startTimestamp + " T_c:" + commitTimestamp;
+   }
 
+   // (De)serialization handled on Zipper 
    @Override
-   public void readObject(ChannelBuffer aInputStream)
-      throws IOException {
-
-       if (high >= 0) {
-//           System.out.println("1 byte " + high);
-           startTimestamp = lastStartTimestamp + high;
-           commitTimestamp = lastCommitTimestamp + 1;
-       } else if ((high & 0x40) == 0) {
-           byte low = aInputStream.readByte();
-//           System.out.println("2 bytes " + high + " " + low);
-           long startDiff = low;
-           startDiff |= (high << 4) & 0x3f0;
-//           long commitDiff = (low & 0x0f);
-
-            startTimestamp = lastStartTimestamp + startDiff;
-//            commitTimestamp = lastCommitTimestamp + commitDiff;
-            commitTimestamp = lastCommitTimestamp + 1;
-       } else {
-//           System.out.println("Else " + high);
-           switch (high) {
-           case TSOMessage.CommittedTransactionReportByteByte:
-               startTimestamp = lastStartTimestamp + aInputStream.readByte();
-               commitTimestamp = lastCommitTimestamp + aInputStream.readByte();
-               break;
-           case TSOMessage.CommittedTransactionReportShortByte:
-               startTimestamp = lastStartTimestamp + aInputStream.readShort();
-               commitTimestamp = lastCommitTimestamp + aInputStream.readByte();
-               break;
-           case TSOMessage.CommittedTransactionReportIntegerByte:
-               startTimestamp = lastStartTimestamp + aInputStream.readInt();
-               commitTimestamp = lastCommitTimestamp + aInputStream.readByte();
-               break;
-           case TSOMessage.CommittedTransactionReportLongByte:
-               startTimestamp = lastStartTimestamp + aInputStream.readLong();
-               commitTimestamp = lastCommitTimestamp + aInputStream.readByte();
-               break;
-
-           case TSOMessage.CommittedTransactionReportByteShort:
-               startTimestamp = lastStartTimestamp + aInputStream.readByte();
-               commitTimestamp = lastCommitTimestamp + aInputStream.readShort();
-               break;
-           case TSOMessage.CommittedTransactionReportShortShort:
-               startTimestamp = lastStartTimestamp + aInputStream.readShort();
-               commitTimestamp = lastCommitTimestamp + aInputStream.readShort();
-               break;
-           case TSOMessage.CommittedTransactionReportIntegerShort:
-               startTimestamp = lastStartTimestamp + aInputStream.readInt();
-               commitTimestamp = lastCommitTimestamp + aInputStream.readShort();
-               break;
-           case TSOMessage.CommittedTransactionReportLongShort:
-               startTimestamp = lastStartTimestamp + aInputStream.readLong();
-               commitTimestamp = lastCommitTimestamp + aInputStream.readShort();
-               break;
-           case TSOMessage.CommittedTransactionReport:
-               startTimestamp = aInputStream.readLong();
-               commitTimestamp = aInputStream.readLong();
-           }
-       }
-      
-      lastStartTimestamp = startTimestamp;
-      lastCommitTimestamp = commitTimestamp;
+   public void readObject(ChannelBuffer aInputStream) {
    }
 
    @Override
-  public void writeObject(DataOutputStream aOutputStream)
-      throws IOException {
-      aOutputStream.writeLong(startTimestamp);
-      aOutputStream.writeLong(commitTimestamp);
+   public void writeObject(DataOutputStream aOutputStream) throws IOException {
    }
-   
+
    @Override
-  public void writeObject(ChannelBuffer buffer)
-       {
-      buffer.writeLong(startTimestamp);
-      buffer.writeLong(commitTimestamp);
+   public void writeObject(ChannelBuffer buffer) {
    }
 }
-

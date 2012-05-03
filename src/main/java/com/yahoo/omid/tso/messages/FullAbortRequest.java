@@ -24,40 +24,50 @@ import org.jboss.netty.buffer.ChannelBuffer;
 import com.yahoo.omid.tso.TSOMessage;
 
 /**
- * The message object that notifies clients about and increase of the largest deleted timestamp
+ * The message object for reporting the finish of cleanup after an abort
+ * 
+ * @author maysam
  * 
  */
-public class LargestDeletedTimestampReport implements TSOMessage {
-   /**
-    * Starting timestamp
-    */
-   public long largestDeletedTimestamp;
+public class FullAbortRequest implements TSOMessage {
 
-   public LargestDeletedTimestampReport() {
+   /**
+    * the start timestamp of the fully aborted transaction
+    */
+   public long startTimestamp;
+
+   /**
+    * Constructor from timestamp
+    */
+   public FullAbortRequest() {
    }
 
-   public LargestDeletedTimestampReport(long largestDeletedTimestamp) {
-      this.largestDeletedTimestamp = largestDeletedTimestamp;
+   /**
+    * Constructor from timestamp
+    * 
+    * @param t
+    */
+   public FullAbortRequest(long t) {
+      startTimestamp = t;
    }
 
    @Override
    public String toString() {
-      return "Largest Deleted Timestamp Report: T_s:" + largestDeletedTimestamp;
+      return "FullAbortRequest: T_s:" + startTimestamp;
    }
 
    @Override
    public void readObject(ChannelBuffer aInputStream) {
-
-      largestDeletedTimestamp = aInputStream.readLong();
+      startTimestamp = aInputStream.readLong();
    }
 
    @Override
    public void writeObject(DataOutputStream aOutputStream) throws IOException {
-      aOutputStream.writeLong(largestDeletedTimestamp);
+      aOutputStream.writeLong(startTimestamp);
    }
 
    @Override
    public void writeObject(ChannelBuffer buffer) {
-      buffer.writeLong(largestDeletedTimestamp);
+      buffer.writeLong(startTimestamp);
    }
 }
