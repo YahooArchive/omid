@@ -60,9 +60,8 @@ public class LoggerProtocol extends TSOState{
     /**
      * Execute a logged entry (several logged ops)
      * @param bb Serialized operations
-     * @return true if the recovery is finished
      */
-    synchronized boolean execute(ByteBuffer bb){
+    synchronized void execute(ByteBuffer bb){
         boolean done = !bb.hasRemaining();
         while(!done){
             byte op = bb.get();
@@ -116,7 +115,16 @@ public class LoggerProtocol extends TSOState{
             }
             if(bb.remaining() == 0) done = true;
         }
-        return (oracle && commits && aborts) || consumed;
+    }
+
+    /**
+     * Checks whether all the required information has been recovered
+     * from the log.
+     * 
+     * @return true if the recovery has finished
+     */
+    public boolean finishedRecovery() {
+        return (oracle && commits && aborts) || consumed;        
     }
     
     /**
