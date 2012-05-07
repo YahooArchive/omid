@@ -123,7 +123,7 @@ public class LoggerProtocol extends TSOState{
      * 
      * @return true if the recovery has finished
      */
-    public boolean finishedRecovery() {
+    synchronized boolean finishedRecovery() {
         return (oracle && commits && aborts) || consumed;        
     }
     
