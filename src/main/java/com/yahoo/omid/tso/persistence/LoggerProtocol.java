@@ -61,7 +61,7 @@ public class LoggerProtocol extends TSOState{
      * Execute a logged entry (several logged ops)
      * @param bb Serialized operations
      */
-    synchronized void execute(ByteBuffer bb){
+    void execute(ByteBuffer bb){
         boolean done = !bb.hasRemaining();
         while(!done){
             byte op = bb.get();
@@ -123,7 +123,7 @@ public class LoggerProtocol extends TSOState{
      * 
      * @return true if the recovery has finished
      */
-    synchronized boolean finishedRecovery() {
+    boolean finishedRecovery() {
         return (oracle && commits && aborts) || consumed;        
     }
     

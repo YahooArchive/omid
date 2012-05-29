@@ -125,7 +125,7 @@ public class TSOState {
     * 
     * @param startTimestamp
     */
-   protected synchronized void processCommit(long startTimestamp, long commitTimestamp){
+   protected void processCommit(long startTimestamp, long commitTimestamp){
        largestDeletedTimestamp = hashmap.setCommitted(startTimestamp, commitTimestamp, largestDeletedTimestamp);
    }
    
