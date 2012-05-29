@@ -34,7 +34,7 @@ public class TSOServerConfig {
     }
 
     static public TSOServerConfig parseConfig(String args[]){
-        config = new TSOServerConfig();
+        TSOServerConfig config = new TSOServerConfig();
 
         if (args.length == 0) {
             new JCommander(config).usage();
