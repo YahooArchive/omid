@@ -54,21 +54,8 @@ public class TransactionalTable extends HTable {
    public static double extraVersionsAvg = 3;
    
    private static int CACHE_VERSIONS_OVERHEAD = 3;
-//   private int cacheVersions = 3;
    public double versionsAvg = 3;
    private static final double alpha = 0.975;
-//   private static final double betha = 1.25;
-
-//   private static Thread monitor = new ThroughputMonitor();
-//   private static boolean started = false;
-//   {
-//      synchronized(monitor) {
-//         if (!started) {
-//            started = true;
-//            monitor.start();
-//         }
-//      }
-//   }
 
    public TransactionalTable(Configuration conf, byte[] tableName) throws IOException {
       super(conf, tableName);
@@ -91,7 +78,6 @@ public class TransactionalTable extends HTable {
       TimeRange timeRange = get.getTimeRange();
       long startTime = timeRange.getMin();
       long endTime = Math.min(timeRange.getMax(), readTimestamp + 1);
-//      int maxVersions = get.getMaxVersions();
       tsget.setTimeRange(startTime, endTime).setMaxVersions((int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
       Map<byte[], NavigableSet<byte[]>> kvs = get.getFamilyMap();
       for (Map.Entry<byte[], NavigableSet<byte[]>> entry : kvs.entrySet()) {
@@ -105,23 +91,10 @@ public class TransactionalTable extends HTable {
             }
          }
       }
-//      Result result;
-//      Result filteredResult;
-//      do {
-//         result = super.get(tsget);
-//         filteredResult = filter(super.get(tsget), readTimestamp, maxVersions);
-//      } while (!result.isEmpty() && filteredResult == null);
       getsPerformed++;
       Result result = filter(transactionState, super.get(tsget), readTimestamp, (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
       return result == null ? new Result() : result;
-//      Scan scan = new Scan(get);
-//      scan.setRetainDeletesInOutput(true);
-//      ResultScanner rs = this.getScanner(transactionState, scan);
-//      Result r = rs.next();
-//      if (r == null) {
-//         r = new Result();
-//      }
-//      return r;
+
    }
 
    /**
@@ -209,8 +182,6 @@ public class TransactionalTable extends HTable {
     */
    public ResultScanner getScanner(TransactionState transactionState, Scan scan) throws IOException {
       Scan tsscan = new Scan(scan);
-//      tsscan.setRetainDeletesInOutput(true);
-//      int maxVersions = scan.getMaxVersions();
       tsscan.setMaxVersions((int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
       tsscan.setTimeRange(0, transactionState.getStartTimestamp() + 1);
       ClientScanner scanner = new ClientScanner(transactionState, tsscan, (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
@@ -321,7 +292,6 @@ public class TransactionalTable extends HTable {
             filtered.add(kv);
          }
       }
-//      cacheVersions = (int) versionsAvg;
       if (filtered.isEmpty()) {
          return null;
       }
@@ -384,53 +354,5 @@ public class TransactionalTable extends HTable {
       }
 
    }
-   
-//   public static class ThroughputMonitor extends Thread {
-//      private static final Log LOG = LogFactory.getLog(ThroughputMonitor.class);
-//      
-//      /**
-//       * Constructor
-//       */
-//      public ThroughputMonitor() {
-//      }
-//      
-//      @Override
-//      public void run() {
-//         try {
-//            long oldAskedTSO = TSOClient.askedTSO;
-//            long oldElementsGotten = TransactionalTable.elementsGotten;
-//            long oldElementsRead = TransactionalTable.elementsRead;
-//            long oldExtraGetsPerformed = TransactionalTable.extraGetsPerformed;
-//            long oldGetsPerformed = TransactionalTable.getsPerformed;
-//            for (;;) {
-//               Thread.sleep(10000);
-//
-//               long newGetsPerformed = TransactionalTable.getsPerformed;
-//               long newElementsGotten = TransactionalTable.elementsGotten;
-//               long newElementsRead = TransactionalTable.elementsRead;
-//               long newExtraGetsPerformed = TransactionalTable.extraGetsPerformed;
-//               long newAskedTSO = TSOClient.askedTSO;
-//               
-//               System.out.println(String.format("TSO CLIENT: GetsPerformed: %d ElsGotten: %d ElsRead: %d ExtraGets: %d AskedTSO: %d AvgVersions: %f",
-//                     newGetsPerformed - oldGetsPerformed,
-//                     newElementsGotten - oldElementsGotten,
-//                     newElementsRead - oldElementsRead,
-//                     newExtraGetsPerformed - oldExtraGetsPerformed,
-//                     newAskedTSO - oldAskedTSO,
-//                     TransactionalTable.extraVersionsAvg)
-//                 );
-//
-//               oldAskedTSO = newAskedTSO;
-//               oldElementsGotten = newElementsGotten;
-//               oldElementsRead = newElementsRead;
-//               oldExtraGetsPerformed = newExtraGetsPerformed;
-//               oldGetsPerformed = newGetsPerformed;
-//            }
-//         } catch (InterruptedException e) {
-//            // Stop monitoring asked
-//            return;
-//         }
-//      }
-//   }
 
 }
