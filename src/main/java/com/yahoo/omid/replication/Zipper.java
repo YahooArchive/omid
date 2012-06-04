@@ -6,15 +6,15 @@ import com.yahoo.omid.tso.TSOMessage;
 import com.yahoo.omid.tso.messages.AbortedTransactionReport;
 import com.yahoo.omid.tso.messages.CleanedTransactionReport;
 import com.yahoo.omid.tso.messages.CommittedTransactionReport;
-import com.yahoo.omid.tso.messages.FullAbortRequest;
 
 /**
  * Encodes replication messages efficiently.
  * 
  * 1 byte msgs
  * 
- * 00xx xxxx => commit report (ct diff = 1; st diff = xx xxxx) 010x xxxx => half
- * abort report 011x xxxx => full abort report
+ * 00xx xxxx => commit report (commit diff = 1; startTS diff = xx xxxx)
+ * 010x xxxx => half abort report (startTS diff = x xxxx)
+ * 011x xxxx => full abort report (startTS diff = x xxxx)
  * 
  * 2 byte msgs
  * 
@@ -214,23 +214,16 @@ public class Zipper {
       long startTimestamp = 0;
       long commitTimestamp = 0;
       if (high >= 0) {
-         // System.out.println("1 byte " + high);
          high = (byte) ((high << 26) >> 26);
          startTimestamp = lastStartTimestamp + high;
          commitTimestamp = lastCommitTimestamp + 1;
       } else if ((high & 0x40) == 0) {
          byte low = aInputStream.readByte();
-         // System.out.println("2 bytes " + high + " " + low);
          long startDiff = low & 0xff;
          startDiff |= ((high & 0x3f) << 26) >> 18;
-         // long commitDiff = (low & 0x0f);
-
-         // startDiff = (startDiff << 50) >> 50;
          startTimestamp = lastStartTimestamp + startDiff;
-         // commitTimestamp = lastCommitTimestamp + commitDiff;
          commitTimestamp = lastCommitTimestamp + 1;
       } else {
-         // System.out.println("Else " + high);
          switch (high) {
          case TSOMessage.CommittedTransactionReportByteByte:
             startTimestamp = lastStartTimestamp + aInputStream.readByte();
