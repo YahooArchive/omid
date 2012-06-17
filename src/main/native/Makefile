@@ -18,7 +18,7 @@
 ########################################################################
 
 OSTYPE := $(shell uname -s)
-CC = gcc 
+CC = g++
 LDSHARED = $(CC) -shared -fPIC
 TSO_COMMITHASHMAP_SO = libtso-commithashmap.so
 ifeq ($(OSTYPE),Darwin)
