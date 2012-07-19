@@ -146,6 +146,13 @@ public class TSOHandler extends SimpleChannelHandler {
       channelGroup.add(ctx.getChannel());
    }
 
+   @Override
+   public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+      synchronized (sharedMsgBufLock) {
+         sharedState.sharedMessageBuffer.removeReadingBuffer(ctx);
+      }
+   }
+
    /**
     * Handle receieved messages
     */

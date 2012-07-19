@@ -134,6 +134,10 @@ public class SharedMessageBuffer {
         return rb;
     }
 
+    public void removeReadingBuffer(ChannelHandlerContext ctx) {
+        readingBuffers.remove(new ReadingBuffer(ctx));
+    }
+
     public void writeCommit(long startTimestamp, long commitTimestamp) {
         checkBufferSpace();
         zipper.encodeCommit(writeBuffer, startTimestamp, commitTimestamp);
