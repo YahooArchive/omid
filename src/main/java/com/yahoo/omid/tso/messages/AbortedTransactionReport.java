@@ -28,36 +28,59 @@ import com.yahoo.omid.tso.TSOMessage;
  * 
  */
 public class AbortedTransactionReport implements TSOMessage {
-   /**
-    * Starting timestamp
-    */
-   public long startTimestamp;
+    /**
+     * Starting timestamp
+     */
+    public long startTimestamp;
 
-   public AbortedTransactionReport() {
-   }
+    public AbortedTransactionReport() {
+    }
 
-   public AbortedTransactionReport(long startTimestamp) {
-      this.startTimestamp = startTimestamp;
-   }
+    public AbortedTransactionReport(long startTimestamp) {
+        this.startTimestamp = startTimestamp;
+    }
 
-   @Override
-   public String toString() {
-      return "Aborted Transaction Report: T_s:" + startTimestamp;
-   }
+    @Override
+    public String toString() {
+        return "Aborted Transaction Report: T_s:" + startTimestamp;
+    }
 
-   @Override
-   public void readObject(ChannelBuffer aInputStream) {
+    @Override
+    public void readObject(ChannelBuffer aInputStream) {
 
-      startTimestamp = aInputStream.readLong();
-   }
+        startTimestamp = aInputStream.readLong();
+    }
 
-   @Override
-   public void writeObject(DataOutputStream aOutputStream) throws IOException {
-      aOutputStream.writeLong(startTimestamp);
-   }
+    @Override
+    public void writeObject(DataOutputStream aOutputStream) throws IOException {
+        aOutputStream.writeLong(startTimestamp);
+    }
 
-   @Override
-   public void writeObject(ChannelBuffer buffer) {
-      buffer.writeLong(startTimestamp);
-   }
+    @Override
+    public void writeObject(ChannelBuffer buffer) {
+        buffer.writeLong(startTimestamp);
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + (int) (startTimestamp ^ (startTimestamp >>> 32));
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        AbortedTransactionReport other = (AbortedTransactionReport) obj;
+        if (startTimestamp != other.startTimestamp)
+            return false;
+        return true;
+    }
+
 }

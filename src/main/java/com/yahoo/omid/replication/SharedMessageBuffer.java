@@ -88,7 +88,7 @@ public class SharedMessageBuffer {
                 readBuffer = readingBuffer.buffer;
                 readerIndex = 0;
                 readable = readBuffer.readableBytes();
-                deltaSO = readBuffer.slice(readerIndex, readable);
+                deltaSO = ChannelBuffers.wrappedBuffer(deltaSO, readBuffer.slice(readerIndex, readable));
                 addFinishedWriteListener(future, readingBuffer);
                 readingBuffer.increaseReaders();
                 readerIndex += readable;

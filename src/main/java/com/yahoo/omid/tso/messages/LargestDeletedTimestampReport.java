@@ -28,36 +28,59 @@ import com.yahoo.omid.tso.TSOMessage;
  * 
  */
 public class LargestDeletedTimestampReport implements TSOMessage {
-   /**
-    * Starting timestamp
-    */
-   public long largestDeletedTimestamp;
+    /**
+     * Starting timestamp
+     */
+    public long largestDeletedTimestamp;
 
-   public LargestDeletedTimestampReport() {
-   }
+    public LargestDeletedTimestampReport() {
+    }
 
-   public LargestDeletedTimestampReport(long largestDeletedTimestamp) {
-      this.largestDeletedTimestamp = largestDeletedTimestamp;
-   }
+    public LargestDeletedTimestampReport(long largestDeletedTimestamp) {
+        this.largestDeletedTimestamp = largestDeletedTimestamp;
+    }
 
-   @Override
-   public String toString() {
-      return "Largest Deleted Timestamp Report: T_s:" + largestDeletedTimestamp;
-   }
+    @Override
+    public String toString() {
+        return "Largest Deleted Timestamp Report: T_s:" + largestDeletedTimestamp;
+    }
 
-   @Override
-   public void readObject(ChannelBuffer aInputStream) {
+    @Override
+    public void readObject(ChannelBuffer aInputStream) {
 
-      largestDeletedTimestamp = aInputStream.readLong();
-   }
+        largestDeletedTimestamp = aInputStream.readLong();
+    }
 
-   @Override
-   public void writeObject(DataOutputStream aOutputStream) throws IOException {
-      aOutputStream.writeLong(largestDeletedTimestamp);
-   }
+    @Override
+    public void writeObject(DataOutputStream aOutputStream) throws IOException {
+        aOutputStream.writeLong(largestDeletedTimestamp);
+    }
 
-   @Override
-   public void writeObject(ChannelBuffer buffer) {
-      buffer.writeLong(largestDeletedTimestamp);
-   }
+    @Override
+    public void writeObject(ChannelBuffer buffer) {
+        buffer.writeLong(largestDeletedTimestamp);
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + (int) (largestDeletedTimestamp ^ (largestDeletedTimestamp >>> 32));
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        LargestDeletedTimestampReport other = (LargestDeletedTimestampReport) obj;
+        if (largestDeletedTimestamp != other.largestDeletedTimestamp)
+            return false;
+        return true;
+    }
+
 }

@@ -28,35 +28,61 @@ import com.yahoo.omid.tso.TSOMessage;
  * 
  */
 public class CommittedTransactionReport implements TSOMessage {
-   /**
-    * Starting timestamp
-    */
-   public long startTimestamp;
-   public long commitTimestamp;
+    /**
+     * Starting timestamp
+     */
+    public long startTimestamp;
+    public long commitTimestamp;
 
-   public CommittedTransactionReport() {
-   }
+    public CommittedTransactionReport() {
+    }
 
-   public CommittedTransactionReport(long startTimestamp, long commitTimestamp) {
-      this.startTimestamp = startTimestamp;
-      this.commitTimestamp = commitTimestamp;
-   }
+    public CommittedTransactionReport(long startTimestamp, long commitTimestamp) {
+        this.startTimestamp = startTimestamp;
+        this.commitTimestamp = commitTimestamp;
+    }
 
-   @Override
-   public String toString() {
-      return "Committed Transaction Report: T_s:" + startTimestamp + " T_c:" + commitTimestamp;
-   }
+    @Override
+    public String toString() {
+        return "Committed Transaction Report: T_s:" + startTimestamp + " T_c:" + commitTimestamp;
+    }
 
-   // (De)serialization handled on Zipper 
-   @Override
-   public void readObject(ChannelBuffer aInputStream) {
-   }
+    // (De)serialization handled on Zipper
+    @Override
+    public void readObject(ChannelBuffer aInputStream) {
+    }
 
-   @Override
-   public void writeObject(DataOutputStream aOutputStream) throws IOException {
-   }
+    @Override
+    public void writeObject(DataOutputStream aOutputStream) throws IOException {
+    }
 
-   @Override
-   public void writeObject(ChannelBuffer buffer) {
-   }
+    @Override
+    public void writeObject(ChannelBuffer buffer) {
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + (int) (commitTimestamp ^ (commitTimestamp >>> 32));
+        result = prime * result + (int) (startTimestamp ^ (startTimestamp >>> 32));
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        CommittedTransactionReport other = (CommittedTransactionReport) obj;
+        if (commitTimestamp != other.commitTimestamp)
+            return false;
+        if (startTimestamp != other.startTimestamp)
+            return false;
+        return true;
+    }
+
 }
