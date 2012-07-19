@@ -35,6 +35,8 @@ public class SharedMessageBuffer {
 
     private static final Logger LOG = LoggerFactory.getLogger(SharedMessageBuffer.class);
 
+    private static final int MAX_MESSAGE_SIZE = 30;
+
     ReadersAwareBuffer pastBuffer = new ReadersAwareBuffer();
     ReadersAwareBuffer currentBuffer = new ReadersAwareBuffer();
     ChannelBuffer writeBuffer = currentBuffer.buffer;
@@ -66,7 +68,8 @@ public class SharedMessageBuffer {
          * This function registers some callbacks in the future passed for cleanup purposes, so the ChannelFuture object
          * must be notified after the communication is finished.
          * 
-         * @param future It registers some callbacks on it
+         * @param future
+         *            It registers some callbacks on it
          * @return the deltaSO for the associated client
          */
         public ChannelBuffer flush(ChannelFuture future) {
@@ -132,31 +135,29 @@ public class SharedMessageBuffer {
     }
 
     public void writeCommit(long startTimestamp, long commitTimestamp) {
-        if (writeBuffer.writableBytes() < 30) {
-            nextBuffer();
-        }
+        checkBufferSpace();
         zipper.encodeCommit(writeBuffer, startTimestamp, commitTimestamp);
     }
 
     public void writeHalfAbort(long startTimestamp) {
-        if (writeBuffer.writableBytes() < 30) {
-            nextBuffer();
-        }
+        checkBufferSpace();
         zipper.encodeHalfAbort(writeBuffer, startTimestamp);
     }
 
     public void writeFullAbort(long startTimestamp) {
-        if (writeBuffer.writableBytes() < 30) {
-            nextBuffer();
-        }
+        checkBufferSpace();
         zipper.encodeFullAbort(writeBuffer, startTimestamp);
     }
 
     public void writeLargestIncrease(long largestTimestamp) {
-        if (writeBuffer.writableBytes() < 30) {
+        checkBufferSpace();
+        zipper.encodeLargestIncrease(writeBuffer, largestTimestamp);
+    }
+
+    private void checkBufferSpace() {
+        if (writeBuffer.writableBytes() < MAX_MESSAGE_SIZE) {
             nextBuffer();
         }
-        zipper.encodeLargestIncrease(writeBuffer, largestTimestamp);
     }
 
     private void nextBuffer() {
