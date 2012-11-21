@@ -87,3 +87,8 @@ For an example of usage, look in
 Logging 
 -------
 Logging can be adjusted in src/main/resource/log4j.properties.
+
+
+Acknowledgement
+-------
+This project has been partially supported by the EU Comission through the Cumulo Nimbo project (FP7-257993). 
