@@ -5,6 +5,7 @@
 target/
 bin/
 lib/
+src/main/native/
 *.log
 *.log.*
 *.orig
