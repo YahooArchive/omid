@@ -38,8 +38,8 @@ public class TestBasicTransaction extends OmidTestBase {
 
    @Test public void runTestSimple() throws Exception {
       try {
-         TransactionManager tm = new TransactionManager(conf);
-         TransactionalTable tt = new TransactionalTable(conf, TEST_TABLE);
+         TransactionManager tm = new TransactionManager(hbaseConf);
+         TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
          
          TransactionState t1 = tm.beginTransaction();
          LOG.info("Transaction created " + t1);
@@ -78,8 +78,8 @@ public class TestBasicTransaction extends OmidTestBase {
 
    @Test public void runTestManyVersions() throws Exception {
       try {
-         TransactionManager tm = new TransactionManager(conf);
-         TransactionalTable tt = new TransactionalTable(conf, TEST_TABLE);
+         TransactionManager tm = new TransactionManager(hbaseConf);
+         TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
 
          TransactionState t1 = tm.beginTransaction();
          LOG.info("Transaction created " + t1);
@@ -119,8 +119,8 @@ public class TestBasicTransaction extends OmidTestBase {
 
    @Test public void runTestInterleave() throws Exception {
       try {
-         TransactionManager tm = new TransactionManager(conf);
-         TransactionalTable tt = new TransactionalTable(conf, TEST_TABLE);
+         TransactionManager tm = new TransactionManager(hbaseConf);
+         TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
         
          TransactionState t1 = tm.beginTransaction();
          LOG.info("Transaction created " + t1);
@@ -160,8 +160,8 @@ public class TestBasicTransaction extends OmidTestBase {
 
    @Test public void runTestInterleaveScan() throws Exception {
       try {
-         TransactionManager tm = new TransactionManager(conf);
-         TransactionalTable tt = new TransactionalTable(conf, TEST_TABLE);
+         TransactionManager tm = new TransactionManager(hbaseConf);
+         TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
          
          TransactionState t1 = tm.beginTransaction();
          LOG.info("Transaction created " + t1);
@@ -230,8 +230,8 @@ public class TestBasicTransaction extends OmidTestBase {
    
    @Test public void runTestDeleteCol() throws Exception {
       try {
-         TransactionManager tm = new TransactionManager(conf);
-         TransactionalTable tt = new TransactionalTable(conf, TEST_TABLE);
+         TransactionManager tm = new TransactionManager(hbaseConf);
+         TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
          
          TransactionState t1 = tm.beginTransaction();
          LOG.info("Transaction created " + t1);
@@ -314,8 +314,8 @@ public class TestBasicTransaction extends OmidTestBase {
    
    @Test public void runTestDeleteRow() throws Exception {
       try {
-         TransactionManager tm = new TransactionManager(conf);
-         TransactionalTable tt = new TransactionalTable(conf, TEST_TABLE);
+         TransactionManager tm = new TransactionManager(hbaseConf);
+         TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
          
          TransactionState t1 = tm.beginTransaction();
          LOG.info("Transaction created " + t1);

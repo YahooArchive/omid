@@ -21,6 +21,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.apache.bookkeeper.util.LocalBookKeeper;
 import org.apache.commons.logging.Log;
@@ -48,17 +50,20 @@ import com.yahoo.omid.tso.TSOServer;
 public class OmidTestBase {
    private static final Log LOG = LogFactory.getLog(OmidTestBase.class);
    
+   private static final ExecutorService bkExecutor = Executors.newSingleThreadExecutor();
+   private static final ExecutorService tsoExecutor = Executors.newSingleThreadExecutor();
    private static LocalHBaseCluster hbasecluster;
-   protected static Configuration conf;
-   private static Thread bkthread;
-   private static Thread tsothread;
+   protected static Configuration hbaseConf;
    
    protected static final String TEST_TABLE = "test";
    protected static final String TEST_FAMILY = "data";
 
    @BeforeClass 
    public static void setupOmid() throws Exception {
-      bkthread = new Thread() {
+	  LOG.info("Setting up OmidTestBase...");
+
+	  // Bookkeeper setup
+      Runnable bkTask = new Runnable() {
             public void run() {
                try {
                   String[] args = new String[1];
@@ -72,52 +77,55 @@ public class OmidTestBase {
                }
             }
          };
-
-      tsothread = new Thread("TSO Thread") {
-            public void run() {
-               try {
-                  String[] args = new String[] { 
-                          "-port", "1234",
-                          "-batch", "100",
-                          "-ensemble", "4",
-                          "-quorum", "2",
-                          "-zk", "localhost:2181"
-                  };
-                  TSOServer.main(args);
-               } catch (InterruptedException e) {
-                  // go away quietly
-               } catch (Exception e) {
-                  LOG.error("Error starting TSO", e);
-               }
-            }
-         };
-      conf = HBaseConfiguration.create();
-      conf.set("hbase.coprocessor.region.classes", 
-               "com.yahoo.omid.client.regionserver.Compacter");
-      conf.setInt("hbase.hregion.memstore.flush.size", 100*1024);
-      conf.setInt("hbase.regionserver.nbreservationblocks", 1);
-      conf.set("tso.host", "localhost");
-      conf.setInt("tso.port", 1234);
-      final String rootdir = "/tmp/hbase.test.dir/";
-      File rootdirFile = new File(rootdir);
-      if (rootdirFile.exists()) {
-         delete(rootdirFile);
-      }
-      conf.set("hbase.rootdir", rootdir);
-
-      bkthread.start();
-
+      
+      bkExecutor.execute(bkTask);
       if (!LocalBookKeeper.waitForServerUp("localhost:2181", 10000)) {
          throw new Exception("Error starting zookeeper/bookkeeper");
       }
       
       Thread.sleep(5000);
-      tsothread.start();
+      
+      // TSO Setup
+      Runnable tsoTask = new Runnable() {
+          public void run() {
+             try {
+                String[] args = new String[] { 
+                        "-port", "1234",
+                        "-batch", "100",
+                        "-ensemble", "4",
+                        "-quorum", "2",
+                        "-zk", "localhost:2181"
+                };
+                TSOServer.main(args);
+             } catch (InterruptedException e) {
+                // go away quietly
+             } catch (Exception e) {
+                LOG.error("Error starting TSO", e);
+             }
+          }
+       };
+
+      tsoExecutor.execute(tsoTask);
       waitForSocketListening("localhost", 1234);
+      
       Thread.sleep(5000);
 
-      hbasecluster = new LocalHBaseCluster(conf, 1, 1);
+      // HBase setup
+      hbaseConf = HBaseConfiguration.create();
+      hbaseConf.set("hbase.coprocessor.region.classes", 
+               "com.yahoo.omid.client.regionserver.Compacter");
+      hbaseConf.setInt("hbase.hregion.memstore.flush.size", 100*1024);
+      hbaseConf.setInt("hbase.regionserver.nbreservationblocks", 1);
+      hbaseConf.set("tso.host", "localhost");
+      hbaseConf.setInt("tso.port", 1234);
+      final String rootdir = "/tmp/hbase.test.dir/";
+      File rootdirFile = new File(rootdir);
+      if (rootdirFile.exists()) {
+         delete(rootdirFile);
+      }
+      hbaseConf.set("hbase.rootdir", rootdir);
 
+      hbasecluster = new LocalHBaseCluster(hbaseConf, 1, 1);
       hbasecluster.startup();
       
       while (hbasecluster.getActiveMaster() == null || !hbasecluster.getActiveMaster().isInitialized()) {
@@ -134,27 +142,21 @@ public class OmidTestBase {
         throw new FileNotFoundException("Failed to delete file: " + f);
     }
    
-   @AfterClass public static void teardownOmid() throws Exception {
+   @AfterClass 
+   public static void teardownOmid() throws Exception {
+	   LOG.info("Tearing down OmidTestBase...");
       if (hbasecluster != null) {
          hbasecluster.shutdown();
          hbasecluster.join();
       }
-
-      if (tsothread != null) {
-         tsothread.interrupt();
-         tsothread.join();
-      }
-
-      if (bkthread != null) {
-         bkthread.interrupt();
-         bkthread.join();
-      }
+      tsoExecutor.shutdown();
+      bkExecutor.shutdown();
       waitForSocketNotListening("localhost", 1234);
    }
 
    @Before
    public void setUp() throws Exception {
-      HBaseAdmin admin = new HBaseAdmin(conf);
+      HBaseAdmin admin = new HBaseAdmin(hbaseConf);
 
       if (!admin.tableExists(TEST_TABLE)) {
          HTableDescriptor desc = new HTableDescriptor(TEST_TABLE);
@@ -178,7 +180,7 @@ public class OmidTestBase {
    public void tearDown() {
       try {
          LOG.info("tearing Down");
-         HBaseAdmin admin = new HBaseAdmin(conf);
+         HBaseAdmin admin = new HBaseAdmin(hbaseConf);
          admin.disableTable(TEST_TABLE);
          admin.deleteTable(TEST_TABLE);
 
@@ -227,13 +229,13 @@ public class OmidTestBase {
    }
 
    protected static void dumpTable(String table) throws Exception {
-      HTable t = new HTable(conf, table);
+      HTable t = new HTable(hbaseConf, table);
       if (LOG.isTraceEnabled()) {
          ResultScanner rs = t.getScanner(new Scan());
          Result r = rs.next();
          while (r != null) {
             for (KeyValue kv : r.list()) {
-               LOG.trace("KV: " + kv.toString() + " value:" + Bytes.toString(kv.getValue()));
+               LOG.trace("KV: " + kv.getKeyString().toString() + " value:" + Bytes.toString(kv.getValue()));
             }
             r = rs.next();
          }
@@ -243,7 +245,7 @@ public class OmidTestBase {
    protected static boolean verifyValue(byte[] table, byte[] row, 
                                         byte[] fam, byte[] col, byte[] value) {
       try {
-         HTable t = new HTable(conf, table);
+         HTable t = new HTable(hbaseConf, table);
          Get g = new Get(row).setMaxVersions(1);
          Result r = t.get(g);
          KeyValue kv = r.getColumnLatest(fam, col);
