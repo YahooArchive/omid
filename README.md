@@ -3,12 +3,12 @@ Omid
 
 The Omid project provides transactional support for key-value stores using Snapshot Isolation. Omid stands for Optimistically transactional Management in Datasources. At this stage of the project, HBase is the only supported data-store.
 
-If you have any question, please take a look to the [wiki](https://github.com/yahoo/omid/wiki) or contact us at omid-project@googlegroups.com or read [the online archives](https://groups.google.com/forum/?fromgroups=#!forum/omid-project)
+If you have any question, please take a look to the [Wiki](https://github.com/yahoo/omid/wiki) or contact us at omid-project@googlegroups.com or read [the online archives](https://groups.google.com/forum/?fromgroups=#!forum/omid-project)
 
 Use Cases
 ---------
 
-Add diagram.
+Add UCs.
 
 Basic Architecture
 ------------------
@@ -16,6 +16,8 @@ Basic Architecture
 The main component of Omid is a server called the Status Oracle (TSO.) The TSO contains all the information needed to manage transactions. Applications requiring transactional support in key-value stores need to use the API provided by special components provided by Omid called Transactional Clients (TCs). TCs are in charge of connecting to the TSO and perform the required operations in data-stores. The TSO replicates transactional information to the TCs which just contact the TSO when they want to start a transaction or commit it.
 
 The TSO uses BookKeeper as a Write-Ahead Log where it dumps all its state. In case of crash failures it is possible to restart the TSO without losing any commit information.
+
+The core architecture of the software is described in more detail in the [Technical Details](https://github.com/yahoo/omid/wiki/Technical-Details) section of the Wiki.
 
 Compilation
 -----------
