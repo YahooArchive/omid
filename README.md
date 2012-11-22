@@ -30,8 +30,8 @@ To compile Omid:
 
 Tests should run cleanly.
 
-Running
--------
+Set-Up
+------
 
 You need to run four components before running the transactional client in your applications: Bookkeeper, Zookeeper, Omid TSO and HBase. These are their dependencies:
 
