@@ -1,0 +1,14 @@
+.classpath
+.project
+.settings
+.metadata
+target/
+bin/
+lib/
+*.log
+*.log.*
+*.orig
+*.iml
+*.ipr
+.idea/
+*.iws
