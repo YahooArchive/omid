@@ -13,9 +13,9 @@ Add diagram.
 Basic Architecture
 ------------------
 
-The main component of Omid is a server called the Status Oracle (TSO). The TSO contains all the information needed to manage transactions. Applications requiring transactional support in key-value stores need to use the API provided by special components provided by Omid called Transactional Clients (TCs). TCs are in charge of connecting to the TSO and perform the required operations in data-stores. The TSO replicates transactional information to the clients which just contact the TSO when they want to start a transaction or commit it.
+The main component of Omid is a server called the Status Oracle (TSO.) The TSO contains all the information needed to manage transactions. Applications requiring transactional support in key-value stores need to use the API provided by special components provided by Omid called Transactional Clients (TCs). TCs are in charge of connecting to the TSO and perform the required operations in data-stores. The TSO replicates transactional information to the TCs which just contact the TSO when they want to start a transaction or commit it.
 
-The TSO uses BookKeeper as a Write-Ahead Log where it dumps all its state. In case of crash failures it is possible to restart the server without losing any commit information.
+The TSO uses BookKeeper as a Write-Ahead Log where it dumps all its state. In case of crash failures it is possible to restart the TSO without losing any commit information.
 
 Compilation
 -----------
@@ -46,7 +46,7 @@ Hence, the order of starting should be:
 3. TSO
 4. Hbase
 
-### Zookeeper & Bookkeeper
+### Zookeeper & Bookkeepergit
 Omid doesn't use anything special in Zookeeper or Bookkeeper, so you can use any install for these. However, if you are running this anywhere but localhost, you need to update the setting for HBase and TSO. See the HBase docs for changing the Zookeeper quorum. For TSO, you need to modify bin/omid.sh.
 
 For simplicity we've included a utility script which starts Zookeeper and Bookkeeper. Run:
