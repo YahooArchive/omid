@@ -13,3 +13,4 @@ src/main/native/
 *.ipr
 .idea/
 *.iws
+*~
