@@ -149,8 +149,8 @@ public class OmidTestBase {
          hbasecluster.shutdown();
          hbasecluster.join();
       }
-      tsoExecutor.shutdown();
-      bkExecutor.shutdown();
+      tsoExecutor.shutdownNow();
+      bkExecutor.shutdownNow();
       waitForSocketNotListening("localhost", 1234);
    }
 
