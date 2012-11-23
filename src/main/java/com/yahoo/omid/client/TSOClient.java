@@ -56,6 +56,7 @@ import com.yahoo.omid.tso.RowKey;
 import com.yahoo.omid.tso.TSOMessage;
 import com.yahoo.omid.tso.messages.AbortRequest;
 import com.yahoo.omid.tso.messages.AbortedTransactionReport;
+import com.yahoo.omid.tso.messages.CleanedTransactionReport;
 import com.yahoo.omid.tso.messages.CommitQueryRequest;
 import com.yahoo.omid.tso.messages.CommitQueryResponse;
 import com.yahoo.omid.tso.messages.CommitRequest;
@@ -547,8 +548,8 @@ public class TSOClient extends SimpleChannelHandler {
       } else if (msg instanceof CommittedTransactionReport) {
          CommittedTransactionReport ctr = (CommittedTransactionReport) msg;
          committed.commit(ctr.startTimestamp, ctr.commitTimestamp);
-      } else if (msg instanceof FullAbortRequest) {
-         FullAbortRequest r = (FullAbortRequest) msg;
+      } else if (msg instanceof CleanedTransactionReport) {
+          CleanedTransactionReport r = (CleanedTransactionReport) msg;
          aborted.remove(r.startTimestamp);
       } else if (msg instanceof AbortedTransactionReport) {
          AbortedTransactionReport r = (AbortedTransactionReport) msg;
