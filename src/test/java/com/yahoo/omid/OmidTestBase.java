@@ -82,8 +82,8 @@ public class OmidTestBase {
       if (!LocalBookKeeper.waitForServerUp("localhost:2181", 10000)) {
          throw new Exception("Error starting zookeeper/bookkeeper");
       }
-      
-      Thread.sleep(5000);
+
+      Thread.sleep(1000);
       
       // TSO Setup
       Runnable tsoTask = new Runnable() {
@@ -108,8 +108,6 @@ public class OmidTestBase {
       tsoExecutor.execute(tsoTask);
       waitForSocketListening("localhost", 1234);
       
-      Thread.sleep(5000);
-
       // HBase setup
       hbaseConf = HBaseConfiguration.create();
       hbaseConf.set("hbase.coprocessor.region.classes", 
@@ -147,8 +145,8 @@ public class OmidTestBase {
 	   LOG.info("Tearing down OmidTestBase...");
       if (hbasecluster != null) {
          hbasecluster.shutdown();
-         hbasecluster.join();
       }
+
       tsoExecutor.shutdownNow();
       bkExecutor.shutdownNow();
       waitForSocketNotListening("localhost", 1234);
