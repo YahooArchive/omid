@@ -17,8 +17,6 @@
 package com.yahoo.omid.tso;
 
 import java.io.IOException;
-import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.concurrent.Executors;
 
 import org.apache.bookkeeper.util.LocalBookKeeper;
@@ -35,6 +33,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
+import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 
@@ -131,7 +130,7 @@ public class TSOTestBase {
          bkthread.interrupt();
          bkthread.join();
       }
-      waitForSocketNotListening("localhost", 1234);
+      TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
       
       Thread.sleep(10);
    }
@@ -153,7 +152,7 @@ public class TSOTestBase {
       
       LOG.info("Starting TSO");
       tsothread.start();
-      waitForSocketListening("localhost", 1234);
+      TestUtils.waitForSocketListening("localhost", 1234, 100);
       LOG.info("Finished loading TSO");
       
       state = tso.getState();
@@ -165,8 +164,7 @@ public class TSOTestBase {
    
    @After
    public void teardownTSO() throws Exception {
-
-
+	   
       clientHandler.sendMessage(new TimestampRequest());
       while (!(clientHandler.receiveMessage() instanceof TimestampResponse))
          ; // Do nothing
@@ -185,52 +183,13 @@ public class TSOTestBase {
       }
       teardownClient();
 
-      waitForSocketNotListening("localhost", 1234);
+      TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
       
       Thread.sleep(10);
    }
 
    protected boolean recoveryEnabled() {
       return false;
-   }
-
-   private static void waitForSocketListening(String host, int port) throws UnknownHostException, IOException,
-         InterruptedException {
-      while (true) {
-         Socket sock = null;
-         try {
-            sock = new Socket(host, port);
-         } catch (IOException e) {
-            // ignore as this is expected
-            Thread.sleep(100);
-            continue;
-         } finally {
-            if (sock != null) {
-               sock.close();
-            }
-         }
-         LOG.info(host + ":" + port + " is UP");
-         break;
-      }
-   }
-
-   private static void waitForSocketNotListening(String host, int port) throws UnknownHostException, IOException,
-         InterruptedException {
-      while (true) {
-         Socket sock = null;
-         try {
-            sock = new Socket(host, port);
-         } catch (IOException e) {
-            // ignore as this is expected
-            break;
-         } finally {
-            if (sock != null) {
-               sock.close();
-            }
-         }
-         Thread.sleep(1000);
-         LOG.info(host + ":" + port + " is still up");
-      }
    }
 
 }

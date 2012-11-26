@@ -19,8 +19,6 @@ package com.yahoo.omid;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -106,7 +104,7 @@ public class OmidTestBase {
        };
 
       tsoExecutor.execute(tsoTask);
-      waitForSocketListening("localhost", 1234);
+      TestUtils.waitForSocketListening("localhost", 1234, 1000);
       
       // HBase setup
       hbaseConf = HBaseConfiguration.create();
@@ -149,7 +147,7 @@ public class OmidTestBase {
 
       tsoExecutor.shutdownNow();
       bkExecutor.shutdownNow();
-      waitForSocketNotListening("localhost", 1234);
+      TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
    }
 
    @Before
@@ -185,45 +183,6 @@ public class OmidTestBase {
       } catch (Exception e) {
          LOG.error("Error tearing down", e);
       }
-   }
-
-   private static void waitForSocketListening(String host, int port) 
-         throws UnknownHostException, IOException, InterruptedException {
-      while (true) {
-         Socket sock = null;
-         try {
-            sock = new Socket(host, port);
-         } catch (IOException e) {
-            // ignore as this is expected
-            Thread.sleep(1000);
-            continue;
-         } finally {
-            if (sock != null) {
-               sock.close();
-            }
-         }
-         LOG.info(host + ":" + port + " is UP");
-         break;
-      }   
-   }
-   
-   private static void waitForSocketNotListening(String host, int port) 
-         throws UnknownHostException, IOException, InterruptedException {
-      while (true) {
-         Socket sock = null;
-         try {
-            sock = new Socket(host, port);
-         } catch (IOException e) {
-            // ignore as this is expected
-            break;
-         } finally {
-            if (sock != null) {
-               sock.close();
-            }
-         }
-         Thread.sleep(1000);
-         LOG.info(host + ":" + port + " is still up");
-      }   
    }
 
    protected static void dumpTable(String table) throws Exception {
