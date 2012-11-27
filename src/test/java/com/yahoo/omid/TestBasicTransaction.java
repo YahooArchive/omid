@@ -16,7 +16,10 @@
 
 package com.yahoo.omid;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+
+import java.io.IOException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -29,12 +32,148 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
+import com.yahoo.omid.client.CommitUnsuccessfulException;
+import com.yahoo.omid.client.TransactionException;
 import com.yahoo.omid.client.TransactionManager;
 import com.yahoo.omid.client.TransactionState;
 import com.yahoo.omid.client.TransactionalTable;
 
 public class TestBasicTransaction extends OmidTestBase {
    private static final Log LOG = LogFactory.getLog(TestBasicTransaction.class);
+   
+   @Test
+   public void testTimestampsOfTwoRowsInstertedAfterCommitOfSingleTransactionAreEquals() {
+	   try {
+		TransactionManager tm = new TransactionManager(hbaseConf);
+		TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+		
+		byte[] rowName1 = Bytes.toBytes("row1");
+		byte[] rowName2 = Bytes.toBytes("row2");
+        byte[] famName1 = Bytes.toBytes(TEST_FAMILY);
+        byte[] colName1 = Bytes.toBytes("col1");
+        byte[] dataValue1 = Bytes.toBytes("testWrite-1");
+        byte[] dataValue2 = Bytes.toBytes("testWrite-2");
+
+        TransactionState tx1 = tm.beginTransaction();
+		
+        Put row1 = new Put(rowName1);
+        row1.add(famName1, colName1, dataValue1);
+        tt.put(tx1, row1);
+        Put row2 = new Put(rowName2);
+        row2.add(famName1, colName1, dataValue2);
+        tt.put(tx1, row2);
+        
+        tm.tryCommit(tx1);
+        
+        tt.close();
+        
+        // Checks
+        Get getResultRow1 = new Get(rowName1).setMaxVersions(1);
+        Result result1 = tt.get(getResultRow1);
+        byte[] val1 = result1.getValue(famName1, colName1);
+        assertTrue("Unexpected value for row 1 in col 1: " + Bytes.toString(val1),
+                   Bytes.equals(dataValue1, result1.getValue(famName1, colName1)));
+        long tsRow1 = result1.raw()[0].getTimestamp();
+        
+        Get getResultRow2 = new Get(rowName2).setMaxVersions(1);
+        Result result2 = tt.get(getResultRow2);
+        byte[] val2 = result2.getValue(famName1, colName1);
+        assertTrue("Unexpected value for row 2 in col 1: " + Bytes.toString(val2),
+                Bytes.equals(dataValue2, result2.getValue(famName1, colName1)));
+        long tsRow2 = result2.raw()[0].getTimestamp();
+        
+        assertEquals("Timestamps of row 1 and row 2 are different", tsRow1, tsRow2);
+        
+	} catch (TransactionException e) {
+		e.printStackTrace();
+	} catch (IOException e) {
+		e.printStackTrace();
+	} catch (CommitUnsuccessfulException e) {
+		e.printStackTrace();
+	}
+	   
+   }
+   
+   @Test
+   public void testTimestampsOfTwoRowsModifiedByTwoSequentialTransactionsAreEqualAndHaveBeenIncreasedMonotonically() {
+	   try {
+		TransactionManager tm = new TransactionManager(hbaseConf);
+		TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+
+		byte[] rowName1 = Bytes.toBytes("row1");
+		byte[] rowName2 = Bytes.toBytes("row2");
+        byte[] famName1 = Bytes.toBytes(TEST_FAMILY);
+        byte[] colName1 = Bytes.toBytes("col1");
+        byte[] dataValue1 = Bytes.toBytes("testWrite-1");
+        byte[] dataValue2 = Bytes.toBytes("testWrite-2");
+
+        byte[] dataValue3 = Bytes.toBytes("testWrite-3");
+        byte[] dataValue4 = Bytes.toBytes("testWrite-4");
+        
+		TransactionState tx1 = tm.beginTransaction();
+		
+        Put row1 = new Put(rowName1);
+        row1.add(famName1, colName1, dataValue1);
+        tt.put(tx1, row1);
+        Put row2 = new Put(rowName2);
+        row2.add(famName1, colName1, dataValue2);
+        tt.put(tx1, row2);
+        
+        tm.tryCommit(tx1);
+        
+		TransactionState tx2 = tm.beginTransaction();
+		
+        row1 = new Put(rowName1);
+        row1.add(famName1, colName1, dataValue3);
+        tt.put(tx2, row1);
+        row2 = new Put(rowName2);
+        row2.add(famName1, colName1, dataValue4);
+        tt.put(tx2, row2);
+        
+        tm.tryCommit(tx2);
+        
+        tt.close();
+        
+        // Checks
+        Get getResultRow1 = new Get(rowName1).setMaxVersions(2);
+        Result result1 = tt.get(getResultRow1);
+        byte[] val1 = result1.getValue(famName1, colName1);
+        assertTrue("Unexpected value for row 1 in col 1: " + Bytes.toString(val1),
+                   Bytes.equals(dataValue3, result1.getValue(famName1, colName1)));
+        
+        long lastTsRow1 = result1.raw()[0].getTimestamp();
+        LOG.info("Last TS R1:" + lastTsRow1);
+        long previousTsRow1 = result1.raw()[1].getTimestamp();
+        LOG.info("Previous TS R1:" + previousTsRow1);
+        
+        Get getResultRow2 = new Get(rowName2).setMaxVersions(2);
+        Result result2 = tt.get(getResultRow2);
+        byte[] val2 = result2.getValue(famName1, colName1);
+        assertTrue("Unexpected value for row 2 in col 1: " + Bytes.toString(val2),
+                Bytes.equals(dataValue4, result2.getValue(famName1, colName1)));
+        long lastTsRow2 = result2.raw()[0].getTimestamp();
+        LOG.info("Last TS R2:" + lastTsRow2);
+        long previousTsRow2 = result2.raw()[1].getTimestamp();
+        LOG.info("Previous TS R2:" + previousTsRow2);
+        
+        LOG.info("***** ***** ***** ***** ***** ***** ***** ****** ***** ***** *****");
+        LOG.info("*****   Why timestamps are not incremented sequentially???   *****");
+        LOG.info("***** ***** ***** ***** ***** ***** ***** ****** ***** ***** *****");
+        
+        assertTrue("Timestamps assigned by Tx2 to row 1 and row 2 are different", lastTsRow1 == lastTsRow2);
+        assertTrue("Timestamps assigned by Tx2 to row 1 and row 2 are different", previousTsRow1 == previousTsRow2);
+        assertTrue("Timestamp assigned by Tx2 to row 1 has not been increased monotonically", lastTsRow1 > previousTsRow1);
+        assertTrue("Timestamp assigned by Tx2 to row 2 has not been increased monotonically", lastTsRow2 > previousTsRow2);
+        
+	} catch (TransactionException e) {
+		e.printStackTrace();
+	} catch (IOException e) {
+		e.printStackTrace();
+	} catch (CommitUnsuccessfulException e) {
+		e.printStackTrace();
+	}
+	   
+   }
 
    @Test public void runTestSimple() throws Exception {
       try {
