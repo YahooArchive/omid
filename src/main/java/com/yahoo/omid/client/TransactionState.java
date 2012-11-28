@@ -20,10 +20,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
+ *
  * This class contains the required information to represent an Omid's transaction, including the set of rows modified.
  * 
- * @author Francisco Perez-Sorrosal (fperez@yahoo-inc.com)
- *
  */
 public class TransactionState {
    private long startTimestamp;
