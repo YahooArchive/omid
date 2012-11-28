@@ -17,6 +17,7 @@
 package com.yahoo.omid.tso;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.apache.bookkeeper.util.LocalBookKeeper;
@@ -40,9 +41,11 @@ import com.yahoo.omid.tso.messages.TimestampResponse;
 public class TSOTestBase {
    private static final Log LOG = LogFactory.getLog(TSOTestBase.class);
 
-   private static Thread bkthread;
-   private static Thread tsothread;
-
+   //private static Thread bkthread;
+   //private static Thread tsothread;
+   private static ExecutorService bkExecutor;
+   private static ExecutorService tsoExecutor;
+   
    protected static TestClientHandler clientHandler;
    protected static TestClientHandler secondClientHandler;
    private static ChannelGroup channelGroup;
@@ -102,8 +105,9 @@ public class TSOTestBase {
       System.out.println("PATH : "
             + System.getProperty("java.library.path"));
       
-      if (bkthread == null) { 
-         bkthread = new Thread() {
+      if (bkExecutor == null) {
+    	  bkExecutor = Executors.newSingleThreadExecutor();
+    	  Runnable bkTask = new Runnable() {
             public void run() {
                try {
                   Thread.currentThread().setName("BookKeeper");
@@ -119,16 +123,15 @@ public class TSOTestBase {
             }
          };
    
-         bkthread.start();
+         bkExecutor.execute(bkTask);
       }
    }
 
    @AfterClass
    public static void teardownBookkeeper() throws Exception {
 
-      if (bkthread != null) {
-         bkthread.interrupt();
-         bkthread.join();
+      if (bkExecutor != null) {
+         bkExecutor.shutdownNow();
       }
       TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
       
@@ -147,11 +150,10 @@ public class TSOTestBase {
         */
        Thread.sleep(500);
        
-      tso = new TSOServer(TSOServerConfig.configFactory(1234, 0, recoveryEnabled(), 4, 2, new String("localhost:2181")));
-      tsothread = new Thread(tso);
-      
       LOG.info("Starting TSO");
-      tsothread.start();
+      tso = new TSOServer(TSOServerConfig.configFactory(1234, 0, recoveryEnabled(), 4, 2, new String("localhost:2181")));
+      tsoExecutor = Executors.newSingleThreadExecutor();
+      tsoExecutor.execute(tso);
       TestUtils.waitForSocketListening("localhost", 1234, 100);
       LOG.info("Finished loading TSO");
       
@@ -177,9 +179,8 @@ public class TSOTestBase {
       secondClientHandler.setAutoFullAbort(true);
       
       tso.stop();
-      if (tsothread != null) {
-         tsothread.interrupt();
-         tsothread.join();
+      if (tsoExecutor != null) {
+    	  tsoExecutor.shutdownNow();
       }
       teardownClient();
 
