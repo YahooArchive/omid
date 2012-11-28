@@ -32,10 +32,11 @@ public class TransactionState {
    
    public TSOClient tsoclient;
 
-   TransactionState(long startTimestamp) {
+   TransactionState(long startTimestamp, TSOClient client) {
 	  this.rows = new HashSet<RowKeyFamily>();
       this.startTimestamp = startTimestamp;;
       this.commitTimestamp = 0;
+      this.tsoclient = client;
    }
 
    public long getStartTimestamp() {

@@ -75,7 +75,7 @@ public class TransactionManager {
          throw new TransactionException("Error retrieving timestamp", cb.getException());
       }
 
-      return new TransactionState(cb.getStartTimestamp());
+      return new TransactionState(cb.getStartTimestamp(), tsoclient);
    }
 
    /**
