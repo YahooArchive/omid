@@ -48,8 +48,8 @@ import com.yahoo.omid.tso.TSOServer;
 public class OmidTestBase {
    private static final Log LOG = LogFactory.getLog(OmidTestBase.class);
    
-   private static final ExecutorService bkExecutor = Executors.newSingleThreadExecutor();
-   private static final ExecutorService tsoExecutor = Executors.newSingleThreadExecutor();
+   private static ExecutorService bkExecutor;
+   private static ExecutorService tsoExecutor;
    private static LocalHBaseCluster hbasecluster;
    protected static Configuration hbaseConf;
    
@@ -59,8 +59,9 @@ public class OmidTestBase {
    @BeforeClass 
    public static void setupOmid() throws Exception {
 	  LOG.info("Setting up OmidTestBase...");
-
+	    
 	  // Bookkeeper setup
+	  bkExecutor = Executors.newSingleThreadExecutor();
       Runnable bkTask = new Runnable() {
             public void run() {
                try {
@@ -84,6 +85,7 @@ public class OmidTestBase {
       Thread.sleep(1000);
       
       // TSO Setup
+	  tsoExecutor = Executors.newSingleThreadExecutor();
       Runnable tsoTask = new Runnable() {
           public void run() {
              try {
