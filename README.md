@@ -87,7 +87,7 @@ For an example of usage, take a look to this class:
 
 Logging 
 -------
-The logging preferences can be adjusted in src/main/resource/log4j.properties.
+The logging preferences can be adjusted in src/main/resources/log4j.properties.
 
 Acknowledgement
 -------
