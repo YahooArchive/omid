@@ -32,63 +32,98 @@
     </properties>
 
     <build>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.9</version>
+                <configuration>
+                    <argLine>-Xmx1G</argLine>
+                    <forkMode>pertest</forkMode>
+                    <argLine>-Djava.library.path=${basedir}/lib</argLine>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3.2</version>
+                <configuration>
+                    <source>1.6</source>
+                    <target>1.6</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${basedir}/lib</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>1.7</version>
+                <executions>
+                    <execution>
+                        <!-- Build native code after .java compilation -->
+                        <id>build-native</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target name="jni"
+                                description="Generate headers and compile the native code">
+                                <echo>Generating JNI headers</echo>
+                                <exec executable="javah">
+                                    <arg value="-d" />
+                                    <arg
+                                        value="${project.basedir}/target/main/native" />
+                                    <arg value="-classpath" />
+                                    <arg
+                                        value="${project.build.outputDirectory}" />
+                                    <arg value="-jni" />
+                                    <arg
+                                        value="com.yahoo.omid.tso.CommitHashMap" />
+                                </exec>
+                                <exec
+                                    dir="${project.basedir}/src/main/native"
+                                    executable="make" failonerror="true">
+                                    <arg value="all" />
+                                </exec>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <!-- Make clean in the Maven clean phase -->
+                        <id>clean-lib</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target name="clean-lib" description="Delete native lib">
+                                <echo>Deleting native lib</echo>
+                                <exec
+                                    dir="${project.basedir}/src/main/native"
+                                    executable="make">
+                                    <arg value="clean" />
+                                </exec>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+
         <pluginManagement>
             <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-surefire-plugin</artifactId>
-                    <version>2.9</version>
-                    <configuration>
-                        <argLine>-Xmx1G</argLine>
-                        <forkMode>pertest</forkMode>
-                        <argLine>-Djava.library.path=${basedir}/src/main/native</argLine>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>2.3.2</version>
-                    <configuration>
-                        <source>1.6</source>
-                        <target>1.6</target>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <artifactId>maven-dependency-plugin</artifactId>
-                    <executions>
-                        <execution>
-                            <phase>package</phase>
-                            <goals>
-                                <goal>copy-dependencies</goal>
-                            </goals>
-                            <configuration>
-                                <outputDirectory>${basedir}/lib</outputDirectory>
-                            </configuration>
-                        </execution>
-                    </executions>
-                </plugin>
-                <plugin>
-                    <artifactId>maven-antrun-plugin</artifactId>
-                    <executions>
-                        <execution>
-                            <id>build-native</id>
-                            <phase>process-classes</phase>
-                            <goals>
-                                <goal>run</goal>
-                            </goals>
-                            <configuration>
-                                <tasks>
-                                    <property name="native.classpath"
-                                        refid="maven.compile.classpath" />
-                                    <echo
-                                        file="${project.build.directory}/compile-classpath"
-                                        message="${native.classpath}" />
-                                    <exec dir="src/main/native"
-                                        executable="make" failonerror="true" />
-                                </tasks>
-                            </configuration>
-                        </execution>
-                    </executions>
-                </plugin>
                 <!--This plugin's configuration is used to store Eclipse 
                     m2e settings only. It has no influence on the Maven build itself. -->
                 <plugin>
@@ -138,8 +173,9 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
     </build>
-    
+
     <dependencies>
         <dependency>
             <groupId>junit</groupId>
