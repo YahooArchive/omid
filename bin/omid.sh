@@ -44,6 +44,19 @@ tso() {
     exec java -Xmx1024m -cp $CLASSPATH -Domid.maxItems=100000 -Domid.maxCommits=100000 -Djava.library.path=$LD_LIBRARY_PATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.tso.TSOServer -port 1234 -batch $BATCHSIZE -ensemble 4 -quorum 2 -zk localhost:2181
 }
 
+notifinf() {
+    export LD_LIBRARY_PATH=`$READLINK -f ../lib`
+    exec java -Xmx1024m -cp $CLASSPATH:target/test-classes/** -Djava.library.path=$LD_LIBRARY_PATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.examples.notifications.OmidInfrastructure
+}
+
+notifsrv() {
+    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.notifications.NotificationServer -Dlog4j.configuration=log4j.properties
+}
+
+notifexampleapp() {
+    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.examples.notifications.ClientNotificationAppExample -Dlog4j.configuration=log4j.properties
+}
+
 tsobench() {
     exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.tso.TransactionClient localhost 1234 100000 10 5
 }
@@ -65,11 +78,14 @@ testtable() {
 usage() {
     echo "Usage: omid.sh <command>"
     echo "where <command> is one of:"
-    echo "  tso           Start the timestamp oracle server."
-    echo "  tsobench      Run a simple benchmark of the TsO."
-    echo "  bktest        Start test bookkeeper ensemble. Starts zookeeper also."
-    echo "  tran-hbase    Start hbase with transaction support."
-    echo "  test-table    Create test table"
+    echo "  tso           Starts the timestamp oracle server."
+    echo "  notif-inf     Starts the infrastructure for the notification example app."
+    echo "  notif-srv     Starts the notification framework."
+    echo "  notif-app     Starts the notification example app."    
+    echo "  tsobench      Runs a simple benchmark of the TSO."
+    echo "  bktest        Starts test bookkeeper ensemble. Starts zookeeper also."
+    echo "  tran-hbase    Starts hbase with transaction support."
+    echo "  test-table    Creates test table"
 }
 
 # if no args specified, show usage
@@ -82,6 +98,12 @@ COMMAND=$1
 
 if [ "$COMMAND" = "tso" ]; then
     tso;
+elif [ "$COMMAND" = "notif-inf" ]; then
+    notifinf;
+elif [ "$COMMAND" = "notif-srv" ]; then
+    notifsrv;
+elif [ "$COMMAND" = "notif-app" ]; then
+    notifexampleapp;
 elif [ "$COMMAND" = "tsobench" ]; then
     tsobench;
 elif [ "$COMMAND" = "bktest" ]; then

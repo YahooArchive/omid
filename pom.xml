@@ -29,6 +29,9 @@
         <project.build.sourceEncoding>
             UTF-8
         </project.build.sourceEncoding>
+        <thrift.executable>
+            /usr/local/bin/thrift
+        </thrift.executable>
     </properties>
 
     <build>
@@ -99,7 +102,7 @@
                                 </exec>
                             </target>
                         </configuration>
-                    </execution>
+                    </execution>                    
                     <execution>
                         <!-- Make clean in the Maven clean phase -->
                         <id>clean-lib</id>
@@ -118,6 +121,38 @@
                             </target>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>generate-thrift-sources</id>
+                        <phase>generate-sources</phase>
+                        <configuration>
+                            <tasks>
+                                <delete dir="target/thrift-generated-sources-for-notifications"
+                                    failonerror="false" />
+                                <mkdir dir="src/main/java/com/yahoo/omid/notifications/thrift/generated" />
+                                <mkdir dir="target/thrift-generated-sources-for-notifications" />
+                                <exec executable="${thrift.executable}">
+                                    <arg value="--gen" />
+                                    <arg value="java" />
+                                    <arg value="-o" />
+                                    <arg value="target/thrift-generated-sources-for-notifications" />
+                                    <arg value="src/main/resources/Notifications.thrift" />
+                                </exec>
+                                <delete>
+                                    <fileset
+                                        dir="src/main/java/com/yahoo/omid/notifications/thrift/generated"
+                                        includes="**/*" />
+                                </delete>
+                                <copy
+                                    todir="src/main/java/com/yahoo/omid/notifications/thrift/generated">
+                                    <fileset
+                                        dir="target/thrift-generated-sources-for-notifications/gen-java/com/yahoo/omid/notifications/thrift/generated" />
+                                </copy>
+                            </tasks>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>                    
                 </executions>
             </plugin>
         </plugins>
@@ -240,6 +275,17 @@
             <version>1.23</version>
             <type>jar</type>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>13.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.thrift</groupId>
+            <artifactId>libthrift</artifactId>
+            <version>0.9.0</version>
+            <type>jar</type>
         </dependency>
     </dependencies>
 </project>
