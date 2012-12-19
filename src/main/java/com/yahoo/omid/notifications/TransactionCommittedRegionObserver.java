@@ -37,7 +37,7 @@ public class TransactionCommittedRegionObserver extends BaseRegionObserver {
 
     @Override
     public void start(CoprocessorEnvironment e) throws IOException {
-        logger.trace("TransactionCommitterRegionObserver starrrrrted");
+        logger.trace("TransactionCommitterRegionObserver started");
     }
 
     @Override
@@ -47,6 +47,7 @@ public class TransactionCommittedRegionObserver extends BaseRegionObserver {
         byte[] tableNameAsBytes = c.getEnvironment().getRegion().getTableDesc().getName();
         String tableName = Bytes.toString(tableNameAsBytes);
 
+        logger.trace("We're in pre-put");
         HTable table = new HTable(HBaseConfiguration.create(), tableName);
 
         Map<byte[], List<KeyValue>> kvs = put.getFamilyMap();
@@ -54,14 +55,18 @@ public class TransactionCommittedRegionObserver extends BaseRegionObserver {
         for (List<KeyValue> kvl : kvs.values()) {
             for (KeyValue kv : kvl) {
                 String cf = Bytes.toString(kv.getFamily());
-
-                String col = Bytes.toString(kv.getQualifier());
-                put.add(Bytes.toBytes(cf + Constants.NOTIF_HBASE_CF_SUFFIX), Bytes.toBytes(col + ":" + "notify"),
-                        Bytes.toBytes("true"));
-                logger.trace("This is the the put added : " + put);
+                // TODO Here we sould filter the columns that are not requested to be observed, 
+                // but cannot access to the required structures from a BaseRegionObserver
+                if(!cf.endsWith(Constants.NOTIF_HBASE_CF_SUFFIX)) {
+                    String col = Bytes.toString(kv.getQualifier());
+                    put.add(Bytes.toBytes(cf + Constants.NOTIF_HBASE_CF_SUFFIX),
+                            Bytes.toBytes(col + Constants.HBASE_NOTIFY_SUFFIX), Bytes.toBytes("true"));
+                    logger.trace("This is the put added : " + put);
+                }
             }
         }
         table.close();
+        logger.trace("Out of pre-put");
     }
 
 }

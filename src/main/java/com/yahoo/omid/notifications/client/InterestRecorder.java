@@ -63,6 +63,7 @@ public class InterestRecorder extends AbstractIdleService implements Watcher {
      */
     public void register(TransactionalObserver obs, Interest interest) throws Exception {
 
+        // Register first where is each observer and then what are the interest of the observer
         registerObserversAndHosts(obs);
         registerInterestsAndObservers(obs, interest);
                 

@@ -171,14 +171,14 @@ public class ScannerManager extends AbstractIdleService implements Watcher {
         }
 
         @Override
-        public void performActionOnAddedNodes(String parentNode, List<String> addedNodes) throws Exception {
+        public synchronized void performActionOnAddedNodes(String parentNode, List<String> addedNodes) throws Exception {
             for (String node : addedNodes) {
                 if (!interestsToObservers.containsKey(node)) {
                     String zkNodePath = new StringBuffer(parentNode).append("/").append(node).toString();
                     interestsToObservers.put(node, new ArrayList<String>());
                     List<String> lostChildren = zk.getChildren(zkNodePath, new InterestObserverNodeWatcher(zkNodePath), null);
                     if(lostChildren.size() > 0) {
-                        logger.trace("Lost children found!!! Great!!! " + lostChildren);
+                        logger.trace("Lost children found in InterestNode Watcher. Node : " + node +  " " + lostChildren);
                         interestsToObservers.get(node).addAll(lostChildren);
                         for(String observer : lostChildren) {
                             addObserverToScanner(node, observer);
@@ -191,7 +191,7 @@ public class ScannerManager extends AbstractIdleService implements Watcher {
         }
 
         @Override
-        public void performActionOnDeletedNodes(String parentNode, List<String> deletedNodes) throws Exception {
+        public synchronized void performActionOnDeletedNodes(String parentNode, List<String> deletedNodes) throws Exception {
             for (String node : deletedNodes) {
                 if (!interestsToObservers.containsKey(node)) {
                     throw new IllegalArgumentException("Interest " + node + " doesn't exists");
@@ -213,7 +213,7 @@ public class ScannerManager extends AbstractIdleService implements Watcher {
         }
 
         @Override
-        public void performActionOnAddedNodes(String parentNode, List<String> addedNodes) throws Exception {
+        public synchronized void performActionOnAddedNodes(String parentNode, List<String> addedNodes) throws Exception {
             String[] path = parentNode.split("/");
             String interestNode = path[path.length - 1];
             List<String> observers = interestsToObservers.get(interestNode);
@@ -230,7 +230,7 @@ public class ScannerManager extends AbstractIdleService implements Watcher {
 
         // TODO When removing observers, this method does not takes into account the number references in the cluster!!! SOLVE THIS
         @Override
-        public void performActionOnDeletedNodes(String parentNode, List<String> deletedNodes) throws Exception {
+        public synchronized void performActionOnDeletedNodes(String parentNode, List<String> deletedNodes) throws Exception {
             String[] path = parentNode.split("/");
             String interestNode = path[path.length - 1];
             List<String> observers = interestsToObservers.get(interestNode);
@@ -254,16 +254,16 @@ public class ScannerManager extends AbstractIdleService implements Watcher {
         }
         
         @Override
-        public void performActionOnAddedNodes(String parentNode, List<String> addedNodes) throws Exception {
+        public synchronized void performActionOnAddedNodes(String parentNode, List<String> addedNodes) throws Exception {
             for (String node : addedNodes) {
                 if (!observersToHosts.containsKey(node)) {
                     String zkNodePath = new StringBuffer(parentNode).append("/").append(node).toString();
                     observersToHosts.put(node, new ArrayList<String>());
                     List<String> lostChildren = zk.getChildren(zkNodePath, new ObserverHostsNodeWatcher(zkNodePath), null);
                     if(lostChildren.size() > 0) {
-                        logger.trace("Lost children found!!! Great!!! " + lostChildren);
-                    }
-                    observersToHosts.get(node).addAll(lostChildren);
+                        logger.trace("Lost children found in Observer Node Watcher. Node : " + node +  " " + lostChildren);                        
+                        observersToHosts.get(node).addAll(lostChildren);
+                    }                    
                     logger.trace("Host " + node + " added to in-memory structures");
                 } else {
                     logger.trace("Host " + node + " already into in-memory structures");
@@ -272,7 +272,7 @@ public class ScannerManager extends AbstractIdleService implements Watcher {
         }
 
         @Override
-        public void performActionOnDeletedNodes(String parentNode, List<String> deletedNodes) throws Exception {
+        public synchronized void performActionOnDeletedNodes(String parentNode, List<String> deletedNodes) throws Exception {
             for (String node : deletedNodes) {
                 if (!observersToHosts.containsKey(node)) {
                     throw new IllegalArgumentException("Host " + node + " doesn't exists");
@@ -291,7 +291,7 @@ public class ScannerManager extends AbstractIdleService implements Watcher {
         }
 
         @Override
-        public void performActionOnAddedNodes(String parentNode, List<String> addedNodes) throws Exception {
+        public synchronized void performActionOnAddedNodes(String parentNode, List<String> addedNodes) throws Exception {
             String[] path = parentNode.split("/");
             String interestNode = path[path.length - 1];
             List<String> hosts = observersToHosts.get(interestNode);
@@ -307,7 +307,7 @@ public class ScannerManager extends AbstractIdleService implements Watcher {
 
         // TODO When removing hosts, this method does not takes into account the number references in the cluster!!! SOLVE THIS
         @Override
-        public void performActionOnDeletedNodes(String parentNode, List<String> deletedNodes) throws Exception {
+        public synchronized void performActionOnDeletedNodes(String parentNode, List<String> deletedNodes) throws Exception {
             String[] path = parentNode.split("/");
             String interestNode = path[path.length - 1];
             List<String> observers = observersToHosts.get(interestNode);
@@ -343,7 +343,7 @@ public class ScannerManager extends AbstractIdleService implements Watcher {
          * @see org.apache.zookeeper.Watcher#process(org.apache.zookeeper.WatchedEvent)
          */
         @Override
-        public void process(WatchedEvent event) {
+        public synchronized void process(WatchedEvent event) {
             logger.trace("New ZK event received: " + event);
 
             EventType eventType = event.getType();
@@ -355,7 +355,7 @@ public class ScannerManager extends AbstractIdleService implements Watcher {
 
                         List<String> newElems = new ArrayList<String>();
                         List<String> missingElems = new ArrayList<String>();
-                        List<String> children = zk.getChildren(observableNodePath, false);
+                        List<String> children = zk.getChildren(observableNodePath, this);
                         for (String child : children) {
                             if (currentChildren.contains(child) == false) {
                                 newElems.add(child);
@@ -376,7 +376,14 @@ public class ScannerManager extends AbstractIdleService implements Watcher {
 
                         // Every time a watch is processed you need to
                         // re-register for the next one.
-                        zk.getChildren(observableNodePath, this);
+                        
+                        List<String> lostChildren = zk.getChildren(observableNodePath, this);
+                        if(children != null) {
+                            logger.trace("TAKE CAREEEEEE " + observableNodePath);
+                            for(String child : lostChildren) {
+                                logger.trace(child);
+                            }
+                        }
                     } else if (eventType.equals(EventType.NodeDeleted)) {
                         logger.error("Node " + observableNodePath + " was deleted");
                         if(targetNode.equals(Constants.NOTIF_ROOT) ||
@@ -394,65 +401,5 @@ public class ScannerManager extends AbstractIdleService implements Watcher {
             }
         }
     }
-    
-    // TODO The following classes are not used. Remove???
-    
-//    private class InterestNodeDataWatcher extends NodeDataWatcher {
-//
-//        @Override
-//        public void performActionOnDataChange(String node, byte[] data) {
-//            logger.trace("This is the new data on node " + node + ": " + new String(data));
-//        }
-//        
-//    }
-//    
-//    private class ObserverNodeDataWatcher extends NodeDataWatcher {
-//
-//        @Override
-//        public void performActionOnDataChange(String node, byte[] data) {
-//            logger.trace("This is the new data on node " + node + ": " + new String(data));
-//        }
-//        
-//    }
-//    
-//    private abstract class NodeDataWatcher implements Watcher {
-//
-//        public abstract void performActionOnDataChange(String node, byte[] data);
-//        
-//        /*
-//         * (non-Javadoc)
-//         * 
-//         * @see org.apache.zookeeper.Watcher#process(org.apache.zookeeper.WatchedEvent)
-//         */
-//        @Override
-//        public void process(WatchedEvent event) {
-//            logger.trace("New ZK event received: " + event);
-//
-//            Stat stat = new Stat();
-//            EventType eventType = event.getType();
-//            String targetNode = event.getPath();
-//            if (targetNode != null && (eventType != null)) {
-//
-//                try {
-//                    if(eventType.equals(EventType.NodeDataChanged)) {
-//
-//                        byte data[] = zk.getData(targetNode, false, stat);
-//                        logger.trace(new String(data));
-//                        performActionOnDataChange(targetNode, data);
-//
-//                        // Every time a watch is processed you need to
-//                        // re-register for the next one.
-//                        zk.getData(targetNode, this, new Stat());
-//                    } else if (eventType.equals(EventType.NodeDeleted)) {
-//                        logger.error("Data was deleted from node " + targetNode);                        
-//                    }
-//
-//                } catch (Exception e) {
-//                    e.printStackTrace();
-//                    throw new RuntimeException(e);
-//                }
-//            }
-//        }
-//    }
-    // END TODO The following classes are not used. Remove???
+
 }

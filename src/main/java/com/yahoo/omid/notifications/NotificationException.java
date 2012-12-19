@@ -13,18 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. See accompanying LICENSE file.
  */
-package com.yahoo.omid.examples;
+package com.yahoo.omid.notifications;
 
+public class NotificationException extends Exception {
 
-/**
- * Common constants used in examples
- *
- */
-public class Constants {
+    /**
+     * @param string
+     */
+    public NotificationException(String string) {
+        super(string);
+    }
 
-    public static final String TABLE = "t1";
-    public static final String COLUMN_FAMILY_1 = "cf1";
-    public static final String COLUMN_1 = "c1";
-    public static final String COLUMN_2 = "c2";
-    
 }

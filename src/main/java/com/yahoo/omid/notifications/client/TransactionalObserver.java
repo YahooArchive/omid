@@ -15,9 +15,23 @@
  */
 package com.yahoo.omid.notifications.client;
 
+import java.io.IOException;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
+import com.yahoo.omid.client.TransactionException;
+import com.yahoo.omid.client.TransactionManager;
 import com.yahoo.omid.client.TransactionState;
+import com.yahoo.omid.client.TransactionalTable;
+import com.yahoo.omid.notifications.Constants;
+import com.yahoo.omid.notifications.NotificationException;
 
 public class TransactionalObserver {
     
@@ -26,9 +40,24 @@ public class TransactionalObserver {
     private String name; // The name of the observer
     private ObserverBehaviour observer;
 
-    public TransactionalObserver(String name, ObserverBehaviour observer) {
+    private Configuration tsoClientHbaseConf;
+    private TransactionManager tm;
+    
+    public TransactionalObserver(String name, ObserverBehaviour observer) throws Exception{
         this.name = name;
         this.observer = observer;
+        
+        // Configure connection with TSO
+        tsoClientHbaseConf = HBaseConfiguration.create();
+        tsoClientHbaseConf.set("tso.host", "localhost");
+        tsoClientHbaseConf.setInt("tso.port", 1234);
+        
+        try {
+            tm = new TransactionManager(tsoClientHbaseConf);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
     
     /**
@@ -39,32 +68,83 @@ public class TransactionalObserver {
     }
 
     public void notify(byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {
-        startTx();
-        observer.updated(table, rowKey, columnFamily, column);
-        commitTx();        
+        TransactionalTable tt = null;
+        TransactionState tx = null;
+        try {
+            // Start tx
+            tt = new TransactionalTable(tsoClientHbaseConf, table);
+            // Transaction adding to rows to a table
+            tx = tm.beginTransaction();
+            checkIfAlreadyExecuted(tx, tt, table, rowKey, columnFamily, column);
+            // Perform the particular actions on the observer for this row
+            observer.updated(tx, table, rowKey, columnFamily, column);
+            clearNotifyFlag(table, rowKey, columnFamily, column);
+            // Commit tx
+            tm.tryCommit(tx);
+            logger.trace("TRANSACTION " + tx + " COMMITTED");
+        } catch (NotificationException e) {
+            //logger.trace("Aborting tx " + tx);
+            try { tm.abort(tx); } catch (TransactionException e1) {}
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (tt != null) {
+                try { tt.close(); } catch (IOException e) {}
+            }
+        }
     }
 
     /**
-     * 
+     * @param tx
+     * @param tt 
+     * @param column 
+     * @param columnFamily 
+     * @param rowKey 
+     * @param table 
      */
-    private void startTx() {
-        logger.trace("Starting a new transaction");
+    private void checkIfAlreadyExecuted(TransactionState tx, TransactionalTable tt, byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) throws Exception {
+        String targetColumnFamily = Bytes.toString(columnFamily) + Constants.NOTIF_HBASE_CF_SUFFIX;        
+        String targetColumn = Bytes.toString(column) + ":" + name;
         
-    }
-    
-    /**
-     * 
-     */
-    private void commitTx() {
-        logger.trace("Commiting transaction");
-        
+        //logger.trace("Checking if observer was already executed...");
+        Get get = new Get(rowKey);
+        Result result = tt.get(get);
+        byte[] val = result.getValue(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumn));
+        if(val == null || result.raw()[0].getTimestamp() < tx.getStartTimestamp()) {
+            //logger.trace("Setting put on observer");
+            Put put = new Put(rowKey, tx.getStartTimestamp());
+            put.add(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumn), Bytes.toBytes(name));
+            tt.put(put);
+        } else {
+            throw new NotificationException("Observer " + name + " already executed for change" );
+        }
     }
 
     /**
-     * TODO Remove if delegation is implemented. Only valid if this is implemented as an abstract class
+     * Clears the notify flag on the corresponding RowKey/Column without Omid's transactional context
+     * 
+     * @param table
+     * @param rowKey
+     * @param columnFamily
+     * @param column
      */
-    public TransactionState getTx() {
-        return null;   
+    private void clearNotifyFlag(byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {        
+        String targetTable = Bytes.toString(table);
+        String targetColumnFamily = Bytes.toString(columnFamily) + Constants.NOTIF_HBASE_CF_SUFFIX;        
+        String targetColumn = Bytes.toString(column) + Constants.HBASE_NOTIFY_SUFFIX;
+
+        Put put = new Put(rowKey);
+        put.add(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumn), Bytes.toBytes("false"));
+
+        try {
+            HTable hTable = new HTable(HBaseConfiguration.create(), targetTable);            
+            hTable.put(put);
+            logger.trace("Notify Flag cleared for: " + put);
+            hTable.close();
+        } catch (Exception e) {
+            logger.error("Error clearing Notify Flag for: " + put);
+            e.printStackTrace();
+        }        
     }
     
 }

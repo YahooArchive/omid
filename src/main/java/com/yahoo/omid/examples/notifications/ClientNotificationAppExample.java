@@ -60,7 +60,7 @@ public class ClientNotificationAppExample {
         tsoClientHbaseConf.set("tso.host", "localhost");
         tsoClientHbaseConf.setInt("tso.port", 1234);
 
-        logger.info("ooo Omid ooo - Starting Omid's Notification Example App - ooo Omid ooo");
+        logger.info("ooo Omid ooo - STARTING OMID'S EXAMPLE NOTIFICATION APP. - ooo Omid ooo");
         
         logger.info("ooo Omid ooo -" +
         		" A table called " 
@@ -73,9 +73,10 @@ public class ClientNotificationAppExample {
         registrationService.startAndWait();
 
         TransactionalObserver obs1 = new TransactionalObserver("o1" /* Observer Name */, new ObserverBehaviour() {
-            public void updated(byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {
-                logger.info("ooo Omid ooo -" +
-                        " An update has occurred on Table: "
+            public void updated(TransactionState tx, byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {
+                logger.info("ooo Omid ooo -"
+                        + "I'M OBSERVER o1."
+                        + " An update has occurred on Table: "
                         + Bytes.toString(table)
                         + " RowKey: "
                         + Bytes.toString(rowKey)
@@ -84,14 +85,45 @@ public class ClientNotificationAppExample {
                         + " Column: " 
                         + Bytes.toString(column)
                         + " !!! - ooo Omid ooo");
+                logger.info("ooo Omid ooo - OBSERVER o1 INSERTING A NEW ROW ON COLUMN " + Constants.COLUMN_2 + " UNDER TRANSACTIONAL CONTEXT " + tx + " - ooo Omid ooo");
+                Configuration tsoClientConf = HBaseConfiguration.create();
+                tsoClientConf.set("tso.host", "localhost");
+                tsoClientConf.setInt("tso.port", 1234);
+                
+                try {
+                    TransactionalTable tt = new TransactionalTable(tsoClientConf, Constants.TABLE);
+                    doTransactionalPut(tx, tt, rowKey, Bytes.toBytes(Constants.COLUMN_FAMILY_1),
+                            Bytes.toBytes(Constants.COLUMN_2), Bytes.toBytes("Data written by OBSERVER o1"));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         });
         
-        Interest interest = new Interest(Constants.TABLE, Constants.COLUMN_FAMILY_1, Constants.COLUMN_1);
-        registrationService.register(obs1, interest);
+        TransactionalObserver obs2 = new TransactionalObserver("o2" /* Observer Name */, new ObserverBehaviour() {
+            public void updated(TransactionState tx, byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {
+                logger.info("ooo Omid ooo - " 
+                        + "I'M OBSERVER o2." 
+                        + " An update has occurred on Table: "
+                        + Bytes.toString(table)
+                        + " RowKey: "
+                        + Bytes.toString(rowKey)
+                        + " ColumnFamily: " 
+                        + Bytes.toString(columnFamily)
+                        + " Column: " 
+                        + Bytes.toString(column)
+                        + " !!! I'M NOT GONNA DO ANYTHING ELSE - ooo Omid ooo");           
+            }
+        });
+        
+        Interest interestObs1 = new Interest(Constants.TABLE, Constants.COLUMN_FAMILY_1, Constants.COLUMN_1);
+        registrationService.register(obs1, interestObs1);
+        
+        Interest interestObs2 = new Interest(Constants.TABLE, Constants.COLUMN_FAMILY_1, Constants.COLUMN_2);
+        registrationService.register(obs2, interestObs2);
 
-        logger.info("ooo Omid ooo - Notification Example App WAITING 5 SECONDS TO ALLOW OBSERVER REGISTRATION BEFORE STARTING A TRIGGERING TX - ooo Omid ooo");
-        Thread.currentThread().sleep(5000);
+        logger.info("ooo Omid ooo - WAITING 10 SECONDS TO ALLOW OBSERVER REGISTRATION - ooo Omid ooo");
+        Thread.currentThread().sleep(10000);
         //registrationService.deregister(obs1, interest);
         
         TransactionManager tm = new TransactionManager(tsoClientHbaseConf);
@@ -99,30 +131,32 @@ public class ClientNotificationAppExample {
         
         // Transaction adding to rows to a table
         TransactionState tx1 = tm.beginTransaction();
-
+        logger.info("ooo Omid ooo - STARTING TRIGGER TX " + tx1 + " INSERTING TWO ROWS IN COLUMN " + Constants.COLUMN_1 + " - ooo Omid ooo");
         doTransactionalPut(tx1, tt, Bytes.toBytes("row1"), Bytes.toBytes(Constants.COLUMN_FAMILY_1),
                 Bytes.toBytes(Constants.COLUMN_1), Bytes.toBytes("testWrite-1"));
         doTransactionalPut(tx1, tt, Bytes.toBytes("row2"), Bytes.toBytes(Constants.COLUMN_FAMILY_1),
                 Bytes.toBytes(Constants.COLUMN_1), Bytes.toBytes("testWrite-2"));
+        doTransactionalPut(tx1, tt, Bytes.toBytes("row3"), Bytes.toBytes(Constants.COLUMN_FAMILY_1),
+                Bytes.toBytes(Constants.COLUMN_1), Bytes.toBytes("testWrite-3"));
 
         tm.tryCommit(tx1);
-
+        logger.info("ooo Omid ooo - TRIGGER TX " + tx1 + " COMMITTED - ooo Omid ooo");
         tt.close();
 
-        logger.info("ooo Omid ooo - Notification Example App WAITING 15 SECONDS TO ALLOW THE OBSERVER RECEIVING NOTIFICATIONS - ooo Omid ooo");
+        logger.info("ooo Omid ooo - WAITING 15 SECONDS TO ALLOW THE OBSERVER RECEIVING NOTIFICATIONS - ooo Omid ooo");
         Thread.currentThread().sleep(15000);
         
         registrationService.stopAndWait();
 
-        logger.info("ooo Omid ooo - Omid's Notification Example App Finished - ooo Omid ooo");
+        logger.info("ooo Omid ooo - OMID'S NOTIFICATION APP FINISHED - ooo Omid ooo");
 
     }
     
-    private static void doTransactionalPut(TransactionState tx1, TransactionalTable tt, byte[] rowName1,
-            byte[] colFamName1, byte[] colName1, byte[] dataValue1) throws IOException {
-        Put row1 = new Put(rowName1);
-        row1.add(colFamName1, colName1, dataValue1);
-        tt.put(tx1, row1);
+    private static void doTransactionalPut(TransactionState tx, TransactionalTable tt, byte[] rowName,
+            byte[] colFamName, byte[] colName, byte[] dataValue) throws IOException {
+        Put row = new Put(rowName);
+        row.add(colFamName, colName, dataValue);
+        tt.put(tx, row);
     }
     
 }

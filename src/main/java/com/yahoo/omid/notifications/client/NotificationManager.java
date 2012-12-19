@@ -107,10 +107,10 @@ public class NotificationManager extends AbstractExecutionThreadService {
             // responsibility of notifying all the observers serially. Change this to have concurrent consumers
             Notification notif;
             try {
-                logger.trace("Trying to consume from queue...");
-                notif = queue.poll(1, TimeUnit.SECONDS);
+                //logger.trace("Trying to consume from queue...");
+                notif = queue.poll(3, TimeUnit.SECONDS);
                 if(notif != null) {
-                    logger.trace("Notifying observer " + notif.getObserver() + "!!!!");
+                    //logger.trace("Notifying observer " + notif.getObserver() + "!!!!");
                     TransactionalObserver obs = registeredObservers.get(notif.getObserver());
                     if (obs != null) {
                         obs.notify(notif.getTable(), notif.getRowKey(), notif.getColumnFamily(), notif.getColumn());
@@ -153,8 +153,7 @@ public class NotificationManager extends AbstractExecutionThreadService {
          * #update(com.yahoo.omid.notifications.thrift.generated.Notification)
          */
         @Override
-        public void notify(Notification notification) throws TException {
-            logger.trace("Update received for table: " + notification);
+        public void notify(Notification notification) throws TException {            
             try {
                 queue.put(notification);
             } catch (InterruptedException e) {

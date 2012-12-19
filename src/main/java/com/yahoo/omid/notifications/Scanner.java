@@ -86,20 +86,16 @@ public class Scanner implements Runnable {
         ResultScanner scanner;
         while (true) {
             try {
-                logger.trace("Pre-Scan");
                 scanner = table.getScanner(scan);
-                logger.trace("Post-Scan");
                 for (Result result : scanner) {
                     for(KeyValue kv : result.raw()) {
-                        logger.trace("RowKey:" + new String(kv.getRow()) + ", CF: " + new String(kv.getFamily())
-                                + " C: " + new String(kv.getQualifier()) + " Val: " + Bytes.toString(kv.getValue()));
                         List<String> observers = interestsToObservers.get(interest);
                         for(String observer : observers) {
-                            logger.trace("Notifying " + observer + "...");
                             List<String> hosts = observersToHosts.get(observer);
                             for(String host : hosts) {
-                                logger.trace("...which is on host " + host);
-                                notify(kv.getRow(), host, Constants.THRIFT_SERVER_PORT);
+                                logger.trace("Notifying " + observer + " on host " + host + " about change on RowKey:" + new String(kv.getRow()) + ", CF: " + new String(kv.getFamily())
+                                + " C: " + new String(kv.getQualifier()) + " Val: " + Bytes.toString(kv.getValue()));
+                                notify(observer, kv.getRow(), host, Constants.THRIFT_SERVER_PORT);
                             }
                         }
                     }                    
@@ -107,16 +103,10 @@ public class Scanner implements Runnable {
             } catch (IOException e) {                
                 e.printStackTrace();
             }
-            
-            try {
-                Thread.sleep(5000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
         }
     }
 
-    private void notify(byte[] rowKey, String host, int port) {
+    private void notify(String observer, byte[] rowKey, String host, int port) {
         // Connect to the notification receiver service (Thrift)
         try {
             transport = new TFramedTransport(new TSocket("localhost", port));
@@ -124,14 +114,14 @@ public class Scanner implements Runnable {
             NotificationReceiverService.Client client = new NotificationReceiverService.Client(protocol);
             transport.open();
             Interest interest = Interest.fromString(this.interest);
-            Notification notification = new Notification("o1", 
+            Notification notification = new Notification(observer, 
                     ByteBuffer.wrap(interest.getTableAsHBaseByteArray()),
                     ByteBuffer.wrap(rowKey), // This is the row that has been modified
                     ByteBuffer.wrap(interest.getColumnFamilyAsHBaseByteArray()),
                     ByteBuffer.wrap(interest.getColumnAsHBaseByteArray()));
             client.notify(notification);
             transport.close();
-            logger.trace("Scanner sent this " + notification + " notification!!!");
+            //logger.trace("Scanner sent this " + notification + " notification!!!");
         } catch (Exception e) {
             if (transport != null) {
                 transport.close();

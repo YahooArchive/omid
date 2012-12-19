@@ -55,8 +55,7 @@ public class ScannerContainer {
         this.observersToHosts = observersToHosts;
         
 
-        // Generate scaffolding on HBase to maintain the information required to
-        // perform notifications
+        // Generate scaffolding on HBase to maintain the information required to perform notifications
         Configuration config = HBaseConfiguration.create();
         HBaseAdmin admin;
         try {
@@ -108,15 +107,6 @@ public class ScannerContainer {
     }    
 
     public void addObserver(String interest, String observer) {
-//        Interest interestRep = Interest.fromString(this.interest);
-//        Put put = new Put(Bytes.toBytes("r1test"));
-//        put.add(Bytes.toBytes(interestRep.getColumnFamily() + Constants.NOTIF_HBASE_CF_SUFFIX),
-//                Bytes.toBytes(interestRep.getColumn() + "/" + observer), Bytes.toBytes(0));
-//        try {
-//            table.put(put);
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
     }
 
     public void start()
