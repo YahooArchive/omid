@@ -16,7 +16,17 @@
 package com.yahoo.omid.examples.notifications;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.concurrent.CountDownLatch;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.PosixParser;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Put;
@@ -40,13 +50,47 @@ public class ClientNotificationAppExample {
 
     private static final Logger logger = Logger.getLogger(ClientNotificationAppExample.class);
 
+    private static CountDownLatch cdl;
+
     /**
      * Launches ObserverRegistrationService and perform an observer registration
      * 
      * @param args
      */
+    @SuppressWarnings("static-access")
     public static void main(String[] args) throws Exception {
         final ObserverRegistrationService registrationService = new ObserverRegistrationService();
+
+        CommandLineParser cmdLineParser = new ExtendedPosixParser(true);
+
+        Options options = new Options();
+        options.addOption(OptionBuilder.withLongOpt("txs").withDescription("Number of transactions to execute")
+                .withType(Number.class).hasArg().withArgName("argname").create());
+        options.addOption(OptionBuilder.withLongOpt("rows-per-tx")
+                .withDescription("Number of rows that each transaction inserts").withType(Number.class).hasArg()
+                .withArgName("argname").create());
+
+        int txsToExecute = 1; // Default value
+        int rowsPerTx = 1; // Default value
+        
+        try {
+            CommandLine cmdLine = cmdLineParser.parse(options, args);
+
+
+            if (cmdLine.hasOption("txs")) {
+                txsToExecute = ((Number) cmdLine.getParsedOptionValue("txs")).intValue();
+            }
+
+
+            if (cmdLine.hasOption("rows-per-tx")) {
+                rowsPerTx = ((Number) cmdLine.getParsedOptionValue("rows-per-tx")).intValue();
+            }
+
+            cdl = new CountDownLatch(txsToExecute * rowsPerTx * 2);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run() {
@@ -61,35 +105,33 @@ public class ClientNotificationAppExample {
         tsoClientHbaseConf.setInt("tso.port", 1234);
 
         logger.info("ooo Omid ooo - STARTING OMID'S EXAMPLE NOTIFICATION APP. - ooo Omid ooo");
-        
-        logger.info("ooo Omid ooo -" +
-        		" A table called " 
-                + Constants.TABLE
-                + " with a column Family " 
-                + Constants.COLUMN_FAMILY_1 
-                + " has been already created by the Omid Infrastructure " +
-                "- ooo Omid ooo");
+
+        logger.info("ooo Omid ooo -" + " A table called " + Constants.TABLE + " with a column Family "
+                + Constants.COLUMN_FAMILY_1 + " has been already created by the Omid Infrastructure "
+                + "- ooo Omid ooo");
 
         registrationService.startAndWait();
 
         TransactionalObserver obs1 = new TransactionalObserver("o1" /* Observer Name */, new ObserverBehaviour() {
             public void updated(TransactionState tx, byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {
-                logger.info("ooo Omid ooo -"
-                        + "I'M OBSERVER o1."
-                        + " An update has occurred on Table: "
-                        + Bytes.toString(table)
-                        + " RowKey: "
-                        + Bytes.toString(rowKey)
-                        + " ColumnFamily: " 
-                        + Bytes.toString(columnFamily)
-                        + " Column: " 
-                        + Bytes.toString(column)
-                        + " !!! - ooo Omid ooo");
-                logger.info("ooo Omid ooo - OBSERVER o1 INSERTING A NEW ROW ON COLUMN " + Constants.COLUMN_2 + " UNDER TRANSACTIONAL CONTEXT " + tx + " - ooo Omid ooo");
+                 logger.info("ooo Omid ooo -"
+                 + "I'M OBSERVER o1."
+                 + " An update has occurred on Table: "
+                 + Bytes.toString(table)
+                 + " RowKey: "
+                 + Bytes.toString(rowKey)
+                 + " ColumnFamily: "
+                 + Bytes.toString(columnFamily)
+                 + " Column: "
+                 + Bytes.toString(column)
+                 + " !!! - ooo Omid ooo");
+                 logger.info("ooo Omid ooo - OBSERVER o1 INSERTING A NEW ROW ON COLUMN "
+                 + Constants.COLUMN_2 + " UNDER TRANSACTIONAL CONTEXT " + tx +
+                 " - ooo Omid ooo");
                 Configuration tsoClientConf = HBaseConfiguration.create();
                 tsoClientConf.set("tso.host", "localhost");
                 tsoClientConf.setInt("tso.port", 1234);
-                
+
                 try {
                     TransactionalTable tt = new TransactionalTable(tsoClientConf, Constants.TABLE);
                     doTransactionalPut(tx, tt, rowKey, Bytes.toBytes(Constants.COLUMN_FAMILY_1),
@@ -97,66 +139,94 @@ public class ClientNotificationAppExample {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+                cdl.countDown();
             }
         });
-        
+
         TransactionalObserver obs2 = new TransactionalObserver("o2" /* Observer Name */, new ObserverBehaviour() {
             public void updated(TransactionState tx, byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {
-                logger.info("ooo Omid ooo - " 
-                        + "I'M OBSERVER o2." 
-                        + " An update has occurred on Table: "
-                        + Bytes.toString(table)
-                        + " RowKey: "
-                        + Bytes.toString(rowKey)
-                        + " ColumnFamily: " 
-                        + Bytes.toString(columnFamily)
-                        + " Column: " 
-                        + Bytes.toString(column)
-                        + " !!! I'M NOT GONNA DO ANYTHING ELSE - ooo Omid ooo");           
+                 logger.info("ooo Omid ooo - "
+                 + "I'M OBSERVER o2."
+                 + " An update has occurred on Table: "
+                 + Bytes.toString(table)
+                 + " RowKey: "
+                 + Bytes.toString(rowKey)
+                 + " ColumnFamily: "
+                 + Bytes.toString(columnFamily)
+                 + " Column: "
+                 + Bytes.toString(column)
+                 + " !!! I'M NOT GONNA DO ANYTHING ELSE - ooo Omid ooo");
+                cdl.countDown();
             }
         });
-        
+
         Interest interestObs1 = new Interest(Constants.TABLE, Constants.COLUMN_FAMILY_1, Constants.COLUMN_1);
         registrationService.register(obs1, interestObs1);
-        
+
         Interest interestObs2 = new Interest(Constants.TABLE, Constants.COLUMN_FAMILY_1, Constants.COLUMN_2);
         registrationService.register(obs2, interestObs2);
 
-        logger.info("ooo Omid ooo - WAITING 10 SECONDS TO ALLOW OBSERVER REGISTRATION - ooo Omid ooo");
-        Thread.currentThread().sleep(10000);
-        //registrationService.deregister(obs1, interest);
-        
+        logger.info("ooo Omid ooo - WAITING 5 SECONDS TO ALLOW OBSERVER REGISTRATION - ooo Omid ooo");
+        Thread.currentThread().sleep(5000);
+
         TransactionManager tm = new TransactionManager(tsoClientHbaseConf);
         TransactionalTable tt = new TransactionalTable(tsoClientHbaseConf, Constants.TABLE);
-        
-        // Transaction adding to rows to a table
-        TransactionState tx1 = tm.beginTransaction();
-        logger.info("ooo Omid ooo - STARTING TRIGGER TX " + tx1 + " INSERTING TWO ROWS IN COLUMN " + Constants.COLUMN_1 + " - ooo Omid ooo");
-        doTransactionalPut(tx1, tt, Bytes.toBytes("row1"), Bytes.toBytes(Constants.COLUMN_FAMILY_1),
-                Bytes.toBytes(Constants.COLUMN_1), Bytes.toBytes("testWrite-1"));
-        doTransactionalPut(tx1, tt, Bytes.toBytes("row2"), Bytes.toBytes(Constants.COLUMN_FAMILY_1),
-                Bytes.toBytes(Constants.COLUMN_1), Bytes.toBytes("testWrite-2"));
-        doTransactionalPut(tx1, tt, Bytes.toBytes("row3"), Bytes.toBytes(Constants.COLUMN_FAMILY_1),
-                Bytes.toBytes(Constants.COLUMN_1), Bytes.toBytes("testWrite-3"));
 
-        tm.tryCommit(tx1);
-        logger.info("ooo Omid ooo - TRIGGER TX " + tx1 + " COMMITTED - ooo Omid ooo");
+        logger.info("ooo Omid ooo - STARTING " + txsToExecute + " TRIGGER TXS INSERTING " + rowsPerTx
+                + " ROWS EACH IN COLUMN " + Constants.COLUMN_1 + " - ooo Omid ooo");
+        for (int i = 0; i < txsToExecute; i++) {
+            // Transaction adding to rows to a table
+            TransactionState tx = tm.beginTransaction();
+
+            List<Put> puts = new ArrayList<Put>();
+            for (int j = 0; j < rowsPerTx; j++) {
+                Put row = new Put(Bytes.toBytes("row-" + Integer.toString(i + (j * 10000))));
+                row.add(Bytes.toBytes(Constants.COLUMN_FAMILY_1), Bytes.toBytes(Constants.COLUMN_1),
+                        Bytes.toBytes("testWrite-" + Integer.toString(i + (j * 10000))));
+                puts.add(row);
+            }
+            tt.put(puts);
+
+            tm.tryCommit(tx);
+        }
+        logger.info("ooo Omid ooo - TRIGGER TXS COMMITTED - ooo Omid ooo");
         tt.close();
 
-        logger.info("ooo Omid ooo - WAITING 15 SECONDS TO ALLOW THE OBSERVER RECEIVING NOTIFICATIONS - ooo Omid ooo");
-        Thread.currentThread().sleep(15000);
-        
+        logger.info("ooo Omid ooo - WAITING TO ALLOW THE 2 OBSERVERS RECEIVING ALL THE NOTIFICATIONS - ooo Omid ooo");
+        cdl.await();
+        logger.info("ooo Omid ooo - OBSERVERS HAVE RECEIVED ALL THE NOTIFICATIONS - ooo Omid ooo");
+
+        // registrationService.deregister(obs2, interestObs1);
+        // registrationService.deregister(obs2, interestObs2);
         registrationService.stopAndWait();
 
         logger.info("ooo Omid ooo - OMID'S NOTIFICATION APP FINISHED - ooo Omid ooo");
 
     }
-    
+
+    private static class ExtendedPosixParser extends PosixParser {
+
+        private boolean ignoreUnrecognizedOption;
+
+        public ExtendedPosixParser(final boolean ignoreUnrecognizedOption) {
+            this.ignoreUnrecognizedOption = ignoreUnrecognizedOption;
+        }
+
+        @Override
+        protected void processOption(final String arg, final ListIterator iter) throws     ParseException {
+            boolean hasOption = getOptions().hasOption(arg);
+
+            if (hasOption || !ignoreUnrecognizedOption) {
+                super.processOption(arg, iter);
+            }
+        }
+
+    }
     private static void doTransactionalPut(TransactionState tx, TransactionalTable tt, byte[] rowName,
             byte[] colFamName, byte[] colName, byte[] dataValue) throws IOException {
         Put row = new Put(rowName);
         row.add(colFamName, colName, dataValue);
         tt.put(tx, row);
     }
-    
+
 }

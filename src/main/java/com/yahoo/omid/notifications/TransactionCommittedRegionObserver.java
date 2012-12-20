@@ -47,7 +47,7 @@ public class TransactionCommittedRegionObserver extends BaseRegionObserver {
         byte[] tableNameAsBytes = c.getEnvironment().getRegion().getTableDesc().getName();
         String tableName = Bytes.toString(tableNameAsBytes);
 
-        logger.trace("We're in pre-put");
+        //logger.trace("We're in pre-put");
         HTable table = new HTable(HBaseConfiguration.create(), tableName);
 
         Map<byte[], List<KeyValue>> kvs = put.getFamilyMap();
@@ -66,7 +66,7 @@ public class TransactionCommittedRegionObserver extends BaseRegionObserver {
             }
         }
         table.close();
-        logger.trace("Out of pre-put");
+        //logger.trace("Out of pre-put");
     }
 
 }

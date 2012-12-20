@@ -20,7 +20,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -105,18 +104,25 @@ public class NotificationManager extends AbstractExecutionThreadService {
         while (isRunning()) {
             // Take into account that there's a single consumer that has the
             // responsibility of notifying all the observers serially. Change this to have concurrent consumers
-            Notification notif;
+            Notification notification;
             try {
                 //logger.trace("Trying to consume from queue...");
-                notif = queue.poll(3, TimeUnit.SECONDS);
-                if(notif != null) {
-                    //logger.trace("Notifying observer " + notif.getObserver() + "!!!!");
-                    TransactionalObserver obs = registeredObservers.get(notif.getObserver());
+                notification = queue.take();//.poll(3, TimeUnit.SECONDS);
+                if(notification != null) {
+                    String table = new String(notification.getTable());
+                    String rowKey = new String(notification.getRowKey());
+                    String columnFamily = new String(notification.getColumnFamily());
+                    String column = new String(notification.getColumn());
+                    //logger.trace("Notification for observer " + notification.getObserver() + " on RowKey " + rowKey
+                    //        + " in Table " + table + " CF " + columnFamily + " C " + column);
+                    TransactionalObserver obs = registeredObservers.get(notification.getObserver());
                     if (obs != null) {
-                        obs.notify(notif.getTable(), notif.getRowKey(), notif.getColumnFamily(), notif.getColumn());
+                        obs.notify(notification.getTable(), notification.getRowKey(), notification.getColumnFamily(), notification.getColumn());
                     } else {
                         logger.error("The observer " + obs + " does not exists!!!");
                     }
+                } else {
+                    logger.trace("Extracted notif " + notification + " is null");
                 }
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -156,6 +162,8 @@ public class NotificationManager extends AbstractExecutionThreadService {
         public void notify(Notification notification) throws TException {            
             try {
                 queue.put(notification);
+                //logger.trace("Notification " + notification + " inserted in queue!!!!");
+                //Thread.currentThread().sleep(1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

@@ -86,6 +86,12 @@ public class Scanner implements Runnable {
         ResultScanner scanner;
         while (true) {
             try {
+                try {
+                    logger.trace("Scanner on " + interest + " is waiting 5 seconds between scans");
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 scanner = table.getScanner(scan);
                 for (Result result : scanner) {
                     for(KeyValue kv : result.raw()) {
@@ -93,8 +99,8 @@ public class Scanner implements Runnable {
                         for(String observer : observers) {
                             List<String> hosts = observersToHosts.get(observer);
                             for(String host : hosts) {
-                                logger.trace("Notifying " + observer + " on host " + host + " about change on RowKey:" + new String(kv.getRow()) + ", CF: " + new String(kv.getFamily())
-                                + " C: " + new String(kv.getQualifier()) + " Val: " + Bytes.toString(kv.getValue()));
+                                //logger.trace("Notifying " + observer + " on host " + host + " about change on RowKey:" + new String(kv.getRow()) + ", CF: " + new String(kv.getFamily())
+                                //+ " C: " + new String(kv.getQualifier()) + " Val: " + Bytes.toString(kv.getValue()));
                                 notify(observer, kv.getRow(), host, Constants.THRIFT_SERVER_PORT);
                             }
                         }

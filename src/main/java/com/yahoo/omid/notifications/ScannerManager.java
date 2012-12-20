@@ -355,6 +355,8 @@ public class ScannerManager extends AbstractIdleService implements Watcher {
 
                         List<String> newElems = new ArrayList<String>();
                         List<String> missingElems = new ArrayList<String>();
+                        // Every time a watch is processed you need to
+                        // re-register for the next one.
                         List<String> children = zk.getChildren(observableNodePath, this);
                         for (String child : children) {
                             if (currentChildren.contains(child) == false) {
@@ -373,17 +375,6 @@ public class ScannerManager extends AbstractIdleService implements Watcher {
                         performActionOnAddedNodes(observableNodePath, newElems);
                         performActionOnDeletedNodes(observableNodePath, missingElems);
                         traceInMemoryZkStructure();
-
-                        // Every time a watch is processed you need to
-                        // re-register for the next one.
-                        
-                        List<String> lostChildren = zk.getChildren(observableNodePath, this);
-                        if(children != null) {
-                            logger.trace("TAKE CAREEEEEE " + observableNodePath);
-                            for(String child : lostChildren) {
-                                logger.trace(child);
-                            }
-                        }
                     } else if (eventType.equals(EventType.NodeDeleted)) {
                         logger.error("Node " + observableNodePath + " was deleted");
                         if(targetNode.equals(Constants.NOTIF_ROOT) ||

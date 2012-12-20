@@ -81,7 +81,7 @@ public class TransactionalObserver {
             clearNotifyFlag(table, rowKey, columnFamily, column);
             // Commit tx
             tm.tryCommit(tx);
-            logger.trace("TRANSACTION " + tx + " COMMITTED");
+            //logger.trace("TRANSACTION " + tx + " COMMITTED");
         } catch (NotificationException e) {
             //logger.trace("Aborting tx " + tx);
             try { tm.abort(tx); } catch (TransactionException e1) {}
@@ -139,7 +139,7 @@ public class TransactionalObserver {
         try {
             HTable hTable = new HTable(HBaseConfiguration.create(), targetTable);            
             hTable.put(put);
-            logger.trace("Notify Flag cleared for: " + put);
+            //logger.trace("Notify Flag cleared for: " + put);
             hTable.close();
         } catch (Exception e) {
             logger.error("Error clearing Notify Flag for: " + put);
