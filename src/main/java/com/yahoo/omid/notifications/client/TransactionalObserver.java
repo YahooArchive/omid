@@ -16,9 +16,11 @@
 package com.yahoo.omid.notifications.client;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
@@ -77,10 +79,10 @@ public class TransactionalObserver {
             tx = tm.beginTransaction();
             checkIfAlreadyExecuted(tx, tt, table, rowKey, columnFamily, column);
             // Perform the particular actions on the observer for this row
-            observer.updated(tx, table, rowKey, columnFamily, column);
-            clearNotifyFlag(table, rowKey, columnFamily, column);
+            observer.updated(tx, table, rowKey, columnFamily, column);            
             // Commit tx
             tm.tryCommit(tx);
+            clearNotifyFlag(table, rowKey, columnFamily, column);
             //logger.trace("TRANSACTION " + tx + " COMMITTED");
         } catch (NotificationException e) {
             //logger.trace("Aborting tx " + tx);
@@ -104,19 +106,43 @@ public class TransactionalObserver {
      */
     private void checkIfAlreadyExecuted(TransactionState tx, TransactionalTable tt, byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) throws Exception {
         String targetColumnFamily = Bytes.toString(columnFamily) + Constants.NOTIF_HBASE_CF_SUFFIX;        
-        String targetColumn = Bytes.toString(column) + ":" + name;
+        String targetColumnObserverAck = Bytes.toString(column) + ":" + name;
+        String targetColumnNotify = Bytes.toString(column) + ":notify";
         
         //logger.trace("Checking if observer was already executed...");
         Get get = new Get(rowKey);
-        Result result = tt.get(get);
-        byte[] val = result.getValue(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumn));
-        if(val == null || result.raw()[0].getTimestamp() < tx.getStartTimestamp()) {
-            //logger.trace("Setting put on observer");
-            Put put = new Put(rowKey, tx.getStartTimestamp());
-            put.add(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumn), Bytes.toBytes(name));
-            tt.put(put);
+        Result result = tt.get(tx, get); // Transactional get    
+                
+        List<KeyValue> listOfObserverAckColumnValues = result.getColumn(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumnObserverAck));
+
+        KeyValue lastValueAck = null;        
+        byte[] valObserverAck = null;
+        long tsObserverAck = -1;
+
+        if(listOfObserverAckColumnValues.size() > 0) { // Check this because the observer may have not been initialized yet
+            lastValueAck = listOfObserverAckColumnValues.get(0);        
+            valObserverAck = lastValueAck.getValue();
+            tsObserverAck = lastValueAck.getTimestamp();
+        }
+                
+        List<KeyValue> listOfNotifyColumnValues = result.getColumn(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumnNotify));
+        KeyValue lastValueNotify = listOfNotifyColumnValues.get(0);        
+        byte[] valNotify = lastValueNotify.getValue();
+        long tsNotify = lastValueNotify.getTimestamp();
+        
+        //logger.trace("Result :" +  result);
+//        logger.trace("TS Notify :" +  tsNotify + " TS Obs Ack " + tsObserverAck);
+        if (Bytes.equals(valNotify, Bytes.toBytes("true"))) {
+            if (valObserverAck == null || tsObserverAck < tsNotify) { // Si TS notify > TS ack
+                // logger.trace("Setting put on observer");
+                Put put = new Put(rowKey, tx.getStartTimestamp());
+                put.add(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumnObserverAck), Bytes.toBytes(name));
+                tt.put(tx, put); // Transactional put
+            } else {
+                throw new NotificationException("Observer " + name + " already executed for change");
+            }
         } else {
-            throw new NotificationException("Observer " + name + " already executed for change" );
+            throw new NotificationException("Notify its not true!!!");
         }
     }
 

@@ -54,7 +54,7 @@ notifsrv() {
 }
 
 notifexampleapp() {
-    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.examples.notifications.ClientNotificationAppExample -txs 100 -rows-per-tx 10
+    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.examples.notifications.ClientNotificationAppExample -txs 100 -rows-per-tx 2
 }
 
 tsobench() {

@@ -132,7 +132,6 @@ public class Scanner implements Runnable {
             if (transport != null) {
                 transport.close();
             }
-            e.printStackTrace();
             logger.error("Scanner " + interest + "could not sent notification");
         } finally {
             if(transport != null) {

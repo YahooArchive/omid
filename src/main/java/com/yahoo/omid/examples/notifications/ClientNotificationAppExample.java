@@ -16,8 +16,6 @@
 package com.yahoo.omid.examples.notifications;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.ListIterator;
 import java.util.concurrent.CountDownLatch;
 
@@ -156,7 +154,7 @@ public class ClientNotificationAppExample {
                  + " Column: "
                  + Bytes.toString(column)
                  + " !!! I'M NOT GONNA DO ANYTHING ELSE - ooo Omid ooo");
-                cdl.countDown();
+                 cdl.countDown();
             }
         });
 
@@ -178,14 +176,12 @@ public class ClientNotificationAppExample {
             // Transaction adding to rows to a table
             TransactionState tx = tm.beginTransaction();
 
-            List<Put> puts = new ArrayList<Put>();
             for (int j = 0; j < rowsPerTx; j++) {
                 Put row = new Put(Bytes.toBytes("row-" + Integer.toString(i + (j * 10000))));
                 row.add(Bytes.toBytes(Constants.COLUMN_FAMILY_1), Bytes.toBytes(Constants.COLUMN_1),
                         Bytes.toBytes("testWrite-" + Integer.toString(i + (j * 10000))));
-                puts.add(row);
+                tt.put(tx, row);
             }
-            tt.put(puts);
 
             tm.tryCommit(tx);
         }
@@ -194,8 +190,8 @@ public class ClientNotificationAppExample {
 
         logger.info("ooo Omid ooo - WAITING TO ALLOW THE 2 OBSERVERS RECEIVING ALL THE NOTIFICATIONS - ooo Omid ooo");
         cdl.await();
-        logger.info("ooo Omid ooo - OBSERVERS HAVE RECEIVED ALL THE NOTIFICATIONS - ooo Omid ooo");
-
+        logger.info("ooo Omid ooo - OBSERVERS HAVE RECEIVED ALL THE NOTIFICATIONS WAITING 30 SECONDS TO ALLOW FINISHING CLEARING STUFF - ooo Omid ooo");        
+        Thread.currentThread().sleep(30000);
         // registrationService.deregister(obs2, interestObs1);
         // registrationService.deregister(obs2, interestObs2);
         registrationService.stopAndWait();

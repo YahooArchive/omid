@@ -60,7 +60,7 @@ public class TransactionCommittedRegionObserver extends BaseRegionObserver {
                 if(!cf.endsWith(Constants.NOTIF_HBASE_CF_SUFFIX)) {
                     String col = Bytes.toString(kv.getQualifier());
                     put.add(Bytes.toBytes(cf + Constants.NOTIF_HBASE_CF_SUFFIX),
-                            Bytes.toBytes(col + Constants.HBASE_NOTIFY_SUFFIX), Bytes.toBytes("true"));
+                            Bytes.toBytes(col + Constants.HBASE_NOTIFY_SUFFIX), kv.getTimestamp(), Bytes.toBytes("true"));
                     logger.trace("This is the put added : " + put);
                 }
             }
