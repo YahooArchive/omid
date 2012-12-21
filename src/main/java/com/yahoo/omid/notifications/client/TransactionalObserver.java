@@ -126,13 +126,20 @@ public class TransactionalObserver {
         }
                 
         List<KeyValue> listOfNotifyColumnValues = result.getColumn(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumnNotify));
-        KeyValue lastValueNotify = listOfNotifyColumnValues.get(0);        
-        byte[] valNotify = lastValueNotify.getValue();
-        long tsNotify = lastValueNotify.getTimestamp();
         
-        //logger.trace("Result :" +  result);
-//        logger.trace("TS Notify :" +  tsNotify + " TS Obs Ack " + tsObserverAck);
-        if (Bytes.equals(valNotify, Bytes.toBytes("true"))) {
+        KeyValue lastValueNotify = null;
+        byte[] valNotify = null;
+        long tsNotify = -1;
+        
+        if(listOfNotifyColumnValues.size() > 0) {
+            lastValueNotify = listOfNotifyColumnValues.get(0);        
+            valNotify = lastValueNotify.getValue();
+            tsNotify = lastValueNotify.getTimestamp();
+        }
+        
+        // logger.trace("Result :" +  result);
+        // logger.trace("TS Notify :" +  tsNotify + " TS Obs Ack " + tsObserverAck);
+        if (valNotify != null && Bytes.equals(valNotify, Bytes.toBytes("true"))) {
             if (valObserverAck == null || tsObserverAck < tsNotify) { // Si TS notify > TS ack
                 // logger.trace("Setting put on observer");
                 Put put = new Put(rowKey, tx.getStartTimestamp());
