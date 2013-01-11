@@ -32,9 +32,9 @@ import org.apache.zookeeper.ZooKeeper;
 
 import com.google.common.util.concurrent.AbstractIdleService;
 
-public class ScannerManager extends AbstractIdleService implements Watcher {
+public class NotificationZKWatchdog extends AbstractIdleService implements Watcher {
 
-    private static final Log logger = LogFactory.getLog(ScannerManager.class);
+    private static final Log logger = LogFactory.getLog(NotificationZKWatchdog.class);
 
     private ZooKeeper zk;
     private CountDownLatch zkStartedCdl = new CountDownLatch(1);
