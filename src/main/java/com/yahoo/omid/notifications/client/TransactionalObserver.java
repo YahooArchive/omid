@@ -79,7 +79,7 @@ public class TransactionalObserver {
             tx = tm.beginTransaction();
             checkIfAlreadyExecuted(tx, tt, table, rowKey, columnFamily, column);
             // Perform the particular actions on the observer for this row
-            observer.updated(tx, table, rowKey, columnFamily, column);            
+            observer.onColumnChanged(column, columnFamily, table, rowKey, tx);            
             // Commit tx
             tm.tryCommit(tx);
             clearNotifyFlag(table, rowKey, columnFamily, column);

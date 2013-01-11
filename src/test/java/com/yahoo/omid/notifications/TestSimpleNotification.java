@@ -219,7 +219,7 @@ public class TestSimpleNotification extends TestInfrastructure {
      */
     private TransactionalObserver buildPassiveTransactionalObserver(String obsName, final String expectedValue, final CountDownLatch cdl) throws Exception {
         return new TransactionalObserver(obsName, new ObserverBehaviour() {
-            public void updated(TransactionState tx, byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {
+            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
                 Configuration tsoClientConf = HBaseConfiguration.create();
                 tsoClientConf.set("tso.host", "localhost");
                 tsoClientConf.setInt("tso.port", 1234);
@@ -257,7 +257,7 @@ public class TestSimpleNotification extends TestInfrastructure {
     private TransactionalObserver buildActiveTransactionalObserver(String obsName, final String expectedValue, final int delay,
             final String r, final String cf, final String c, final String v, final CountDownLatch cdl) throws Exception {
         return new TransactionalObserver(obsName, new ObserverBehaviour() {
-            public void updated(TransactionState tx, byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {
+            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
                 if(delay != 0) {
                     try {
                         logger.info("Waitingggggggg");
