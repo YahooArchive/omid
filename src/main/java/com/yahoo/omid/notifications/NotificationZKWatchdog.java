@@ -45,11 +45,8 @@ public class NotificationZKWatchdog extends AbstractIdleService implements Watch
     
     // Key: ObserverName - Value: List<HostWhereObserverIsDeployed>
     private Map<String, List<String>> observersToHosts = new HashMap<String, List<String>>();
-    
-    // Key: Table where the scanner container is performing scanning
-    // Value: The scanner container that executes the scanner threads
-    private Map<String, ScannerContainer> scanners = new HashMap<String, ScannerContainer>();
 
+    private ScannerManager scannerManager = new ScannerManager(interestsToObservers, observersToHosts);
     /*
      * (non-Javadoc)
      * 
@@ -84,10 +81,8 @@ public class NotificationZKWatchdog extends AbstractIdleService implements Watch
         }
         
         // For each interest, add Scanner. NOTE. This is done AFTER the previous maps have been filled properly
-        for (String interest : interests) {            
-            ScannerContainer scannerContainer = new ScannerContainer(interest, interestsToObservers.get(interest), interestsToObservers, observersToHosts);
-            scannerContainer.start();
-            scanners.put(interest, scannerContainer);
+        for (String interest : interests) {
+            scannerManager.addScannerManagers(interest, interestsToObservers.get(interest));
         }
         
         // Register interests to observe how the children change on these nodes
@@ -148,19 +143,6 @@ public class NotificationZKWatchdog extends AbstractIdleService implements Watch
         logger.trace("New ZK event received: " + event);
         zkStartedCdl.countDown();
     }
-
-    private void addObserverToScanner(String interest, String observer) throws Exception {
-        ScannerContainer scannerContainer = scanners.get(interest);
-        if(scannerContainer == null) {
-            scannerContainer = new ScannerContainer(interest, observer, interestsToObservers, observersToHosts);
-            scannerContainer.start();
-            scanners.put(interest, scannerContainer);
-            logger.trace("Scanner and interest " + interest + " added to in-memory structures for  observer " + observer);
-        } else {
-            scannerContainer.addObserver(interest, observer);
-            logger.trace("Observer " + observer + " added to Scanner and interest " + interest);
-        }
-    }
     
     // TODO Reduce duplicated code in the 4 classes below
     
@@ -180,9 +162,7 @@ public class NotificationZKWatchdog extends AbstractIdleService implements Watch
                     if(lostChildren.size() > 0) {
                         logger.trace("Lost children found in InterestNode Watcher. Node : " + node +  " " + lostChildren);
                         interestsToObservers.get(node).addAll(lostChildren);
-                        for(String observer : lostChildren) {
-                            addObserverToScanner(node, observer);
-                        }                        
+                        scannerManager.addScannerManagers(node, lostChildren);                                                
                     }
                 } else {
                     logger.trace("Interest " + node + " already into in-memory structures");
@@ -197,9 +177,7 @@ public class NotificationZKWatchdog extends AbstractIdleService implements Watch
                     throw new IllegalArgumentException("Interest " + node + " doesn't exists");
                 }
                 interestsToObservers.remove(node);
-                ScannerContainer scannerContainer = scanners.get(node);
-                scannerContainer.stop();
-                scanners.remove(node);
+                scannerManager.removeScannerContainer(node);
                 logger.trace("Interest " + node + " removed from in-memory structures ");
             }
         }
@@ -220,7 +198,7 @@ public class NotificationZKWatchdog extends AbstractIdleService implements Watch
             for(String node: addedNodes) {
                 if (!observers.contains(node)) {
                     observers.add(node);
-                    addObserverToScanner(interestNode, node);
+                    scannerManager.addScannerManager(interestNode, node);
                     logger.trace("The observer " + node + " was added to the list of the " + interestNode + " interest");
                 } else {
                     logger.trace("The observer " + node + " was already in the list of the  " + interestNode + " interest");
