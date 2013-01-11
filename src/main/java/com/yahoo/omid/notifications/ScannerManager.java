@@ -38,7 +38,7 @@ public class ScannerManager {
         this.observersToHosts = observersToHosts;
     }
     
-    public void addScannerManager(String interest, String observer) throws Exception {
+    public void addScannerContainer(String interest, String observer) throws Exception {
         ScannerContainer scannerContainer = scanners.get(interest);
         if(scannerContainer == null) {
             scannerContainer = new ScannerContainer(interest, observer, interestsToObservers, observersToHosts);
@@ -51,9 +51,9 @@ public class ScannerManager {
         }
     }
     
-    public void addScannerManagers(String interest, List<String> observers) throws Exception {
+    public void addScannerContainers(String interest, List<String> observers) throws Exception {
         for(String observer: observers) {
-            addScannerManager(interest, observer);
+            addScannerContainer(interest, observer);
         }
     }
 
