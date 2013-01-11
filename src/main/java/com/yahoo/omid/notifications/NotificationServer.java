@@ -33,7 +33,7 @@ public class NotificationServer {
      * @param args
      */
     public static void main(String[] args) throws InterruptedException {
-        final ScannerManager service = new ScannerManager();
+        final NotificationZKWatchdog service = new NotificationZKWatchdog();
         
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run() {                

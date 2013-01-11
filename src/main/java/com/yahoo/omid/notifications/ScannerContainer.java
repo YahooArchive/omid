@@ -88,27 +88,6 @@ public class ScannerContainer {
 
     }
 
-    /**
-     * @param interest
-     */
-    public ScannerContainer(String interest, String observer, Map<String, List<String>> interestsToObservers, Map<String, List<String>> observersToHosts) {
-        this(interest, interestsToObservers, observersToHosts);
-        addObserver(interest, observer);
-    }
-
-    /**
-     * @param interest
-     */
-    public ScannerContainer(String interest, List<String> observers, Map<String, List<String>> interestsToObservers, Map<String, List<String>> observersToHosts) {
-        this(interest, interestsToObservers, observersToHosts);
-        for(String observer : observers) {
-            addObserver(interest, observer);
-        }
-    }    
-
-    public void addObserver(String interest, String observer) {
-    }
-
     public void start()
             throws Exception {
         // TODO Start the number of required scanners instead of only one

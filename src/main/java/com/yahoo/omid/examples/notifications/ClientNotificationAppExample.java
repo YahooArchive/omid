@@ -111,7 +111,7 @@ public class ClientNotificationAppExample {
         registrationService.startAndWait();
 
         TransactionalObserver obs1 = new TransactionalObserver("o1" /* Observer Name */, new ObserverBehaviour() {
-            public void updated(TransactionState tx, byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {
+            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
                  logger.info("ooo Omid ooo -"
                  + "I'M OBSERVER o1."
                  + " An update has occurred on Table: "
@@ -142,7 +142,7 @@ public class ClientNotificationAppExample {
         });
 
         TransactionalObserver obs2 = new TransactionalObserver("o2" /* Observer Name */, new ObserverBehaviour() {
-            public void updated(TransactionState tx, byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {
+            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
                  logger.info("ooo Omid ooo - "
                  + "I'M OBSERVER o2."
                  + " An update has occurred on Table: "
