@@ -38,25 +38,16 @@ public class ScannerManager {
         this.observersToHosts = observersToHosts;
     }
     
-    public void addScannerContainer(String interest, String observer) throws Exception {
+    public void addScannerContainer(String interest) throws Exception {
         ScannerContainer scannerContainer = scanners.get(interest);
         if(scannerContainer == null) {
-            scannerContainer = new ScannerContainer(interest, observer, interestsToObservers, observersToHosts);
+            scannerContainer = new ScannerContainer(interest, interestsToObservers, observersToHosts);
             scannerContainer.start();
             scanners.put(interest, scannerContainer);
-            logger.trace("Scanner and interest " + interest + " added to in-memory structures for observer " + observer);
-        } else {
-            scannerContainer.addObserver(interest, observer);
-            logger.trace("Observer " + observer + " added to Scanner and interest " + interest);
+            logger.trace("ScannerContainer created for interest " + interest);
         }
     }
     
-    public void addScannerContainers(String interest, List<String> observers) throws Exception {
-        for(String observer: observers) {
-            addScannerContainer(interest, observer);
-        }
-    }
-
     /**
      * @param node
      * @throws InterruptedException 

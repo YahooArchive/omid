@@ -82,7 +82,7 @@ public class NotificationZKWatchdog extends AbstractIdleService implements Watch
         
         // For each interest, add Scanner. NOTE. This is done AFTER the previous maps have been filled properly
         for (String interest : interests) {
-            scannerManager.addScannerContainers(interest, interestsToObservers.get(interest));
+            scannerManager.addScannerContainer(interest);
         }
         
         // Register interests to observe how the children change on these nodes
@@ -162,7 +162,7 @@ public class NotificationZKWatchdog extends AbstractIdleService implements Watch
                     if(lostChildren.size() > 0) {
                         logger.trace("Lost children found in InterestNode Watcher. Node : " + node +  " " + lostChildren);
                         interestsToObservers.get(node).addAll(lostChildren);
-                        scannerManager.addScannerContainers(node, lostChildren);                                                
+                        scannerManager.addScannerContainer(node);                                                
                     }
                 } else {
                     logger.trace("Interest " + node + " already into in-memory structures");
@@ -198,7 +198,7 @@ public class NotificationZKWatchdog extends AbstractIdleService implements Watch
             for(String node: addedNodes) {
                 if (!observers.contains(node)) {
                     observers.add(node);
-                    scannerManager.addScannerContainer(interestNode, node);
+                    scannerManager.addScannerContainer(interestNode);
                     logger.trace("The observer " + node + " was added to the list of the " + interestNode + " interest");
                 } else {
                     logger.trace("The observer " + node + " was already in the list of the  " + interestNode + " interest");
