@@ -18,26 +18,32 @@ package com.yahoo.omid.notifications.client;
 import java.util.HashMap;
 import java.util.Map;
 
+import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
+
 import com.google.common.util.concurrent.AbstractIdleService;
 import com.yahoo.omid.notifications.Interest;
 
 public class ObserverRegistrationService extends AbstractIdleService {
     
+    private ActorSystem observersSystem = ActorSystem.create("ObserversSystem");
+    
     // The main structure shared by the InterestRecorder and NotificiationListener services in order to register and
     // notify observers
     // Key: The name of a registered observer
     // Value: The TransactionalObserver infrastructure that delegates on the implementation of the ObserverBehaviour
-    final Map<String, TransactionalObserver> registeredObservers = new HashMap<String, TransactionalObserver>();
+    final Map<String, ActorRef> registeredObservers = new HashMap<String, ActorRef>();
     
-    final InterestRecorder interestRecorder = new InterestRecorder(registeredObservers, null, null);
+    final InterestRecorder interestRecorder = new InterestRecorder(observersSystem, registeredObservers, null, null);
     final NotificationManager notificationManager = new NotificationManager(registeredObservers);
+    
 
-    public void register(TransactionalObserver obs, Interest interest) throws Exception {
-        interestRecorder.register(obs, interest); // Delegate
+    public void registerObserverInterest(String obsName, ObserverBehaviour obsBehaviour, Interest interest) throws Exception {
+        interestRecorder.registerObserverInterest(obsName, obsBehaviour, interest); // Delegate
     }
     
-    public void deregister(TransactionalObserver obs, Interest interest) throws Exception {
-        interestRecorder.deregister(obs, interest); // Delegate
+    public void deregisterObserverInterest(TransactionalObserver obs, Interest interest) throws Exception {
+        interestRecorder.deregisterObserverInterest(obs, interest); // Delegate
     }
     
     /* (non-Javadoc)

@@ -30,6 +30,8 @@ import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 import org.apache.thrift.transport.TTransportException;
 
+import akka.actor.ActorRef;
+
 import com.google.common.util.concurrent.AbstractExecutionThreadService;
 import com.yahoo.omid.notifications.Constants;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
@@ -39,7 +41,7 @@ public class NotificationManager extends AbstractExecutionThreadService {
 
     private static final Log logger = LogFactory.getLog(NotificationManager.class);
 
-    private Map<String, TransactionalObserver> registeredObservers;
+    private Map<String, ActorRef> registeredObservers;
 
     private final ExecutorService notificatorAcceptorExecutor = Executors.newSingleThreadExecutor();
 
@@ -50,12 +52,12 @@ public class NotificationManager extends AbstractExecutionThreadService {
     // for the sake of simplicity and we expect to have
     // more than one consumer at the same time in the near future
     private BlockingQueue<Notification> queue = new LinkedBlockingQueue<Notification>();
-
+    
     /**
      * @param registeredObservers
      * 
      */
-    public NotificationManager(Map<String, TransactionalObserver> registeredObservers) {
+    public NotificationManager(Map<String, ActorRef> registeredObservers) {
         super();
         this.registeredObservers = registeredObservers;
     }
@@ -115,11 +117,12 @@ public class NotificationManager extends AbstractExecutionThreadService {
                     String column = new String(notification.getColumn());
                     //logger.trace("Notification for observer " + notification.getObserver() + " on RowKey " + rowKey
                     //        + " in Table " + table + " CF " + columnFamily + " C " + column);
-                    TransactionalObserver obs = registeredObservers.get(notification.getObserver());
-                    if (obs != null) {
-                        obs.notify(notification.getTable(), notification.getRowKey(), notification.getColumnFamily(), notification.getColumn());
+                    ActorRef obsRef = registeredObservers.get(notification.getObserver());
+                    if (obsRef != null) {
+                        //obs.notify(notification.getTable(), notification.getRowKey(), notification.getColumnFamily(), notification.getColumn());
+                        obsRef.tell(notification);
                     } else {
-                        logger.error("The observer " + obs + " does not exists!!!");
+                        logger.error("The observer " + obsRef.toString() + " does not exists!!!");
                     }
                 } else {
                     logger.trace("Extracted notif " + notification + " is null");

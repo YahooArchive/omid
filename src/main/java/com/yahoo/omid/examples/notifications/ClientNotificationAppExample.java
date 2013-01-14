@@ -38,7 +38,6 @@ import com.yahoo.omid.examples.Constants;
 import com.yahoo.omid.notifications.Interest;
 import com.yahoo.omid.notifications.client.ObserverBehaviour;
 import com.yahoo.omid.notifications.client.ObserverRegistrationService;
-import com.yahoo.omid.notifications.client.TransactionalObserver;
 
 /**
  * This applications shows the basic usage of the Omid's notification framework
@@ -110,59 +109,55 @@ public class ClientNotificationAppExample {
 
         registrationService.startAndWait();
 
-        TransactionalObserver obs1 = new TransactionalObserver("o1" /* Observer Name */, new ObserverBehaviour() {
-            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
-                 logger.info("ooo Omid ooo -"
-                 + "I'M OBSERVER o1."
-                 + " An update has occurred on Table: "
-                 + Bytes.toString(table)
-                 + " RowKey: "
-                 + Bytes.toString(rowKey)
-                 + " ColumnFamily: "
-                 + Bytes.toString(columnFamily)
-                 + " Column: "
-                 + Bytes.toString(column)
-                 + " !!! - ooo Omid ooo");
-                 logger.info("ooo Omid ooo - OBSERVER o1 INSERTING A NEW ROW ON COLUMN "
-                 + Constants.COLUMN_2 + " UNDER TRANSACTIONAL CONTEXT " + tx +
-                 " - ooo Omid ooo");
-                Configuration tsoClientConf = HBaseConfiguration.create();
-                tsoClientConf.set("tso.host", "localhost");
-                tsoClientConf.setInt("tso.port", 1234);
-
-                try {
-                    TransactionalTable tt = new TransactionalTable(tsoClientConf, Constants.TABLE);
-                    doTransactionalPut(tx, tt, rowKey, Bytes.toBytes(Constants.COLUMN_FAMILY_1),
-                            Bytes.toBytes(Constants.COLUMN_2), Bytes.toBytes("Data written by OBSERVER o1"));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                cdl.countDown();
-            }
-        });
-
-        TransactionalObserver obs2 = new TransactionalObserver("o2" /* Observer Name */, new ObserverBehaviour() {
-            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
-                 logger.info("ooo Omid ooo - "
-                 + "I'M OBSERVER o2."
-                 + " An update has occurred on Table: "
-                 + Bytes.toString(table)
-                 + " RowKey: "
-                 + Bytes.toString(rowKey)
-                 + " ColumnFamily: "
-                 + Bytes.toString(columnFamily)
-                 + " Column: "
-                 + Bytes.toString(column)
-                 + " !!! I'M NOT GONNA DO ANYTHING ELSE - ooo Omid ooo");
-                 cdl.countDown();
-            }
-        });
-
         Interest interestObs1 = new Interest(Constants.TABLE, Constants.COLUMN_FAMILY_1, Constants.COLUMN_1);
-        registrationService.register(obs1, interestObs1);
+        registrationService.registerObserverInterest("o1" /* Observer Name */, new ObserverBehaviour() {
+            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
+                logger.info("ooo Omid ooo -"
+                + "I'M OBSERVER o1."
+                + " An update has occurred on Table: "
+                + Bytes.toString(table)
+                + " RowKey: "
+                + Bytes.toString(rowKey)
+                + " ColumnFamily: "
+                + Bytes.toString(columnFamily)
+                + " Column: "
+                + Bytes.toString(column)
+                + " !!! - ooo Omid ooo");
+                logger.info("ooo Omid ooo - OBSERVER o1 INSERTING A NEW ROW ON COLUMN "
+                + Constants.COLUMN_2 + " UNDER TRANSACTIONAL CONTEXT " + tx +
+                " - ooo Omid ooo");
+               Configuration tsoClientConf = HBaseConfiguration.create();
+               tsoClientConf.set("tso.host", "localhost");
+               tsoClientConf.setInt("tso.port", 1234);
+
+               try {
+                   TransactionalTable tt = new TransactionalTable(tsoClientConf, Constants.TABLE);
+                   doTransactionalPut(tx, tt, rowKey, Bytes.toBytes(Constants.COLUMN_FAMILY_1),
+                           Bytes.toBytes(Constants.COLUMN_2), Bytes.toBytes("Data written by OBSERVER o1"));
+               } catch (IOException e) {
+                   e.printStackTrace();
+               }
+               cdl.countDown();
+           }
+       }, interestObs1);
 
         Interest interestObs2 = new Interest(Constants.TABLE, Constants.COLUMN_FAMILY_1, Constants.COLUMN_2);
-        registrationService.register(obs2, interestObs2);
+        registrationService.registerObserverInterest("o2" /* Observer Name */, new ObserverBehaviour() {
+            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
+                logger.info("ooo Omid ooo - "
+                + "I'M OBSERVER o2."
+                + " An update has occurred on Table: "
+                + Bytes.toString(table)
+                + " RowKey: "
+                + Bytes.toString(rowKey)
+                + " ColumnFamily: "
+                + Bytes.toString(columnFamily)
+                + " Column: "
+                + Bytes.toString(column)
+                + " !!! I'M NOT GONNA DO ANYTHING ELSE - ooo Omid ooo");
+                cdl.countDown();
+           }
+       }, interestObs2);
 
         logger.info("ooo Omid ooo - WAITING 5 SECONDS TO ALLOW OBSERVER REGISTRATION - ooo Omid ooo");
         Thread.currentThread().sleep(5000);

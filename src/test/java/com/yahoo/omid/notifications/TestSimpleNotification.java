@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 Yahoo! Inc. All rights reserved.
+  * Copyright (c) 2011 Yahoo! Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,6 @@ import com.yahoo.omid.client.TransactionManager;
 import com.yahoo.omid.client.TransactionState;
 import com.yahoo.omid.client.TransactionalTable;
 import com.yahoo.omid.notifications.client.ObserverBehaviour;
-import com.yahoo.omid.notifications.client.TransactionalObserver;
 
 public class TestSimpleNotification extends TestInfrastructure {
 
@@ -52,11 +51,9 @@ public class TestSimpleNotification extends TestInfrastructure {
     public void testObserverReceivesACorrectNotification() throws Exception {
 
         final CountDownLatch cdl = new CountDownLatch(1); // # of observers
-
-        TransactionalObserver obs = buildPassiveTransactionalObserver("obs", VAL_1, cdl);
         
         Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
-        registrationService.register(obs, interestObs);
+        registrationService.registerObserverInterest("obs", buildPassiveTransactionalObserver(VAL_1, cdl), interestObs);
         
         Thread.currentThread().sleep(5000);
 
@@ -70,12 +67,9 @@ public class TestSimpleNotification extends TestInfrastructure {
 
         final CountDownLatch cdl = new CountDownLatch(2); // # of observers
 
-        TransactionalObserver obs1 = buildPassiveTransactionalObserver("obs1", VAL_1, cdl);
-        TransactionalObserver obs2 = buildPassiveTransactionalObserver("obs2", VAL_1, cdl);
-        
         Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
-        registrationService.register(obs1, interestObs);
-        registrationService.register(obs2, interestObs);
+        registrationService.registerObserverInterest("obs1", buildPassiveTransactionalObserver(VAL_1, cdl), interestObs);
+        registrationService.registerObserverInterest("obs2", buildPassiveTransactionalObserver(VAL_1, cdl), interestObs);
         
         Thread.currentThread().sleep(5000);
 
@@ -88,13 +82,10 @@ public class TestSimpleNotification extends TestInfrastructure {
     public void testTwoObserversWithTheSameInterestReceiveACorrectNotificationAndCanWriteInTheSameColumnValueOfTwoDifferentRows() throws Exception {
 
         final CountDownLatch cdl = new CountDownLatch(2); // # of observers
-
-        TransactionalObserver obs1 = buildActiveTransactionalObserver("obs1", VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl);
-        TransactionalObserver obs2 = buildActiveTransactionalObserver("obs2", VAL_1, 0, "row-3", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_3, cdl);
         
         Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
-        registrationService.register(obs1, interestObs);
-        registrationService.register(obs2, interestObs);
+        registrationService.registerObserverInterest("obs1", buildActiveTransactionalObserver(VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl), interestObs);
+        registrationService.registerObserverInterest("obs2", buildActiveTransactionalObserver(VAL_1, 0, "row-3", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_3, cdl), interestObs);
         
         Thread.currentThread().sleep(5000);
 
@@ -103,36 +94,13 @@ public class TestSimpleNotification extends TestInfrastructure {
         cdl.await();
     }
 
-    // TODO Check this test when TransactionalObserver is implemented asynchronously
     @Test
-    public void testTwoObserversWithTheSameInterestReceiveACorrectNotificationAndNoneOfThemAbortsDespiteWritingTheSameColumnValueOfTheSameRowBecauseTheyAreExecutedSerially() throws Exception {
-
-        final CountDownLatch cdl = new CountDownLatch(2); // # of observers
-        
-        TransactionalObserver obs1 = buildActiveTransactionalObserver("obs1", VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl);
-        TransactionalObserver obs2 = buildActiveTransactionalObserver("obs2", VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_3, cdl);
-        
-        Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
-        registrationService.register(obs1, interestObs);
-        registrationService.register(obs2, interestObs);
-        
-        Thread.currentThread().sleep(5000);
-
-        startTriggerTransaction("row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
-        
-        cdl.await();
-    }
-
-    @Test(expected=CommitUnsuccessfulException.class)
     public void testTwoObserversWithTheSameInterestReceiveACorrectNotificationAndOneOfThemAbortsBecauseCannotWriteInTheSameColumnValueOfTheSameRow() throws Exception {
         final CountDownLatch cdl = new CountDownLatch(2); // # of observers
-        // TODO It won't work till TransactionalObservers are asynchronous
-        TransactionalObserver obs1 = buildActiveTransactionalObserver("obs1", VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl);
-        TransactionalObserver obs2 = buildActiveTransactionalObserver("obs2", VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_3, cdl);
         
         Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
-        registrationService.register(obs1, interestObs);
-        registrationService.register(obs2, interestObs);
+        registrationService.registerObserverInterest("obs1", buildActiveTransactionalObserver(VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl), interestObs);
+        registrationService.registerObserverInterest("obs2", buildActiveTransactionalObserver(VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_3, cdl), interestObs);
         
         Thread.currentThread().sleep(5000);
 
@@ -144,15 +112,56 @@ public class TestSimpleNotification extends TestInfrastructure {
         
         Thread.currentThread().sleep(10000);
         
-        // Print versions
+        // Check number of versions in Column 2 of Row 2
         TransactionalTable tt = new TransactionalTable(tsoClientConf, TestConstants.TABLE);
         Get row = new Get(Bytes.toBytes("row-2")).setMaxVersions();
         Result result = tt.get(row);
         List<KeyValue> kvl = result.getColumn(Bytes.toBytes(TestConstants.COLUMN_FAMILY_1),
                 Bytes.toBytes(TestConstants.COLUMN_2));
+        assertEquals("Only one KeyValue should appear on list", 1, kvl.size());
         for(KeyValue kv : kvl) {
             logger.info("TS " + kv.getTimestamp() + " VAL " + new String(kv.getValue()));
         }
+        tt.close();
+        
+        cdl.await();
+
+    }
+    
+    @Test
+    public void testTwoObserversWithTheSameInterestReceiveACorrectNotificationAndOneOfThemAbortsBecauseCannotWriteInTwoDifferentColumnsOfTheSameRow() throws Exception {
+        final CountDownLatch cdl = new CountDownLatch(2); // # of observers
+        
+        Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
+        registrationService.registerObserverInterest("obs1", buildActiveTransactionalObserver(VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl), interestObs);
+        registrationService.registerObserverInterest("obs2", buildActiveTransactionalObserver(VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_3, VAL_3, cdl), interestObs);
+        
+        Thread.currentThread().sleep(5000);
+
+        startTriggerTransaction("row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
+
+        Configuration tsoClientConf = HBaseConfiguration.create();
+        tsoClientConf.set("tso.host", "localhost");
+        tsoClientConf.setInt("tso.port", 1234);
+        
+        Thread.currentThread().sleep(10000);
+        
+        // Check number of versions in Column 2 of Row 2
+        TransactionalTable tt = new TransactionalTable(tsoClientConf, TestConstants.TABLE);
+        Get row = new Get(Bytes.toBytes("row-2")).setMaxVersions();
+        Result result = tt.get(row);
+        List<KeyValue> kvlc2 = result.getColumn(Bytes.toBytes(TestConstants.COLUMN_FAMILY_1),
+                Bytes.toBytes(TestConstants.COLUMN_2));
+        List<KeyValue> kvlc3 = result.getColumn(Bytes.toBytes(TestConstants.COLUMN_FAMILY_1),
+                Bytes.toBytes(TestConstants.COLUMN_3));
+        if(kvlc2.size() != 0) {
+            assertEquals("Only one KeyValue should appear on list", 1, kvlc2.size());
+            assertEquals("No KeyValue should appear on list", 0, kvlc3.size());
+        } else {
+            assertEquals("No KeyValue should appear on list", 0, kvlc2.size());
+            assertEquals("Only one KeyValue should appear on list", 1, kvlc3.size());
+        }
+
         tt.close();
         
         cdl.await();
@@ -164,17 +173,13 @@ public class TestSimpleNotification extends TestInfrastructure {
 
         final CountDownLatch cdl = new CountDownLatch(3); // # of observers
         
-        TransactionalObserver obs1 = buildActiveTransactionalObserver("obs1", VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl);
-        TransactionalObserver obs2 = buildActiveTransactionalObserver("obs2", VAL_2, 0, "row-3", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_3, VAL_3, cdl);
-        TransactionalObserver obs3 = buildPassiveTransactionalObserver("obs3", VAL_3, cdl);
-        
         Interest interestObs1 = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
         Interest interestObs2 = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2);
         Interest interestObs3 = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_3);
         
-        registrationService.register(obs1, interestObs1);
-        registrationService.register(obs2, interestObs2);
-        registrationService.register(obs3, interestObs3);
+        registrationService.registerObserverInterest("obs1", buildActiveTransactionalObserver(VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl), interestObs1);
+        registrationService.registerObserverInterest("obs2", buildActiveTransactionalObserver(VAL_2, 0, "row-3", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_3, VAL_3, cdl), interestObs2);
+        registrationService.registerObserverInterest("obs3", buildPassiveTransactionalObserver(VAL_3, cdl), interestObs3);
         
         Thread.currentThread().sleep(5000);        
 
@@ -211,14 +216,13 @@ public class TestSimpleNotification extends TestInfrastructure {
     /**
      * The observer built by this method just checks that the value received when its notified is the expected
      * 
-     * @param obsName The name of the generated observer
      * @param expectedValue The value that this observer will check 
      * @param cdl Count down latch
      * @return A passive observer
      * @throws Exception
      */
-    private TransactionalObserver buildPassiveTransactionalObserver(String obsName, final String expectedValue, final CountDownLatch cdl) throws Exception {
-        return new TransactionalObserver(obsName, new ObserverBehaviour() {
+    private ObserverBehaviour buildPassiveTransactionalObserver(final String expectedValue, final CountDownLatch cdl) throws Exception {
+        return new ObserverBehaviour() {
             public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
                 Configuration tsoClientConf = HBaseConfiguration.create();
                 tsoClientConf.set("tso.host", "localhost");
@@ -237,14 +241,13 @@ public class TestSimpleNotification extends TestInfrastructure {
                     cdl.countDown();
                 }
             }
-        });
+        };
     }
 
     /**
      * The observer built by this method checks that the value received when its notified is the expected and generates
      * a new value on a row as part of the transactional context it has.
      * 
-     * @param obsName The name of the generated observer
      * @param expectedValue The value that this observer will check 
      * @param r Row Key to write in
      * @param cf Column Family to write in
@@ -254,9 +257,9 @@ public class TestSimpleNotification extends TestInfrastructure {
      * @return An active observer
      * @throws Exception
      */
-    private TransactionalObserver buildActiveTransactionalObserver(String obsName, final String expectedValue, final int delay,
+    private ObserverBehaviour buildActiveTransactionalObserver(final String expectedValue, final int delay,
             final String r, final String cf, final String c, final String v, final CountDownLatch cdl) throws Exception {
-        return new TransactionalObserver(obsName, new ObserverBehaviour() {
+        return new ObserverBehaviour() {
             public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
                 if(delay != 0) {
                     try {
@@ -285,7 +288,7 @@ public class TestSimpleNotification extends TestInfrastructure {
                     cdl.countDown();
                 }   
             }
-        });
+        };
     }
     
     private static void doTransactionalPut(TransactionState tx, TransactionalTable tt, byte[] rowKey,
