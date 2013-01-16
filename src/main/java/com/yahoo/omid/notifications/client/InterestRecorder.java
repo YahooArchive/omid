@@ -112,21 +112,6 @@ public class InterestRecorder extends AbstractIdleService {
         registeredObservers.remove(obsName);
     }
     
-//    private void deleteZkSubtree(String branchPath, String startingNode) throws KeeperException, InterruptedException {
-//        
-//        String zkStartingNodePath = new StringBuffer(branchPath).append("/").append(startingNode).toString();
-//        Stat s = zk.exists(zkStartingNodePath, false);
-//        if (s == null) {
-//            throw new IllegalArgumentException("ZK node " + zkStartingNodePath + " not exists");
-//        }
-//        // TODO Implement properly without removing all the nodes below
-//        List<String> subnodes = zk.getChildren(zkStartingNodePath, false);
-//        for (String subnode : subnodes) {
-//            zk.delete(new StringBuffer(zkStartingNodePath).append("/").append(subnode).toString(), -1);
-//        }
-//        zk.delete(zkStartingNodePath, -1);
-//    }    
-        
     /*
      * Create connection with Zookeeper
      * 
