@@ -16,19 +16,10 @@
 package com.yahoo.omid.notifications.client;
 
 import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooDefs.Ids;
-import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 
 import akka.actor.ActorRef;
@@ -37,21 +28,25 @@ import akka.actor.Props;
 import akka.actor.UntypedActor;
 import akka.actor.UntypedActorFactory;
 
+import com.google.common.io.Closeables;
 import com.google.common.util.concurrent.AbstractIdleService;
+import com.netflix.curator.framework.CuratorFramework;
+import com.netflix.curator.framework.CuratorFrameworkFactory;
+import com.netflix.curator.retry.ExponentialBackoffRetry;
+import com.netflix.curator.utils.ZKPaths;
 import com.yahoo.omid.notifications.Constants;
 import com.yahoo.omid.notifications.Interest;
 
-public class InterestRecorder extends AbstractIdleService implements Watcher {
+public class InterestRecorder extends AbstractIdleService {
 
     private static final Logger logger = Logger.getLogger(InterestRecorder.class);
 
     private ActorSystem observersSystem;
     private Map<String, ActorRef> registeredObservers;
     
-    private ZooKeeper zk;
-    private CountDownLatch zkStartedCdl = new CountDownLatch(1);
+    private CuratorFramework zkClient = null;
     
-    public InterestRecorder(ActorSystem observersSystem, Map<String, ActorRef> registeredObservers, String zkConn, Configuration hHbaseConfig) {
+    public InterestRecorder(ActorSystem observersSystem, Map<String, ActorRef> registeredObservers) {
         this.observersSystem = observersSystem;
         this.registeredObservers = registeredObservers;
     }
@@ -61,9 +56,8 @@ public class InterestRecorder extends AbstractIdleService implements Watcher {
      * interest of observers in a particular column The registration process is
      * done through Zk.
      * 
-     * TODO Apply DRY
-     * @param obsName TODO
-     * @param obsBehaviour TODO
+     * @param obsName
+     * @param obsBehaviour
      * @param system 
      * @param table
      * @param columnFamily
@@ -72,9 +66,11 @@ public class InterestRecorder extends AbstractIdleService implements Watcher {
      */
     public void registerObserverInterest(final String obsName, final ObserverBehaviour obsBehaviour, Interest interest) throws Exception {
 
-        // Register first where is each observer and then what are the interest of the observer
-        registerObserversAndHosts(obsName);
-        registerInterestsAndObservers(obsName, interest);
+        String clientHost = InetAddress.getLocalHost().getHostAddress();
+        // Register first in which host is the observer (in /onf/oh branch)...
+        createZkSubBrach(Constants.NOTIF_OBSERVERS, ZKPaths.makePath(obsName, clientHost));
+        // ...and then what is its interest (in /onf/io branch)
+        createZkSubBrach(Constants.NOTIF_INTERESTS, ZKPaths.makePath(interest.toZkNodeRepresentation(), obsName));
                 
         // Register observer in shared table
         ActorRef obsActor = observersSystem.actorOf(
@@ -87,93 +83,50 @@ public class InterestRecorder extends AbstractIdleService implements Watcher {
         
     }
 
-    /**
-     * Register in ZK in which server is located each observer
-     * @param obsName
-     * @throws KeeperException
-     * @throws InterruptedException
-     * @throws UnknownHostException
-     */
-    private void registerObserversAndHosts(String obsName) throws KeeperException, InterruptedException,
-            UnknownHostException {
-        String zkObserverNodePath = new StringBuffer(Constants.NOTIF_OBSERVERS).append("/").append(obsName).toString();
-        Stat s = zk.exists(zkObserverNodePath, false);
+    private void createZkSubBrach(String mainBranchPath, String subBranchPath) throws Exception {
+        String completeBranchPath = ZKPaths.makePath(mainBranchPath, subBranchPath);
+        Stat s = zkClient.checkExists().forPath(completeBranchPath);
         if (s == null) {
-            zk.create(zkObserverNodePath, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-            logger.trace(zkObserverNodePath + " registered in observers");
-        }
-        String zkHostNode = new StringBuffer(InetAddress.getLocalHost().getHostAddress()).toString();
-        String zkHostSubNodePath = new StringBuffer(zkObserverNodePath).append("/").append(zkHostNode).toString();
-        s = zk.exists(zkHostSubNodePath, false);
-        if (s == null) {
-            zk.create(zkHostSubNodePath, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-            logger.trace(zkHostSubNodePath + " registered in observers");
-        }
-    }
-
-    /**
-     * Register in ZK in which column has an observer interest
-     * @param obsName
-     * @param interest
-     * @throws KeeperException
-     * @throws InterruptedException
-     */
-    private void registerInterestsAndObservers(String obsName, Interest interest) throws KeeperException,
-            InterruptedException {
-        String zkInterestNode = interest.toZkNodeRepresentation();
-        String zkInterestNodePath = new StringBuffer(Constants.NOTIF_INTERESTS).append("/").append(zkInterestNode).toString();
-        Stat s = zk.exists(zkInterestNodePath, false);
-        if (s == null) {
-            zk.create(zkInterestNodePath, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-            logger.trace(zkInterestNodePath + " registered in interests");
-        }
-        String zkObserverSubNodePath = new StringBuffer(zkInterestNodePath).append("/").append(obsName).toString();
-        s = zk.exists(zkObserverSubNodePath, false);
-        if (s == null) {
-            zk.create(zkObserverSubNodePath, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-            logger.trace(zkObserverSubNodePath + " registered in interests");
+            zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(completeBranchPath);
+            logger.trace(subBranchPath + " added to " + mainBranchPath);
         }
     }
     
     /**
      * TODO Apply DRY
      * 
-     * @param obs
+     * @param obsName
      * @param interest
      * @throws Exception
      */
-    public void deregisterObserverInterest(TransactionalObserver obs, Interest interest) throws Exception {
-        logger.trace("Deregistering observer");
-        String zkInterestNode = interest.toZkNodeRepresentation();
-        String zkInterestNodePath = new StringBuffer(Constants.NOTIF_INTERESTS).append("/").append(zkInterestNode).toString();
-        Stat s = zk.exists(zkInterestNodePath, false);
-        if (s == null) {
-            throw new IllegalArgumentException("ZK node " + zkInterestNodePath + " not exists");
-        }
-        // TODO Implement properly without removing all the observers below
-        List<String> observers = zk.getChildren(zkInterestNodePath, false);
-        for(String observer : observers) {
-            zk.delete(new StringBuffer(zkInterestNodePath).append("/").append(observer).toString(), -1);
-        }
-        zk.delete(zkInterestNodePath, -1);
+    public void deregisterObserverInterest(String obsName, Interest interest) throws Exception {
         
-        String zkObserverNode = obs.getName();
-        String zkObserverNodePath = new StringBuffer(Constants.NOTIF_OBSERVERS).append("/").append(zkObserverNode).toString();
-        s = zk.exists(zkObserverNodePath, false);
-        if (s == null) {
-            throw new IllegalArgumentException("ZK node " + zkObserverNodePath + " not exists");
-        }
-        // TODO Implement properly without removing all the hosts below
-        List<String> hosts = zk.getChildren(zkObserverNodePath, false);
-        for(String host : hosts) {
-            zk.delete(new StringBuffer(zkObserverNodePath).append("/").append(host).toString(), -1);
-        }
-        zk.delete(zkObserverNodePath, -1);
-
-        // Deregister observer from shared table
-        registeredObservers.remove(obs.getName());
+        // De-register first from ZK where is each observer and then what are the interest of that observer
+        String path = ZKPaths.makePath(Constants.NOTIF_OBSERVERS, obsName);
+        logger.trace("De-registering observer and its hosts from ZK");
+        zkClient.delete().forPath(path);
+        path = ZKPaths.makePath(Constants.NOTIF_INTERESTS, interest.toZkNodeRepresentation());
+        logger.trace("De-registering interest and its observers from ZK");
+        zkClient.delete().forPath(path);                
+        // De-register observer in shared table
+        registeredObservers.remove(obsName);
     }
-
+    
+//    private void deleteZkSubtree(String branchPath, String startingNode) throws KeeperException, InterruptedException {
+//        
+//        String zkStartingNodePath = new StringBuffer(branchPath).append("/").append(startingNode).toString();
+//        Stat s = zk.exists(zkStartingNodePath, false);
+//        if (s == null) {
+//            throw new IllegalArgumentException("ZK node " + zkStartingNodePath + " not exists");
+//        }
+//        // TODO Implement properly without removing all the nodes below
+//        List<String> subnodes = zk.getChildren(zkStartingNodePath, false);
+//        for (String subnode : subnodes) {
+//            zk.delete(new StringBuffer(zkStartingNodePath).append("/").append(subnode).toString(), -1);
+//        }
+//        zk.delete(zkStartingNodePath, -1);
+//    }    
+        
     /*
      * Create connection with Zookeeper
      * 
@@ -184,9 +137,9 @@ public class InterestRecorder extends AbstractIdleService implements Watcher {
     @Override
     protected void startUp() throws Exception {
         logger.info("Starting Interest Recorder");
-        logger.trace("Starting ZK");
-        zk = new ZooKeeper("localhost:2181", 3000, this);
-        zkStartedCdl.await();
+        logger.trace("Starting ZK Curator client");
+        zkClient = CuratorFrameworkFactory.newClient("localhost:2181", new ExponentialBackoffRetry(3000, 3));
+        zkClient.start();
         logger.info("Interest Recorder started");
     }
 
@@ -198,19 +151,7 @@ public class InterestRecorder extends AbstractIdleService implements Watcher {
     @Override
     protected void shutDown() throws Exception {
         logger.info("Stopping Interest Recorder");
-        zk.close();
+        Closeables.closeQuietly(zkClient);
         logger.info("Interest Recorder stopped");
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * org.apache.zookeeper.Watcher#process(org.apache.zookeeper.WatchedEvent)
-     */
-    @Override
-    public void process(WatchedEvent event) {
-        logger.trace("New ZK event received: " + event);
-        zkStartedCdl.countDown();
     }
 }
