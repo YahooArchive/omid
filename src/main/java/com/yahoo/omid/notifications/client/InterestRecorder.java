@@ -31,6 +31,12 @@ import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 
+import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
+import akka.actor.Props;
+import akka.actor.UntypedActor;
+import akka.actor.UntypedActorFactory;
+
 import com.google.common.util.concurrent.AbstractIdleService;
 import com.yahoo.omid.notifications.Constants;
 import com.yahoo.omid.notifications.Interest;
@@ -39,12 +45,14 @@ public class InterestRecorder extends AbstractIdleService implements Watcher {
 
     private static final Logger logger = Logger.getLogger(InterestRecorder.class);
 
-    private Map<String, TransactionalObserver> registeredObservers;
+    private ActorSystem observersSystem;
+    private Map<String, ActorRef> registeredObservers;
     
     private ZooKeeper zk;
     private CountDownLatch zkStartedCdl = new CountDownLatch(1);
-
-    public InterestRecorder(Map<String, TransactionalObserver> registeredObservers, String zkConn, Configuration hHbaseConfig) {
+    
+    public InterestRecorder(ActorSystem observersSystem, Map<String, ActorRef> registeredObservers, String zkConn, Configuration hHbaseConfig) {
+        this.observersSystem = observersSystem;
         this.registeredObservers = registeredObservers;
     }
 
@@ -54,34 +62,41 @@ public class InterestRecorder extends AbstractIdleService implements Watcher {
      * done through Zk.
      * 
      * TODO Apply DRY
-     * 
-     * @param obs
+     * @param obsName TODO
+     * @param obsBehaviour TODO
+     * @param system 
      * @param table
      * @param columnFamily
      * @param column
      * @throws Exception
      */
-    public void register(TransactionalObserver obs, Interest interest) throws Exception {
+    public void registerObserverInterest(final String obsName, final ObserverBehaviour obsBehaviour, Interest interest) throws Exception {
 
         // Register first where is each observer and then what are the interest of the observer
-        registerObserversAndHosts(obs);
-        registerInterestsAndObservers(obs, interest);
+        registerObserversAndHosts(obsName);
+        registerInterestsAndObservers(obsName, interest);
                 
         // Register observer in shared table
-        registeredObservers.put(obs.getName(), obs);
+        ActorRef obsActor = observersSystem.actorOf(
+                new Props(new UntypedActorFactory() {
+                    public UntypedActor create() {
+                        return new TransactionalObserver(obsName, obsBehaviour);
+                    }
+                }), obsName);
+        registeredObservers.put(obsName, obsActor);
         
     }
 
     /**
      * Register in ZK in which server is located each observer
-     * @param obs
+     * @param obsName
      * @throws KeeperException
      * @throws InterruptedException
      * @throws UnknownHostException
      */
-    private void registerObserversAndHosts(TransactionalObserver obs) throws KeeperException, InterruptedException,
+    private void registerObserversAndHosts(String obsName) throws KeeperException, InterruptedException,
             UnknownHostException {
-        String zkObserverNodePath = new StringBuffer(Constants.NOTIF_OBSERVERS).append("/").append(obs.getName()).toString();
+        String zkObserverNodePath = new StringBuffer(Constants.NOTIF_OBSERVERS).append("/").append(obsName).toString();
         Stat s = zk.exists(zkObserverNodePath, false);
         if (s == null) {
             zk.create(zkObserverNodePath, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
@@ -98,12 +113,12 @@ public class InterestRecorder extends AbstractIdleService implements Watcher {
 
     /**
      * Register in ZK in which column has an observer interest
-     * @param obs
+     * @param obsName
      * @param interest
      * @throws KeeperException
      * @throws InterruptedException
      */
-    private void registerInterestsAndObservers(TransactionalObserver obs, Interest interest) throws KeeperException,
+    private void registerInterestsAndObservers(String obsName, Interest interest) throws KeeperException,
             InterruptedException {
         String zkInterestNode = interest.toZkNodeRepresentation();
         String zkInterestNodePath = new StringBuffer(Constants.NOTIF_INTERESTS).append("/").append(zkInterestNode).toString();
@@ -112,7 +127,7 @@ public class InterestRecorder extends AbstractIdleService implements Watcher {
             zk.create(zkInterestNodePath, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
             logger.trace(zkInterestNodePath + " registered in interests");
         }
-        String zkObserverSubNodePath = new StringBuffer(zkInterestNodePath).append("/").append(obs.getName()).toString();
+        String zkObserverSubNodePath = new StringBuffer(zkInterestNodePath).append("/").append(obsName).toString();
         s = zk.exists(zkObserverSubNodePath, false);
         if (s == null) {
             zk.create(zkObserverSubNodePath, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
@@ -127,7 +142,7 @@ public class InterestRecorder extends AbstractIdleService implements Watcher {
      * @param interest
      * @throws Exception
      */
-    public void deregister(TransactionalObserver obs, Interest interest) throws Exception {
+    public void deregisterObserverInterest(TransactionalObserver obs, Interest interest) throws Exception {
         logger.trace("Deregistering observer");
         String zkInterestNode = interest.toZkNodeRepresentation();
         String zkInterestNodePath = new StringBuffer(Constants.NOTIF_INTERESTS).append("/").append(zkInterestNode).toString();

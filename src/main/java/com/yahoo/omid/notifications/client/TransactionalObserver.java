@@ -28,14 +28,17 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
+import akka.actor.UntypedActor;
+
 import com.yahoo.omid.client.TransactionException;
 import com.yahoo.omid.client.TransactionManager;
 import com.yahoo.omid.client.TransactionState;
 import com.yahoo.omid.client.TransactionalTable;
 import com.yahoo.omid.notifications.Constants;
 import com.yahoo.omid.notifications.NotificationException;
+import com.yahoo.omid.notifications.thrift.generated.Notification;
 
-public class TransactionalObserver {
+public class TransactionalObserver extends UntypedActor {
     
     private static final Logger logger = Logger.getLogger(TransactionalObserver.class);
     
@@ -45,7 +48,7 @@ public class TransactionalObserver {
     private Configuration tsoClientHbaseConf;
     private TransactionManager tm;
     
-    public TransactionalObserver(String name, ObserverBehaviour observer) throws Exception{
+    public TransactionalObserver(String name, ObserverBehaviour observer) {
         this.name = name;
         this.observer = observer;
         
@@ -69,7 +72,21 @@ public class TransactionalObserver {
         return name;
     }
 
-    public void notify(byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {
+    /* (non-Javadoc)
+     * @see akka.actor.UntypedActor#onReceive(java.lang.Object)
+     */
+    @Override
+    public void onReceive(Object msg) throws Exception {
+        if(msg instanceof Notification) {
+            Notification notification = (Notification) msg;
+            notify(notification.getTable(), notification.getRowKey(), notification.getColumnFamily(), notification.getColumn());
+        } else {
+            unhandled(msg);
+        }
+        
+    }
+    
+    private void notify(byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {
         TransactionalTable tt = null;
         TransactionState tx = null;
         try {
@@ -107,7 +124,7 @@ public class TransactionalObserver {
     private void checkIfAlreadyExecuted(TransactionState tx, TransactionalTable tt, byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) throws Exception {
         String targetColumnFamily = Bytes.toString(columnFamily) + Constants.NOTIF_HBASE_CF_SUFFIX;        
         String targetColumnObserverAck = Bytes.toString(column) + ":" + name;
-        String targetColumnNotify = Bytes.toString(column) + ":notify";
+        String targetColumnNotify = Bytes.toString(column) + Constants.HBASE_NOTIFY_SUFFIX;
         
         //logger.trace("Checking if observer was already executed...");
         Get get = new Get(rowKey);
