@@ -68,9 +68,9 @@ public class InterestRecorder extends AbstractIdleService {
 
         String clientHost = InetAddress.getLocalHost().getHostAddress();
         // Register first in which host is the observer (in /onf/oh branch)...
-        createZkSubBrach(Constants.NOTIF_OBSERVERS, ZKPaths.makePath(obsName, clientHost));
+        createZkSubBrach(ZKPaths.makePath(Constants.ROOT_NODE, Constants.O2H_NODE), ZKPaths.makePath(obsName, clientHost), true);
         // ...and then what is its interest (in /onf/io branch)
-        createZkSubBrach(Constants.NOTIF_INTERESTS, ZKPaths.makePath(interest.toZkNodeRepresentation(), obsName));
+        createZkSubBrach(ZKPaths.makePath(Constants.ROOT_NODE, Constants.I2O_NODE), ZKPaths.makePath(interest.toZkNodeRepresentation(), obsName), false);
                 
         // Register observer in shared table
         ActorRef obsActor = observersSystem.actorOf(
@@ -83,11 +83,15 @@ public class InterestRecorder extends AbstractIdleService {
         
     }
 
-    private void createZkSubBrach(String mainBranchPath, String subBranchPath) throws Exception {
+    private void createZkSubBrach(String mainBranchPath, String subBranchPath, boolean ephemeral) throws Exception {
         String completeBranchPath = ZKPaths.makePath(mainBranchPath, subBranchPath);
         Stat s = zkClient.checkExists().forPath(completeBranchPath);
         if (s == null) {
-            zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(completeBranchPath);
+            if(ephemeral) {
+                zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL).forPath(completeBranchPath);
+            } else {
+                zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(completeBranchPath);                
+            }
             logger.trace(subBranchPath + " added to " + mainBranchPath);
         }
     }
@@ -101,13 +105,13 @@ public class InterestRecorder extends AbstractIdleService {
      */
     public void deregisterObserverInterest(String obsName, Interest interest) throws Exception {
         
-        // De-register first from ZK where is each observer and then what are the interest of that observer
-        String path = ZKPaths.makePath(Constants.NOTIF_OBSERVERS, obsName);
+        // De-register from ZK where is the observer. This will trigger the observer de-registration
+        // from interests
+        String clientHost = InetAddress.getLocalHost().getHostAddress();
+        String basePath = ZKPaths.makePath(Constants.ROOT_NODE, Constants.O2H_NODE);
+        String path = ZKPaths.makePath(obsName, clientHost);
         logger.trace("De-registering observer and its hosts from ZK");
-        zkClient.delete().forPath(path);
-        path = ZKPaths.makePath(Constants.NOTIF_INTERESTS, interest.toZkNodeRepresentation());
-        logger.trace("De-registering interest and its observers from ZK");
-        zkClient.delete().forPath(path);                
+        zkClient.delete().forPath(ZKPaths.makePath(basePath, path));
         // De-register observer in shared table
         registeredObservers.remove(obsName);
     }

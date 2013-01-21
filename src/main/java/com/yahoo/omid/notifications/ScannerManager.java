@@ -49,13 +49,14 @@ public class ScannerManager {
     }
     
     /**
-     * @param node
+     * @param interest
      * @throws InterruptedException 
      */
-    public void removeScannerContainer(String node) throws InterruptedException {
-        ScannerContainer scannerContainer = scanners.get(node);
+    public void removeScannerContainer(String interest) throws InterruptedException {
+        ScannerContainer scannerContainer = scanners.get(interest);
         scannerContainer.stop();
-        scanners.remove(node);        
+        scanners.remove(interest);
+        logger.trace("ScannerContainer stopped and removed for interest " + interest);
     }
     
 }
