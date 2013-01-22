@@ -64,9 +64,10 @@ public class Scanner implements Runnable {
         this.observersToHosts = observersToHosts;
         // TODO Connect to HBase in order to perform periodic scans of a particular column value
         Interest schema = Interest.fromString(interest);
-        String columnFamily = schema.getColumnFamily() + Constants.NOTIF_HBASE_CF_SUFFIX;
+        String columnFamily = Constants.HBASE_META_CF;
         byte[] cf = Bytes.toBytes(columnFamily);
-        String column = schema.getColumn() + Constants.HBASE_NOTIFY_SUFFIX;
+        // Pattern for observer column in framework's metadata column family: <cf>/<c>:notify 
+        String column = schema.getColumnFamily() + "/" + schema.getColumn() + Constants.HBASE_NOTIFY_SUFFIX;
         byte[] c = Bytes.toBytes(column);
         byte[] v = Bytes.toBytes("true");
         // Filter by CF and by value of the notify column

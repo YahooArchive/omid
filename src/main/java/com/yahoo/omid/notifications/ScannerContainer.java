@@ -16,7 +16,6 @@
 package com.yahoo.omid.notifications;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -58,21 +57,21 @@ public class ScannerContainer {
         // Generate scaffolding on HBase to maintain the information required to perform notifications
         Configuration config = HBaseConfiguration.create();
         HBaseAdmin admin;
-        try {
+        try { // TODO: This code should not be here in a production system because it disables the table to add a CF
             Interest interestRep = Interest.fromString(this.interest);
             admin = new HBaseAdmin(config);
             HTableDescriptor tableDesc = admin.getTableDescriptor(interestRep.getTableAsHBaseByteArray());
-            String notificationsMetaCF = interestRep.getColumnFamily() + Constants.NOTIF_HBASE_CF_SUFFIX;
-            if(!tableDesc.hasFamily(Bytes.toBytes(notificationsMetaCF))) {                
+            String metaCFName = Constants.HBASE_META_CF;
+            if(!tableDesc.hasFamily(Bytes.toBytes(metaCFName))) {                
                 String tableName = interestRep.getTable();
         
                 admin.disableTable(tableName);
         
-                HColumnDescriptor cf1 = new HColumnDescriptor(notificationsMetaCF);
-                admin.addColumn(tableName, cf1);      // adding new ColumnFamily
-        
-                Map<String, String> params = new HashMap<String, String>();
+                HColumnDescriptor metaCF = new HColumnDescriptor(metaCFName);
+                admin.addColumn(tableName, metaCF); // CF for storing metadata related to the notif. framework
+                        
                 // TODO I think that coprocessors can not be added dynamically. It has been moved to OmidInfrastructure
+                // Map<String, String> params = new HashMap<String, String>();
                 //tableDesc.addCoprocessor(TransactionCommittedRegionObserver.class.getName(), null, Coprocessor.PRIORITY_USER, params);
                 admin.enableTable(tableName);
                 logger.trace("Column family metadata added!!!");

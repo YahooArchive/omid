@@ -122,9 +122,11 @@ public class TransactionalObserver extends UntypedActor {
      * @param table 
      */
     private void checkIfAlreadyExecuted(TransactionState tx, TransactionalTable tt, byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) throws Exception {
-        String targetColumnFamily = Bytes.toString(columnFamily) + Constants.NOTIF_HBASE_CF_SUFFIX;        
-        String targetColumnObserverAck = Bytes.toString(column) + ":" + name;
-        String targetColumnNotify = Bytes.toString(column) + Constants.HBASE_NOTIFY_SUFFIX;
+        String targetColumnFamily = Constants.HBASE_META_CF;
+        // Pattern for observer column in framework's metadata column family: <cf>/<c>:<obsName>
+        String targetColumnObserverAck = Bytes.toString(columnFamily) + "/" + Bytes.toString(column) + ":" + name;
+        // Pattern for notify column in framework's metadata column family: <cf>/<c>:notify
+        String targetColumnNotify = Bytes.toString(columnFamily) + "/" + Bytes.toString(column) + Constants.HBASE_NOTIFY_SUFFIX;
         
         //logger.trace("Checking if observer was already executed...");
         Get get = new Get(rowKey);
@@ -180,8 +182,8 @@ public class TransactionalObserver extends UntypedActor {
      */
     private void clearNotifyFlag(byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {        
         String targetTable = Bytes.toString(table);
-        String targetColumnFamily = Bytes.toString(columnFamily) + Constants.NOTIF_HBASE_CF_SUFFIX;        
-        String targetColumn = Bytes.toString(column) + Constants.HBASE_NOTIFY_SUFFIX;
+        String targetColumnFamily = Constants.HBASE_META_CF;        
+        String targetColumn = Bytes.toString(columnFamily) + "/" + Bytes.toString(column) + Constants.HBASE_NOTIFY_SUFFIX;
 
         Put put = new Put(rowKey);
         put.add(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumn), Bytes.toBytes("false"));
