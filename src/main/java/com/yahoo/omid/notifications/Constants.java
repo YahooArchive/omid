@@ -16,9 +16,9 @@
 package com.yahoo.omid.notifications;
 
 public class Constants {
-    public static final String NOTIF_ROOT = "/onf"; // Means omid-notification framework TODO Rename when required
-    public static final String NOTIF_INTERESTS = NOTIF_ROOT + "/i"; // Means interests TODO Rename when required
-    public static final String NOTIF_OBSERVERS = NOTIF_ROOT + "/o"; // Means observers TODO Rename when required
+    public static final String ROOT_NODE = "/onf"; // Means omid-notification framework
+    public static final String I2O_NODE = "/io"; // Subtree that maps interests to observers
+    public static final String O2H_NODE = "/oh"; // Subtree that maps observers to hosts
     
     public static final String NOTIF_HBASE_CF_SUFFIX = "-meta"; //
     public static final String HBASE_NOTIFY_SUFFIX = ":notify"; //

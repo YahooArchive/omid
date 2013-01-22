@@ -84,31 +84,39 @@ public class Scanner implements Runnable {
     @Override
     public void run() { // Scan and notify
         ResultScanner scanner;
-        while (true) {
-            try {
+        try {
+            while (!Thread.currentThread().isInterrupted()) {
                 try {
+
                     logger.trace("Scanner on " + interest + " is waiting 5 seconds between scans");
                     Thread.sleep(5000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                scanner = table.getScanner(scan);
-                for (Result result : scanner) {
-                    for(KeyValue kv : result.raw()) {
-                        List<String> observers = interestsToObservers.get(interest);
-                        for(String observer : observers) {
-                            List<String> hosts = observersToHosts.get(observer);
-                            for(String host : hosts) {
-                                //logger.trace("Notifying " + observer + " on host " + host + " about change on RowKey:" + new String(kv.getRow()) + ", CF: " + new String(kv.getFamily())
-                                //+ " C: " + new String(kv.getQualifier()) + " Val: " + Bytes.toString(kv.getValue()));
-                                notify(observer, kv.getRow(), host, Constants.THRIFT_SERVER_PORT);
+
+                    scanner = table.getScanner(scan);
+                    for (Result result : scanner) {
+                        for (KeyValue kv : result.raw()) {
+                            List<String> observers = interestsToObservers.get(interest);
+                            for (String observer : observers) {
+                                List<String> hosts = observersToHosts.get(observer);
+                                for (String host : hosts) {
+                                    // logger.trace("Notifying " + observer +
+                                    // " on host " + host +
+                                    // " about change on RowKey:" + new
+                                    // String(kv.getRow()) + ", CF: " + new
+                                    // String(kv.getFamily())
+                                    // + " C: " + new String(kv.getQualifier())
+                                    // + " Val: " +
+                                    // Bytes.toString(kv.getValue()));
+                                    notify(observer, kv.getRow(), host, Constants.THRIFT_SERVER_PORT);
+                                }
                             }
                         }
-                    }                    
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-            } catch (IOException e) {                
-                e.printStackTrace();
             }
+        } catch (InterruptedException e) {
+            logger.trace("Scanner on interest " + interest + " finished");
         }
     }
 

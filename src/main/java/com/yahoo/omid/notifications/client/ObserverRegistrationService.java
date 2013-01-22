@@ -34,7 +34,7 @@ public class ObserverRegistrationService extends AbstractIdleService {
     // Value: The TransactionalObserver infrastructure that delegates on the implementation of the ObserverBehaviour
     final Map<String, ActorRef> registeredObservers = new HashMap<String, ActorRef>();
     
-    final InterestRecorder interestRecorder = new InterestRecorder(observersSystem, registeredObservers, null, null);
+    final InterestRecorder interestRecorder = new InterestRecorder(observersSystem, registeredObservers);
     final NotificationManager notificationManager = new NotificationManager(registeredObservers);
     
 
@@ -42,8 +42,8 @@ public class ObserverRegistrationService extends AbstractIdleService {
         interestRecorder.registerObserverInterest(obsName, obsBehaviour, interest); // Delegate
     }
     
-    public void deregisterObserverInterest(TransactionalObserver obs, Interest interest) throws Exception {
-        interestRecorder.deregisterObserverInterest(obs, interest); // Delegate
+    public void deregisterObserverInterest(String obsName, Interest interest) throws Exception {
+        interestRecorder.deregisterObserverInterest(obsName, interest); // Delegate
     }
     
     /* (non-Javadoc)

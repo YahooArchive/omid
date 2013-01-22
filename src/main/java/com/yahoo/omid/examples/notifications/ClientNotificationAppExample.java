@@ -187,12 +187,14 @@ public class ClientNotificationAppExample {
         cdl.await();
         logger.info("ooo Omid ooo - OBSERVERS HAVE RECEIVED ALL THE NOTIFICATIONS WAITING 30 SECONDS TO ALLOW FINISHING CLEARING STUFF - ooo Omid ooo");        
         Thread.currentThread().sleep(30000);
-        // registrationService.deregister(obs2, interestObs1);
-        // registrationService.deregister(obs2, interestObs2);
+        registrationService.deregisterObserverInterest("o1", interestObs1);
+        logger.info("Observer o1 deregistered");
+        registrationService.deregisterObserverInterest("o2", interestObs2);
+        logger.info("Observer o2 deregistered");
+        Thread.currentThread().sleep(10000);
         registrationService.stopAndWait();
 
         logger.info("ooo Omid ooo - OMID'S NOTIFICATION APP FINISHED - ooo Omid ooo");
-
     }
 
     private static class ExtendedPosixParser extends PosixParser {
