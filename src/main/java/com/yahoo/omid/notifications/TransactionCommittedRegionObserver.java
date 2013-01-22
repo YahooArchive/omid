@@ -55,12 +55,13 @@ public class TransactionCommittedRegionObserver extends BaseRegionObserver {
         for (List<KeyValue> kvl : kvs.values()) {
             for (KeyValue kv : kvl) {
                 String cf = Bytes.toString(kv.getFamily());
-                // TODO Here we sould filter the columns that are not requested to be observed, 
+                // TODO Here we should filter the columns that are not requested to be observed, 
                 // but cannot access to the required structures from a BaseRegionObserver
-                if(!cf.endsWith(Constants.NOTIF_HBASE_CF_SUFFIX)) {
+                if(!cf.equals(Constants.HBASE_META_CF)) {
                     String col = Bytes.toString(kv.getQualifier());
-                    put.add(Bytes.toBytes(cf + Constants.NOTIF_HBASE_CF_SUFFIX),
-                            Bytes.toBytes(col + Constants.HBASE_NOTIFY_SUFFIX), kv.getTimestamp(), Bytes.toBytes("true"));
+                    // Pattern for notify column in framework's metadata column family: <cf>/<c>:notify
+                    put.add(Bytes.toBytes(Constants.HBASE_META_CF),
+                            Bytes.toBytes(cf + "/" + col + Constants.HBASE_NOTIFY_SUFFIX), kv.getTimestamp(), Bytes.toBytes("true"));
                     logger.trace("This is the put added : " + put);
                 }
             }
