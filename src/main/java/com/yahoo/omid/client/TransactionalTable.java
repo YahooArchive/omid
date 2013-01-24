@@ -28,6 +28,7 @@ import java.util.NavigableSet;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.client.ClientScanner;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
@@ -187,8 +188,9 @@ public class TransactionalTable extends HTable {
       Scan tsscan = new Scan(scan);
       tsscan.setMaxVersions((int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
       tsscan.setTimeRange(0, transactionState.getStartTimestamp() + 1);
-      ClientScanner scanner = new ClientScanner(transactionState, tsscan, (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
-      scanner.initialize();
+      TransactionalClientScanner scanner = new TransactionalClientScanner(
+            transactionState, getConfiguration(), tsscan, getTableName(),
+            (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
       return scanner;
    }
 
@@ -269,12 +271,13 @@ public class TransactionalTable extends HTable {
       return filtered;
    }
 
-   protected class ClientScanner extends HTable.ClientScanner {
+   protected class TransactionalClientScanner extends ClientScanner {
       private TransactionState state;
       private int maxVersions;
 
-      ClientScanner(TransactionState state, Scan scan, int maxVersions) {
-         super(scan);
+      TransactionalClientScanner(TransactionState state, Configuration conf,
+            Scan scan, byte[] table, int maxVersions) throws IOException {
+         super(conf, scan, table);
          this.state = state;
          this.maxVersions = maxVersions;
       }
