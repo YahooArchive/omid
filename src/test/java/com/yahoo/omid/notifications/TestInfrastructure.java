@@ -41,7 +41,7 @@ public class TestInfrastructure {
 
     private static final Logger logger = Logger.getLogger(TestInfrastructure.class);
     
-    protected static final ObserverRegistrationService registrationService = new ObserverRegistrationService();
+    protected static ObserverRegistrationService registrationService;
     private static final ExecutorService bkExecutor = Executors.newSingleThreadExecutor();
     private static final ExecutorService tsoExecutor = Executors.newSingleThreadExecutor();
     private static final ExecutorService nsExecutor = Executors.newSingleThreadExecutor();
@@ -94,6 +94,7 @@ public class TestInfrastructure {
         for (HTableDescriptor t : tables) {
             logger.info("Tables:" + t.getNameAsString());
         }
+        registrationService = new ObserverRegistrationService();
         registrationService.startAndWait();
     }
 
@@ -101,7 +102,9 @@ public class TestInfrastructure {
     public void tearDown() {
         try {
             logger.info("tearing Down");
-            registrationService.stopAndWait();
+            if (registrationService != null) {
+                registrationService.stopAndWait();
+            }
             admin.disableTable(TestConstants.TABLE);
             admin.deleteTable(TestConstants.TABLE);
         } catch (Exception e) {

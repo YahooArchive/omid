@@ -20,6 +20,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -109,7 +110,7 @@ public class NotificationManager extends AbstractExecutionThreadService {
             Notification notification;
             try {
                 //logger.trace("Trying to consume from queue...");
-                notification = queue.take();//.poll(3, TimeUnit.SECONDS);
+                notification = queue.poll(1, TimeUnit.SECONDS);
                 if(notification != null) {
                     String table = new String(notification.getTable());
                     String rowKey = new String(notification.getRowKey());

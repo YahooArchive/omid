@@ -15,10 +15,9 @@
  */
 package com.yahoo.omid.notifications;
 
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertThat;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
 
 /**
@@ -27,21 +26,18 @@ import org.junit.Test;
  */
 public class TestInterest {
 
-    private static final Log LOG = LogFactory.getLog(TestInterest.class);
-
     @Test
     public void testFromStringReturnsAValidInterestObjectWhenPassingAStringInTheCorrectFormat() throws Exception {
-        Interest interest = Interest.fromString("<table:columnFamily:column>");
+        Interest interest = Interest.fromString("table:columnFamily:column");
 
-        assertTrue("Unexpected value for table name: " + interest.getTable(), "table".equals(interest.getTable()));
-        assertTrue("Unexpected value for column family name: " + interest.getColumnFamily(),
-                "columnFamily".equals(interest.getColumnFamily()));
-        assertTrue("Unexpected value for column name: " + interest.getColumn(), "column".equals(interest.getColumn()));
+        assertThat(interest.getTable(), is("table"));
+        assertThat(interest.getColumnFamily(), is("columnFamily"));
+        assertThat(interest.getColumn(), is("column"));
     }
     
     @Test(expected=IllegalArgumentException.class)
     public void testFromStringThrowsIllegalArgumentExceptionWhenPassingAStringWithAWrongFormat() throws Exception {
-        Interest.fromString("<>table:>columnFamily:<column<>");
+        Interest.fromString(":table:columnFamily:column");
     }
 
 }
