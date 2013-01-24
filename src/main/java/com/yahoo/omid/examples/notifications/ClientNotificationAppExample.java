@@ -56,7 +56,7 @@ public class ClientNotificationAppExample {
      */
     @SuppressWarnings("static-access")
     public static void main(String[] args) throws Exception {
-        final ObserverRegistrationService registrationService = new ObserverRegistrationService();
+        final ObserverRegistrationService registrationService = new ObserverRegistrationService("ExampleApp");
 
         CommandLineParser cmdLineParser = new ExtendedPosixParser(true);
 

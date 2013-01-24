@@ -20,23 +20,29 @@ import java.util.Map;
 
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
+import akka.actor.Props;
+import akka.actor.UntypedActor;
+import akka.actor.UntypedActorFactory;
 
 import com.google.common.util.concurrent.AbstractIdleService;
 import com.yahoo.omid.notifications.Interest;
 
 public class ObserverRegistrationService extends AbstractIdleService {
     
-    private ActorSystem observersSystem = ActorSystem.create("ObserversSystem");
+    private ActorSystem appObserverSystem;
     
     // The main structure shared by the InterestRecorder and NotificiationListener services in order to register and
     // notify observers
     // Key: The name of a registered observer
     // Value: The TransactionalObserver infrastructure that delegates on the implementation of the ObserverBehaviour
-    final Map<String, ActorRef> registeredObservers = new HashMap<String, ActorRef>();
+    private final Map<String, ActorRef> registeredObservers = new HashMap<String, ActorRef>();
     
-    final InterestRecorder interestRecorder = new InterestRecorder(observersSystem, registeredObservers);
-    final NotificationManager notificationManager = new NotificationManager(registeredObservers);
+    private final InterestRecorder interestRecorder;
     
+    public ObserverRegistrationService(String appName) {
+        appObserverSystem = ActorSystem.create(appName + "ObserverSystem");
+        interestRecorder = new InterestRecorder(appObserverSystem, registeredObservers);
+    }
 
     public void registerObserverInterest(String obsName, ObserverBehaviour obsBehaviour, Interest interest) throws Exception {
         interestRecorder.registerObserverInterest(obsName, obsBehaviour, interest); // Delegate
@@ -51,7 +57,11 @@ public class ObserverRegistrationService extends AbstractIdleService {
      */
     @Override
     protected void startUp() throws Exception {
-        notificationManager.startAndWait();
+        appObserverSystem.actorOf(new Props(new UntypedActorFactory() {
+            public UntypedActor create() {
+                return new NotificationManager(registeredObservers);
+            }
+        }), "NotificationManager");
         interestRecorder.startAndWait();
     }
 
@@ -61,7 +71,7 @@ public class ObserverRegistrationService extends AbstractIdleService {
     @Override
     protected void shutDown() throws Exception {
         interestRecorder.stopAndWait();
-        notificationManager.stopAndWait();
+        appObserverSystem.shutdown();
     }
 
 }
