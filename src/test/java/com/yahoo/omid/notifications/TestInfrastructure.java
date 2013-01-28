@@ -94,7 +94,7 @@ public class TestInfrastructure {
         for (HTableDescriptor t : tables) {
             logger.info("Tables:" + t.getNameAsString());
         }
-        registrationService = new ObserverRegistrationService();
+        registrationService = new ObserverRegistrationService("TestApp");
         registrationService.startAndWait();
     }
 
