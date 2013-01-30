@@ -22,7 +22,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -94,12 +93,12 @@ public class TransactionalObserver extends UntypedActor {
             tt = new TransactionalTable(tsoClientHbaseConf, table);
             // Transaction adding to rows to a table
             tx = tm.beginTransaction();
-            checkIfAlreadyExecuted(tx, tt, table, rowKey, columnFamily, column);
+            checkIfAlreadyExecuted(tx, tt, rowKey, columnFamily, column);
             // Perform the particular actions on the observer for this row
             observer.onColumnChanged(column, columnFamily, table, rowKey, tx);            
             // Commit tx
+            clearNotifyFlag(tx, tt, rowKey, columnFamily, column);
             tm.tryCommit(tx);
-            clearNotifyFlag(table, rowKey, columnFamily, column);
             //logger.trace("TRANSACTION " + tx + " COMMITTED");
         } catch (NotificationException e) {
             //logger.trace("Aborting tx " + tx);
@@ -121,7 +120,7 @@ public class TransactionalObserver extends UntypedActor {
      * @param rowKey 
      * @param table 
      */
-    private void checkIfAlreadyExecuted(TransactionState tx, TransactionalTable tt, byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) throws Exception {
+    private void checkIfAlreadyExecuted(TransactionState tx, TransactionalTable tt, byte[] rowKey, byte[] columnFamily, byte[] column) throws Exception {
         String targetColumnFamily = Constants.HBASE_META_CF;
         // Pattern for observer column in framework's metadata column family: <cf>/<c>:<obsName>
         String targetColumnObserverAck = Bytes.toString(columnFamily) + "/" + Bytes.toString(column) + ":" + name;
@@ -159,7 +158,9 @@ public class TransactionalObserver extends UntypedActor {
         // logger.trace("Result :" +  result);
         // logger.trace("TS Notify :" +  tsNotify + " TS Obs Ack " + tsObserverAck);
         if (valNotify != null && Bytes.equals(valNotify, Bytes.toBytes("true"))) {
-            if (valObserverAck == null || tsObserverAck < tsNotify) { // Si TS notify > TS ack
+            // Proceed if TS notify (set by the coprocessor with the TS of the start timestamp of 
+            // the transaction) > TS ack set by the last observer executed 
+            if (valObserverAck == null || tsObserverAck < tsNotify) { 
                 // logger.trace("Setting put on observer");
                 Put put = new Put(rowKey, tx.getStartTimestamp());
                 put.add(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumnObserverAck), Bytes.toBytes(name));
@@ -173,26 +174,21 @@ public class TransactionalObserver extends UntypedActor {
     }
 
     /**
-     * Clears the notify flag on the corresponding RowKey/Column without Omid's transactional context
+     * Clears the notify flag on the corresponding RowKey/Column inside the Omid's transactional context
      * 
      * @param table
      * @param rowKey
      * @param columnFamily
      * @param column
      */
-    private void clearNotifyFlag(byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {        
-        String targetTable = Bytes.toString(table);
+    private void clearNotifyFlag(TransactionState tx, TransactionalTable tt, byte[] rowKey, byte[] columnFamily, byte[] column) {        
         String targetColumnFamily = Constants.HBASE_META_CF;        
         String targetColumn = Bytes.toString(columnFamily) + "/" + Bytes.toString(column) + Constants.HBASE_NOTIFY_SUFFIX;
 
         Put put = new Put(rowKey);
         put.add(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumn), Bytes.toBytes("false"));
-
         try {
-            HTable hTable = new HTable(HBaseConfiguration.create(), targetTable);            
-            hTable.put(put);
-            //logger.trace("Notify Flag cleared for: " + put);
-            hTable.close();
+            tt.put(tx, put); // Transactional put
         } catch (Exception e) {
             logger.error("Error clearing Notify Flag for: " + put);
             e.printStackTrace();
