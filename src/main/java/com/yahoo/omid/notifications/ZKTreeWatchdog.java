@@ -53,7 +53,7 @@ public class ZKTreeWatchdog extends AbstractIdleService {
     private PathChildrenCache observersToHostsCache = null;
     private static Map<String, PathChildrenCache> observersCaches = Collections.synchronizedMap(new HashMap<String, PathChildrenCache>());
 
-    private static ScannerManager scannerManager = new ScannerManager(interestsToObservers, observersToHosts);
+    private static AppSandbox appSandbox = new AppSandbox();
 
     // TODO Clean the code below!!!
     /*
@@ -113,6 +113,7 @@ public class ZKTreeWatchdog extends AbstractIdleService {
                                     List<String> hosts = observersToHosts.get(observer);
                                     if (!hosts.contains(child)) {
                                         hosts.add(child);
+                                        appSandbox.registerApplicationInstance("FOO", "localhost:7911");  // <-- Remember this link with AppSandbox
                                         zkClient.setData().forPath(nodeNamePath, "true".getBytes());
                                     }
                                 } else {
@@ -177,6 +178,7 @@ public class ZKTreeWatchdog extends AbstractIdleService {
                         logger.trace("Node added: " + nodeNamePath);
                         if (!hosts.contains(host)) {
                             hosts.add(host);
+                            appSandbox.registerApplicationInstance("FOO", "localhost:7911");  // <-- Remember this link with AppSandbox
                             zkClient.setData().forPath(nodeNamePath, "true".getBytes());
                             logger.trace("Host " + host + " added to Observer " + observer + " in in-memory structures");
                         } else {
@@ -217,7 +219,6 @@ public class ZKTreeWatchdog extends AbstractIdleService {
                         logger.trace("Node added: " + nodeNamePath);
                         if (!interestsToObservers.containsKey(interest)) {
                             interestsToObservers.put(interest, new ArrayList<String>());
-                            scannerManager.addScannerContainer(interest);
                             PathChildrenCache cache = new PathChildrenCache(zkClient, nodeNamePath, false);
                             cache.start();
                             addListenerToObserverNode(cache);
@@ -231,6 +232,7 @@ public class ZKTreeWatchdog extends AbstractIdleService {
                                     List<String> observers = interestsToObservers.get(interest);
                                     if (!observers.contains(child)) {
                                         observers.add(child);
+                                        appSandbox.addObserverInterest("FOO", interest, child);  // <-- Remember this link with AppSandbox
                                         zkClient.setData().forPath(ZKPaths.makePath(nodeNamePath, child),
                                                 "true".getBytes());
                                     }
@@ -252,7 +254,7 @@ public class ZKTreeWatchdog extends AbstractIdleService {
 
                     case CHILD_REMOVED: {
                         if (interestsToObservers.containsKey(interest)) {
-                            scannerManager.removeScannerContainer(interest);
+                            appSandbox.removeInterest("FOO", interest); // <-- Remember this link with AppSandbox
                             PathChildrenCache cache = interestsCaches.get(interest);
                             Closeables.close(cache, true);
                             interestsToObservers.remove(interest);
@@ -284,6 +286,7 @@ public class ZKTreeWatchdog extends AbstractIdleService {
                         logger.trace("Node added: " + nodeNamePath);
                         if (!observers.contains(observer)) {
                             observers.add(observer);
+                            appSandbox.addObserverInterest("FOO", interest, observer);  // <-- Remember this link with AppSandbox
                             zkClient.setData().forPath(nodeNamePath, "true".getBytes());
                             logger.trace("Observer " + observer + " to Interest " + interest
                                     + " in in-memory structures");
@@ -300,6 +303,7 @@ public class ZKTreeWatchdog extends AbstractIdleService {
 
                     case CHILD_REMOVED: {
                         observers.remove(observer);
+                        appSandbox.removeObserverInterest("FOO", interest, observer);  // <-- Remember this link with AppSandbox
                         if (observers.isEmpty()) {
                             zkClient.delete().forPath(interestPath);
                         }

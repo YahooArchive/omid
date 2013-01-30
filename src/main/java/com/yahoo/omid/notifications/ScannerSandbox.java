@@ -15,42 +15,41 @@
  */
 package com.yahoo.omid.notifications;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-public class ScannerManager {
+public class ScannerSandbox {
 
-    private static final Log logger = LogFactory.getLog(ScannerManager.class);
-    
-    private Map<String, List<String>> interestsToObservers;
-    private Map<String, List<String>> observersToHosts;
+    private static final Log logger = LogFactory.getLog(ScannerSandbox.class);
 
-    // Key: ScannerContainer name representing the table where the scanner container is performing scanning
-    // Value: The scanner container that executes the scanner threads
-    private Map<String, ScannerContainer> scanners = new HashMap<String, ScannerContainer>();
-    
-    public ScannerManager(Map<String, List<String>> interestsToObservers, Map<String, List<String>> observersToHosts) {
-        this.interestsToObservers = interestsToObservers;
-        this.observersToHosts = observersToHosts;
+    private AppSandbox appSandbox;
+
+    // Key: Interest where the scanners running on the ScannerContainer will do
+    // their work
+    // Value: The ScannerContainer that executes the scanner threads scanning
+    // each particular interest
+    private ConcurrentHashMap<String, ScannerContainer> scanners = new ConcurrentHashMap<String, ScannerContainer>();
+
+
+    public ScannerSandbox(AppSandbox appSandbox) {
+        this.appSandbox = appSandbox;
     }
-    
+
     public void addScannerContainer(String interest) throws Exception {
         ScannerContainer scannerContainer = scanners.get(interest);
-        if(scannerContainer == null) {
-            scannerContainer = new ScannerContainer(interest, interestsToObservers, observersToHosts);
+        if (scannerContainer == null) {
+            scannerContainer = new ScannerContainer(interest, appSandbox);
             scannerContainer.start();
-            scanners.put(interest, scannerContainer);
+            scanners.putIfAbsent(interest, scannerContainer);
             logger.trace("ScannerContainer created for interest " + interest);
         }
     }
-    
+
     /**
      * @param interest
-     * @throws InterruptedException 
+     * @throws InterruptedException
      */
     public void removeScannerContainer(String interest) throws InterruptedException {
         ScannerContainer scannerContainer = scanners.get(interest);
@@ -58,5 +57,5 @@ public class ScannerManager {
         scanners.remove(interest);
         logger.trace("ScannerContainer stopped and removed for interest " + interest);
     }
-    
+
 }

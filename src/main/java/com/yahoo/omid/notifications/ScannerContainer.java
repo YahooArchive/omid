@@ -17,7 +17,7 @@ package com.yahoo.omid.notifications;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -26,8 +26,19 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.filter.BinaryComparator;
+import org.apache.hadoop.hbase.filter.CompareFilter;
+import org.apache.hadoop.hbase.filter.FamilyFilter;
+import org.apache.hadoop.hbase.filter.Filter;
+import org.apache.hadoop.hbase.filter.FilterList;
+import org.apache.hadoop.hbase.filter.FilterList.Operator;
+import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
@@ -43,18 +54,19 @@ public class ScannerContainer {
     private final ExecutorService exec;
 
     private String interest;
-    private Map<String, List<String>> interestsToObservers;
-    private Map<String, List<String>> observersToHosts;
+    private AppSandbox appSandbox;
     private HTable table;
     
+    private final List<String> interestedApps = new CopyOnWriteArrayList<String>();
+
     /**
      * @param interest
+     * @param appSandbox 
      */
-    public ScannerContainer(String interest, Map<String, List<String>> interestsToObservers, Map<String, List<String>> observersToHosts) {
+    public ScannerContainer(String interest, AppSandbox appSandbox) {
         this.interest = interest;
-        this.interestsToObservers = interestsToObservers;
-        this.observersToHosts = observersToHosts;
-        exec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("Scanner container [" + interest + "]").build());
+        this.appSandbox = appSandbox;
+        this.exec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("Scanner container [" + interest + "]").build());
 
         // Generate scaffolding on HBase to maintain the information required to perform notifications
         Configuration config = HBaseConfiguration.create();
@@ -84,15 +96,12 @@ public class ScannerContainer {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        
-        // TSO Client setup
-
     }
 
     public void start()
             throws Exception {
         // TODO Start the number of required scanners instead of only one
-        exec.execute(new Scanner(table, interest, interestsToObservers, observersToHosts));
+        exec.execute(new Scanner());
         logger.trace("Scanners on " + interest + " started");
     }
 
@@ -107,4 +116,55 @@ public class ScannerContainer {
         logger.trace("Scanners on " + interest + " stopped");
     }
 
+    private class Scanner implements Runnable {
+
+        private Scan scan;
+
+        public Scanner() {
+            // TODO Connect to HBase in order to perform periodic scans of a particular column value
+            Interest schema = Interest.fromString(interest);
+            String columnFamily = Constants.HBASE_META_CF;
+            byte[] cf = Bytes.toBytes(columnFamily);
+            // Pattern for observer column in framework's metadata column family: <cf>/<c>:notify 
+            String column = schema.getColumnFamily() + "/" + schema.getColumn() + Constants.HBASE_NOTIFY_SUFFIX;
+            byte[] c = Bytes.toBytes(column);
+            byte[] v = Bytes.toBytes("true");
+            // Filter by CF and by value of the notify column
+            Filter familyFilter = new FamilyFilter(CompareFilter.CompareOp.EQUAL, new BinaryComparator(cf));
+            Filter valueFilter = new SingleColumnValueFilter(cf, c, CompareFilter.CompareOp.EQUAL, new BinaryComparator(v));
+
+            FilterList filterList = new FilterList(Operator.MUST_PASS_ALL);
+            filterList.addFilter(familyFilter);
+            filterList.addFilter(valueFilter);
+            
+            scan = new Scan();
+            scan.setFilter(filterList);
+        }
+
+        @Override
+        public void run() { // Scan and notify
+            ResultScanner scanner;
+            try {
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+
+                        logger.trace("Scanner on " + interest + " is waiting 5 seconds between scans");
+                        Thread.sleep(5000);
+
+                        scanner = table.getScanner(scan);
+                        for (Result result : scanner) {
+                            for (KeyValue kv : result.raw()) {
+                                UpdatedInterestMsg msg = new UpdatedInterestMsg(interest, kv.getRow());
+                                appSandbox.getAppInstanceRedirector().tell(msg);
+                            }
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            } catch (InterruptedException e) {
+                logger.trace("Scanner on interest " + interest + " finished");
+            }
+        }
+    }
 }
