@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -35,11 +36,14 @@ import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.FilterList.Operator;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Pair;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
+
+import scala.actors.threadpool.Arrays;
 
 import com.yahoo.omid.notifications.thrift.generated.Notification;
 import com.yahoo.omid.notifications.thrift.generated.NotificationReceiverService;
@@ -52,6 +56,7 @@ public class Scanner implements Runnable {
     private String interest;
     private TTransport transport;
 
+    private Random regionRoller = new Random();
     private Scan scan;
     
     private Map<String, List<String>> interestsToObservers;
@@ -62,24 +67,6 @@ public class Scanner implements Runnable {
         this.interest = interest;
         this.interestsToObservers = interestsToObservers;
         this.observersToHosts = observersToHosts;
-        // TODO Connect to HBase in order to perform periodic scans of a particular column value
-        Interest schema = Interest.fromString(interest);
-        String columnFamily = Constants.HBASE_META_CF;
-        byte[] cf = Bytes.toBytes(columnFamily);
-        // Pattern for observer column in framework's metadata column family: <cf>/<c>:notify 
-        String column = schema.getColumnFamily() + "/" + schema.getColumn() + Constants.HBASE_NOTIFY_SUFFIX;
-        byte[] c = Bytes.toBytes(column);
-        byte[] v = Bytes.toBytes("true");
-        // Filter by CF and by value of the notify column
-        Filter familyFilter = new FamilyFilter(CompareFilter.CompareOp.EQUAL, new BinaryComparator(cf));
-        Filter valueFilter = new SingleColumnValueFilter(cf, c, CompareFilter.CompareOp.EQUAL, new BinaryComparator(v));
-
-        FilterList filterList = new FilterList(Operator.MUST_PASS_ALL);
-        filterList.addFilter(familyFilter);
-        filterList.addFilter(valueFilter);
-        
-        scan = new Scan();
-        scan.setFilter(filterList);
     }
 
     @Override
@@ -91,7 +78,7 @@ public class Scanner implements Runnable {
 
                     logger.trace("Scanner on " + interest + " is waiting 5 seconds between scans");
                     Thread.sleep(5000);
-
+                    configureScan();
                     scanner = table.getScanner(scan);
                     for (Result result : scanner) {
                         for (KeyValue kv : result.raw()) {
@@ -120,6 +107,57 @@ public class Scanner implements Runnable {
             logger.trace("Scanner on interest " + interest + " finished");
         }
     }
+
+    /**
+     * 
+     */
+    private void configureScan() {
+        // TODO Connect to HBase in order to perform periodic scans of a particular column value
+        Interest schema = Interest.fromString(interest);
+        String columnFamily = Constants.HBASE_META_CF;
+        byte[] cf = Bytes.toBytes(columnFamily);
+        // Pattern for observer column in framework's metadata column family: <cf>/<c>:notify 
+        String column = schema.getColumnFamily() + "/" + schema.getColumn() + Constants.HBASE_NOTIFY_SUFFIX;
+        byte[] c = Bytes.toBytes(column);
+        byte[] v = Bytes.toBytes("true");
+        // Filter by CF and by value of the notify column
+        Filter familyFilter = new FamilyFilter(CompareFilter.CompareOp.EQUAL, new BinaryComparator(cf));
+        Filter valueFilter = new SingleColumnValueFilter(cf, c, CompareFilter.CompareOp.EQUAL, new BinaryComparator(v));
+        
+        FilterList filterList = new FilterList(Operator.MUST_PASS_ALL);
+        filterList.addFilter(familyFilter);
+        filterList.addFilter(valueFilter);
+        
+        try {
+            // Chose a region randomly
+            Pair<byte[][], byte[][]> startEndKeys = table.getStartEndKeys();
+            byte[][] startKeys = startEndKeys.getFirst();
+            byte[][] endKeys = startEndKeys.getSecond();
+            int regionIdx = regionRoller.nextInt(startKeys.length);
+            logger.trace("Number of startKeys and endKeys in table: " + startKeys.length + " " + endKeys.length);
+            logger.trace("Region chosen: " + regionIdx);
+            scan = new Scan();
+            scan.setStartRow(startKeys[regionIdx]);
+            byte[] stopRow = endKeys[regionIdx];
+            // Take into account that the stop row is exclusive, so we need to pad a trailing 0 byte at the end
+            if(stopRow.length != 0) { // This is to avoid add the trailing 0 if there's no stopRow specified
+                stopRow = addTrailingZeroToBA(endKeys[regionIdx]);
+            }
+            logger.trace("Start & Stop Keys: " + Arrays.toString(startKeys[regionIdx]) + " " + Arrays.toString(stopRow));
+            scan.setStopRow(stopRow);
+            scan.setFilter(filterList);        
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    // Returns a new bytearray that will occur after the original one passed as param
+    // by padding its contents with a trailing 0 byte (remember that a byte[] is initialized to 0)
+    private byte[] addTrailingZeroToBA(byte[] originalBA){
+        byte[] resultingBA = new byte[originalBA.length + 1];
+        System.arraycopy(originalBA, 0, resultingBA, 0, originalBA.length);
+        return resultingBA;
+      }
 
     private void notify(String observer, byte[] rowKey, String host, int port) {
         // Connect to the notification receiver service (Thrift)
