@@ -17,6 +17,7 @@ package com.yahoo.omid.notifications;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,7 +41,10 @@ import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.FilterList.Operator;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Pair;
 import org.apache.log4j.Logger;
+
+import scala.actors.threadpool.Arrays;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
@@ -56,50 +60,55 @@ public class ScannerContainer {
     private String interest;
     private AppSandbox appSandbox;
     private HTable table;
-    
+
     private final List<String> interestedApps = new CopyOnWriteArrayList<String>();
 
     /**
      * @param interest
-     * @param appSandbox 
+     * @param appSandbox
      */
     public ScannerContainer(String interest, AppSandbox appSandbox) {
         this.interest = interest;
         this.appSandbox = appSandbox;
         this.exec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("Scanner container [" + interest + "]").build());
 
-        // Generate scaffolding on HBase to maintain the information required to perform notifications
+        // Generate scaffolding on HBase to maintain the information required to
+        // perform notifications
         Configuration config = HBaseConfiguration.create();
         HBaseAdmin admin;
-        try { // TODO: This code should not be here in a production system because it disables the table to add a CF
+        try { // TODO: This code should not be here in a production system
+              // because it disables the table to add a CF
             Interest interestRep = Interest.fromString(this.interest);
             admin = new HBaseAdmin(config);
             HTableDescriptor tableDesc = admin.getTableDescriptor(interestRep.getTableAsHBaseByteArray());
             String metaCFName = Constants.HBASE_META_CF;
-            if(!tableDesc.hasFamily(Bytes.toBytes(metaCFName))) {                
+            if (!tableDesc.hasFamily(Bytes.toBytes(metaCFName))) {
                 String tableName = interestRep.getTable();
-        
+
                 admin.disableTable(tableName);
-        
+
                 HColumnDescriptor metaCF = new HColumnDescriptor(metaCFName);
-                admin.addColumn(tableName, metaCF); // CF for storing metadata related to the notif. framework
-                        
-                // TODO I think that coprocessors can not be added dynamically. It has been moved to OmidInfrastructure
+                admin.addColumn(tableName, metaCF); // CF for storing metadata
+                                                    // related to the notif.
+                                                    // framework
+
+                // TODO I think that coprocessors can not be added dynamically.
+                // It has been moved to OmidInfrastructure
                 // Map<String, String> params = new HashMap<String, String>();
-                //tableDesc.addCoprocessor(TransactionCommittedRegionObserver.class.getName(), null, Coprocessor.PRIORITY_USER, params);
+                // tableDesc.addCoprocessor(TransactionCommittedRegionObserver.class.getName(),
+                // null, Coprocessor.PRIORITY_USER, params);
                 admin.enableTable(tableName);
                 logger.trace("Column family metadata added!!!");
             } else {
                 logger.trace("Column family metadata was already added!!! Skipping...");
             }
-            table = new HTable(config,interestRep.getTable());
+            table = new HTable(config, interestRep.getTable());
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public void start()
-            throws Exception {
+    public void start() throws Exception {
         // TODO Start the number of required scanners instead of only one
         exec.execute(new Scanner());
         logger.trace("Scanners on " + interest + " started");
@@ -118,27 +127,60 @@ public class ScannerContainer {
 
     private class Scanner implements Runnable {
 
-        private Scan scan;
+        private Random regionRoller = new Random();
+        private Scan scan = new Scan();
 
-        public Scanner() {
-            // TODO Connect to HBase in order to perform periodic scans of a particular column value
+        private void configureScan() {
             Interest schema = Interest.fromString(interest);
             String columnFamily = Constants.HBASE_META_CF;
             byte[] cf = Bytes.toBytes(columnFamily);
-            // Pattern for observer column in framework's metadata column family: <cf>/<c>:notify 
+            // Pattern for observer column in framework's metadata column
+            // family: <cf>/<c>:notify
             String column = schema.getColumnFamily() + "/" + schema.getColumn() + Constants.HBASE_NOTIFY_SUFFIX;
             byte[] c = Bytes.toBytes(column);
             byte[] v = Bytes.toBytes("true");
             // Filter by CF and by value of the notify column
             Filter familyFilter = new FamilyFilter(CompareFilter.CompareOp.EQUAL, new BinaryComparator(cf));
-            Filter valueFilter = new SingleColumnValueFilter(cf, c, CompareFilter.CompareOp.EQUAL, new BinaryComparator(v));
+            Filter valueFilter = new SingleColumnValueFilter(cf, c, CompareFilter.CompareOp.EQUAL,
+                    new BinaryComparator(v));
 
             FilterList filterList = new FilterList(Operator.MUST_PASS_ALL);
             filterList.addFilter(familyFilter);
             filterList.addFilter(valueFilter);
-            
-            scan = new Scan();
             scan.setFilter(filterList);
+
+            try {
+                // Chose a region randomly
+                Pair<byte[][], byte[][]> startEndKeys = table.getStartEndKeys();
+                byte[][] startKeys = startEndKeys.getFirst();
+                byte[][] endKeys = startEndKeys.getSecond();
+                int regionIdx = regionRoller.nextInt(startKeys.length);
+
+                scan.setStartRow(startKeys[regionIdx]);
+                byte[] stopRow = endKeys[regionIdx];
+                // Take into account that the stop row is exclusive, so we need
+                // to pad a trailing 0 byte at the end
+                if (stopRow.length != 0) { // This is to avoid add the trailing
+                                           // 0 if there's no stopRow specified
+                    stopRow = addTrailingZeroToBA(endKeys[regionIdx]);
+                }
+                scan.setStopRow(stopRow);
+                logger.trace("Number of startKeys and endKeys in table: " + startKeys.length + " " + endKeys.length);
+                logger.trace("Region chosen: " + regionIdx);
+                logger.trace("Start & Stop Keys: " + Arrays.toString(startKeys[regionIdx]) + " "
+                        + Arrays.toString(stopRow));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // Returns a new bytearray that will occur after the original one passed
+        // by padding its contents with a trailing 0 byte (remember that a
+        // byte[] is initialized to 0)
+        private byte[] addTrailingZeroToBA(byte[] originalBA) {
+            byte[] resultingBA = new byte[originalBA.length + 1];
+            System.arraycopy(originalBA, 0, resultingBA, 0, originalBA.length);
+            return resultingBA;
         }
 
         @Override
@@ -150,7 +192,7 @@ public class ScannerContainer {
 
                         logger.trace("Scanner on " + interest + " is waiting 5 seconds between scans");
                         Thread.sleep(5000);
-
+                        configureScan();
                         scanner = table.getScanner(scan);
                         for (Result result : scanner) {
                             for (KeyValue kv : result.raw()) {
