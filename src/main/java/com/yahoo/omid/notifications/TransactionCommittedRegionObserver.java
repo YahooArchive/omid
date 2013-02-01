@@ -59,7 +59,7 @@ public class TransactionCommittedRegionObserver extends BaseRegionObserver {
                 // but cannot access to the required structures from a BaseRegionObserver
                 if(!cf.equals(Constants.HBASE_META_CF)) {
                     String col = Bytes.toString(kv.getQualifier());
-                    // Pattern for notify column in framework's metadata column family: <cf>/<c>:notify
+                    // Pattern for notify column in framework's metadata column family: <cf>/<c>-notify
                     put.add(Bytes.toBytes(Constants.HBASE_META_CF),
                             Bytes.toBytes(cf + "/" + col + Constants.HBASE_NOTIFY_SUFFIX), kv.getTimestamp(), Bytes.toBytes("true"));
                     logger.trace("This is the put added : " + put);

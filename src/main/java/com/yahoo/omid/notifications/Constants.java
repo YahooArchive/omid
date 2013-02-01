@@ -21,7 +21,7 @@ public class Constants {
     public static final String O2H_NODE = "/oh"; // Subtree that maps observers to hosts
     
     public static final String HBASE_META_CF = "onf-meta"; //
-    public static final String HBASE_NOTIFY_SUFFIX = ":notify"; //
+    public static final String HBASE_NOTIFY_SUFFIX = "-notify"; //
     
     public static final int THRIFT_SERVER_PORT = 7911;
 }

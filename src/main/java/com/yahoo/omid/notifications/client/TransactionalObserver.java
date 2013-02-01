@@ -122,9 +122,9 @@ public class TransactionalObserver extends UntypedActor {
      */
     private void checkIfAlreadyExecuted(TransactionState tx, TransactionalTable tt, byte[] rowKey, byte[] columnFamily, byte[] column) throws Exception {
         String targetColumnFamily = Constants.HBASE_META_CF;
-        // Pattern for observer column in framework's metadata column family: <cf>/<c>:<obsName>
-        String targetColumnObserverAck = Bytes.toString(columnFamily) + "/" + Bytes.toString(column) + ":" + name;
-        // Pattern for notify column in framework's metadata column family: <cf>/<c>:notify
+        // Pattern for observer column in framework's metadata column family: <cf>/<c>-<obsName>
+        String targetColumnObserverAck = Bytes.toString(columnFamily) + "/" + Bytes.toString(column) + "-" + name;
+        // Pattern for notify column in framework's metadata column family: <cf>/<c>-notify
         String targetColumnNotify = Bytes.toString(columnFamily) + "/" + Bytes.toString(column) + Constants.HBASE_NOTIFY_SUFFIX;
         
         //logger.trace("Checking if observer was already executed...");

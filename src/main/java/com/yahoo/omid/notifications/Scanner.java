@@ -30,10 +30,6 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter;
-import org.apache.hadoop.hbase.filter.FamilyFilter;
-import org.apache.hadoop.hbase.filter.Filter;
-import org.apache.hadoop.hbase.filter.FilterList;
-import org.apache.hadoop.hbase.filter.FilterList.Operator;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
@@ -82,19 +78,21 @@ public class Scanner implements Runnable {
                     scanner = table.getScanner(scan);
                     for (Result result : scanner) {
                         for (KeyValue kv : result.raw()) {
-                            List<String> observers = interestsToObservers.get(interest);
-                            for (String observer : observers) {
-                                List<String> hosts = observersToHosts.get(observer);
-                                for (String host : hosts) {
-                                    // logger.trace("Notifying " + observer +
-                                    // " on host " + host +
-                                    // " about change on RowKey:" + new
-                                    // String(kv.getRow()) + ", CF: " + new
-                                    // String(kv.getFamily())
-                                    // + " C: " + new String(kv.getQualifier())
-                                    // + " Val: " +
-                                    // Bytes.toString(kv.getValue()));
-                                    notify(observer, kv.getRow(), host, Constants.THRIFT_SERVER_PORT);
+                            if(!Arrays.equals(kv.getFamily(), Bytes.toBytes(Constants.HBASE_META_CF))) {
+                                List<String> observers = interestsToObservers.get(interest);
+                                for (String observer : observers) {
+                                    List<String> hosts = observersToHosts.get(observer);
+                                    for (String host : hosts) {
+                                        // logger.trace("Notifying " + observer +
+                                        // " on host " + host +
+                                        // " about change on RowKey:" + new
+                                        // String(kv.getRow()) + ", CF: " + new
+                                        // String(kv.getFamily())
+                                        // + " C: " + new String(kv.getQualifier())
+                                        // + " Val: " +
+                                        // Bytes.toString(kv.getValue()));
+                                        notify(observer, kv.getRow(), host, Constants.THRIFT_SERVER_PORT);
+                                    }
                                 }
                             }
                         }
@@ -116,17 +114,13 @@ public class Scanner implements Runnable {
         Interest schema = Interest.fromString(interest);
         String columnFamily = Constants.HBASE_META_CF;
         byte[] cf = Bytes.toBytes(columnFamily);
-        // Pattern for observer column in framework's metadata column family: <cf>/<c>:notify 
+        // Pattern for observer column in framework's metadata column family: <cf>/<c>-notify 
         String column = schema.getColumnFamily() + "/" + schema.getColumn() + Constants.HBASE_NOTIFY_SUFFIX;
         byte[] c = Bytes.toBytes(column);
         byte[] v = Bytes.toBytes("true");
-        // Filter by CF and by value of the notify column
-        Filter familyFilter = new FamilyFilter(CompareFilter.CompareOp.EQUAL, new BinaryComparator(cf));
-        Filter valueFilter = new SingleColumnValueFilter(cf, c, CompareFilter.CompareOp.EQUAL, new BinaryComparator(v));
-        
-        FilterList filterList = new FilterList(Operator.MUST_PASS_ALL);
-        filterList.addFilter(familyFilter);
-        filterList.addFilter(valueFilter);
+        // Filter by value of the notify column
+        SingleColumnValueFilter valueFilter = new SingleColumnValueFilter(cf, c, CompareFilter.CompareOp.EQUAL, new BinaryComparator(v));
+        valueFilter.setFilterIfMissing(true);
         
         try {
             // Chose a region randomly
@@ -145,7 +139,7 @@ public class Scanner implements Runnable {
             }
             logger.trace("Start & Stop Keys: " + Arrays.toString(startKeys[regionIdx]) + " " + Arrays.toString(stopRow));
             scan.setStopRow(stopRow);
-            scan.setFilter(filterList);        
+            scan.setFilter(valueFilter);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -174,7 +168,7 @@ public class Scanner implements Runnable {
                     ByteBuffer.wrap(interest.getColumnAsHBaseByteArray()));
             client.notify(notification);
             transport.close();
-            //logger.trace("Scanner sent this " + notification + " notification!!!");
+//            logger.trace("Scanner " + this.interest + " sent this " + notification);
         } catch (Exception e) {
             if (transport != null) {
                 transport.close();
