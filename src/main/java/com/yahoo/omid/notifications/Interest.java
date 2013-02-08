@@ -57,6 +57,12 @@ public class Interest {
         this.columnFamily = columnFamily;
         this.column = column;
     }
+    
+    public Interest(byte[] table, byte[] columnFamily, byte[] column) {
+        this.table = Bytes.toString(table);
+        this.columnFamily = Bytes.toString(columnFamily);
+        this.column = Bytes.toString(column);
+    }
 
     /**
      * @return the table
