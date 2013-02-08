@@ -53,7 +53,7 @@ LIB=$(LIBDIR)/$(TSOCOMMITHASHMAP)
 all: $(LIB)
 
 $(LIB): $(OBJECTS)
-	-mkdir $(LIBDIR)
+	mkdir -p $(LIBDIR)
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
     
 $(OBJECTS): $(SOURCES)

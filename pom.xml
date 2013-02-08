@@ -198,9 +198,7 @@
         <dependency>
             <groupId>org.apache.hbase</groupId>
             <artifactId>hbase</artifactId>
-            <version>0.92.0</version>
-            <type>jar</type>
-            <scope>compile</scope>
+            <version>0.94.3</version>
         </dependency>
         <dependency>
             <groupId>org.apache.zookeeper</groupId>
