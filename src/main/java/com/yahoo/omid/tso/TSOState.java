@@ -45,7 +45,7 @@ public class TSOState {
     */
    // static final public int MAX_ITEMS = 10000000;
    // static final public int MAX_ITEMS = 4000000;
-   static public int MAX_ITEMS = 100;
+   static public int MAX_ITEMS = 100000;
    static {
       try {
          MAX_ITEMS = Integer.valueOf(System.getProperty("omid.maxItems"));
@@ -54,7 +54,7 @@ public class TSOState {
       }
    };
 
-   static public int MAX_COMMITS = 100;
+   static public int MAX_COMMITS = 100000;
    static {
       try {
          MAX_COMMITS = Integer.valueOf(System.getProperty("omid.maxCommits"));

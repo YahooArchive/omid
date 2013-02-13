@@ -37,7 +37,7 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.log4j.Logger;
 
 import com.yahoo.omid.examples.Constants;
-import com.yahoo.omid.notifications.TransactionCommittedRegionObserver;
+import com.yahoo.omid.notifications.TransactionCommittedRegionCoprocessor;
 import com.yahoo.omid.tso.TSOServer;
 
 public class OmidInfrastructure {
@@ -152,7 +152,7 @@ public class OmidInfrastructure {
         if (!admin.tableExists(Constants.TABLE)) {
             HTableDescriptor table = new HTableDescriptor(Constants.TABLE);
             // TODO The coprocessor should be added dynamically but I think is not possible in HBase
-            table.addCoprocessor(TransactionCommittedRegionObserver.class.getName(), null, Coprocessor.PRIORITY_USER, null);
+            table.addCoprocessor(TransactionCommittedRegionCoprocessor.class.getName(), null, Coprocessor.PRIORITY_USER, null);
             HColumnDescriptor columnFamily = new HColumnDescriptor(Constants.COLUMN_FAMILY_1);
             columnFamily.setMaxVersions(Integer.MAX_VALUE);
             table.addFamily(columnFamily);

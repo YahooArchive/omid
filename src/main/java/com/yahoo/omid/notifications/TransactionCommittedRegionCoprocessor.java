@@ -31,9 +31,9 @@ import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
-public class TransactionCommittedRegionObserver extends BaseRegionObserver {
+public class TransactionCommittedRegionCoprocessor extends BaseRegionObserver {
 
-    private static final Logger logger = Logger.getLogger(TransactionCommittedRegionObserver.class);
+    private static final Logger logger = Logger.getLogger(TransactionCommittedRegionCoprocessor.class);
 
     @Override
     public void start(CoprocessorEnvironment e) throws IOException {
@@ -47,9 +47,15 @@ public class TransactionCommittedRegionObserver extends BaseRegionObserver {
         byte[] tableNameAsBytes = c.getEnvironment().getRegion().getTableDesc().getName();
         String tableName = Bytes.toString(tableNameAsBytes);
 
+        if (tableName.equals(".META.")|| tableName.equals("-ROOT-")) {
+        	// do not instrument hbase meta tables
+        	// TODO allow filtering out more tables?
+        	return;
+        }
+
         //logger.trace("We're in pre-put");
         HTable table = new HTable(HBaseConfiguration.create(), tableName);
-
+        
         Map<byte[], List<KeyValue>> kvs = put.getFamilyMap();
 
         for (List<KeyValue> kvl : kvs.values()) {
@@ -59,7 +65,7 @@ public class TransactionCommittedRegionObserver extends BaseRegionObserver {
                 // but cannot access to the required structures from a BaseRegionObserver
                 if(!cf.equals(Constants.HBASE_META_CF)) {
                     String col = Bytes.toString(kv.getQualifier());
-                    // Pattern for notify column in framework's metadata column family: <cf>/<c>:notify
+                    // Pattern for notify column in framework's metadata column family: <cf>/<c>-notify
                     put.add(Bytes.toBytes(Constants.HBASE_META_CF),
                             Bytes.toBytes(cf + "/" + col + Constants.HBASE_NOTIFY_SUFFIX), kv.getTimestamp(), Bytes.toBytes("true"));
                     logger.trace("This is the put added : " + put);

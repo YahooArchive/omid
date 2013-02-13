@@ -79,7 +79,7 @@ public class TestInfrastructure {
         if (!admin.tableExists(TestConstants.TABLE)) {
             HTableDescriptor table = new HTableDescriptor(TestConstants.TABLE);
             // TODO The coprocessor should be added dynamically but I think is not possible in HBase
-            table.addCoprocessor(TransactionCommittedRegionObserver.class.getName(), null, Coprocessor.PRIORITY_USER, null);
+            table.addCoprocessor(TransactionCommittedRegionCoprocessor.class.getName(), null, Coprocessor.PRIORITY_USER, null);
             HColumnDescriptor columnFamily = new HColumnDescriptor(TestConstants.COLUMN_FAMILY_1);
             columnFamily.setMaxVersions(Integer.MAX_VALUE);
             table.addFamily(columnFamily);
