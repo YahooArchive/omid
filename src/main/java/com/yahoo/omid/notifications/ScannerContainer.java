@@ -35,10 +35,6 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter;
-import org.apache.hadoop.hbase.filter.FamilyFilter;
-import org.apache.hadoop.hbase.filter.Filter;
-import org.apache.hadoop.hbase.filter.FilterList;
-import org.apache.hadoop.hbase.filter.FilterList.Operator;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
@@ -139,15 +135,11 @@ public class ScannerContainer {
             String column = schema.getColumnFamily() + "/" + schema.getColumn() + Constants.HBASE_NOTIFY_SUFFIX;
             byte[] c = Bytes.toBytes(column);
             byte[] v = Bytes.toBytes("true");
-            // Filter by CF and by value of the notify column
-            Filter familyFilter = new FamilyFilter(CompareFilter.CompareOp.EQUAL, new BinaryComparator(cf));
-            Filter valueFilter = new SingleColumnValueFilter(cf, c, CompareFilter.CompareOp.EQUAL,
-                    new BinaryComparator(v));
-
-            FilterList filterList = new FilterList(Operator.MUST_PASS_ALL);
-            filterList.addFilter(familyFilter);
-            filterList.addFilter(valueFilter);
-            scan.setFilter(filterList);
+            
+            // Filter by value of the notify column
+            SingleColumnValueFilter valueFilter = new SingleColumnValueFilter(cf, c, CompareFilter.CompareOp.EQUAL, new BinaryComparator(v));
+            valueFilter.setFilterIfMissing(true);
+            scan.setFilter(valueFilter);
 
             try {
                 // Chose a region randomly
@@ -196,8 +188,10 @@ public class ScannerContainer {
                         scanner = table.getScanner(scan);
                         for (Result result : scanner) {
                             for (KeyValue kv : result.raw()) {
-                                UpdatedInterestMsg msg = new UpdatedInterestMsg(interest, kv.getRow());
-                                appSandbox.getAppInstanceRedirector().tell(msg);
+                                if(!Arrays.equals(kv.getFamily(), Bytes.toBytes(Constants.HBASE_META_CF))) {
+                                    UpdatedInterestMsg msg = new UpdatedInterestMsg(interest, kv.getRow());
+                                    appSandbox.getAppInstanceRedirector().tell(msg);
+                                }
                             }
                         }
                     } catch (IOException e) {
