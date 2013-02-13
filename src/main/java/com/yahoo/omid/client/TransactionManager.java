@@ -110,8 +110,9 @@ public class TransactionManager {
       }
 
       if (cb.getResult() == TSOClient.Result.ABORTED) {
+    	  String txStateAsString = transactionState.toDescriptiveString();
          cleanup(transactionState);
-         throw new CommitUnsuccessfulException();
+         throw new CommitUnsuccessfulException("Transaction aborted : conflict in cells " + txStateAsString);
       }
       transactionState.setCommitTimestamp(cb.getCommitTimestamp());
    }
