@@ -53,9 +53,13 @@ public class ScannerSandbox {
      */
     public void removeScannerContainer(String interest) throws InterruptedException {
         ScannerContainer scannerContainer = scanners.get(interest);
-        scannerContainer.stop();
-        scanners.remove(interest);
-        logger.trace("ScannerContainer stopped and removed for interest " + interest);
+        if(scannerContainer != null) {
+            scannerContainer.stop();
+            scanners.remove(interest);
+            logger.trace("ScannerContainer stopped and removed for interest " + interest);
+        } else {
+            logger.warn("ScannerContainer already removed for interest " + interest);
+        }
     }
 
 }

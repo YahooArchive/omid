@@ -164,10 +164,10 @@ public class App {
                 String updatedInterest = ((UpdatedInterestMsg) msg).interest;
                 byte[] updatedRowKey = ((UpdatedInterestMsg) msg).rowKey;
                 
-                Interest interest = Interest.fromString(updatedInterest);
-                String observer = interestObserverMap.get(interest);
+                String observer = interestObserverMap.get(updatedInterest);
                 
                 if(observer != null) {
+                    Interest interest = Interest.fromString(updatedInterest);
                     Notification notification = new Notification(observer, 
                             ByteBuffer.wrap(interest.getTableAsHBaseByteArray()),
                             ByteBuffer.wrap(updatedRowKey), // This is the row that has been modified

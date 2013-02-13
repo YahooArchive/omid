@@ -15,6 +15,7 @@
  */
 package com.yahoo.omid.notifications;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -88,6 +89,14 @@ public class AppSandbox {
             return;
         }
         app.addInterestToObserver(interest, observer);
+        
+        List<String> appList = new ArrayList<String>();
+        appList.add(appName);
+        appList = interestAppsMap.putIfAbsent(interest, appList);
+        if(appList != null) {
+            appList.add(appName);
+            interestAppsMap.put(interest, appList);
+        }
         try {
             scannerSandbox.addScannerContainer(interest);
         } catch (Exception e) {
@@ -103,6 +112,11 @@ public class AppSandbox {
             return;
         }
         app.removeInterestFromObserver(interest, observer);
+        List<String> appList = interestAppsMap.get(interest);
+        appList.remove(appName);
+        if(appList.isEmpty()) {
+            interestAppsMap.remove(interest);
+        }
         try {
             scannerSandbox.removeScannerContainer(interest);
         } catch (InterruptedException e) {
