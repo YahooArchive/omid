@@ -47,11 +47,13 @@ public class ScannerContainer {
     private static final long TIMEOUT = 3;
     private static final TimeUnit UNIT = TimeUnit.SECONDS;
 
+    private Configuration config = HBaseConfiguration.create();
+
     private final ExecutorService exec = Executors.newSingleThreadExecutor();
 
-    private String interest;
+    private Interest interest;
     private AppSandbox appSandbox;
-    private HTable table;
+
 
     /**
      * @param interest
@@ -59,19 +61,17 @@ public class ScannerContainer {
      * @throws IOException 
      */
     public ScannerContainer(String interest, AppSandbox appSandbox) throws IOException {
-        this.interest = interest;
+        this.interest = Interest.fromString(interest);
         this.appSandbox = appSandbox;
 
         // Generate scaffolding on HBase to maintain the information required to
         // perform notifications
-        Configuration config = HBaseConfiguration.create();
         HBaseAdmin admin = new HBaseAdmin(config);
         try { // TODO: This code should not be here in a production system
               // because it disables the table to add a CF
-            Interest interestRep = Interest.fromString(this.interest);
-            HTableDescriptor tableDesc = admin.getTableDescriptor(interestRep.getTableAsHBaseByteArray());
+            HTableDescriptor tableDesc = admin.getTableDescriptor(this.interest.getTableAsHBaseByteArray());
             if (!tableDesc.hasFamily(Bytes.toBytes(Constants.HBASE_META_CF))) {
-                String tableName = interestRep.getTable();
+                String tableName = this.interest.getTable();
 
                 admin.disableTable(tableName);
 
@@ -89,8 +89,7 @@ public class ScannerContainer {
                 logger.trace("Column family metadata added!!!");
             } else {
                 logger.trace("Column family metadata was already added!!! Skipping...");
-            }
-            table = new HTable(config, interestRep.getTable());
+            }            
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -105,11 +104,6 @@ public class ScannerContainer {
     }
 
     public void stop() throws InterruptedException {
-        try {
-            table.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
         exec.shutdownNow();
         exec.awaitTermination(TIMEOUT, UNIT);
         logger.trace("Scanners on " + interest + " stopped");
@@ -117,14 +111,16 @@ public class ScannerContainer {
 
     private class Scanner implements Runnable {
 
+        private HTable table = null;
         private Random regionRoller = new Random();
         private Scan scan = new Scan();
 
         @Override
         public void run() { // Scan and notify
-            configureBasicScanProperties();
             ResultScanner scanner = null;
+            configureBasicScanProperties();
             try {
+                table = new HTable(config, interest.getTable());
                 while (!Thread.currentThread().isInterrupted()) {
                     try {
                         logger.trace("Scanner on " + interest + " is waiting 5 seconds between scans");
@@ -134,30 +130,38 @@ public class ScannerContainer {
                         for (Result result : scanner) { // TODO Maybe paginate the result traversal
                             for (KeyValue kv : result.raw()) {
                                 if(!Arrays.equals(kv.getFamily(), Bytes.toBytes(Constants.HBASE_META_CF))) {
-                                    UpdatedInterestMsg msg = new UpdatedInterestMsg(interest, kv.getRow());
+                                    UpdatedInterestMsg msg = new UpdatedInterestMsg(interest.toStringRepresentation(), kv.getRow());
                                     appSandbox.getAppInstanceRedirector().tell(msg);
                                 }
                             }
                         }
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        logger.warn("Can't get scanner for table " + interest.getTable() + " retrying");
                     }
                 }
             } catch (InterruptedException e) {
-                logger.warn("Scanner on interest " + interest + " finished");                
+                logger.warn("Scanner on interest " + interest + " finished");          
+            } catch (IOException e) {
+                logger.warn("Scanner on interest " + interest + " not initiated because can't get table");
             } finally {
                 if(scanner != null) {
                     scanner.close();
+                }
+                if(table != null) {
+                    try {
+                        table.close();
+                    } catch (IOException e) {
+                        // Ignore
+                    }
                 }
             }
         }
 
         private void configureBasicScanProperties() {
-            Interest schema = Interest.fromString(interest);
             byte[] cf = Bytes.toBytes(Constants.HBASE_META_CF);
             // Pattern for observer column in framework's metadata column
             // family: <cf>/<c>-notify
-            String column = schema.getColumnFamily() + "/" + schema.getColumn() + Constants.HBASE_NOTIFY_SUFFIX;
+            String column = interest.getColumnFamily() + "/" + interest.getColumn() + Constants.HBASE_NOTIFY_SUFFIX;
             byte[] c = Bytes.toBytes(column);
             byte[] v = Bytes.toBytes("true");
             
