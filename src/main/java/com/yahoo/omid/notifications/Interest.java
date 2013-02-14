@@ -107,16 +107,25 @@ public class Interest {
     }
     
     /**
-     * Used when an interest is registered in a particular column
-     * @return the Zk node representation
+     * Used when a string representation of the interest is required
+     * internally in the framework
+     * @return the internal representation of the interest as string
      */
-    public String toZkNodeRepresentation() {
+    public String toStringRepresentation() {
         StringBuilder sb = new StringBuilder(table);
         sb.append(":");
         sb.append(columnFamily);
         sb.append(":");
         sb.append(column);
         return sb.toString();
+    }
+    
+    /**
+     * Used when an interest is registered in a particular column
+     * @return the Zk node representation
+     */
+    public String toZkNodeRepresentation() {
+        return this.toStringRepresentation();
     }
 
     /* (non-Javadoc)
