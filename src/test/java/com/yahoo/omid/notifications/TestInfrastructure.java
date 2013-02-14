@@ -34,14 +34,14 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 
 import com.yahoo.omid.TestUtils;
-import com.yahoo.omid.notifications.client.ObserverRegistrationService;
+import com.yahoo.omid.notifications.client.OmidDelta;
 import com.yahoo.omid.tso.TSOServer;
 
 public class TestInfrastructure {
 
     private static final Logger logger = Logger.getLogger(TestInfrastructure.class);
     
-    protected static ObserverRegistrationService registrationService;
+    protected static OmidDelta registrationService;
     private static final ExecutorService bkExecutor = Executors.newSingleThreadExecutor();
     private static final ExecutorService tsoExecutor = Executors.newSingleThreadExecutor();
     private static final ExecutorService nsExecutor = Executors.newSingleThreadExecutor();
@@ -94,8 +94,7 @@ public class TestInfrastructure {
         for (HTableDescriptor t : tables) {
             logger.info("Tables:" + t.getNameAsString());
         }
-        registrationService = new ObserverRegistrationService("TestApp");
-        registrationService.startAndWait();
+        registrationService = new OmidDelta("TestApp");
     }
 
     @After
@@ -103,7 +102,7 @@ public class TestInfrastructure {
         try {
             logger.info("tearing Down");
             if (registrationService != null) {
-                registrationService.stopAndWait();
+                registrationService.close();
             }
             admin.disableTable(TestConstants.TABLE);
             admin.deleteTable(TestConstants.TABLE);

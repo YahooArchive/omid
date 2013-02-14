@@ -37,7 +37,7 @@ import com.yahoo.omid.client.TransactionalTable;
 import com.yahoo.omid.examples.Constants;
 import com.yahoo.omid.notifications.Interest;
 import com.yahoo.omid.notifications.client.ObserverBehaviour;
-import com.yahoo.omid.notifications.client.ObserverRegistrationService;
+import com.yahoo.omid.notifications.client.OmidDelta;
 
 /**
  * This applications shows the basic usage of the Omid's notification framework
@@ -56,7 +56,7 @@ public class ClientNotificationAppExample {
      */
     @SuppressWarnings("static-access")
     public static void main(String[] args) throws Exception {
-        final ObserverRegistrationService registrationService = new ObserverRegistrationService("ExampleApp");
+        final OmidDelta registrationService = new OmidDelta("ExampleApp");
 
         CommandLineParser cmdLineParser = new ExtendedPosixParser(true);
 
@@ -91,8 +91,12 @@ public class ClientNotificationAppExample {
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run() {
-                registrationService.stopAndWait();
-                logger.info("ooo Omid ooo - Omid's Notification Example App Stopped (CTRL+C) - ooo Omid ooo");
+                try {
+                    registrationService.close();
+                    logger.info("ooo Omid ooo - Omid's Notification Example App Stopped (CTRL+C) - ooo Omid ooo");
+                } catch (IOException e) {
+                    // Ignore
+                }
             }
         });
 
@@ -106,8 +110,6 @@ public class ClientNotificationAppExample {
         logger.info("ooo Omid ooo -" + " A table called " + Constants.TABLE + " with a column Family "
                 + Constants.COLUMN_FAMILY_1 + " has been already created by the Omid Infrastructure "
                 + "- ooo Omid ooo");
-
-        registrationService.startAndWait();
 
         Interest interestObs1 = new Interest(Constants.TABLE, Constants.COLUMN_FAMILY_1, Constants.COLUMN_1);
         registrationService.registerObserverInterest("o1" /* Observer Name */, new ObserverBehaviour() {
@@ -192,7 +194,7 @@ public class ClientNotificationAppExample {
         registrationService.deregisterObserverInterest("o2", interestObs2);
         logger.info("Observer o2 deregistered");
         Thread.currentThread().sleep(10000);
-        registrationService.stopAndWait();
+        registrationService.close();
 
         logger.info("ooo Omid ooo - OMID'S NOTIFICATION APP FINISHED - ooo Omid ooo");
     }

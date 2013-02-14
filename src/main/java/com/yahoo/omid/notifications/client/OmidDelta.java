@@ -15,6 +15,8 @@
  */
 package com.yahoo.omid.notifications.client;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -24,10 +26,9 @@ import akka.actor.Props;
 import akka.actor.UntypedActor;
 import akka.actor.UntypedActorFactory;
 
-import com.google.common.util.concurrent.AbstractIdleService;
 import com.yahoo.omid.notifications.Interest;
 
-public class ObserverRegistrationService extends AbstractIdleService {
+public class OmidDelta implements Closeable {
     
     private ActorSystem appObserverSystem;
     
@@ -39,9 +40,15 @@ public class ObserverRegistrationService extends AbstractIdleService {
     
     private final InterestRecorder interestRecorder;
     
-    public ObserverRegistrationService(String appName) {
+    public OmidDelta(String appName) {
         appObserverSystem = ActorSystem.create(appName + "ObserverSystem");
+        appObserverSystem.actorOf(new Props(new UntypedActorFactory() {
+            public UntypedActor create() {
+                return new NotificationManager(registeredObservers);
+            }
+        }), "NotificationManager");
         interestRecorder = new InterestRecorder(appObserverSystem, registeredObservers);
+        interestRecorder.startAndWait();
     }
 
     public void registerObserverInterest(String obsName, ObserverBehaviour obsBehaviour, Interest interest) throws Exception {
@@ -52,24 +59,8 @@ public class ObserverRegistrationService extends AbstractIdleService {
         interestRecorder.deregisterObserverInterest(obsName, interest); // Delegate
     }
     
-    /* (non-Javadoc)
-     * @see com.google.common.util.concurrent.AbstractIdleService#startUp()
-     */
     @Override
-    protected void startUp() throws Exception {
-        appObserverSystem.actorOf(new Props(new UntypedActorFactory() {
-            public UntypedActor create() {
-                return new NotificationManager(registeredObservers);
-            }
-        }), "NotificationManager");
-        interestRecorder.startAndWait();
-    }
-
-    /* (non-Javadoc)
-     * @see com.google.common.util.concurrent.AbstractIdleService#shutDown()
-     */
-    @Override
-    protected void shutDown() throws Exception {
+    public void close() throws IOException {
         interestRecorder.stopAndWait();
         appObserverSystem.shutdown();
     }
