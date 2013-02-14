@@ -16,9 +16,7 @@
 package com.yahoo.omid.notifications;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Random;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -55,32 +53,29 @@ public class ScannerContainer {
     private AppSandbox appSandbox;
     private HTable table;
 
-    private final List<String> interestedApps = new CopyOnWriteArrayList<String>();
-
     /**
      * @param interest
      * @param appSandbox
+     * @throws IOException 
      */
-    public ScannerContainer(String interest, AppSandbox appSandbox) {
+    public ScannerContainer(String interest, AppSandbox appSandbox) throws IOException {
         this.interest = interest;
         this.appSandbox = appSandbox;
 
         // Generate scaffolding on HBase to maintain the information required to
         // perform notifications
         Configuration config = HBaseConfiguration.create();
-        HBaseAdmin admin;
+        HBaseAdmin admin = new HBaseAdmin(config);
         try { // TODO: This code should not be here in a production system
               // because it disables the table to add a CF
             Interest interestRep = Interest.fromString(this.interest);
-            admin = new HBaseAdmin(config);
             HTableDescriptor tableDesc = admin.getTableDescriptor(interestRep.getTableAsHBaseByteArray());
-            String metaCFName = Constants.HBASE_META_CF;
-            if (!tableDesc.hasFamily(Bytes.toBytes(metaCFName))) {
+            if (!tableDesc.hasFamily(Bytes.toBytes(Constants.HBASE_META_CF))) {
                 String tableName = interestRep.getTable();
 
                 admin.disableTable(tableName);
 
-                HColumnDescriptor metaCF = new HColumnDescriptor(metaCFName);
+                HColumnDescriptor metaCF = new HColumnDescriptor(Constants.HBASE_META_CF);
                 admin.addColumn(tableName, metaCF); // CF for storing metadata
                                                     // related to the notif.
                                                     // framework
@@ -98,6 +93,8 @@ public class ScannerContainer {
             table = new HTable(config, interestRep.getTable());
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            admin.close();
         }
     }
 
@@ -123,67 +120,18 @@ public class ScannerContainer {
         private Random regionRoller = new Random();
         private Scan scan = new Scan();
 
-        private void configureScan() {
-            Interest schema = Interest.fromString(interest);
-            String columnFamily = Constants.HBASE_META_CF;
-            byte[] cf = Bytes.toBytes(columnFamily);
-            // Pattern for observer column in framework's metadata column
-            // family: <cf>/<c>:notify
-            String column = schema.getColumnFamily() + "/" + schema.getColumn() + Constants.HBASE_NOTIFY_SUFFIX;
-            byte[] c = Bytes.toBytes(column);
-            byte[] v = Bytes.toBytes("true");
-            
-            // Filter by value of the notify column
-            SingleColumnValueFilter valueFilter = new SingleColumnValueFilter(cf, c, CompareFilter.CompareOp.EQUAL, new BinaryComparator(v));
-            valueFilter.setFilterIfMissing(true);
-            scan.setFilter(valueFilter);
-
-            try {
-                // Chose a region randomly
-                Pair<byte[][], byte[][]> startEndKeys = table.getStartEndKeys();
-                byte[][] startKeys = startEndKeys.getFirst();
-                byte[][] endKeys = startEndKeys.getSecond();
-                int regionIdx = regionRoller.nextInt(startKeys.length);
-
-                scan.setStartRow(startKeys[regionIdx]);
-                byte[] stopRow = endKeys[regionIdx];
-                // Take into account that the stop row is exclusive, so we need
-                // to pad a trailing 0 byte at the end
-                if (stopRow.length != 0) { // This is to avoid add the trailing
-                                           // 0 if there's no stopRow specified
-                    stopRow = addTrailingZeroToBA(endKeys[regionIdx]);
-                }
-                scan.setStopRow(stopRow);
-                logger.trace("Number of startKeys and endKeys in table: " + startKeys.length + " " + endKeys.length);
-                logger.trace("Region chosen: " + regionIdx);
-                logger.trace("Start & Stop Keys: " + Arrays.toString(startKeys[regionIdx]) + " "
-                        + Arrays.toString(stopRow));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        // Returns a new bytearray that will occur after the original one passed
-        // by padding its contents with a trailing 0 byte (remember that a
-        // byte[] is initialized to 0)
-        private byte[] addTrailingZeroToBA(byte[] originalBA) {
-            byte[] resultingBA = new byte[originalBA.length + 1];
-            System.arraycopy(originalBA, 0, resultingBA, 0, originalBA.length);
-            return resultingBA;
-        }
-
         @Override
         public void run() { // Scan and notify
-            ResultScanner scanner;
+            configureBasicScanProperties();
+            ResultScanner scanner = null;
             try {
                 while (!Thread.currentThread().isInterrupted()) {
                     try {
-
                         logger.trace("Scanner on " + interest + " is waiting 5 seconds between scans");
                         Thread.sleep(5000);
-                        configureScan();
+                        chooseRandomRegionToScan();
                         scanner = table.getScanner(scan);
-                        for (Result result : scanner) {
+                        for (Result result : scanner) { // TODO Maybe paginate the result traversal
                             for (KeyValue kv : result.raw()) {
                                 if(!Arrays.equals(kv.getFamily(), Bytes.toBytes(Constants.HBASE_META_CF))) {
                                     UpdatedInterestMsg msg = new UpdatedInterestMsg(interest, kv.getRow());
@@ -196,8 +144,61 @@ public class ScannerContainer {
                     }
                 }
             } catch (InterruptedException e) {
-                logger.trace("Scanner on interest " + interest + " finished");
+                logger.warn("Scanner on interest " + interest + " finished");                
+            } finally {
+                if(scanner != null) {
+                    scanner.close();
+                }
             }
+        }
+
+        private void configureBasicScanProperties() {
+            Interest schema = Interest.fromString(interest);
+            byte[] cf = Bytes.toBytes(Constants.HBASE_META_CF);
+            // Pattern for observer column in framework's metadata column
+            // family: <cf>/<c>-notify
+            String column = schema.getColumnFamily() + "/" + schema.getColumn() + Constants.HBASE_NOTIFY_SUFFIX;
+            byte[] c = Bytes.toBytes(column);
+            byte[] v = Bytes.toBytes("true");
+            
+            // Filter by value of the notify column
+            SingleColumnValueFilter valueFilter = new SingleColumnValueFilter(cf, c, CompareFilter.CompareOp.EQUAL, new BinaryComparator(v));
+            valueFilter.setFilterIfMissing(true);
+            scan.setFilter(valueFilter);
+        }
+        
+        private void chooseRandomRegionToScan() {
+            try {
+                Pair<byte[][], byte[][]> startEndKeys = table.getStartEndKeys();
+                byte[][] startKeys = startEndKeys.getFirst();
+                byte[][] endKeys = startEndKeys.getSecond();
+                int regionIdx = regionRoller.nextInt(startKeys.length);
+                
+                scan.setStartRow(startKeys[regionIdx]);
+                byte[] stopRow = endKeys[regionIdx];
+                // Take into account that the stop row is exclusive, so we need
+                // to pad a trailing 0 byte at the end
+                if (stopRow.length != 0) { // This is to avoid add the trailing
+                    // 0 if there's no stopRow specified
+                    stopRow = addTrailingZeroToBA(endKeys[regionIdx]);
+                }
+                scan.setStopRow(stopRow);
+                logger.trace("Number of startKeys and endKeys in table: " + startKeys.length + " " + endKeys.length);
+                logger.trace("Region chosen: " + regionIdx);
+                logger.trace("Start & Stop Keys: " + Arrays.toString(startKeys[regionIdx]) + " "
+                        + Arrays.toString(stopRow));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        
+        // Returns a new bytearray that will occur after the original one passed
+        // by padding its contents with a trailing 0 byte (remember that a
+        // byte[] is initialized to 0)
+        private byte[] addTrailingZeroToBA(byte[] originalBA) {
+            byte[] resultingBA = new byte[originalBA.length + 1];
+            System.arraycopy(originalBA, 0, resultingBA, 0, originalBA.length);
+            return resultingBA;
         }
     }
 }
