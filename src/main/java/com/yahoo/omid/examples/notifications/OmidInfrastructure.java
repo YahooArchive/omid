@@ -36,6 +36,7 @@ import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.log4j.Logger;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.examples.Constants;
 import com.yahoo.omid.notifications.TransactionCommittedRegionCoprocessor;
 import com.yahoo.omid.tso.TSOServer;
@@ -44,8 +45,8 @@ public class OmidInfrastructure {
 
     private static final Logger logger = Logger.getLogger(OmidInfrastructure.class);
 
-    private static final ExecutorService bkExecutor = Executors.newSingleThreadExecutor();
-    private static final ExecutorService tsoExecutor = Executors.newSingleThreadExecutor();
+    private static final ExecutorService bkExecutor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("bk-executor").build());
+    private static final ExecutorService tsoExecutor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("tso-executor").build());
     private static LocalHBaseCluster hbasecluster;
     private static Configuration hbaseConf;
     private static HBaseAdmin admin;

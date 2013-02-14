@@ -31,6 +31,8 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 public class ScannerContainer {
 
     private static final Logger logger = Logger.getLogger(ScannerContainer.class);
@@ -38,7 +40,7 @@ public class ScannerContainer {
     private static final long TIMEOUT = 3;
     private static final TimeUnit UNIT = TimeUnit.SECONDS;
 
-    private final ExecutorService exec = Executors.newSingleThreadExecutor();
+    private final ExecutorService exec;
 
     private String interest;
     private Map<String, List<String>> interestsToObservers;
@@ -52,7 +54,7 @@ public class ScannerContainer {
         this.interest = interest;
         this.interestsToObservers = interestsToObservers;
         this.observersToHosts = observersToHosts;
-        
+        exec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("Scanner container [" + interest + "]").build());
 
         // Generate scaffolding on HBase to maintain the information required to perform notifications
         Configuration config = HBaseConfiguration.create();
