@@ -1,4 +1,4 @@
-package com.yahoo.omid.client.regionserver;
+package com.yahoo.omid.regionserver;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;

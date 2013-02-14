@@ -20,8 +20,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.yahoo.omid.client.TSOClient;
-import com.yahoo.omid.client.TransactionalTable;
 import com.yahoo.omid.replication.ReadersAwareBuffer;
+import com.yahoo.omid.transaction.TTable;
 
 /**
  * Class for Throughput Monitoring
