@@ -80,20 +80,25 @@ public class Scanner implements Runnable {
                         for (KeyValue kv : result.raw()) {
                             if(!Arrays.equals(kv.getFamily(), Bytes.toBytes(Constants.HBASE_META_CF))) {
                                 List<String> observers = interestsToObservers.get(interest);
-                                for (String observer : observers) {
-                                    List<String> hosts = observersToHosts.get(observer);
-                                    for (String host : hosts) {
-                                        // logger.trace("Notifying " + observer +
-                                        // " on host " + host +
-                                        // " about change on RowKey:" + new
-                                        // String(kv.getRow()) + ", CF: " + new
-                                        // String(kv.getFamily())
-                                        // + " C: " + new String(kv.getQualifier())
-                                        // + " Val: " +
-                                        // Bytes.toString(kv.getValue()));
-                                        notify(observer, kv.getRow(), host, Constants.THRIFT_SERVER_PORT);
-                                    }
-                                }
+								if (observers != null) {
+									for (String observer : observers) {
+										List<String> hosts = observersToHosts.get(observer);
+										for (String host : hosts) {
+											// logger.trace("Notifying " +
+											// observer +
+											// " on host " + host +
+											// " about change on RowKey:" + new
+											// String(kv.getRow()) + ", CF: " +
+											// new
+											// String(kv.getFamily())
+											// + " C: " + new
+											// String(kv.getQualifier())
+											// + " Val: " +
+											// Bytes.toString(kv.getValue()));
+											notify(observer, kv.getRow(), host, Constants.THRIFT_SERVER_PORT);
+										}
+									}
+								}
                             }
                         }
                     }
@@ -173,7 +178,7 @@ public class Scanner implements Runnable {
             if (transport != null) {
                 transport.close();
             }
-            logger.error("Scanner " + interest + "could not sent notification");
+            logger.error("Scanner " + interest + "could not sent notification", e);
         } finally {
             if(transport != null) {
                 transport.close();
