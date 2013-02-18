@@ -53,6 +53,7 @@ import com.yahoo.omid.tso.messages.CommitQueryResponse;
 import com.yahoo.omid.tso.messages.CommitRequest;
 import com.yahoo.omid.tso.messages.CommitResponse;
 import com.yahoo.omid.tso.messages.FullAbortRequest;
+import com.yahoo.omid.tso.messages.LargestDeletedTimestampReport;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
@@ -226,6 +227,7 @@ public class TSOHandler extends SimpleChannelHandler {
                     buffer.initializeIndexes();
                 }
             }
+            channel.write(new LargestDeletedTimestampReport(sharedState.largestDeletedTimestamp));
             for (AbortedTransaction halfAborted : sharedState.hashmap.halfAborted) {
                 channel.write(new AbortedTransactionReport(halfAborted.getStartTimestamp()));
             }
@@ -299,8 +301,8 @@ public class TSOHandler extends SimpleChannelHandler {
             if (msg.startTimestamp < timestampOracle.first()) {
                 reply.committed = false;
                 LOG.warn("Aborting transaction after restarting TSO");
-            } else if (msg.startTimestamp < sharedState.largestDeletedTimestamp) {
-                // Too old
+            } else if (msg.rows.length > 0 && msg.startTimestamp < sharedState.largestDeletedTimestamp) {
+                // Too old and not read only
                 reply.committed = false;// set as abort
                 LOG.warn("Too old starttimestamp: ST " + msg.startTimestamp + " MAX "
                         + sharedState.largestDeletedTimestamp);
