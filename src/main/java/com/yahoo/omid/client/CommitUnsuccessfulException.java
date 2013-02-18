@@ -17,5 +17,11 @@
 package com.yahoo.omid.client;
 
 public class CommitUnsuccessfulException extends Exception {
+	
 	private static final long serialVersionUID = -9163407697376986830L;
+
+	public CommitUnsuccessfulException(String message) {
+		super(message);
+	}
+
 }

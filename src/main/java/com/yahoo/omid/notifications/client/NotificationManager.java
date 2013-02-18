@@ -31,6 +31,7 @@ import org.apache.thrift.transport.TTransportException;
 import akka.actor.ActorRef;
 import akka.actor.UntypedActor;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.notifications.Constants;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
 import com.yahoo.omid.notifications.thrift.generated.NotificationReceiverService;
@@ -41,7 +42,7 @@ public class NotificationManager extends UntypedActor {
 
     private Map<String, ActorRef> registeredObservers;
 
-    private final ExecutorService notificatorAcceptorExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService notificatorAcceptorExecutor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("Notificator").build());
        
     /**
      * @param registeredObservers

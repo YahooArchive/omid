@@ -29,13 +29,16 @@ import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.handler.codec.serialization.ObjectDecoder;
 
+import akka.dispatch.ThreadPoolConfigBuilder;
+
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.client.ColumnWrapper;
 import com.yahoo.omid.tso.messages.MinimumTimestamp;
 
 public class Compacter extends BaseRegionObserver {
    
-   private static ExecutorService bossExecutor = Executors.newCachedThreadPool();
-   private static ExecutorService workerExecutor = Executors.newCachedThreadPool();
+   private static ExecutorService bossExecutor = Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("Compacter-Boss-%d").build());
+   private static ExecutorService workerExecutor = Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("Compacter-Worker-%d").build());
    private volatile long minTimestamp;
    private ClientBootstrap bootstrap;
    private ChannelFactory factory;

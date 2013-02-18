@@ -37,6 +37,7 @@ import org.jboss.netty.channel.ChannelFutureListener;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.client.SyncAbortCompleteCallback;
 import com.yahoo.omid.client.SyncCommitCallback;
 import com.yahoo.omid.client.SyncCommitQueryCallback;
@@ -325,7 +326,8 @@ public class ClientHandler extends TSOClient {
 
    }
 
-   private static ScheduledExecutorService executor = Executors.newScheduledThreadPool(20);
+	private static ScheduledExecutorService executor = Executors.newScheduledThreadPool(20, new ThreadFactoryBuilder()
+			.setNameFormat("Commit handler %d").build());
 
    private long totalCommitRequestSent;// just to keep the total number of
                                        // commitreqeusts sent

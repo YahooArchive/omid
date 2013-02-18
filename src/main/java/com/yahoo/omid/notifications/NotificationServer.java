@@ -35,7 +35,7 @@ public class NotificationServer {
     public static void main(String[] args) throws InterruptedException {
         final ZKTreeWatchdog service = new ZKTreeWatchdog();
         
-        Runtime.getRuntime().addShutdownHook(new Thread() {
+        Runtime.getRuntime().addShutdownHook(new Thread("Notification server shutdown hook") {
             public void run() {                
                 service.stopAndWait();
                 logger.info("ooo Omid ooo - Notification Server stopped - ooo Omid ooo");

@@ -17,7 +17,13 @@
 package com.yahoo.omid.client;
 
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+
+import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.util.Bytes;
 
 /**
  *
@@ -60,5 +66,22 @@ public class TransactionState {
 
    public String toString() {
       return "Transaction-" + Long.toHexString(startTimestamp);
+   }
+   
+   public String toDescriptiveString() {
+	   StringBuilder sb = new StringBuilder();
+	   for (RowKeyFamily row: getRows()) {
+
+		   Map<byte[], List<KeyValue>> families = row.getFamilies();
+		   for (Entry<byte[], List<KeyValue>> entry: families.entrySet() ) {
+			   String family = Bytes.toString(entry.getKey());
+			   List<KeyValue> columns = entry.getValue();
+			   for(KeyValue column:columns) {
+				   sb.append(Bytes.toString(row.getTable()) + ":" + family + ":" + column.toString() + " ; ");
+			   }
+		   }
+
+	   }
+	   return sb.toString();
    }
 }
