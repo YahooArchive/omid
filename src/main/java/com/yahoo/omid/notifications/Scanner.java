@@ -63,6 +63,9 @@ public class Scanner implements Runnable {
         this.interest = interest;
         this.interestsToObservers = interestsToObservers;
         this.observersToHosts = observersToHosts;
+        // Connect to the notification receiver service (Thrift)
+        transport = new TFramedTransport(new TSocket("localhost", Constants.THRIFT_SERVER_PORT));
+
     }
 
     @Override
@@ -103,7 +106,7 @@ public class Scanner implements Runnable {
                         }
                     }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    logger.error("Error while scanning table " + (table!=null?Bytes.toString(table.getTableName()):"NULL"), e); 
                 }
             }
         } catch (InterruptedException e) {
@@ -159,12 +162,12 @@ public class Scanner implements Runnable {
       }
 
     private void notify(String observer, byte[] rowKey, String host, int port) {
-        // Connect to the notification receiver service (Thrift)
         try {
-            transport = new TFramedTransport(new TSocket("localhost", port));
+        	if (!transport.isOpen()) {
+        		transport.open();
+        	}
             TProtocol protocol = new TBinaryProtocol(transport);
             NotificationReceiverService.Client client = new NotificationReceiverService.Client(protocol);
-            transport.open();
             Interest interest = Interest.fromString(this.interest);
             Notification notification = new Notification(observer, 
                     ByteBuffer.wrap(interest.getTableAsHBaseByteArray()),
@@ -172,18 +175,12 @@ public class Scanner implements Runnable {
                     ByteBuffer.wrap(interest.getColumnFamilyAsHBaseByteArray()),
                     ByteBuffer.wrap(interest.getColumnAsHBaseByteArray()));
             client.notify(notification);
-            transport.close();
-//            logger.trace("Scanner " + this.interest + " sent this " + notification);
         } catch (Exception e) {
             if (transport != null) {
                 transport.close();
             }
             logger.error("Scanner " + interest + "could not sent notification", e);
-        } finally {
-            if(transport != null) {
-                transport.close();
-            }
-        }
+        } 
         
     }    
 
