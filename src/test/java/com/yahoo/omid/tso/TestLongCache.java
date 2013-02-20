@@ -17,10 +17,11 @@ public class TestLongCache {
     @Test
     public void testEntriesAge() {
         final int entries = 10;
-        
+
         Histogram hist = new Histogram(entries * 10);
 
-        LongCache cache = new LongCache(entries, 1);
+        Cache cache = new LongCache(entries, 16);
+
         Random random = new Random();
 
         long seed = random.nextLong();
@@ -31,7 +32,7 @@ public class TestLongCache {
         long totalAge = 0;
         double tempStdDev = 0;
         double tempAvg = 0;
-        
+
         int i = 0;
         for (; i < entries * 10; ++i) {
             cache.set(random.nextLong(), i);
@@ -49,10 +50,10 @@ public class TestLongCache {
         }
 
         double avgAge = totalAge / (double) removals;
-        LOG.info("Avg age: " + (avgAge ));
-        LOG.info("Avg age: " + (tempAvg ));
+        LOG.info("Avg age: " + (avgAge));
+        LOG.info("Avg age: " + (tempAvg));
         LOG.info("Std dev age: " + Math.sqrt((tempStdDev / entries)));
         System.out.println(hist.toString());
-        assertThat(avgAge, is(greaterThan(entries * .9 )));
+        assertThat(avgAge, is(greaterThan(entries * .9)));
     }
 }

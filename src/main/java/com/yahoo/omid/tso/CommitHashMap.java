@@ -34,8 +34,8 @@ import org.jboss.netty.util.internal.ConcurrentHashMap;
 class CommitHashMap {
 
     private long largestDeletedTimestamp;
-    private final LongCache startCommitMapping;
-    private final LongCache rowsCommitMapping;
+    private final Cache startCommitMapping;
+    private final Cache rowsCommitMapping;
 
     /**
      * Constructs a new, empty hashtable with a default size of 1000
