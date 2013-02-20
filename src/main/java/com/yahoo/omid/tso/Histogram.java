@@ -10,6 +10,7 @@ public class Histogram {
     final private int size;
     final private int[] counts;
     private int max;
+    private int min = Integer.MIN_VALUE;
 
     public Histogram(int size) {
         this.size = size;
@@ -24,6 +25,9 @@ public class Histogram {
         counts[i]++;
         if (i > max) {
             max = i;
+        }
+        if (i < min) {
+            min = i;
         }
     }
 
@@ -42,7 +46,7 @@ public class Histogram {
     }
 
     public void log() {
-        for (int i = 0; i <= max; ++i) {
+        for (int i = min; i <= max; ++i) {
             LOG.debug(String.format("[%5d]\t%5d", i, counts[i]));
         }
     }

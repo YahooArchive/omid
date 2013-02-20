@@ -21,7 +21,7 @@ public class TestLongCache {
     public void testEntriesAge() {
         
 
-        LongCache cache = new LongCache(entries, 16);
+        Cache cache = new LongCache(entries, 16);
         Random random = new Random();
 
         long seed = random.nextLong();

@@ -7,14 +7,13 @@ import java.util.Random;
 
 public class CacheEvaluation {
 
-    final static int ENTRIES = 1000000;
-    final static int WARMUP_ROUNDS = 20;
-    final static int ROUNDS = 20;
-    Histogram hist = new Histogram(ENTRIES * 100);
+    final static int ENTRIES = 150000000;
+    final static int WARMUP_ROUNDS = 2;
+    final static int ROUNDS = 4;
+    final static double HOT_PERC = 1;
+//    Histogram hist = new Histogram(2 * ENTRIES);
 
-    public void testEntriesAge(int asoc, PrintWriter writer) {
-
-        LongCache cache = new LongCache(ENTRIES, asoc);
+    public void testEntriesAge(Cache cache, PrintWriter writer) {
         Random random = new Random();
 
         long seed = random.nextLong();
@@ -22,14 +21,21 @@ public class CacheEvaluation {
         writer.println("# Random seed: " + seed);
         random.setSeed(seed);
         int removals = 0;
-        long totalAge = 0;
         double tempStdDev = 0;
         double tempAvg = 0;
 
         int i = 0;
         int largestDeletedTimestamp = 0;
+        long hotItem = random.nextLong();
+
+        Runtime.getRuntime().gc();
+
         for (; i < ENTRIES * WARMUP_ROUNDS; ++i) {
-            long removed = cache.set(random.nextLong(), i);
+            long toInsert = random.nextInt(100) < HOT_PERC ? hotItem : random.nextLong();
+            long removed = cache.set(toInsert, i);
+            if (removed > largestDeletedTimestamp) {
+                largestDeletedTimestamp = (int) removed;
+            }
             if (removed > largestDeletedTimestamp) {
                 largestDeletedTimestamp = (int) removed;
             }
@@ -41,17 +47,17 @@ public class CacheEvaluation {
 
         long time = System.nanoTime();
         for (; i < ENTRIES * (WARMUP_ROUNDS + ROUNDS); ++i) {
-            long removed = cache.set(random.nextLong(), i);
+            long toInsert = random.nextInt(100) < HOT_PERC ? hotItem : random.nextLong();
+            long removed = cache.set(toInsert, i);
             if (removed > largestDeletedTimestamp) {
                 largestDeletedTimestamp = (int) removed;
             }
             int gap = i - largestDeletedTimestamp;
             removals++;
-            totalAge += gap;
             double oldAvg = tempAvg;
             tempAvg += (gap - tempAvg) / removals;
             tempStdDev += (gap - oldAvg) * (gap - tempAvg);
-            hist.add(gap);
+//            hist.add(gap);
             if (i % ENTRIES == 0) {
                 int round = i / ENTRIES - WARMUP_ROUNDS + 1;
                 System.err.format("Progress [%d/%d]\n", round, ROUNDS);
@@ -60,25 +66,29 @@ public class CacheEvaluation {
         long elapsed = System.nanoTime() - time;
         double elapsedSeconds = (elapsed / (double) 1000000000);
         long totalOps = ENTRIES * ROUNDS;
+        writer.println("# Free mem before GC (MB) :" + (Runtime.getRuntime().freeMemory() / (double) (1024 * 1024)));
+        Runtime.getRuntime().gc();
+        writer.println("# Free mem (MB) :" + (Runtime.getRuntime().freeMemory() / (double) (1024 * 1024)));
         writer.println("# Elapsed (s): " + elapsedSeconds);
         writer.println("# Elapsed per 100 ops (ms): " + (elapsed / (double) totalOps / 100 / (double) 1000000));
         writer.println("# Ops per s : " + (totalOps / elapsedSeconds));
-
-        double avgAge = totalAge / (double) removals;
-        // LOG.info("Avg gap: " + (avgAge ));
         writer.println("# Avg gap: " + (tempAvg));
         writer.println("# Std dev gap: " + Math.sqrt((tempStdDev / ENTRIES)));
-        hist.print(writer);
-        // System.out.println(hist.toString());
-        // assertThat(avgAge, is(greaterThan(entries * .9 )));
+//        hist.print(writer);
     }
 
     public static void main(String[] args) throws FileNotFoundException, UnsupportedEncodingException {
-        int[] asoc = new int[] { 1, 2, 4, 8, 16, 32 };
+        int[] asoc = new int[] { 8, 16, 32 };
         for (int i = 0; i < asoc.length; ++i) {
             PrintWriter writer = new PrintWriter(asoc[i] + ".out", "UTF-8");
-            new CacheEvaluation().testEntriesAge(asoc[i], writer);
+            new CacheEvaluation().testEntriesAge(new LongCache(ENTRIES, asoc[i]), writer);
             writer.close();
         }
+        {
+            PrintWriter writer = new PrintWriter("guava.out", "UTF-8");
+            new CacheEvaluation().testEntriesAge(new GuavaCache(ENTRIES), writer);
+            writer.close();
+        }
+
     }
 }
