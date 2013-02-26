@@ -37,18 +37,16 @@ import com.yahoo.omid.notifications.Constants;
 import com.yahoo.omid.notifications.NotificationException;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
 
-public class TransactionalObserver extends UntypedActor {
+public class ObserverWrapper extends UntypedActor {
     
-    private static final Logger logger = Logger.getLogger(TransactionalObserver.class);
+    private static final Logger logger = Logger.getLogger(ObserverWrapper.class);
     
-    private String name; // The name of the observer
-    private ObserverBehaviour observer;
+    private Observer observer;
 
     private Configuration tsoClientHbaseConf;
     private TransactionManager tm;
     
-    public TransactionalObserver(String name, ObserverBehaviour observer) {
-        this.name = name;
+    public ObserverWrapper(Observer observer) {
         this.observer = observer;
         
         // Configure connection with TSO
@@ -68,10 +66,10 @@ public class TransactionalObserver extends UntypedActor {
      * @return the transactional observer's name
      */
     public String getName() {
-        return name;
+        return observer.getName();
     }
 
-    /* (non-Javadoc)
+    /**
      * @see akka.actor.UntypedActor#onReceive(java.lang.Object)
      */
     @Override
@@ -123,7 +121,7 @@ public class TransactionalObserver extends UntypedActor {
     private void checkIfAlreadyExecuted(TransactionState tx, TransactionalTable tt, byte[] rowKey, byte[] columnFamily, byte[] column) throws Exception {
         String targetColumnFamily = Constants.HBASE_META_CF;
         // Pattern for observer column in framework's metadata column family: <cf>/<c>-<obsName>
-        String targetColumnObserverAck = Bytes.toString(columnFamily) + "/" + Bytes.toString(column) + "-" + name;
+        String targetColumnObserverAck = Bytes.toString(columnFamily) + "/" + Bytes.toString(column) + "-" + observer.getName();
         // Pattern for notify column in framework's metadata column family: <cf>/<c>-notify
         String targetColumnNotify = Bytes.toString(columnFamily) + "/" + Bytes.toString(column) + Constants.HBASE_NOTIFY_SUFFIX;
         
@@ -163,10 +161,10 @@ public class TransactionalObserver extends UntypedActor {
             if (valObserverAck == null || tsObserverAck < tsNotify) { 
                 // logger.trace("Setting put on observer");
                 Put put = new Put(rowKey, tx.getStartTimestamp());
-                put.add(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumnObserverAck), Bytes.toBytes(name));
+                put.add(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumnObserverAck), Bytes.toBytes(observer.getName()));
                 tt.put(tx, put); // Transactional put
             } else {
-                throw new NotificationException("Observer " + name + " already executed for change");
+                throw new NotificationException("Observer " + observer.getName() + " already executed for change");
             }
         } else {
             throw new NotificationException("Notify its not true!!!");

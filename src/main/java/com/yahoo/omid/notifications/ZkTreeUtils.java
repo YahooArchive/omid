@@ -13,21 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. See accompanying LICENSE file.
  */
-package com.yahoo.omid.examples;
+package com.yahoo.omid.notifications;
 
 
-/**
- * Common constants used in examples
- *
- */
-public class Constants {
+public class ZkTreeUtils {
 
-    public static final String TABLE_1 = "t1";
-    public static final String TABLE_2 = "t2";
-    public static final String COLUMN_FAMILY_1 = "cf1";
-    public static final String COLUMN_FAMILY_2 = "cf2";
-    public static final String COLUMN_1 = "c1";
-    public static final String COLUMN_2 = "c2";
-    public static final String COLUMN_3 = "c3";
+    public static final String ROOT_NODE = "deltaomid";
+    public static final String APPS_NODE = "applications";
+    public static final String SERVERS_NODE = "servers";
     
+    public static String getRootNodePath() {
+        return "/" + ROOT_NODE;
+    }
+    
+    public static String getAppsNodePath() {
+        return getRootNodePath() + "/" + APPS_NODE;
+    }
+
+    public static String getServersNodePath() {
+        return getRootNodePath() + "/" + SERVERS_NODE;
+    }
 }

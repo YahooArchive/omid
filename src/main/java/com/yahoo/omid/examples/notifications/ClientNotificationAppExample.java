@@ -16,6 +16,8 @@
 package com.yahoo.omid.examples.notifications;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 import java.util.ListIterator;
 import java.util.concurrent.CountDownLatch;
 
@@ -36,8 +38,9 @@ import com.yahoo.omid.client.TransactionState;
 import com.yahoo.omid.client.TransactionalTable;
 import com.yahoo.omid.examples.Constants;
 import com.yahoo.omid.notifications.Interest;
-import com.yahoo.omid.notifications.client.ObserverBehaviour;
-import com.yahoo.omid.notifications.client.OmidDelta;
+import com.yahoo.omid.notifications.client.IncrementalApplication;
+import com.yahoo.omid.notifications.client.Observer;
+import com.yahoo.omid.notifications.client.DeltaOmid;
 
 /**
  * This applications shows the basic usage of the Omid's notification framework
@@ -56,7 +59,6 @@ public class ClientNotificationAppExample {
      */
     @SuppressWarnings("static-access")
     public static void main(String[] args) throws Exception {
-        final OmidDelta registrationService = new OmidDelta("ExampleApp");
 
         CommandLineParser cmdLineParser = new ExtendedPosixParser(true);
 
@@ -87,18 +89,7 @@ public class ClientNotificationAppExample {
         } catch (ParseException e) {
             e.printStackTrace();
             System.exit(1);
-        }
-
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            public void run() {
-                try {
-                    registrationService.close();
-                    logger.info("ooo Omid ooo - Omid's Notification Example App Stopped (CTRL+C) - ooo Omid ooo");
-                } catch (IOException e) {
-                    // Ignore
-                }
-            }
-        });
+        }        
 
         // TSO Client setup
         Configuration tsoClientHbaseConf = HBaseConfiguration.create();
@@ -107,12 +98,14 @@ public class ClientNotificationAppExample {
 
         logger.info("ooo Omid ooo - STARTING OMID'S EXAMPLE NOTIFICATION APP. - ooo Omid ooo");
 
-        logger.info("ooo Omid ooo -" + " A table called " + Constants.TABLE + " with a column Family "
+        logger.info("ooo Omid ooo -" + " A table called " + Constants.TABLE_1 + " with a column Family "
                 + Constants.COLUMN_FAMILY_1 + " has been already created by the Omid Infrastructure "
                 + "- ooo Omid ooo");
 
-        Interest interestObs1 = new Interest(Constants.TABLE, Constants.COLUMN_FAMILY_1, Constants.COLUMN_1);
-        registrationService.registerObserverInterest("o1" /* Observer Name */, new ObserverBehaviour() {
+        Observer obs1 = new Observer() {
+
+            Interest interestObs1 = new Interest(Constants.TABLE_1, Constants.COLUMN_FAMILY_1, Constants.COLUMN_1);
+
             public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
                 logger.info("ooo Omid ooo -"
                 + "I'M OBSERVER o1."
@@ -133,18 +126,30 @@ public class ClientNotificationAppExample {
                tsoClientConf.setInt("tso.port", 1234);
 
                try {
-                   TransactionalTable tt = new TransactionalTable(tsoClientConf, Constants.TABLE);
+                   TransactionalTable tt = new TransactionalTable(tsoClientConf, Constants.TABLE_1);
                    doTransactionalPut(tx, tt, rowKey, Bytes.toBytes(Constants.COLUMN_FAMILY_1),
                            Bytes.toBytes(Constants.COLUMN_2), Bytes.toBytes("Data written by OBSERVER o1"));
                } catch (IOException e) {
                    e.printStackTrace();
                }
                cdl.countDown();
-           }
-       }, interestObs1);
+            }
 
-        Interest interestObs2 = new Interest(Constants.TABLE, Constants.COLUMN_FAMILY_1, Constants.COLUMN_2);
-        registrationService.registerObserverInterest("o2" /* Observer Name */, new ObserverBehaviour() {
+            @Override
+            public String getName() {
+                return "o1";
+            }
+
+            @Override
+            public List<Interest> getInterests() {
+                return Collections.singletonList(interestObs1);
+            }
+        };
+
+        Observer obs2 = new Observer() {
+
+            Interest interestObs2 = new Interest(Constants.TABLE_1, Constants.COLUMN_FAMILY_1, Constants.COLUMN_2);
+            
             public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
                 logger.info("ooo Omid ooo - "
                 + "I'M OBSERVER o2."
@@ -159,13 +164,41 @@ public class ClientNotificationAppExample {
                 + " !!! I'M NOT GONNA DO ANYTHING ELSE - ooo Omid ooo");
                 cdl.countDown();
            }
-       }, interestObs2);
+
+            @Override
+            public String getName() {
+                return "o2";
+            }
+
+            @Override
+            public List<Interest> getInterests() {
+                return Collections.singletonList(interestObs2);
+            }
+        };
+
+        // Create application
+        final IncrementalApplication app = new DeltaOmid.AppBuilder("ExampleApp")
+                                                    .addObserver(obs1)
+                                                    .addObserver(obs2)
+                                                    .build();
+        
+        
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            public void run() {
+                try {
+                    app.close();
+                    logger.info("ooo Omid ooo - Omid's Notification Example App Stopped (CTRL+C) - ooo Omid ooo");
+                } catch (IOException e) {
+                    // Ignore
+                }
+            }
+        });
 
         logger.info("ooo Omid ooo - WAITING 5 SECONDS TO ALLOW OBSERVER REGISTRATION - ooo Omid ooo");
         Thread.currentThread().sleep(5000);
 
         TransactionManager tm = new TransactionManager(tsoClientHbaseConf);
-        TransactionalTable tt = new TransactionalTable(tsoClientHbaseConf, Constants.TABLE);
+        TransactionalTable tt = new TransactionalTable(tsoClientHbaseConf, Constants.TABLE_1);
 
         logger.info("ooo Omid ooo - STARTING " + txsToExecute + " TRIGGER TXS INSERTING " + rowsPerTx
                 + " ROWS EACH IN COLUMN " + Constants.COLUMN_1 + " - ooo Omid ooo");
@@ -189,12 +222,8 @@ public class ClientNotificationAppExample {
         cdl.await();
         logger.info("ooo Omid ooo - OBSERVERS HAVE RECEIVED ALL THE NOTIFICATIONS WAITING 30 SECONDS TO ALLOW FINISHING CLEARING STUFF - ooo Omid ooo");        
         Thread.currentThread().sleep(30000);
-        registrationService.deregisterObserverInterest("o1", interestObs1);
-        logger.info("Observer o1 deregistered");
-        registrationService.deregisterObserverInterest("o2", interestObs2);
-        logger.info("Observer o2 deregistered");
+        app.close();
         Thread.currentThread().sleep(10000);
-        registrationService.close();
 
         logger.info("ooo Omid ooo - OMID'S NOTIFICATION APP FINISHED - ooo Omid ooo");
     }

@@ -18,6 +18,7 @@ package com.yahoo.omid.notifications;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
@@ -37,7 +38,9 @@ import com.yahoo.omid.client.TransactionException;
 import com.yahoo.omid.client.TransactionManager;
 import com.yahoo.omid.client.TransactionState;
 import com.yahoo.omid.client.TransactionalTable;
-import com.yahoo.omid.notifications.client.ObserverBehaviour;
+import com.yahoo.omid.notifications.client.IncrementalApplication;
+import com.yahoo.omid.notifications.client.Observer;
+import com.yahoo.omid.notifications.client.DeltaOmid;
 
 public class TestSimpleNotification extends TestInfrastructure {
 
@@ -53,13 +56,16 @@ public class TestSimpleNotification extends TestInfrastructure {
         final CountDownLatch cdl = new CountDownLatch(1); // # of observers
         
         Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
-        registrationService.registerObserverInterest("obs", buildPassiveTransactionalObserver(VAL_1, cdl), interestObs);
+        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
+                                        .addObserver(buildPassiveTransactionalObserver("obs", interestObs, VAL_1, cdl))
+                                        .build();
         
         Thread.currentThread().sleep(5000);
 
         startTriggerTransaction("row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
 
         cdl.await();
+        app.close();
     }
     
     @Test
@@ -68,14 +74,17 @@ public class TestSimpleNotification extends TestInfrastructure {
         final CountDownLatch cdl = new CountDownLatch(2); // # of observers
 
         Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
-        registrationService.registerObserverInterest("obs1", buildPassiveTransactionalObserver(VAL_1, cdl), interestObs);
-        registrationService.registerObserverInterest("obs2", buildPassiveTransactionalObserver(VAL_1, cdl), interestObs);
-        
+        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
+                                        .addObserver(buildPassiveTransactionalObserver("obs1", interestObs, VAL_1, cdl))
+                                        .addObserver(buildPassiveTransactionalObserver("obs2", interestObs, VAL_1, cdl))
+                                        .build();
+                
         Thread.currentThread().sleep(5000);
 
         startTriggerTransaction("row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
 
         cdl.await();
+        app.close();
     }
 
     @Test
@@ -84,14 +93,18 @@ public class TestSimpleNotification extends TestInfrastructure {
         final CountDownLatch cdl = new CountDownLatch(2); // # of observers
         
         Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
-        registrationService.registerObserverInterest("obs1", buildActiveTransactionalObserver(VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl), interestObs);
-        registrationService.registerObserverInterest("obs2", buildActiveTransactionalObserver(VAL_1, 0, "row-3", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_3, cdl), interestObs);
+        
+        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
+                                        .addObserver(buildActiveTransactionalObserver("obs1", interestObs, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl))
+                                        .addObserver(buildActiveTransactionalObserver("obs2", interestObs, VAL_1, 0, "row-3", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_3, cdl))
+                                        .build();
         
         Thread.currentThread().sleep(5000);
 
         startTriggerTransaction("row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
 
         cdl.await();
+        app.close();
     }
 
     @Test
@@ -99,8 +112,11 @@ public class TestSimpleNotification extends TestInfrastructure {
         final CountDownLatch cdl = new CountDownLatch(2); // # of observers
         
         Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
-        registrationService.registerObserverInterest("obs1", buildActiveTransactionalObserver(VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl), interestObs);
-        registrationService.registerObserverInterest("obs2", buildActiveTransactionalObserver(VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_3, cdl), interestObs);
+        
+        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
+                                        .addObserver(buildActiveTransactionalObserver("obs1", interestObs, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl))
+                                        .addObserver(buildActiveTransactionalObserver("obs2", interestObs, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_3, cdl))
+                                        .build();
         
         Thread.currentThread().sleep(5000);
 
@@ -133,8 +149,11 @@ public class TestSimpleNotification extends TestInfrastructure {
         final CountDownLatch cdl = new CountDownLatch(2); // # of observers
         
         Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
-        registrationService.registerObserverInterest("obs1", buildActiveTransactionalObserver(VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl), interestObs);
-        registrationService.registerObserverInterest("obs2", buildActiveTransactionalObserver(VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_3, VAL_3, cdl), interestObs);
+
+        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
+                                        .addObserver(buildActiveTransactionalObserver("obs1", interestObs, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl))
+                                        .addObserver(buildActiveTransactionalObserver("obs2", interestObs, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_3, VAL_3, cdl))
+                                        .build();
         
         Thread.currentThread().sleep(5000);
 
@@ -177,9 +196,11 @@ public class TestSimpleNotification extends TestInfrastructure {
         Interest interestObs2 = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2);
         Interest interestObs3 = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_3);
         
-        registrationService.registerObserverInterest("obs1", buildActiveTransactionalObserver(VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl), interestObs1);
-        registrationService.registerObserverInterest("obs2", buildActiveTransactionalObserver(VAL_2, 0, "row-3", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_3, VAL_3, cdl), interestObs2);
-        registrationService.registerObserverInterest("obs3", buildPassiveTransactionalObserver(VAL_3, cdl), interestObs3);
+        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
+                                    .addObserver(buildActiveTransactionalObserver("obs1", interestObs1, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl))
+                                    .addObserver(buildActiveTransactionalObserver("obs2", interestObs2, VAL_2, 0, "row-3", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_3, VAL_3, cdl))
+                                    .addObserver(buildPassiveTransactionalObserver("obs3", interestObs3, VAL_3, cdl))
+                                    .build();
         
         Thread.currentThread().sleep(5000);        
 
@@ -216,13 +237,15 @@ public class TestSimpleNotification extends TestInfrastructure {
     /**
      * The observer built by this method just checks that the value received when its notified is the expected
      * 
+     * @param obsName
+     * @param interest The interest of the observer
      * @param expectedValue The value that this observer will check 
      * @param cdl Count down latch
      * @return A passive observer
      * @throws Exception
      */
-    private ObserverBehaviour buildPassiveTransactionalObserver(final String expectedValue, final CountDownLatch cdl) throws Exception {
-        return new ObserverBehaviour() {
+    private Observer buildPassiveTransactionalObserver(final String obsName, final Interest interest, final String expectedValue, final CountDownLatch cdl) throws Exception {
+        return new Observer() {
             public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
                 Configuration tsoClientConf = HBaseConfiguration.create();
                 tsoClientConf.set("tso.host", "localhost");
@@ -241,6 +264,16 @@ public class TestSimpleNotification extends TestInfrastructure {
                     cdl.countDown();
                 }
             }
+
+            @Override
+            public String getName() {
+                return obsName;
+            }
+
+            @Override
+            public List<Interest> getInterests() {                
+                return Collections.singletonList(interest);
+            }
         };
     }
 
@@ -248,6 +281,8 @@ public class TestSimpleNotification extends TestInfrastructure {
      * The observer built by this method checks that the value received when its notified is the expected and generates
      * a new value on a row as part of the transactional context it has.
      * 
+     * @param obsName
+     * @param interest The interest of the observer
      * @param expectedValue The value that this observer will check 
      * @param r Row Key to write in
      * @param cf Column Family to write in
@@ -257,9 +292,10 @@ public class TestSimpleNotification extends TestInfrastructure {
      * @return An active observer
      * @throws Exception
      */
-    private ObserverBehaviour buildActiveTransactionalObserver(final String expectedValue, final int delay,
-            final String r, final String cf, final String c, final String v, final CountDownLatch cdl) throws Exception {
-        return new ObserverBehaviour() {
+    private Observer buildActiveTransactionalObserver(final String obsName, final Interest interest,
+            final String expectedValue, final int delay, final String r, final String cf, final String c,
+            final String v, final CountDownLatch cdl) throws Exception {
+        return new Observer() {
             public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
                 if(delay != 0) {
                     try {
@@ -287,6 +323,16 @@ public class TestSimpleNotification extends TestInfrastructure {
                 } finally {
                     cdl.countDown();
                 }   
+            }
+
+            @Override
+            public String getName() {
+                return obsName;
+            }
+
+            @Override
+            public List<Interest> getInterests() {
+                return Collections.singletonList(interest);
             }
         };
     }

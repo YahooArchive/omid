@@ -44,10 +44,6 @@ public class NotificationManager extends UntypedActor {
 
     private final ExecutorService notificatorAcceptorExecutor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("Notificator").build());
        
-    /**
-     * @param registeredObservers
-     * 
-     */
     public NotificationManager(Map<String, ActorRef> registeredObservers) {
         this.registeredObservers = registeredObservers;
     }
@@ -67,18 +63,12 @@ public class NotificationManager extends UntypedActor {
     public void onReceive(Object msg) {
         if (msg instanceof Notification) {
             Notification notification = (Notification) msg;
-//            String table = new String(notification.getTable());
-//            String rowKey = new String(notification.getRowKey());
-//            String columnFamily = new String(notification.getColumnFamily());
-//            String column = new String(notification.getColumn());
-//            logger.trace("Notification for observer " +
-//            notification.getObserver() + " on RowKey " + rowKey
-//            + " in Table " + table + " CF " + columnFamily + " C " + column);
+            // logger.trace(notification);
             ActorRef obsRef = registeredObservers.get(notification.getObserver());
             if (obsRef != null) {
                 obsRef.tell(notification);
             } else {
-                logger.error("Observer " + notification.getObserver() + " does not exists!!!");
+                logger.error("Observer " + notification.getObserver() + " can not be notified");
             }
         } else {
             unhandled(msg);
@@ -122,17 +112,11 @@ public class NotificationManager extends UntypedActor {
         }
 
         /*
-         * (non-Javadoc)
-         * 
-         * @see
-         * com.yahoo.omid.notifications.thrift.generated.ObserverContainer.Iface
-         * #update(com.yahoo.omid.notifications.thrift.generated.Notification)
+         * Thrift generated
          */
         @Override
         public void notify(Notification notification) throws TException {
             notificationManager.tell(notification);
-            // logger.trace("Notification " + notification + " sent to notification manager!!!!");
-            // Thread.currentThread().sleep(1000);
         }
     }
 

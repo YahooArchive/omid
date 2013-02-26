@@ -24,4 +24,11 @@ public class NotificationException extends Exception {
         super(string);
     }
 
+    /**
+     * @param e
+     */
+    public NotificationException(Exception e) {
+        super(e);
+    }
+
 }

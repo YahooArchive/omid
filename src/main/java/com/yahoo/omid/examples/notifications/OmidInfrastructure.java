@@ -150,8 +150,8 @@ public class OmidInfrastructure {
     private static void createTables() throws MasterNotRunningException, ZooKeeperConnectionException, IOException {
         admin = new HBaseAdmin(hbaseConf);
 
-        if (!admin.tableExists(Constants.TABLE)) {
-            HTableDescriptor table = new HTableDescriptor(Constants.TABLE);
+        if (!admin.tableExists(Constants.TABLE_1)) {
+            HTableDescriptor table = new HTableDescriptor(Constants.TABLE_1);
             // TODO The coprocessor should be added dynamically but I think is not possible in HBase
             table.addCoprocessor(TransactionCommittedRegionCoprocessor.class.getName(), null, Coprocessor.PRIORITY_USER, null);
             HColumnDescriptor columnFamily = new HColumnDescriptor(Constants.COLUMN_FAMILY_1);
@@ -161,8 +161,8 @@ public class OmidInfrastructure {
             admin.createTable(table);
         }
 
-        if (admin.isTableDisabled(Constants.TABLE)) {
-            admin.enableTable(Constants.TABLE);
+        if (admin.isTableDisabled(Constants.TABLE_1)) {
+            admin.enableTable(Constants.TABLE_1);
         }
         HTableDescriptor[] tables = admin.listTables();
         for (HTableDescriptor t : tables) {
@@ -173,8 +173,8 @@ public class OmidInfrastructure {
     private static void destroyTables() {
         try {
             logger.info("tearing Down");
-            admin.disableTable(Constants.TABLE);
-            admin.deleteTable(Constants.TABLE);
+            admin.disableTable(Constants.TABLE_1);
+            admin.deleteTable(Constants.TABLE_1);
         } catch (Exception e) {
             logger.error("Error tearing down", e);
         }
