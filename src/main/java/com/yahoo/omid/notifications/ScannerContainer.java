@@ -42,12 +42,14 @@ import scala.actors.threadpool.Arrays;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
+
 public class ScannerContainer {
 
     private static final Logger logger = Logger.getLogger(ScannerContainer.class);
 
     private static final long TIMEOUT = 3;
     private static final TimeUnit UNIT = TimeUnit.SECONDS;
+
 
     private final ExecutorService exec;
     private Configuration config = HBaseConfiguration.create();
@@ -65,7 +67,6 @@ public class ScannerContainer {
         this.interest = Interest.fromString(interest);
         this.appSandbox = appSandbox;
         this.exec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("Scanner container [" + interest + "]").build());
-
         // Generate scaffolding on HBase to maintain the information required to
         // perform notifications
         HBaseAdmin admin = new HBaseAdmin(config);

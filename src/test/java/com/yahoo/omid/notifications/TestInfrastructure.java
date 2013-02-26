@@ -92,6 +92,7 @@ public class TestInfrastructure {
         for (HTableDescriptor t : tables) {
             logger.info("Tables:" + t.getNameAsString());
         }
+
     }
 
     @After

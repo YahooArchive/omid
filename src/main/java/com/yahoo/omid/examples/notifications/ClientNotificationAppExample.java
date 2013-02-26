@@ -38,9 +38,9 @@ import com.yahoo.omid.client.TransactionState;
 import com.yahoo.omid.client.TransactionalTable;
 import com.yahoo.omid.examples.Constants;
 import com.yahoo.omid.notifications.Interest;
+import com.yahoo.omid.notifications.client.DeltaOmid;
 import com.yahoo.omid.notifications.client.IncrementalApplication;
 import com.yahoo.omid.notifications.client.Observer;
-import com.yahoo.omid.notifications.client.DeltaOmid;
 
 /**
  * This applications shows the basic usage of the Omid's notification framework
