@@ -35,7 +35,6 @@ import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.PoisonPill;
 import akka.actor.Props;
-import akka.actor.TypedActor;
 import akka.actor.UntypedActor;
 import akka.actor.UntypedActorFactory;
 
@@ -233,7 +232,6 @@ public class AppSandbox implements PathChildrenCacheListener {
                     ActorRef removedAppInstance = instances.remove(hostnameAndPort);
                     if (removedAppInstance != null) {
                         removedAppInstance.tell(PoisonPill.getInstance());
-                        TypedActor.get(appSandboxActorSystem).stop(removedAppInstance);
                         if (instances.size() == 0) {
                             String appPath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), name);
                             logger.trace("Zero instances app: " + name + " Removing branch " + appPath);
