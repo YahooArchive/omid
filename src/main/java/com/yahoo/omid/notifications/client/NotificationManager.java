@@ -18,6 +18,7 @@ package com.yahoo.omid.notifications.client;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -29,76 +30,51 @@ import org.apache.thrift.transport.TNonblockingServerTransport;
 import org.apache.thrift.transport.TTransportException;
 
 import akka.actor.ActorRef;
-import akka.actor.UntypedActor;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.notifications.Constants;
+import com.yahoo.omid.notifications.NotificationException;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
 import com.yahoo.omid.notifications.thrift.generated.NotificationReceiverService;
 
-public class NotificationManager extends UntypedActor {
+public class NotificationManager {
 
     private static final Log logger = LogFactory.getLog(NotificationManager.class);
 
-    private Map<String, ActorRef> registeredObservers;
+    private static final long TIMEOUT = 3;
 
-    private final ExecutorService notificatorAcceptorExecutor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("Notificator").build());
+    private Map<String, ActorRef> registeredObservers;
+    
+    private final ExecutorService notificatorAcceptorExecutor;
        
-    public NotificationManager(Map<String, ActorRef> registeredObservers) {
+    public NotificationManager(String appName, Map<String, ActorRef> registeredObservers) {
         this.registeredObservers = registeredObservers;
+        this.notificatorAcceptorExecutor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat(
+                appName + "Notificator").build());
     }
     
-    /*
-     * Start Thrift server 
-     */
-    @Override
-    public void preStart() {
-        logger.info("Starting Notification. Manager");
-        // Initialize Thrift server
-        notificatorAcceptorExecutor.execute(new NotificationAcceptor(this.getSelf()));
-        logger.info("Notification Manager started");
+    public void start() throws NotificationException {
+         notificatorAcceptorExecutor.execute(new NotificationDispatcher());
     }
-
-    @Override
-    public void onReceive(Object msg) {
-        if (msg instanceof Notification) {
-            Notification notification = (Notification) msg;
-            // logger.trace(notification);
-            ActorRef obsRef = registeredObservers.get(notification.getObserver());
-            if (obsRef != null) {
-                obsRef.tell(notification);
-            } else {
-                logger.error("Observer " + notification.getObserver() + " can not be notified");
-            }
-        } else {
-            unhandled(msg);
+    
+    public void stop() {
+        notificatorAcceptorExecutor.shutdown();
+        try {
+            notificatorAcceptorExecutor.awaitTermination(TIMEOUT, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 
-    /*
-     * Stop Thrift server 
-     */
-    @Override
-    public void postStop() {
-        logger.info("Stopping Notification Manager");
-        notificatorAcceptorExecutor.shutdownNow();
-        logger.info("Notification Manager stopped");
-    }
-
-    private class NotificationAcceptor implements Runnable, NotificationReceiverService.Iface {
+    private class NotificationDispatcher implements Runnable, NotificationReceiverService.Iface {
 
         private TServer server;
-        private ActorRef notificationManager;
-        
-        public NotificationAcceptor(ActorRef notificationManager) {
-            this.notificationManager = notificationManager;
-        }
 
         @Override
         public void run() {
             try {
                 TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(Constants.THRIFT_SERVER_PORT);
-                NotificationReceiverService.Processor<NotificationAcceptor> processor = new NotificationReceiverService.Processor<NotificationAcceptor>(
+                NotificationReceiverService.Processor<NotificationDispatcher> processor = new NotificationReceiverService.Processor<NotificationDispatcher>(
                         this);
                 server = new TNonblockingServer(new TNonblockingServer.Args(serverTransport).processor(processor));
                 logger.trace("Starting Thrift server on " + Constants.THRIFT_SERVER_PORT);
@@ -106,9 +82,13 @@ public class NotificationManager extends UntypedActor {
             } catch (TTransportException e) {
                 e.printStackTrace();
             } finally {
-                server.stop();
-                logger.trace("Thrift server stopped");
+                stop();
             }
+        }
+
+        private void stop() {
+            server.stop();
+            logger.trace("Thrift server stopped");
         }
 
         /*
@@ -116,7 +96,12 @@ public class NotificationManager extends UntypedActor {
          */
         @Override
         public void notify(Notification notification) throws TException {
-            notificationManager.tell(notification);
+            ActorRef obsRef = registeredObservers.get(notification.getObserver());
+            if (obsRef != null) {
+                obsRef.tell(notification);
+            } else {
+                logger.error("Observer " + notification.getObserver() + " can not be notified");
+            }
         }
     }
 

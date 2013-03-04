@@ -53,6 +53,7 @@ public class DeltaOmid implements IncrementalApplication {
     private final CuratorFramework zkClient;
     private final String name;
     private final String zkAppInstancePath;
+    private final NotificationManager notificationManager;
     private final ActorSystem appObserverSystem;
     
     // The main structure shared by the InterestRecorder and NotificiationListener services in order to register and
@@ -112,11 +113,8 @@ public class DeltaOmid implements IncrementalApplication {
             }
         }
         // Create the notification manager for notifying the app observers
-        this.appObserverSystem.actorOf(new Props(new UntypedActorFactory() {
-            public UntypedActor create() {
-                return new NotificationManager(registeredObservers);
-            }
-        }), "NotificationManager");
+        this.notificationManager = new NotificationManager(this.name, registeredObservers);
+        this.notificationManager.start();
         // Finally register the app in the ZK tree
         this.zkClient = CuratorFrameworkFactory.newClient(builder.conf, new ExponentialBackoffRetry(3000, 3));
         this.zkClient.start();
@@ -144,7 +142,8 @@ public class DeltaOmid implements IncrementalApplication {
             zkClient.delete().forPath(zkAppInstancePath);
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {            
+        } finally {
+            notificationManager.stop();
             appObserverSystem.shutdown();
             Closeables.closeQuietly(zkClient);
         }
