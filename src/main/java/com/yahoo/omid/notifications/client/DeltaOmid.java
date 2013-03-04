@@ -15,6 +15,8 @@
  */
 package com.yahoo.omid.notifications.client;
 
+import static com.yahoo.omid.notifications.ZkTreeUtils.ZK_APP_DATA_NODE;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.ArrayList;
@@ -37,6 +39,7 @@ import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.netflix.curator.retry.ExponentialBackoffRetry;
 import com.netflix.curator.utils.ZKPaths;
+import com.yahoo.omid.notifications.Constants;
 import com.yahoo.omid.notifications.Interest;
 import com.yahoo.omid.notifications.NotificationException;
 import com.yahoo.omid.notifications.ZkTreeUtils;
@@ -118,14 +121,16 @@ public class DeltaOmid implements IncrementalApplication {
         this.zkClient = CuratorFrameworkFactory.newClient(builder.conf, new ExponentialBackoffRetry(3000, 3));
         this.zkClient.start();
         ZNRecord zkData = new ZNRecord(name);
-        zkData.putListField("observer-interest-list", observersInterests);
+        zkData.putListField(ZK_APP_DATA_NODE, observersInterests);
         try {
             String zkAppPath = createZkSubBranch(ZkTreeUtils.getAppsNodePath(), name, false);
             this.zkClient.setData().inBackground().forPath(zkAppPath, new ZNRecordSerializer().serialize(zkData));
-            this.zkAppInstancePath = createZkSubBranch(zkAppPath, InetAddress.getLocalHost().getHostAddress(), true);
+            String instanceName = InetAddress.getLocalHost().getHostAddress() + ":" + Constants.THRIFT_SERVER_PORT;
+            this.zkAppInstancePath = createZkSubBranch(zkAppPath, instanceName, true);
         } catch (Exception e) {
             throw new NotificationException(e);
         }
+        logger.trace("App instance created: " + this);
     }
 
     @Override
@@ -140,9 +145,10 @@ public class DeltaOmid implements IncrementalApplication {
         } catch (Exception e) {
             e.printStackTrace();
         } finally {            
-            Closeables.closeQuietly(zkClient);
             appObserverSystem.shutdown();
+            Closeables.closeQuietly(zkClient);
         }
+        logger.trace("App instance finished: ");
     }
     
     private String createZkSubBranch(String mainBranchPath, String subBranchPath, boolean ephemeral) throws Exception {
@@ -157,5 +163,12 @@ public class DeltaOmid implements IncrementalApplication {
         }
         return completeBranchPath;
     }
+
+    @Override
+    public String toString() {
+        return "DeltaOmid [name=" + name + ", zkAppInstancePath=" + zkAppInstancePath + ", appObserverSystem="
+                + appObserverSystem + ", registeredObservers=" + registeredObservers + "]";
+    }
+    
     
 }

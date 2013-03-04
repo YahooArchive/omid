@@ -20,38 +20,74 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.List;
 
 import org.apache.log4j.Logger;
+import org.apache.zookeeper.data.Stat;
 
-public class NotificationServer {
+import com.netflix.curator.framework.CuratorFramework;
+import com.netflix.curator.framework.CuratorFrameworkFactory;
+import com.netflix.curator.retry.ExponentialBackoffRetry;
 
-    private static final Logger logger = Logger.getLogger(NotificationServer.class);
+public class DeltaOmidServer {
+
+    private static final Logger logger = Logger.getLogger(DeltaOmidServer.class);
+    
+    private static CuratorFramework zkClient;
+    
+    private static ScannerSandbox scannerSandbox;
+    
+    private static AppSandbox appSandbox;
     
     /**
      * This is where all starts...
      * 
      * @param args
      */
-    public static void main(String[] args) throws InterruptedException {
-        final ZKTreeWatchdog service = new ZKTreeWatchdog();
+    public static void main(String[] args) throws Exception {
         
-        Runtime.getRuntime().addShutdownHook(new Thread("Notification server shutdown hook") {
-            public void run() {                
-                service.stopAndWait();
-                logger.info("ooo Omid ooo - Notification Server stopped - ooo Omid ooo");
-            }
-         });
+        logger.info("ooo Omid ooo - Starting Delta Omid Notification Server - ooo Omid ooo");
+
+        logger.info("ZK client started");
+        zkClient = CuratorFrameworkFactory.newClient("localhost:2181", new ExponentialBackoffRetry(1000, 3));
+        zkClient.start();
+
+        scannerSandbox = new ScannerSandbox();        
+        logger.info("Scanner Sandbox started");
         
-        logger.info("ooo Omid ooo - Starting Notification Server - ooo Omid ooo");
-        service.startAndWait();
+        appSandbox = new AppSandbox(zkClient, scannerSandbox);
+        logger.info("App Sandbox started");
+
+        configureServer();
         
-        synchronized(service) {
-            try {
-                service.wait();
-            } finally {
-                service.stopAndWait();
-                logger.info("ooo Omid ooo - Notification Server stopped - ooo Omid ooo");
-            }
+        logger.info("ooo Omid ooo - Delta Omid Notification Server started - ooo Omid ooo");
+        
+    }
+    
+    private static void configureServer() throws Exception {
+        logger.info("Configuring server based on current ZK structure");
+        Stat s = zkClient.checkExists().forPath(ZkTreeUtils.getRootNodePath());
+        if(s == null) {
+            createZkTree();
+        } else {
+            recoverCurrentZkAppBranch();
+        }
+        appSandbox.startWatchingAppsNode();
+        logger.info("Server configuration finished");
+    }
+    
+    private static void createZkTree() throws Exception {
+        logger.info("Creating a new ZK Tree");
+        zkClient.create().creatingParentsIfNeeded().forPath(ZkTreeUtils.getAppsNodePath());
+        zkClient.create().creatingParentsIfNeeded().forPath(ZkTreeUtils.getServersNodePath());
+    }
+
+    private static void recoverCurrentZkAppBranch() throws Exception {
+        logger.info("Recovering existing ZK Tree");
+        String appsNodePath = ZkTreeUtils.getAppsNodePath();
+        List<String> appNames = zkClient.getChildren().forPath(appsNodePath);
+        for(String appName : appNames) {
+            appSandbox.createApplication(appName, true);
         }
     }
     

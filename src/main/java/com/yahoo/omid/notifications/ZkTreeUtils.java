@@ -22,6 +22,8 @@ public class ZkTreeUtils {
     public static final String APPS_NODE = "applications";
     public static final String SERVERS_NODE = "servers";
     
+    public static final String ZK_APP_DATA_NODE = "observer-interest-list";
+    
     public static String getRootNodePath() {
         return "/" + ROOT_NODE;
     }

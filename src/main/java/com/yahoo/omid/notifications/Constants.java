@@ -16,12 +16,10 @@
 package com.yahoo.omid.notifications;
 
 public class Constants {
-    public static final String ROOT_NODE = "/onf"; // Means omid-notification framework
-    public static final String I2O_NODE = "/io"; // Subtree that maps interests to observers
-    public static final String O2H_NODE = "/oh"; // Subtree that maps observers to hosts
     
     public static final String HBASE_META_CF = "onf-meta"; //
     public static final String HBASE_NOTIFY_SUFFIX = "-notify"; //
     
     public static final int THRIFT_SERVER_PORT = 7911;
+
 }

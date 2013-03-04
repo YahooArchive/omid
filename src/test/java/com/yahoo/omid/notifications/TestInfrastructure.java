@@ -177,7 +177,7 @@ public class TestInfrastructure {
                 try {
                     logger.info("Starting Notification Server");
                     String[] args = new String[] {};
-                    NotificationServer.main(args);
+                    DeltaOmidServer.main(args);
                 } catch (InterruptedException e) {
                     // go away quietly
                 } catch (Exception e) {
@@ -187,7 +187,7 @@ public class TestInfrastructure {
         };
 
         nsExecutor.execute(notificationServerbkTask);
-        if (!NotificationServer.waitForServerUp("localhost:2181", 10000)) {
+        if (!DeltaOmidServer.waitForServerUp("localhost:2181", 10000)) {
             throw new Exception("Error starting Notification Server");
         }
     }

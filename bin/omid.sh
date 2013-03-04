@@ -50,7 +50,7 @@ notifinf() {
 }
 
 notifsrv() {
-    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.notifications.NotificationServer
+    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.notifications.DeltaOmidServer
 }
 
 notifexampleapp() {

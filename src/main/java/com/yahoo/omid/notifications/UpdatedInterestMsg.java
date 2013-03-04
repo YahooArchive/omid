@@ -15,6 +15,9 @@
  */
 package com.yahoo.omid.notifications;
 
+import org.apache.hadoop.hbase.util.Bytes;
+
+
 public final class UpdatedInterestMsg {
     public final String interest;
     public final byte[] rowKey;
@@ -23,4 +26,11 @@ public final class UpdatedInterestMsg {
         this.interest = interest;
         this.rowKey = rowKey;
     }
+
+    @Override
+    public String toString() {
+        return "UpdatedInterestMsg [interest=" + interest + ", rowKey=" + Bytes.toString(rowKey) + "]";
+    }
+    
+    
 }
