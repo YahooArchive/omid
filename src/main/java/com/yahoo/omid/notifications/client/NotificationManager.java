@@ -87,8 +87,10 @@ public class NotificationManager {
         }
 
         private void stop() {
-            server.stop();
-            logger.trace("Thrift server stopped");
+            if(server != null) {
+                server.stop();
+                logger.trace("Thrift server stopped");
+            }
         }
 
         /*
