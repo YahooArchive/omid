@@ -15,6 +15,11 @@
  */
 package com.yahoo.omid.examples.notifications;
 
+import static com.yahoo.omid.examples.Constants.COLUMN_1;
+import static com.yahoo.omid.examples.Constants.COLUMN_2;
+import static com.yahoo.omid.examples.Constants.COLUMN_FAMILY_1;
+import static com.yahoo.omid.examples.Constants.TABLE_1;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -36,7 +41,6 @@ import org.apache.log4j.Logger;
 import com.yahoo.omid.client.TransactionManager;
 import com.yahoo.omid.client.TransactionState;
 import com.yahoo.omid.client.TransactionalTable;
-import com.yahoo.omid.examples.Constants;
 import com.yahoo.omid.notifications.Interest;
 import com.yahoo.omid.notifications.client.DeltaOmid;
 import com.yahoo.omid.notifications.client.IncrementalApplication;
@@ -98,13 +102,11 @@ public class ClientNotificationAppExample {
 
         logger.info("ooo Omid ooo - STARTING OMID'S EXAMPLE NOTIFICATION APP. - ooo Omid ooo");
 
-        logger.info("ooo Omid ooo -" + " A table called " + Constants.TABLE_1 + " with a column Family "
-                + Constants.COLUMN_FAMILY_1 + " has been already created by the Omid Infrastructure "
-                + "- ooo Omid ooo");
+        logger.info("ooo Omid ooo - TABLE " + TABLE_1 + " SHOULD EXISTS WITH CF "+ COLUMN_FAMILY_1 + "- ooo Omid ooo");
 
         Observer obs1 = new Observer() {
 
-            Interest interestObs1 = new Interest(Constants.TABLE_1, Constants.COLUMN_FAMILY_1, Constants.COLUMN_1);
+            Interest interestObs1 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_1);
 
             public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
                 logger.info("ooo Omid ooo -"
@@ -118,17 +120,15 @@ public class ClientNotificationAppExample {
                 + " Column: "
                 + Bytes.toString(column)
                 + " !!! - ooo Omid ooo");
-                logger.info("ooo Omid ooo - OBSERVER o1 INSERTING A NEW ROW ON COLUMN "
-                + Constants.COLUMN_2 + " UNDER TRANSACTIONAL CONTEXT " + tx +
-                " - ooo Omid ooo");
                Configuration tsoClientConf = HBaseConfiguration.create();
                tsoClientConf.set("tso.host", "localhost");
                tsoClientConf.setInt("tso.port", 1234);
 
                try {
-                   TransactionalTable tt = new TransactionalTable(tsoClientConf, Constants.TABLE_1);
-                   doTransactionalPut(tx, tt, rowKey, Bytes.toBytes(Constants.COLUMN_FAMILY_1),
-                           Bytes.toBytes(Constants.COLUMN_2), Bytes.toBytes("Data written by OBSERVER o1"));
+                   TransactionalTable tt = new TransactionalTable(tsoClientConf, TABLE_1);
+                   doTransactionalPut(tx, tt, rowKey, Bytes.toBytes(COLUMN_FAMILY_1),
+                           Bytes.toBytes(COLUMN_2), Bytes.toBytes("Data written by OBSERVER o1"));
+                   logger.info("ooo Omid ooo - o1 INSERTED ROW ON COL " + COLUMN_2 + " (TX " + tx + ") - ooo Omid ooo");
                } catch (IOException e) {
                    e.printStackTrace();
                }
@@ -148,7 +148,7 @@ public class ClientNotificationAppExample {
 
         Observer obs2 = new Observer() {
 
-            Interest interestObs2 = new Interest(Constants.TABLE_1, Constants.COLUMN_FAMILY_1, Constants.COLUMN_2);
+            Interest interestObs2 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_2);
             
             public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
                 logger.info("ooo Omid ooo - "
@@ -198,32 +198,28 @@ public class ClientNotificationAppExample {
         Thread.currentThread().sleep(5000);
 
         TransactionManager tm = new TransactionManager(tsoClientHbaseConf);
-        TransactionalTable tt = new TransactionalTable(tsoClientHbaseConf, Constants.TABLE_1);
+        TransactionalTable tt = new TransactionalTable(tsoClientHbaseConf, TABLE_1);
 
         logger.info("ooo Omid ooo - STARTING " + txsToExecute + " TRIGGER TXS INSERTING " + rowsPerTx
-                + " ROWS EACH IN COLUMN " + Constants.COLUMN_1 + " - ooo Omid ooo");
+                + " ROWS EACH IN COLUMN " + COLUMN_1 + " - ooo Omid ooo");
         for (int i = 0; i < txsToExecute; i++) {
             // Transaction adding to rows to a table
             TransactionState tx = tm.beginTransaction();
 
             for (int j = 0; j < rowsPerTx; j++) {
-                Put row = new Put(Bytes.toBytes("row-" + Integer.toString(i + (j * 10000))));
-                row.add(Bytes.toBytes(Constants.COLUMN_FAMILY_1), Bytes.toBytes(Constants.COLUMN_1),
+                doTransactionalPut(tx, tt, Bytes.toBytes("row-" + Integer.toString(i + (j * 10000))),
+                        Bytes.toBytes(COLUMN_FAMILY_1), Bytes.toBytes(COLUMN_1),
                         Bytes.toBytes("testWrite-" + Integer.toString(i + (j * 10000))));
-                tt.put(tx, row);
             }
 
             tm.tryCommit(tx);
         }
-        logger.info("ooo Omid ooo - TRIGGER TXS COMMITTED - ooo Omid ooo");
         tt.close();
 
-        logger.info("ooo Omid ooo - WAITING TO ALLOW THE 2 OBSERVERS RECEIVING ALL THE NOTIFICATIONS - ooo Omid ooo");
+        logger.info("ooo Omid ooo - TRIGGER TXS COMMITTED. WAITING FOR THE 2 OBS RECEIVE ALL NOTIF - ooo Omid ooo");
         cdl.await();
-        logger.info("ooo Omid ooo - OBSERVERS HAVE RECEIVED ALL THE NOTIFICATIONS WAITING 30 SECONDS TO ALLOW FINISHING CLEARING STUFF - ooo Omid ooo");        
-        Thread.currentThread().sleep(30000);
+        logger.info("ooo Omid ooo - OBSERVERS HAVE RECEIVED ALL THE NOTIFICATIONS. FINISHING APP - ooo Omid ooo");        
         app.close();
-        Thread.currentThread().sleep(10000);
 
         logger.info("ooo Omid ooo - OMID'S NOTIFICATION APP FINISHED - ooo Omid ooo");
     }
