@@ -39,12 +39,12 @@ import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.netflix.curator.retry.ExponentialBackoffRetry;
 import com.netflix.curator.utils.ZKPaths;
-import com.yahoo.omid.notifications.Constants;
 import com.yahoo.omid.notifications.Interest;
 import com.yahoo.omid.notifications.NotificationException;
 import com.yahoo.omid.notifications.ZkTreeUtils;
 import com.yahoo.omid.notifications.comm.ZNRecord;
 import com.yahoo.omid.notifications.comm.ZNRecordSerializer;
+import com.yahoo.omid.notifications.conf.ClientConfiguration;
 
 public class DeltaOmid implements IncrementalApplication {
     
@@ -52,6 +52,8 @@ public class DeltaOmid implements IncrementalApplication {
     
     private final CuratorFramework zkClient;
     private final String name;
+    private final int port;
+    private final ClientConfiguration conf;
     private final String zkAppInstancePath;
     private final NotificationManager notificationManager;
     private final ActorSystem appObserverSystem;
@@ -65,15 +67,17 @@ public class DeltaOmid implements IncrementalApplication {
     public static class AppBuilder {
         // Required parameters
         private final String appName;
+        private final int port;
         private final List<Observer> observers = new ArrayList<Observer>();
         // Optional parameters - initialized to default values
-        private String conf = "localhost:2181"; // TODO Transform this into a real configuration element
+        private ClientConfiguration conf = new ClientConfiguration();
 
-        public AppBuilder(String appName) {
+        public AppBuilder(String appName, int port) {
             this.appName = appName;
+            this.port = port;
         }
         
-        public AppBuilder setConfiguration(String conf) {
+        public AppBuilder setConfiguration(ClientConfiguration conf) {
             this.conf = conf;
             return this; 
         }
@@ -90,6 +94,8 @@ public class DeltaOmid implements IncrementalApplication {
 
     private DeltaOmid(AppBuilder builder) throws NotificationException {
         this.name = builder.appName;
+        this.port = builder.port;
+        this.conf = builder.conf;
         
         this.appObserverSystem = ActorSystem.create(name + "ObserverSystem");
         List<String> observersInterests = new ArrayList<String>();
@@ -99,7 +105,7 @@ public class DeltaOmid implements IncrementalApplication {
             ActorRef obsActor = appObserverSystem.actorOf(
                     new Props(new UntypedActorFactory() {
                         public UntypedActor create() {
-                            return new ObserverWrapper(observer);
+                            return new ObserverWrapper(observer, conf.getOmidServer());
                         }
                     }), obsName);
             registeredObservers.put(obsName, obsActor);
@@ -113,17 +119,17 @@ public class DeltaOmid implements IncrementalApplication {
             }
         }
         // Create the notification manager for notifying the app observers
-        this.notificationManager = new NotificationManager(this.name, registeredObservers);
+        this.notificationManager = new NotificationManager(this);
         this.notificationManager.start();
         // Finally register the app in the ZK tree
-        this.zkClient = CuratorFrameworkFactory.newClient(builder.conf, new ExponentialBackoffRetry(3000, 3));
+        this.zkClient = CuratorFrameworkFactory.newClient(this.conf.getZkServers(), new ExponentialBackoffRetry(3000, 3));
         this.zkClient.start();
         ZNRecord zkData = new ZNRecord(name);
         zkData.putListField(ZK_APP_DATA_NODE, observersInterests);
         try {
             String zkAppPath = createZkSubBranch(ZkTreeUtils.getAppsNodePath(), name, false);
             this.zkClient.setData().inBackground().forPath(zkAppPath, new ZNRecordSerializer().serialize(zkData));
-            String instanceName = InetAddress.getLocalHost().getHostAddress() + ":" + Constants.THRIFT_SERVER_PORT;
+            String instanceName = InetAddress.getLocalHost().getHostAddress() + ":" + this.port;
             this.zkAppInstancePath = createZkSubBranch(zkAppPath, instanceName, true);
         } catch (Exception e) {
             throw new NotificationException(e);
@@ -134,6 +140,16 @@ public class DeltaOmid implements IncrementalApplication {
     @Override
     public String getName() {
         return name;
+    }
+    
+    @Override
+    public int getPort() {
+        return port;
+    }
+
+    @Override
+    public Map<String, ActorRef> getRegisteredObservers() {
+        return registeredObservers;
     }
 
     @Override
@@ -147,7 +163,7 @@ public class DeltaOmid implements IncrementalApplication {
             appObserverSystem.shutdown();
             Closeables.closeQuietly(zkClient);
         }
-        logger.trace("App instance finished: ");
+        logger.trace(getName() + " instance running in " + InetAddress.getLocalHost() + ":" + getPort() + " finished");
     }
     
     private String createZkSubBranch(String mainBranchPath, String subBranchPath, boolean ephemeral) throws Exception {
@@ -168,6 +184,7 @@ public class DeltaOmid implements IncrementalApplication {
         return "DeltaOmid [name=" + name + ", zkAppInstancePath=" + zkAppInstancePath + ", appObserverSystem="
                 + appObserverSystem + ", registeredObservers=" + registeredObservers + "]";
     }
+
     
     
 }

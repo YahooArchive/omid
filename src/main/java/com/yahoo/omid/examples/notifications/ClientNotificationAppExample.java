@@ -177,7 +177,7 @@ public class ClientNotificationAppExample {
         };
 
         // Create application
-        final IncrementalApplication app = new DeltaOmid.AppBuilder("ExampleApp")
+        final IncrementalApplication app = new DeltaOmid.AppBuilder("ExampleApp", 6666)
                                                     .addObserver(obs1)
                                                     .addObserver(obs2)
                                                     .build();

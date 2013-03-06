@@ -15,7 +15,6 @@
  */
 package com.yahoo.omid.notifications.client;
 
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -32,7 +31,6 @@ import org.apache.thrift.transport.TTransportException;
 import akka.actor.ActorRef;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.notifications.Constants;
 import com.yahoo.omid.notifications.NotificationException;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
 import com.yahoo.omid.notifications.thrift.generated.NotificationReceiverService;
@@ -43,14 +41,14 @@ public class NotificationManager {
 
     private static final long TIMEOUT = 3;
 
-    private Map<String, ActorRef> registeredObservers;
+    private final IncrementalApplication app;
     
     private final ExecutorService notificatorAcceptorExecutor;
        
-    public NotificationManager(String appName, Map<String, ActorRef> registeredObservers) {
-        this.registeredObservers = registeredObservers;
+    public NotificationManager(IncrementalApplication app) {
+        this.app = app;
         this.notificatorAcceptorExecutor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat(
-                appName + "Notificator").build());
+                app.getName() + "Notificator").build());
     }
     
     public void start() throws NotificationException {
@@ -73,11 +71,11 @@ public class NotificationManager {
         @Override
         public void run() {
             try {
-                TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(Constants.THRIFT_SERVER_PORT);
-                NotificationReceiverService.Processor<NotificationDispatcher> processor = new NotificationReceiverService.Processor<NotificationDispatcher>(
-                        this);
+                TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(app.getPort());
+                NotificationReceiverService.Processor<NotificationDispatcher> processor = 
+                        new NotificationReceiverService.Processor<NotificationDispatcher>(this);
                 server = new TNonblockingServer(new TNonblockingServer.Args(serverTransport).processor(processor));
-                logger.trace("Starting Thrift server on " + Constants.THRIFT_SERVER_PORT);
+                logger.info("App " + app.getName() + " listening for notifications on port " + app.getPort());
                 server.serve();
             } catch (TTransportException e) {
                 e.printStackTrace();
@@ -89,7 +87,7 @@ public class NotificationManager {
         private void stop() {
             if(server != null) {
                 server.stop();
-                logger.trace("Thrift server stopped");
+                logger.info("App " + app.getName() + " stopped listening for notifications on port " + app.getPort());
             }
         }
 
@@ -98,7 +96,7 @@ public class NotificationManager {
          */
         @Override
         public void notify(Notification notification) throws TException {
-            ActorRef obsRef = registeredObservers.get(notification.getObserver());
+            ActorRef obsRef = app.getRegisteredObservers().get(notification.getObserver());
             if (obsRef != null) {
                 obsRef.tell(notification);
             } else {

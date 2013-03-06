@@ -17,9 +17,7 @@ package com.yahoo.omid.notifications;
 
 public class Constants {
     
-    public static final String HBASE_META_CF = "onf-meta"; //
-    public static final String HBASE_NOTIFY_SUFFIX = "-notify"; //
+    public static final String HBASE_META_CF = "onf-meta";
+    public static final String HBASE_NOTIFY_SUFFIX = "-notify";
     
-    public static final int THRIFT_SERVER_PORT = 7911;
-
 }

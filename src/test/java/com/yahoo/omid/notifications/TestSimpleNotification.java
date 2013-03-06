@@ -38,9 +38,9 @@ import com.yahoo.omid.client.TransactionException;
 import com.yahoo.omid.client.TransactionManager;
 import com.yahoo.omid.client.TransactionState;
 import com.yahoo.omid.client.TransactionalTable;
+import com.yahoo.omid.notifications.client.DeltaOmid;
 import com.yahoo.omid.notifications.client.IncrementalApplication;
 import com.yahoo.omid.notifications.client.Observer;
-import com.yahoo.omid.notifications.client.DeltaOmid;
 
 public class TestSimpleNotification extends TestInfrastructure {
 
@@ -56,7 +56,7 @@ public class TestSimpleNotification extends TestInfrastructure {
         final CountDownLatch cdl = new CountDownLatch(1); // # of observers
         
         Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
-        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
+        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
                                         .addObserver(buildPassiveTransactionalObserver("obs", interestObs, VAL_1, cdl))
                                         .build();
         
@@ -74,7 +74,7 @@ public class TestSimpleNotification extends TestInfrastructure {
         final CountDownLatch cdl = new CountDownLatch(2); // # of observers
 
         Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
-        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
+        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
                                         .addObserver(buildPassiveTransactionalObserver("obs1", interestObs, VAL_1, cdl))
                                         .addObserver(buildPassiveTransactionalObserver("obs2", interestObs, VAL_1, cdl))
                                         .build();
@@ -94,7 +94,7 @@ public class TestSimpleNotification extends TestInfrastructure {
         
         Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
         
-        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
+        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
                                         .addObserver(buildActiveTransactionalObserver("obs1", interestObs, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl))
                                         .addObserver(buildActiveTransactionalObserver("obs2", interestObs, VAL_1, 0, "row-3", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_3, cdl))
                                         .build();
@@ -113,7 +113,7 @@ public class TestSimpleNotification extends TestInfrastructure {
         
         Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
         
-        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
+        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
                                         .addObserver(buildActiveTransactionalObserver("obs1", interestObs, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl))
                                         .addObserver(buildActiveTransactionalObserver("obs2", interestObs, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_3, cdl))
                                         .build();
@@ -150,7 +150,7 @@ public class TestSimpleNotification extends TestInfrastructure {
         
         Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
 
-        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
+        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
                                         .addObserver(buildActiveTransactionalObserver("obs1", interestObs, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl))
                                         .addObserver(buildActiveTransactionalObserver("obs2", interestObs, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_3, VAL_3, cdl))
                                         .build();
@@ -196,7 +196,7 @@ public class TestSimpleNotification extends TestInfrastructure {
         Interest interestObs2 = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2);
         Interest interestObs3 = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_3);
         
-        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
+        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
                                     .addObserver(buildActiveTransactionalObserver("obs1", interestObs1, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl))
                                     .addObserver(buildActiveTransactionalObserver("obs2", interestObs2, VAL_2, 0, "row-3", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_3, VAL_3, cdl))
                                     .addObserver(buildPassiveTransactionalObserver("obs3", interestObs3, VAL_3, cdl))

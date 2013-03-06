@@ -53,6 +53,8 @@ public class ScannerSandbox {
 
     private static final Log logger = LogFactory.getLog(ScannerSandbox.class);
 
+    private Configuration config = HBaseConfiguration.create();
+
     // Key: Interest where the scanners running on the ScannerContainer will do
     // their work
     // Value: The ScannerContainer that executes the scanner threads scanning
@@ -95,7 +97,6 @@ public class ScannerSandbox {
         private final TimeUnit UNIT = TimeUnit.SECONDS;
 
         private final ExecutorService exec;
-        private Configuration config = HBaseConfiguration.create();
 
         private Interest interest;
 
@@ -185,13 +186,13 @@ public class ScannerSandbox {
                             chooseRandomRegionToScan();
                             scanner = table.getScanner(scan);
                             for (Result result : scanner) { // TODO Maybe paginate the result traversal
-                                logger.trace("scanner");
+//                                logger.trace("scanner");
                                 for (KeyValue kv : result.raw()) {
-                                    logger.trace("result raw size " + result.raw().length + " KV: " + kv);
+//                                    logger.trace("result raw size " + result.raw().length + " KV: " + kv);
                                     if(!Arrays.equals(kv.getFamily(), Bytes.toBytes(Constants.HBASE_META_CF))) {
                                         UpdatedInterestMsg msg = new UpdatedInterestMsg(interest.toStringRepresentation(), kv.getRow());
                                         synchronized(interestedApps) {
-                                            logger.trace("interested apps size " + interestedApps.size());
+//                                            logger.trace("interested apps size " + interestedApps.size());
                                             for(App app : interestedApps) {
                                                 app.getAppInstanceRedirector().tell(msg);
                                             }

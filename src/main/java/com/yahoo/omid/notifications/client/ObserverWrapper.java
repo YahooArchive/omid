@@ -29,6 +29,7 @@ import org.apache.log4j.Logger;
 
 import akka.actor.UntypedActor;
 
+import com.google.common.net.HostAndPort;
 import com.yahoo.omid.client.TransactionException;
 import com.yahoo.omid.client.TransactionManager;
 import com.yahoo.omid.client.TransactionState;
@@ -46,13 +47,14 @@ public class ObserverWrapper extends UntypedActor {
     private Configuration tsoClientHbaseConf;
     private TransactionManager tm;
     
-    public ObserverWrapper(Observer observer) {
+    public ObserverWrapper(Observer observer, String omidHostAndPort) {
         this.observer = observer;
         
+        final HostAndPort hp = HostAndPort.fromString(omidHostAndPort);
         // Configure connection with TSO
         tsoClientHbaseConf = HBaseConfiguration.create();
-        tsoClientHbaseConf.set("tso.host", "localhost");
-        tsoClientHbaseConf.setInt("tso.port", 1234);
+        tsoClientHbaseConf.set("tso.host", hp.getHostText());
+        tsoClientHbaseConf.setInt("tso.port", hp.getPort());
         
         try {
             tm = new TransactionManager(tsoClientHbaseConf);

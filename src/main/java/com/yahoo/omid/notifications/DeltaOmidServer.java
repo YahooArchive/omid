@@ -28,6 +28,7 @@ import org.apache.zookeeper.data.Stat;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.netflix.curator.retry.ExponentialBackoffRetry;
+import com.yahoo.omid.notifications.conf.DeltaOmidServerConfig;
 
 public class DeltaOmidServer {
 
@@ -45,12 +46,14 @@ public class DeltaOmidServer {
      * @param args
      */
     public static void main(String[] args) throws Exception {
-        
+
+        DeltaOmidServerConfig conf = DeltaOmidServerConfig.parseConfig(args);
+
         logger.info("ooo Omid ooo - Starting Delta Omid Notification Server - ooo Omid ooo");
 
-        logger.info("ZK client started");
-        zkClient = CuratorFrameworkFactory.newClient("localhost:2181", new ExponentialBackoffRetry(1000, 3));
+        zkClient = CuratorFrameworkFactory.newClient(conf.getZkServers(), new ExponentialBackoffRetry(1000, 3));
         zkClient.start();
+        logger.info("ZK client started");
 
         scannerSandbox = new ScannerSandbox();        
         logger.info("Scanner Sandbox started");
@@ -58,13 +61,13 @@ public class DeltaOmidServer {
         appSandbox = new AppSandbox(zkClient, scannerSandbox);
         logger.info("App Sandbox started");
 
-        configureServer();
+        createOrRecoverServerConfigFromZkTree();
         
         logger.info("ooo Omid ooo - Delta Omid Notification Server started - ooo Omid ooo");
         
     }
     
-    private static void configureServer() throws Exception {
+    private static void createOrRecoverServerConfigFromZkTree() throws Exception {
         logger.info("Configuring server based on current ZK structure");
         Stat s = zkClient.checkExists().forPath(ZkTreeUtils.getRootNodePath());
         if(s == null) {

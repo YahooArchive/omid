@@ -13,15 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. See accompanying LICENSE file.
  */
-package com.yahoo.omid.notifications.client;
+package com.yahoo.omid.notifications.conf;
 
-import java.io.Closeable;
-import java.util.Map;
+public class ServerConfiguration extends AbstractConfiguration {
 
-import akka.actor.ActorRef;
-
-public interface IncrementalApplication extends Closeable {
-    public String getName();
-    public int getPort();
-    public Map<String, ActorRef> getRegisteredObservers();
 }

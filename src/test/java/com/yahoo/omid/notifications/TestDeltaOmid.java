@@ -24,11 +24,12 @@ import com.netflix.curator.test.TestingServer;
 import com.netflix.curator.utils.ZKPaths;
 import com.yahoo.omid.client.TransactionState;
 import com.yahoo.omid.examples.Constants;
+import com.yahoo.omid.notifications.client.DeltaOmid;
 import com.yahoo.omid.notifications.client.IncrementalApplication;
 import com.yahoo.omid.notifications.client.Observer;
-import com.yahoo.omid.notifications.client.DeltaOmid;
 import com.yahoo.omid.notifications.comm.ZNRecord;
 import com.yahoo.omid.notifications.comm.ZNRecordSerializer;
+import com.yahoo.omid.notifications.conf.ClientConfiguration;
 
 public class TestDeltaOmid {
     
@@ -51,8 +52,10 @@ public class TestDeltaOmid {
     public void testBuilderBuildsAppWithTheRigthName() throws Exception {        
         Observer obs = mock(Observer.class);
         when(obs.getName()).thenReturn("TestObserver");
-        final IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
-                                                .setConfiguration(server.getConnectString())
+        ClientConfiguration appConfig = new ClientConfiguration();
+        appConfig.setZkServers(server.getConnectString());
+        final IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
+                                                .setConfiguration(appConfig)
                                                 .addObserver(obs)
                                                 .build();
         
@@ -64,8 +67,10 @@ public class TestDeltaOmid {
     public void testBuilderWritesTheRighNodePathForAppInZk() throws Exception {
         Observer obs = mock(Observer.class);
         when(obs.getName()).thenReturn("TestObserver");
-        final IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
-                                                .setConfiguration(server.getConnectString())
+        ClientConfiguration appConfig = new ClientConfiguration();
+        appConfig.setZkServers(server.getConnectString());
+        final IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
+                                                .setConfiguration(appConfig)
                                                 .addObserver(obs)
                                                 .build();
         
@@ -81,15 +86,17 @@ public class TestDeltaOmid {
     public void testBuilderWritesTheRighNodePathForAppInstanceInZk() throws Exception {
         Observer obs = mock(Observer.class);
         when(obs.getName()).thenReturn("TestObserver");
-        final IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
-                                                .setConfiguration(server.getConnectString())
+        ClientConfiguration appConfig = new ClientConfiguration();
+        appConfig.setZkServers(server.getConnectString());
+        final IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
+                                                .setConfiguration(appConfig)
                                                 .addObserver(obs)
                                                 .build();
         
         CuratorFramework zkClient = CuratorFrameworkFactory.newClient(server.getConnectString(), new ExponentialBackoffRetry(1000, 3));
         zkClient.start();
         String localhost = InetAddress.getLocalHost().getHostAddress();
-        String expectedPath = ZKPaths.makePath(ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), "TestApp"), localhost);
+        String expectedPath = ZKPaths.makePath(ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), "TestApp"), localhost + ":" + app.getPort());
         Stat s = zkClient.checkExists().forPath(expectedPath);
         assertTrue("The expected path for App Instance is not found in ZK", s != null);
         app.close();
@@ -119,8 +126,10 @@ public class TestDeltaOmid {
             }
         };
         
-        final IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
-                                                .setConfiguration(server.getConnectString())
+        ClientConfiguration appConfig = new ClientConfiguration();
+        appConfig.setZkServers(server.getConnectString());
+        final IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
+                                                .setConfiguration(appConfig)
                                                 .addObserver(obs)
                                                 .build();
         
@@ -168,8 +177,10 @@ public class TestDeltaOmid {
         iListObs2.add(o2i4);
         when(obs2.getInterests()).thenReturn(iListObs2);
         
-        final IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
-                                                .setConfiguration(server.getConnectString())
+        ClientConfiguration appConfig = new ClientConfiguration();
+        appConfig.setZkServers(server.getConnectString());
+        final IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
+                                                .setConfiguration(appConfig)
                                                 .addObserver(obs1)
                                                 .addObserver(obs2)
                                                 .build();
@@ -196,8 +207,10 @@ public class TestDeltaOmid {
     public void testAppInstanceNodeDissapearsInZkAfterClosingApp() throws Exception {
         Observer obs = mock(Observer.class);
         when(obs.getName()).thenReturn("TestObserver");
-        final IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp")
-                                                .setConfiguration(server.getConnectString())
+        ClientConfiguration appConfig = new ClientConfiguration();
+        appConfig.setZkServers(server.getConnectString());
+        final IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
+                                                .setConfiguration(appConfig)
                                                 .addObserver(obs)
                                                 .build();
         
