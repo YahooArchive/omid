@@ -50,7 +50,7 @@ notifinf() {
 }
 
 notifsrv() {
-    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.notifications.DeltaOmidServer -zk localhost:2181
+    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.notifications.DeltaOmidServer -zk localhost:2181 -scanIntervalMs 5000
 }
 
 notifexampleapp() {

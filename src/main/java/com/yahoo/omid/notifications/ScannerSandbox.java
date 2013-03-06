@@ -48,10 +48,13 @@ import org.apache.log4j.Logger;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.notifications.AppSandbox.App;
+import com.yahoo.omid.notifications.conf.DeltaOmidServerConfig;
 
 public class ScannerSandbox {
 
     private static final Log logger = LogFactory.getLog(ScannerSandbox.class);
+
+    private DeltaOmidServerConfig conf;
 
     private Configuration config = HBaseConfiguration.create();
 
@@ -60,6 +63,10 @@ public class ScannerSandbox {
     // Value: The ScannerContainer that executes the scanner threads scanning
     // each particular interest
     private ConcurrentHashMap<String, ScannerContainer> scanners = new ConcurrentHashMap<String, ScannerContainer>();
+
+    public ScannerSandbox(DeltaOmidServerConfig conf) {
+        this.conf = conf;
+    }
 
     public void registerInterestsFromApplication(App app) throws Exception {
         for(String appInterest : app.getInterests()) {
@@ -175,14 +182,15 @@ public class ScannerSandbox {
 
             @Override
             public Boolean call() { // Scan and notify
+                long scanIntervalMs = conf.getScanIntervalMs();
                 ResultScanner scanner = null;
                 configureBasicScanProperties();
                 try {
                     table = new HTable(config, interest.getTable());
                     while (!Thread.currentThread().isInterrupted()) {
                         try {
-                            logger.trace("Scanner on " + interest + " is waiting 5 seconds between scans");
-                            Thread.sleep(5000);
+                            logger.trace(interest + " scanner waiting " + scanIntervalMs + " millis");
+                            Thread.sleep(scanIntervalMs);
                             chooseRandomRegionToScan();
                             scanner = table.getScanner(scan);
                             for (Result result : scanner) { // TODO Maybe paginate the result traversal

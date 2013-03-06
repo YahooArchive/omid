@@ -17,4 +17,34 @@ package com.yahoo.omid.notifications.conf;
 
 public class ServerConfiguration extends AbstractConfiguration {
 
+protected final static String SCAN_INTERVAL_MS = "scanIntervalMs";
+    
+    /**
+     * Build a default server-side configuration
+     */
+    public ServerConfiguration() {
+        super();
+    }
+    
+    
+    /**
+     * Get interval between scans in milliseconds
+     *
+     * @return scan interval in millis
+     */
+    public long getScanIntervalMs() {
+        return getLong(SCAN_INTERVAL_MS, 5000);
+    }
+
+    /**
+     * Set interval between scans in milliseconds
+     *
+     * @param scanIntervalMs
+     *          scan interval in millis
+     */
+    public ServerConfiguration setScanIntervalMs(long scanIntervalMs) {
+        setProperty(SCAN_INTERVAL_MS, scanIntervalMs);
+        return this;
+    }
+    
 }
