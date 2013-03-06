@@ -16,7 +16,6 @@
 package com.yahoo.omid.notifications;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Random;
@@ -33,7 +32,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
@@ -194,17 +192,11 @@ public class ScannerSandbox {
                             chooseRandomRegionToScan();
                             scanner = table.getScanner(scan);
                             for (Result result : scanner) { // TODO Maybe paginate the result traversal
-//                                logger.trace("scanner");
-                                for (KeyValue kv : result.raw()) {
-//                                    logger.trace("result raw size " + result.raw().length + " KV: " + kv);
-                                    if(!Arrays.equals(kv.getFamily(), Bytes.toBytes(Constants.HBASE_META_CF))) {
-                                        UpdatedInterestMsg msg = new UpdatedInterestMsg(interest.toStringRepresentation(), kv.getRow());
-                                        synchronized(interestedApps) {
-//                                            logger.trace("interested apps size " + interestedApps.size());
-                                            for(App app : interestedApps) {
-                                                app.getAppInstanceRedirector().tell(msg);
-                                            }
-                                        }
+                                UpdatedInterestMsg msg = new UpdatedInterestMsg(interest.toStringRepresentation(), result.getRow());
+                                synchronized (interestedApps) {
+                                    // logger.trace("interested apps size " + interestedApps.size());
+                                    for (App app : interestedApps) {
+                                        app.getAppInstanceRedirector().tell(msg);
                                     }
                                 }
                             }
