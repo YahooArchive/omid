@@ -127,10 +127,9 @@ public class DeltaOmid implements IncrementalApplication {
         ZNRecord zkData = new ZNRecord(name);
         zkData.putListField(ZK_APP_DATA_NODE, observersInterests);
         try {
-            String zkAppPath = createZkSubBranch(ZkTreeUtils.getAppsNodePath(), name, false);
-            this.zkClient.setData().inBackground().forPath(zkAppPath, new ZNRecordSerializer().serialize(zkData));
+            String zkAppPath = createZkSubBranch(ZkTreeUtils.getAppsNodePath(), name, new ZNRecordSerializer().serialize(zkData), false);
             String instanceName = InetAddress.getLocalHost().getHostAddress() + ":" + this.port;
-            this.zkAppInstancePath = createZkSubBranch(zkAppPath, instanceName, true);
+            this.zkAppInstancePath = createZkSubBranch(zkAppPath, instanceName, new byte[0], true);
         } catch (Exception e) {
             throw new NotificationException(e);
         }
@@ -166,14 +165,17 @@ public class DeltaOmid implements IncrementalApplication {
         logger.trace(getName() + " instance running in " + InetAddress.getLocalHost() + ":" + getPort() + " finished");
     }
     
-    private String createZkSubBranch(String mainBranchPath, String subBranchPath, boolean ephemeral) throws Exception {
+    private String createZkSubBranch(String mainBranchPath, String subBranchPath, byte[] data, boolean ephemeral) throws Exception {
         String completeBranchPath = ZKPaths.makePath(mainBranchPath, subBranchPath);
         Stat s = zkClient.checkExists().forPath(completeBranchPath);
         if (s == null) {
+            if(data == null) {
+                data = new byte[0];
+            }
             if(ephemeral) {
-                return zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL).forPath(completeBranchPath);
+                return zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL).forPath(completeBranchPath, data);
             } else {
-                return zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(completeBranchPath);                
+                return zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(completeBranchPath, data);
             }
         }
         return completeBranchPath;

@@ -85,12 +85,12 @@ public class AppSandbox implements PathChildrenCacheListener {
         switch (event.getType()) {
         case CHILD_ADDED: {
             logger.trace("App Node added: " + nodeNamePath);
+            createApplication(appName);
             break;
         }
 
         case CHILD_UPDATED: {
             logger.trace("App Node changed: " + event.getData().getPath());
-            createApplication(appName);
             break;
         }
 
