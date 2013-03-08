@@ -32,6 +32,7 @@ import akka.actor.ActorRef;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.notifications.NotificationException;
+import com.yahoo.omid.notifications.metrics.ClientSideAppMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
 import com.yahoo.omid.notifications.thrift.generated.NotificationReceiverService;
 
@@ -43,12 +44,15 @@ public class NotificationManager {
 
     private final IncrementalApplication app;
     
+    private final ClientSideAppMetrics metrics;
+    
     private final ExecutorService notificatorAcceptorExecutor;
        
-    public NotificationManager(IncrementalApplication app) {
+    public NotificationManager(IncrementalApplication app, ClientSideAppMetrics metrics) {
         this.app = app;
+        this.metrics = metrics;
         this.notificatorAcceptorExecutor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat(
-                app.getName() + "Notificator").build());
+                app.getName() + "-Notificator-%d").build());
     }
     
     public void start() throws NotificationException {
@@ -96,9 +100,10 @@ public class NotificationManager {
          */
         @Override
         public void notify(Notification notification) throws TException {
+            metrics.notificationReceivedEvent();
             ActorRef obsRef = app.getRegisteredObservers().get(notification.getObserver());
             if (obsRef != null) {
-                obsRef.tell(notification);
+                obsRef.tell(notification);                
             } else {
                 logger.error("Observer " + notification.getObserver() + " can not be notified");
             }

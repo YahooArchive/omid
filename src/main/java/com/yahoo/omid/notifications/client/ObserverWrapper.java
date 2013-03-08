@@ -36,7 +36,9 @@ import com.yahoo.omid.client.TransactionState;
 import com.yahoo.omid.client.TransactionalTable;
 import com.yahoo.omid.notifications.Constants;
 import com.yahoo.omid.notifications.NotificationException;
+import com.yahoo.omid.notifications.metrics.ClientSideAppMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
+import com.yammer.metrics.core.TimerContext;
 
 public class ObserverWrapper extends UntypedActor {
     
@@ -45,12 +47,16 @@ public class ObserverWrapper extends UntypedActor {
     private Observer observer;
 
     private Configuration tsoClientHbaseConf;
+
     private TransactionManager tm;
     
-    public ObserverWrapper(Observer observer, String omidHostAndPort) {
-        this.observer = observer;
+    private ClientSideAppMetrics metrics;
+    
+    public ObserverWrapper(Observer observer, String omidHostAndPort, ClientSideAppMetrics metrics) {
+        this.observer = observer;        
+        final HostAndPort hp = HostAndPort.fromString(omidHostAndPort);        
+        this.metrics = metrics;
         
-        final HostAndPort hp = HostAndPort.fromString(omidHostAndPort);
         // Configure connection with TSO
         tsoClientHbaseConf = HBaseConfiguration.create();
         tsoClientHbaseConf.set("tso.host", hp.getHostText());
@@ -61,7 +67,7 @@ public class ObserverWrapper extends UntypedActor {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
+        logger.trace("Instance created for observer " + observer.getName());
     }
     
     /**
@@ -78,7 +84,9 @@ public class ObserverWrapper extends UntypedActor {
     public void onReceive(Object msg) throws Exception {
         if(msg instanceof Notification) {
             Notification notification = (Notification) msg;
+            TimerContext timer = metrics.startObserverInvocation(observer.getName());
             notify(notification.getTable(), notification.getRowKey(), notification.getColumnFamily(), notification.getColumn());
+            timer.stop();
         } else {
             unhandled(msg);
         }
@@ -93,16 +101,21 @@ public class ObserverWrapper extends UntypedActor {
             tt = new TransactionalTable(tsoClientHbaseConf, table);
             // Transaction adding to rows to a table
             tx = tm.beginTransaction();
+            metrics.observerInvocationEvent(observer.getName());
             checkIfAlreadyExecuted(tx, tt, rowKey, columnFamily, column);
             // Perform the particular actions on the observer for this row
             observer.onColumnChanged(column, columnFamily, table, rowKey, tx);            
             // Commit tx
             clearNotifyFlag(tx, tt, rowKey, columnFamily, column);
             tm.tryCommit(tx);
+            metrics.observerCompletionEvent(observer.getName());
             //logger.trace("TRANSACTION " + tx + " COMMITTED");
         } catch (NotificationException e) {
             //logger.trace("Aborting tx " + tx);
-            try { tm.abort(tx); } catch (TransactionException e1) {}
+            try { 
+                tm.abort(tx); 
+                metrics.observerAbortEvent(observer.getName());
+            } catch (TransactionException e1) {}
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -166,10 +179,15 @@ public class ObserverWrapper extends UntypedActor {
                 put.add(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumnObserverAck), Bytes.toBytes(observer.getName()));
                 tt.put(tx, put); // Transactional put
             } else {
-                throw new NotificationException("Observer " + observer.getName() + " already executed for change");
+                logger.error("Observer " + observer.getName() + " already executed for change on " + Bytes.toString(columnFamily) + "/"
+                        + Bytes.toString(column) + " row " + Bytes.toString(rowKey));
+                throw new NotificationException("Observer already executed");
             }
         } else {
-            throw new NotificationException("Notify its not true!!!");
+            logger.error("Notify its not true!!! So, another notificiation for observer "
+                    + observer.getName() + " was previously executed for " + Bytes.toString(columnFamily) + "/"
+                    + Bytes.toString(column) + " row " + Bytes.toString(rowKey));
+            throw new NotificationException("Notify is not true");
         }
     }
 

@@ -45,6 +45,7 @@ import com.yahoo.omid.notifications.ZkTreeUtils;
 import com.yahoo.omid.notifications.comm.ZNRecord;
 import com.yahoo.omid.notifications.comm.ZNRecordSerializer;
 import com.yahoo.omid.notifications.conf.ClientConfiguration;
+import com.yahoo.omid.notifications.metrics.ClientSideAppMetrics;
 
 public class DeltaOmid implements IncrementalApplication {
     
@@ -53,6 +54,7 @@ public class DeltaOmid implements IncrementalApplication {
     private final CuratorFramework zkClient;
     private final String name;
     private final int port;
+    private final ClientSideAppMetrics metrics;
     private final ClientConfiguration conf;
     private final String zkAppInstancePath;
     private final NotificationManager notificationManager;
@@ -96,6 +98,7 @@ public class DeltaOmid implements IncrementalApplication {
         this.name = builder.appName;
         this.port = builder.port;
         this.conf = builder.conf;
+        this.metrics = new ClientSideAppMetrics(this.name);
         
         this.appObserverSystem = ActorSystem.create(name + "ObserverSystem");
         List<String> observersInterests = new ArrayList<String>();
@@ -105,9 +108,10 @@ public class DeltaOmid implements IncrementalApplication {
             ActorRef obsActor = appObserverSystem.actorOf(
                     new Props(new UntypedActorFactory() {
                         public UntypedActor create() {
-                            return new ObserverWrapper(observer, conf.getOmidServer());
+                            return new ObserverWrapper(observer, conf.getOmidServer(), metrics);
                         }
                     }), obsName);
+            this.metrics.addObserver(obsName);
             registeredObservers.put(obsName, obsActor);
             List<Interest> interests = observer.getInterests();
             if(interests == null || interests.size() == 0) {
@@ -119,7 +123,7 @@ public class DeltaOmid implements IncrementalApplication {
             }
         }
         // Create the notification manager for notifying the app observers
-        this.notificationManager = new NotificationManager(this);
+        this.notificationManager = new NotificationManager(this, metrics);
         this.notificationManager.start();
         // Finally register the app in the ZK tree
         this.zkClient = CuratorFrameworkFactory.newClient(this.conf.getZkServers(), new ExponentialBackoffRetry(3000, 3));

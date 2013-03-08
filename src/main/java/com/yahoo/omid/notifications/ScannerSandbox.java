@@ -94,7 +94,7 @@ public class ScannerSandbox {
         }
     }
 
-    private class ScannerContainer {
+    public class ScannerContainer {
 
         private final Logger logger = Logger.getLogger(ScannerContainer.class);
 
@@ -172,7 +172,7 @@ public class ScannerSandbox {
             logger.trace("Scanners on " + interest + " stopped");
         }
 
-        private class Scanner implements Callable<Boolean> {
+        public class Scanner implements Callable<Boolean> {
 
             private HTable table = null;
             private Random regionRoller = new Random();
@@ -197,6 +197,7 @@ public class ScannerSandbox {
                                     // logger.trace("interested apps size " + interestedApps.size());
                                     for (App app : interestedApps) {
                                         app.getAppInstanceRedirector().tell(msg);
+                                        app.getMetrics().notificationSentEvent();
                                     }
                                 }
                             }

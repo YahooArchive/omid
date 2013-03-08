@@ -48,6 +48,7 @@ import com.netflix.curator.framework.recipes.cache.PathChildrenCacheListener;
 import com.netflix.curator.utils.ZKPaths;
 import com.yahoo.omid.notifications.comm.ZNRecord;
 import com.yahoo.omid.notifications.comm.ZNRecordSerializer;
+import com.yahoo.omid.notifications.metrics.ServerSideAppMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
 import com.yahoo.omid.notifications.thrift.generated.NotificationReceiverService;
 
@@ -155,6 +156,8 @@ public class AppSandbox implements PathChildrenCacheListener {
         
         private String name;
         
+        private ServerSideAppMetrics metrics;
+        
         private ActorRef appInstanceRedirector;
         
         private PathChildrenCache appsInstanceCache;
@@ -171,6 +174,7 @@ public class AppSandbox implements PathChildrenCacheListener {
         
         public App(String appName, ZNRecord appData) throws Exception {
             this.name = appName;
+            this.metrics = new ServerSideAppMetrics(appName);
             appInstanceRedirector = appSandboxActorSystem.actorOf(
                     new Props(new UntypedActorFactory() {
                         public UntypedActor create() {
@@ -195,6 +199,10 @@ public class AppSandbox implements PathChildrenCacheListener {
             appsInstanceCache.getListenable().addListener(this);
         }
 
+        public ServerSideAppMetrics getMetrics() {
+            return metrics;
+        }
+        
         public ActorRef getAppInstanceRedirector() {
             return appInstanceRedirector;
         }
