@@ -18,6 +18,7 @@ package com.yahoo.omid.notifications;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -25,6 +26,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -51,6 +54,9 @@ import com.yahoo.omid.notifications.conf.DeltaOmidServerConfig;
 public class ScannerSandbox {
 
     private static final Log logger = LogFactory.getLog(ScannerSandbox.class);
+    
+    // Lock used by ScannerContainers to protect concurrent accesses to HBaseAdmin when meta-data is created in HTables
+    private static final Lock htableLock = new ReentrantLock();
 
     private DeltaOmidServerConfig conf;
 
@@ -71,11 +77,18 @@ public class ScannerSandbox {
             ScannerContainer scannerContainer = scanners.get(appInterest);
             if (scannerContainer == null) {
                 scannerContainer = new ScannerContainer(appInterest);
-                scannerContainer.start();
-                scanners.putIfAbsent(appInterest, scannerContainer);
-                logger.trace("ScannerContainer created for interest " + appInterest);
+                ScannerContainer previousScannerContainer = scanners.putIfAbsent(appInterest, scannerContainer);
+                if(previousScannerContainer != null) {
+                    previousScannerContainer.addInterestedApplication(app);
+                    logger.trace("Application added to ScannerContainer for interest " + appInterest);
+                    System.out.println("Application added to ScannerContainer for interest " + appInterest);
+                    return;
+                } else {
+                    scannerContainer.start();
+                }
             }
             scannerContainer.addInterestedApplication(app);
+            logger.trace("ScannerContainer created for interest " + appInterest);
         }
     }
 
@@ -94,6 +107,14 @@ public class ScannerSandbox {
         }
     }
 
+    /**
+     * Added for testing
+     * @return a map of scanner containers keyed by interest
+     */
+    public Map<String, ScannerContainer> getScanners() {
+        return scanners;
+    }
+    
     public class ScannerContainer {
 
         private final Logger logger = Logger.getLogger(ScannerContainer.class);
@@ -117,6 +138,7 @@ public class ScannerSandbox {
             this.exec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("Scanner container [" + interest + "]").build());
             // Generate scaffolding on HBase to maintain the information required to
             // perform notifications
+            htableLock.lock();
             HBaseAdmin admin = new HBaseAdmin(config);
             try { // TODO: This code should not be here in a production system
                   // because it disables the table to add a CF
@@ -124,7 +146,9 @@ public class ScannerSandbox {
                 if (!tableDesc.hasFamily(Bytes.toBytes(Constants.HBASE_META_CF))) {
                     String tableName = this.interest.getTable();
 
-                    admin.disableTable(tableName);
+                    if(admin.isTableEnabled(tableName)) {
+                        admin.disableTable(tableName);
+                    }
 
                     HColumnDescriptor metaCF = new HColumnDescriptor(Constants.HBASE_META_CF);
                     admin.addColumn(tableName, metaCF); // CF for storing metadata
@@ -145,6 +169,7 @@ public class ScannerSandbox {
                 e.printStackTrace();
             } finally {
                 admin.close();
+                htableLock.unlock();
             }
         }
 
@@ -194,7 +219,7 @@ public class ScannerSandbox {
                             for (Result result : scanner) { // TODO Maybe paginate the result traversal
                                 UpdatedInterestMsg msg = new UpdatedInterestMsg(interest.toStringRepresentation(), result.getRow());
                                 synchronized (interestedApps) {
-                                    // logger.trace("interested apps size " + interestedApps.size());
+                                     logger.trace("interested apps size " + interestedApps.size());
                                     for (App app : interestedApps) {
                                         app.getAppInstanceRedirector().tell(msg);
                                         app.getMetrics().notificationSentEvent();
@@ -206,6 +231,7 @@ public class ScannerSandbox {
                         }
                     }
                 } catch (InterruptedException e) {
+                    e.printStackTrace();
                     logger.warn("Scanner on interest " + interest + " finished");          
                 } catch (IOException e) {
                     logger.warn("Scanner on interest " + interest + " not initiated because can't get table");
