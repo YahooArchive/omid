@@ -30,6 +30,7 @@ import org.apache.log4j.Logger;
 import akka.actor.UntypedActor;
 
 import com.google.common.net.HostAndPort;
+import com.yahoo.omid.client.CommitUnsuccessfulException;
 import com.yahoo.omid.client.TransactionException;
 import com.yahoo.omid.client.TransactionManager;
 import com.yahoo.omid.client.TransactionState;
@@ -116,7 +117,10 @@ public class ObserverWrapper extends UntypedActor {
                 tm.abort(tx); 
                 metrics.observerAbortEvent(observer.getName());
             } catch (TransactionException e1) {}
+        } catch (CommitUnsuccessfulException e) {
+            metrics.omidAbortEvent(observer.getName());
         } catch (Exception e) {
+            metrics.unknownAbortEvent(observer.getName());
             e.printStackTrace();
         } finally {
             if (tt != null) {
@@ -184,9 +188,9 @@ public class ObserverWrapper extends UntypedActor {
                 throw new NotificationException("Observer already executed");
             }
         } else {
-            logger.error("Notify its not true!!! So, another notificiation for observer "
-                    + observer.getName() + " was previously executed for " + Bytes.toString(columnFamily) + "/"
-                    + Bytes.toString(column) + " row " + Bytes.toString(rowKey));
+    //            logger.error("Notify its not true!!! So, another notificiation for observer "
+    //                    + observer.getName() + " was previously executed for " + Bytes.toString(columnFamily) + "/"
+    //                    + Bytes.toString(column) + " row " + Bytes.toString(rowKey));
             throw new NotificationException("Notify is not true");
         }
     }

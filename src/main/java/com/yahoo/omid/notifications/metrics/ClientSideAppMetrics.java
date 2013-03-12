@@ -25,6 +25,8 @@ public class ClientSideAppMetrics {
     private Map<String, Meter> observerInvocationMeters = new ConcurrentHashMap<String, Meter>(); // This is redundant with the counter offered by observerExexutionTimers
     private Map<String, Meter> observerCompletionMeters = new ConcurrentHashMap<String, Meter>();
     private Map<String, Meter> observerAbortMeters = new ConcurrentHashMap<String, Meter>();
+    private Map<String, Meter> omidAbortMeters = new ConcurrentHashMap<String, Meter>();
+    private Map<String, Meter> unknownAbortMeters = new ConcurrentHashMap<String, Meter>();
     private Map<String, Timer> observerExecutionTimers = new ConcurrentHashMap<String, Timer>();
     
     public ClientSideAppMetrics(String appName) {
@@ -41,6 +43,8 @@ public class ClientSideAppMetrics {
         observerInvocationMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "/" + obsName + "@invocations", "invocations", TimeUnit.SECONDS));
         observerCompletionMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "/" + obsName + "@completions", "completions", TimeUnit.SECONDS));
         observerAbortMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "/" + obsName + "@aborts", "aborts", TimeUnit.SECONDS));
+        omidAbortMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "/" + obsName + "@omid-aborts", "omid-aborts", TimeUnit.SECONDS));
+        unknownAbortMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "/" + obsName + "@unknown-aborts", "unknown-aborts", TimeUnit.SECONDS));
         observerExecutionTimers.put(obsName, Metrics.newTimer(ObserverWrapper.class, this.appName + "/" + obsName + "-processing-time"));
     }
 
@@ -58,6 +62,14 @@ public class ClientSideAppMetrics {
 
     public void observerAbortEvent(String obsName) {
         observerAbortMeters.get(obsName).mark();
+    }
+
+    public void omidAbortEvent(String obsName) {
+        omidAbortMeters.get(obsName).mark();
+    }
+
+    public void unknownAbortEvent(String obsName) {
+        unknownAbortMeters.get(obsName).mark();
     }
 
     public TimerContext startObserverInvocation(String obsName) {
