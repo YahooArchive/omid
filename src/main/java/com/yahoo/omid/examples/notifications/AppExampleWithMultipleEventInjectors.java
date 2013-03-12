@@ -24,7 +24,11 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -38,6 +42,8 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
+import com.google.common.util.concurrent.RateLimiter;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.client.TransactionManager;
 import com.yahoo.omid.client.TransactionState;
 import com.yahoo.omid.client.TransactionalTable;
@@ -50,11 +56,9 @@ import com.yahoo.omid.notifications.client.Observer;
  * This applications shows the basic usage of the Omid's notification framework
  * 
  */
-public class ClientNotificationAppExample {
+public class AppExampleWithMultipleEventInjectors {
 
-    private static final Logger logger = Logger.getLogger(ClientNotificationAppExample.class);
-
-    private static CountDownLatch cdl;
+    private static final Logger logger = Logger.getLogger(AppExampleWithMultipleEventInjectors.class);
 
     /**
      * Launches ObserverRegistrationService and perform an observer registration
@@ -67,29 +71,27 @@ public class ClientNotificationAppExample {
         CommandLineParser cmdLineParser = new ExtendedPosixParser(true);
 
         Options options = new Options();
-        options.addOption(OptionBuilder.withLongOpt("txs").withDescription("Number of transactions to execute")
+        options.addOption(OptionBuilder.withLongOpt("injectors").withDescription("Number of tasks to inject txs")
+                .withType(Number.class).hasArg().withArgName("argname").create());
+        options.addOption(OptionBuilder.withLongOpt("tx-rate").withDescription("Number of txs/s to execute per injector thread")
                 .withType(Number.class).hasArg().withArgName("argname").create());
         options.addOption(OptionBuilder.withLongOpt("rows-per-tx")
                 .withDescription("Number of rows that each transaction inserts").withType(Number.class).hasArg()
                 .withArgName("argname").create());
 
-        int txsToExecute = 1; // Default value
-        int rowsPerTx = 1; // Default value
+        int nOfInjectorTasks = 1;
+        int txRate = 1;
         
         try {
             CommandLine cmdLine = cmdLineParser.parse(options, args);
 
-
-            if (cmdLine.hasOption("txs")) {
-                txsToExecute = ((Number) cmdLine.getParsedOptionValue("txs")).intValue();
+            if (cmdLine.hasOption("injectors")) {
+                nOfInjectorTasks = ((Number) cmdLine.getParsedOptionValue("injectors")).intValue();
             }
-
-
-            if (cmdLine.hasOption("rows-per-tx")) {
-                rowsPerTx = ((Number) cmdLine.getParsedOptionValue("rows-per-tx")).intValue();
+            
+            if (cmdLine.hasOption("tx-rate")) {
+                txRate = ((Number) cmdLine.getParsedOptionValue("tx-rate")).intValue();
             }
-
-            cdl = new CountDownLatch(txsToExecute * rowsPerTx * 2);
         } catch (ParseException e) {
             e.printStackTrace();
             System.exit(1);
@@ -109,17 +111,8 @@ public class ClientNotificationAppExample {
             Interest interestObs1 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_1);
 
             public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
-                logger.info("ooo Omid ooo -"
-                + "I'M OBSERVER o1."
-                + " An update has occurred on Table: "
-                + Bytes.toString(table)
-                + " RowKey: "
-                + Bytes.toString(rowKey)
-                + " ColumnFamily: "
-                + Bytes.toString(columnFamily)
-                + " Column: "
-                + Bytes.toString(column)
-                + " !!! - ooo Omid ooo");
+//                logger.info("o1 -> Update on " + Bytes.toString(table) + Bytes.toString(rowKey)
+//                        + Bytes.toString(columnFamily) + Bytes.toString(column));
                Configuration tsoClientConf = HBaseConfiguration.create();
                tsoClientConf.set("tso.host", "localhost");
                tsoClientConf.setInt("tso.port", 1234);
@@ -127,12 +120,10 @@ public class ClientNotificationAppExample {
                try {
                    TransactionalTable tt = new TransactionalTable(tsoClientConf, TABLE_1);
                    doTransactionalPut(tx, tt, rowKey, Bytes.toBytes(COLUMN_FAMILY_1),
-                           Bytes.toBytes(COLUMN_2), Bytes.toBytes("Data written by OBSERVER o1"));
-                   logger.info("ooo Omid ooo - o1 INSERTED ROW ON COL " + COLUMN_2 + " (TX " + tx + ") - ooo Omid ooo");
+                           Bytes.toBytes(COLUMN_2), Bytes.toBytes("data written by observer o1"));
                } catch (IOException e) {
                    e.printStackTrace();
                }
-               cdl.countDown();
             }
 
             @Override
@@ -151,18 +142,8 @@ public class ClientNotificationAppExample {
             Interest interestObs2 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_2);
             
             public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
-                logger.info("ooo Omid ooo - "
-                + "I'M OBSERVER o2."
-                + " An update has occurred on Table: "
-                + Bytes.toString(table)
-                + " RowKey: "
-                + Bytes.toString(rowKey)
-                + " ColumnFamily: "
-                + Bytes.toString(columnFamily)
-                + " Column: "
-                + Bytes.toString(column)
-                + " !!! I'M NOT GONNA DO ANYTHING ELSE - ooo Omid ooo");
-                cdl.countDown();
+//                logger.info("o2 -> Update on " + Bytes.toString(table) + Bytes.toString(rowKey)
+//                        + Bytes.toString(columnFamily) + Bytes.toString(column));
            }
 
             @Override
@@ -182,7 +163,14 @@ public class ClientNotificationAppExample {
                                                     .addObserver(obs2)
                                                     .build();
         
-        
+        logger.info("ooo Omid ooo - WAITING 10 SECONDS TO ALLOW OBSERVER REGISTRATION - ooo Omid ooo");
+        Thread.currentThread().sleep(10000);    
+
+        ExecutorService injectors = Executors.newFixedThreadPool(nOfInjectorTasks, new ThreadFactoryBuilder().setNameFormat("Injector-%d").build());
+        CountDownLatch startCdl = new CountDownLatch(1);
+        for(int i=0; i < nOfInjectorTasks; i++) {
+            injectors.execute(new EventInjectorTask(tsoClientHbaseConf, startCdl, txRate));
+        }
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run() {
                 try {
@@ -193,37 +181,51 @@ public class ClientNotificationAppExample {
                 }
             }
         });
-
-        logger.info("ooo Omid ooo - WAITING 10 SECONDS TO ALLOW OBSERVER REGISTRATION - ooo Omid ooo");
-        Thread.currentThread().sleep(10000);
-
-        TransactionManager tm = new TransactionManager(tsoClientHbaseConf);
-        TransactionalTable tt = new TransactionalTable(tsoClientHbaseConf, TABLE_1);
-
-        logger.info("ooo Omid ooo - STARTING " + txsToExecute + " TRIGGER TXS INSERTING " + rowsPerTx
-                + " ROWS EACH IN COLUMN " + COLUMN_1 + " - ooo Omid ooo");
-        for (int i = 0; i < txsToExecute; i++) {
-            // Transaction adding to rows to a table
-            TransactionState tx = tm.beginTransaction();
-
-            for (int j = 0; j < rowsPerTx; j++) {
-                doTransactionalPut(tx, tt, Bytes.toBytes("row-" + Integer.toString(i + (j * 10000))),
-                        Bytes.toBytes(COLUMN_FAMILY_1), Bytes.toBytes(COLUMN_1),
-                        Bytes.toBytes("testWrite-" + Integer.toString(i + (j * 10000))));
-            }
-
-            tm.tryCommit(tx);
-        }
-        tt.close();
-
-        logger.info("ooo Omid ooo - TRIGGER TXS COMMITTED. WAITING FOR THE 2 OBS RECEIVE ALL NOTIF - ooo Omid ooo");
-        cdl.await();
-        logger.info("ooo Omid ooo - OBSERVERS HAVE RECEIVED ALL THE NOTIFICATIONS. FINISHING APP - ooo Omid ooo");
-        Thread.currentThread().sleep(30000);
-        app.close();
-
-        logger.info("ooo Omid ooo - OMID'S NOTIFICATION APP FINISHED - ooo Omid ooo");
+        logger.info("ooo Omid ooo - STARTING " + nOfInjectorTasks + " LOOP TASKS INJECTING AT " + txRate
+                + " TX/S IN COLUMN " + COLUMN_1 + " - ooo Omid ooo");
+        startCdl.countDown();
+        logger.info("ooo Omid ooo - OMID'S NOTIFICATION APP INJECTING LOAD TILL STOPPED - ooo Omid ooo");
     }
+    
+    private static class EventInjectorTask implements Runnable {
+        
+        private CountDownLatch startCdl;
+        private TransactionManager tm;
+        private TransactionalTable tt;
+        private int txRate;
+
+        public EventInjectorTask(Configuration conf, CountDownLatch startCdl, int txRate) {
+            try {
+                this.tm = new TransactionManager(conf);
+                this.tt = new TransactionalTable(conf, TABLE_1);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            this.startCdl = startCdl;
+            this.txRate = txRate;
+        }
+        
+        public void run() {
+            final Random randGen = new Random();
+            RateLimiter rateLimiter = RateLimiter.create(txRate, 1, TimeUnit.MINUTES);
+            try {
+                startCdl.await();
+                while (true) {
+                    rateLimiter.acquire();
+                    // Transaction adding to rows to a table
+                    TransactionState tx = tm.beginTransaction();
+                    String rowId = Long.toString(randGen.nextLong());
+                    doTransactionalPut(tx, tt, Bytes.toBytes("row-" + rowId), Bytes.toBytes(COLUMN_FAMILY_1),
+                            Bytes.toBytes(COLUMN_1), Bytes.toBytes("injector wrote on row-" + rowId));
+                    tm.tryCommit(tx);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                try { tt.close(); } catch (IOException e) { /* Do nothing */ }
+            }
+        }
+    }    
 
     private static class ExtendedPosixParser extends PosixParser {
 
@@ -243,6 +245,7 @@ public class ClientNotificationAppExample {
         }
 
     }
+    
     private static void doTransactionalPut(TransactionState tx, TransactionalTable tt, byte[] rowName,
             byte[] colFamName, byte[] colName, byte[] dataValue) throws IOException {
         Put row = new Put(rowName);
