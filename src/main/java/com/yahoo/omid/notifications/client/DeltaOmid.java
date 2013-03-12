@@ -33,12 +33,14 @@ import akka.actor.ActorSystem;
 import akka.actor.Props;
 import akka.actor.UntypedActor;
 import akka.actor.UntypedActorFactory;
+import akka.routing.RoundRobinRouter;
 
 import com.google.common.io.Closeables;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.netflix.curator.retry.ExponentialBackoffRetry;
 import com.netflix.curator.utils.ZKPaths;
+import com.typesafe.config.ConfigFactory;
 import com.yahoo.omid.notifications.Interest;
 import com.yahoo.omid.notifications.NotificationException;
 import com.yahoo.omid.notifications.ZkTreeUtils;
@@ -100,7 +102,7 @@ public class DeltaOmid implements IncrementalApplication {
         this.conf = builder.conf;
         this.metrics = new ClientSideAppMetrics(this.name);
         
-        this.appObserverSystem = ActorSystem.create(name + "ObserverSystem");
+        this.appObserverSystem = ActorSystem.create(name + "ObserverSystem", ConfigFactory.load().getConfig("DeltaOmid"));
         List<String> observersInterests = new ArrayList<String>();
         for(final Observer observer : builder.observers) {
             String obsName = observer.getName();
@@ -110,7 +112,7 @@ public class DeltaOmid implements IncrementalApplication {
                         public UntypedActor create() {
                             return new ObserverWrapper(observer, conf.getOmidServer(), metrics);
                         }
-                    }), obsName);
+                    }).withDispatcher("omidPinnedDispatcher").withRouter(new RoundRobinRouter(4)), obsName);
             this.metrics.addObserver(obsName);
             registeredObservers.put(obsName, obsActor);
             List<Interest> interests = observer.getInterests();
