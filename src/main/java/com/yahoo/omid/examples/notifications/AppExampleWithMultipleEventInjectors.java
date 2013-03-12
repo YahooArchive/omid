@@ -71,19 +71,30 @@ public class AppExampleWithMultipleEventInjectors {
         CommandLineParser cmdLineParser = new ExtendedPosixParser(true);
 
         Options options = new Options();
+        options.addOption(OptionBuilder.withLongOpt("port")
+                .withDescription("app instance port to receive notifications").withType(Number.class).hasArg()
+                .withArgName("argname").create());
+        options.addOption("inject", false, "If present, load will be injected");
         options.addOption(OptionBuilder.withLongOpt("injectors").withDescription("Number of tasks to inject txs")
                 .withType(Number.class).hasArg().withArgName("argname").create());
         options.addOption(OptionBuilder.withLongOpt("tx-rate").withDescription("Number of txs/s to execute per injector thread")
                 .withType(Number.class).hasArg().withArgName("argname").create());
-        options.addOption(OptionBuilder.withLongOpt("rows-per-tx")
-                .withDescription("Number of rows that each transaction inserts").withType(Number.class).hasArg()
-                .withArgName("argname").create());
 
+        boolean inject = false;
         int nOfInjectorTasks = 1;
         int txRate = 1;
+        int appInstancePort = 6666;
         
         try {
             CommandLine cmdLine = cmdLineParser.parse(options, args);
+
+            if (cmdLine.hasOption("port")) {
+                appInstancePort = ((Number) cmdLine.getParsedOptionValue("port")).intValue();
+            }
+
+            if (cmdLine.hasOption("inject")) {
+                inject = true;
+            }
 
             if (cmdLine.hasOption("injectors")) {
                 nOfInjectorTasks = ((Number) cmdLine.getParsedOptionValue("injectors")).intValue();
@@ -158,19 +169,13 @@ public class AppExampleWithMultipleEventInjectors {
         };
 
         // Create application
-        final IncrementalApplication app = new DeltaOmid.AppBuilder("ExampleApp", 6666)
+        final IncrementalApplication app = new DeltaOmid.AppBuilder("ExampleApp", appInstancePort)
                                                     .addObserver(obs1)
                                                     .addObserver(obs2)
                                                     .build();
         
-        logger.info("ooo Omid ooo - WAITING 10 SECONDS TO ALLOW OBSERVER REGISTRATION - ooo Omid ooo");
-        Thread.currentThread().sleep(10000);    
+        logger.info("ooo Omid ooo - APP Instance Created - ooo Omid ooo");
 
-        ExecutorService injectors = Executors.newFixedThreadPool(nOfInjectorTasks, new ThreadFactoryBuilder().setNameFormat("Injector-%d").build());
-        CountDownLatch startCdl = new CountDownLatch(1);
-        for(int i=0; i < nOfInjectorTasks; i++) {
-            injectors.execute(new EventInjectorTask(tsoClientHbaseConf, startCdl, txRate));
-        }
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run() {
                 try {
@@ -181,10 +186,23 @@ public class AppExampleWithMultipleEventInjectors {
                 }
             }
         });
-        logger.info("ooo Omid ooo - STARTING " + nOfInjectorTasks + " LOOP TASKS INJECTING AT " + txRate
-                + " TX/S IN COLUMN " + COLUMN_1 + " - ooo Omid ooo");
-        startCdl.countDown();
-        logger.info("ooo Omid ooo - OMID'S NOTIFICATION APP INJECTING LOAD TILL STOPPED - ooo Omid ooo");
+        
+        if (inject) {
+            logger.info("ooo Omid ooo - WAITING 10 SECONDS TO ALLOW OBSERVER REGISTRATION - ooo Omid ooo");
+            Thread.currentThread().sleep(10000);
+
+            ExecutorService injectors = Executors.newFixedThreadPool(nOfInjectorTasks, new ThreadFactoryBuilder()
+                    .setNameFormat("Injector-%d").build());
+            CountDownLatch startCdl = new CountDownLatch(1);
+            for (int i = 0; i < nOfInjectorTasks; i++) {
+                injectors.execute(new EventInjectorTask(tsoClientHbaseConf, startCdl, txRate));
+            }
+            logger.info("ooo Omid ooo - STARTING " + nOfInjectorTasks + " LOOP TASKS INJECTING AT " + txRate
+                    + " TX/S IN COLUMN " + COLUMN_1 + " - ooo Omid ooo");
+            startCdl.countDown();
+            logger.info("ooo Omid ooo - OMID'S NOTIFICATION APP INJECTING LOAD TILL STOPPED - ooo Omid ooo");
+        }
+        
     }
     
     private static class EventInjectorTask implements Runnable {
