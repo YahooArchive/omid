@@ -90,7 +90,7 @@ public class DeltaOmidServer {
         String appsNodePath = ZkTreeUtils.getAppsNodePath();
         List<String> appNames = zkClient.getChildren().forPath(appsNodePath);
         for(String appName : appNames) {
-            appSandbox.createApplication(appName, true);
+            appSandbox.createApplication(appName);
         }
     }
     

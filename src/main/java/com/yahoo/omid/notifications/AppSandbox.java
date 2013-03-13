@@ -104,7 +104,7 @@ public class AppSandbox implements PathChildrenCacheListener {
     }
 
     
-    public void createApplication(String appName, boolean addInstances) throws Exception {
+    public void createApplication(String appName) throws Exception {
         
         synchronized(registeredApps) {
             if(!registeredApps.containsKey(appName)) {
@@ -118,20 +118,13 @@ public class AppSandbox implements PathChildrenCacheListener {
                 App app = new App(appName, appData);
                 registeredApps.put(appName, app);
                 scannerSandbox.registerInterestsFromApplication(app);
-                if(addInstances) {
-                    List<String> appInstanceNames = zkClient.getChildren().forPath(appNodePath);
-                    for(String appInstanceName : appInstanceNames) {
-                        app.addInstance(appInstanceName);                
-                    }
-                }
+                // NOTE: It is not necessary to create the instances. It is triggered automatically by curator
+                // through the App.childEvent() callback when constructing the App object (particularly, when 
+                // registering the interest in the Zk app node)
             }
         }
     }
     
-    private void createApplication(String appName) throws Exception {
-        createApplication(appName, false);
-    }
-
     private App removeApplication(String appName) throws Exception {
         App removedApp = null;
         synchronized(registeredApps) {
@@ -304,7 +297,7 @@ public class AppSandbox implements PathChildrenCacheListener {
                             int calculatedIdx = instanceIdx % instanceCount;                            
                             ActorRef instance = (ActorRef) instances.values().toArray()[calculatedIdx]; //instances.get(instanceIdx % instanceCount);// 
                             instance.tell(msg);
-                            logger.trace("App " + name + " sent message " + msg + " to actor " + instance + " with index " + calculatedIdx);
+//                            logger.trace("App " + name + " sent message " + msg + " to actor " + instance + " with index " + calculatedIdx);
                             instanceIdx++;
                         } else {
                             logger.warn("App " + name + " has no instances to redirect");
