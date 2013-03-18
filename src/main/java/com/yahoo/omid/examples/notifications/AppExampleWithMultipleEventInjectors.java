@@ -77,14 +77,15 @@ public class AppExampleWithMultipleEventInjectors {
         options.addOption("inject", false, "If present, load will be injected");
         options.addOption(OptionBuilder.withLongOpt("injectors").withDescription("Number of tasks to inject txs")
                 .withType(Number.class).hasArg().withArgName("argname").create());
-        options.addOption(OptionBuilder.withLongOpt("tx-rate").withDescription("Number of txs/s to execute per injector thread")
-                .withType(Number.class).hasArg().withArgName("argname").create());
+        options.addOption(OptionBuilder.withLongOpt("tx-rate")
+                .withDescription("Number of txs/s to execute per injector thread").withType(Number.class).hasArg()
+                .withArgName("argname").create());
 
         boolean inject = false;
         int nOfInjectorTasks = 1;
         int txRate = 1;
         int appInstancePort = 6666;
-        
+
         try {
             CommandLine cmdLine = cmdLineParser.parse(options, args);
 
@@ -99,14 +100,14 @@ public class AppExampleWithMultipleEventInjectors {
             if (cmdLine.hasOption("injectors")) {
                 nOfInjectorTasks = ((Number) cmdLine.getParsedOptionValue("injectors")).intValue();
             }
-            
+
             if (cmdLine.hasOption("tx-rate")) {
                 txRate = ((Number) cmdLine.getParsedOptionValue("tx-rate")).intValue();
             }
         } catch (ParseException e) {
             e.printStackTrace();
             System.exit(1);
-        }        
+        }
 
         // TSO Client setup
         Configuration tsoClientHbaseConf = HBaseConfiguration.create();
@@ -115,26 +116,36 @@ public class AppExampleWithMultipleEventInjectors {
 
         logger.info("ooo Omid ooo - STARTING OMID'S EXAMPLE NOTIFICATION APP. - ooo Omid ooo");
 
-        logger.info("ooo Omid ooo - TABLE " + TABLE_1 + " SHOULD EXISTS WITH CF "+ COLUMN_FAMILY_1 + "- ooo Omid ooo");
+        logger.info("ooo Omid ooo - TABLE " + TABLE_1 + " SHOULD EXISTS WITH CF " + COLUMN_FAMILY_1 + "- ooo Omid ooo");
 
         Observer obs1 = new Observer() {
 
             Interest interestObs1 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_1);
 
-            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
-//                logger.info("o1 -> Update on " + Bytes.toString(table) + Bytes.toString(rowKey)
-//                        + Bytes.toString(columnFamily) + Bytes.toString(column));
-               Configuration tsoClientConf = HBaseConfiguration.create();
-               tsoClientConf.set("tso.host", "localhost");
-               tsoClientConf.setInt("tso.port", 1234);
+            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey,
+                    TransactionState tx) {
+                // logger.info("o1 -> Update on " + Bytes.toString(table) + Bytes.toString(rowKey)
+                // + Bytes.toString(columnFamily) + Bytes.toString(column));
+                Configuration tsoClientConf = HBaseConfiguration.create();
+                tsoClientConf.set("tso.host", "localhost");
+                tsoClientConf.setInt("tso.port", 1234);
 
-               try {
-                   TransactionalTable tt = new TransactionalTable(tsoClientConf, TABLE_1);
-                   doTransactionalPut(tx, tt, rowKey, Bytes.toBytes(COLUMN_FAMILY_1),
-                           Bytes.toBytes(COLUMN_2), Bytes.toBytes("data written by observer o1"));
-               } catch (IOException e) {
-                   e.printStackTrace();
-               }
+                TransactionalTable tt = null;
+                try {
+                    tt = new TransactionalTable(tsoClientConf, TABLE_1);
+                    doTransactionalPut(tx, tt, rowKey, Bytes.toBytes(COLUMN_FAMILY_1), Bytes.toBytes(COLUMN_2),
+                            Bytes.toBytes("data written by observer o1"));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    try {
+                        if (tt != null) {
+                            tt.close();
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
             }
 
             @Override
@@ -151,11 +162,12 @@ public class AppExampleWithMultipleEventInjectors {
         Observer obs2 = new Observer() {
 
             Interest interestObs2 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_2);
-            
-            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
-//                logger.info("o2 -> Update on " + Bytes.toString(table) + Bytes.toString(rowKey)
-//                        + Bytes.toString(columnFamily) + Bytes.toString(column));
-           }
+
+            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey,
+                    TransactionState tx) {
+                // logger.info("o2 -> Update on " + Bytes.toString(table) + Bytes.toString(rowKey)
+                // + Bytes.toString(columnFamily) + Bytes.toString(column));
+            }
 
             @Override
             public String getName() {
@@ -169,11 +181,9 @@ public class AppExampleWithMultipleEventInjectors {
         };
 
         // Create application
-        final IncrementalApplication app = new DeltaOmid.AppBuilder("ExampleApp", appInstancePort)
-                                                    .addObserver(obs1)
-                                                    .addObserver(obs2)
-                                                    .build();
-        
+        final IncrementalApplication app = new DeltaOmid.AppBuilder("ExampleApp", appInstancePort).addObserver(obs1)
+                .addObserver(obs2).build();
+
         logger.info("ooo Omid ooo - APP Instance Created - ooo Omid ooo");
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -186,7 +196,7 @@ public class AppExampleWithMultipleEventInjectors {
                 }
             }
         });
-        
+
         if (inject) {
             logger.info("ooo Omid ooo - WAITING 10 SECONDS TO ALLOW OBSERVER REGISTRATION - ooo Omid ooo");
             Thread.currentThread().sleep(10000);
@@ -202,11 +212,11 @@ public class AppExampleWithMultipleEventInjectors {
             startCdl.countDown();
             logger.info("ooo Omid ooo - OMID'S NOTIFICATION APP INJECTING LOAD TILL STOPPED - ooo Omid ooo");
         }
-        
+
     }
-    
+
     private static class EventInjectorTask implements Runnable {
-        
+
         private CountDownLatch startCdl;
         private TransactionManager tm;
         private TransactionalTable tt;
@@ -222,7 +232,7 @@ public class AppExampleWithMultipleEventInjectors {
             this.startCdl = startCdl;
             this.txRate = txRate;
         }
-        
+
         public void run() {
             final Random randGen = new Random();
             RateLimiter rateLimiter = RateLimiter.create(txRate, 1, TimeUnit.MINUTES);
@@ -240,10 +250,13 @@ public class AppExampleWithMultipleEventInjectors {
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
-                try { tt.close(); } catch (IOException e) { /* Do nothing */ }
+                try {
+                    tt.close();
+                } catch (IOException e) { /* Do nothing */
+                }
             }
         }
-    }    
+    }
 
     private static class ExtendedPosixParser extends PosixParser {
 
@@ -254,7 +267,7 @@ public class AppExampleWithMultipleEventInjectors {
         }
 
         @Override
-        protected void processOption(final String arg, final ListIterator iter) throws     ParseException {
+        protected void processOption(final String arg, final ListIterator iter) throws ParseException {
             boolean hasOption = getOptions().hasOption(arg);
 
             if (hasOption || !ignoreUnrecognizedOption) {
@@ -263,7 +276,7 @@ public class AppExampleWithMultipleEventInjectors {
         }
 
     }
-    
+
     private static void doTransactionalPut(TransactionState tx, TransactionalTable tt, byte[] rowName,
             byte[] colFamName, byte[] colName, byte[] dataValue) throws IOException {
         Put row = new Put(rowName);

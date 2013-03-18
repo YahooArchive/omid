@@ -75,15 +75,13 @@ public class ClientNotificationAppExample {
 
         int txsToExecute = 1; // Default value
         int rowsPerTx = 1; // Default value
-        
+
         try {
             CommandLine cmdLine = cmdLineParser.parse(options, args);
-
 
             if (cmdLine.hasOption("txs")) {
                 txsToExecute = ((Number) cmdLine.getParsedOptionValue("txs")).intValue();
             }
-
 
             if (cmdLine.hasOption("rows-per-tx")) {
                 rowsPerTx = ((Number) cmdLine.getParsedOptionValue("rows-per-tx")).intValue();
@@ -93,7 +91,7 @@ public class ClientNotificationAppExample {
         } catch (ParseException e) {
             e.printStackTrace();
             System.exit(1);
-        }        
+        }
 
         // TSO Client setup
         Configuration tsoClientHbaseConf = HBaseConfiguration.create();
@@ -102,37 +100,39 @@ public class ClientNotificationAppExample {
 
         logger.info("ooo Omid ooo - STARTING OMID'S EXAMPLE NOTIFICATION APP. - ooo Omid ooo");
 
-        logger.info("ooo Omid ooo - TABLE " + TABLE_1 + " SHOULD EXISTS WITH CF "+ COLUMN_FAMILY_1 + "- ooo Omid ooo");
+        logger.info("ooo Omid ooo - TABLE " + TABLE_1 + " SHOULD EXISTS WITH CF " + COLUMN_FAMILY_1 + "- ooo Omid ooo");
 
         Observer obs1 = new Observer() {
 
             Interest interestObs1 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_1);
 
-            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
-                logger.info("ooo Omid ooo -"
-                + "I'M OBSERVER o1."
-                + " An update has occurred on Table: "
-                + Bytes.toString(table)
-                + " RowKey: "
-                + Bytes.toString(rowKey)
-                + " ColumnFamily: "
-                + Bytes.toString(columnFamily)
-                + " Column: "
-                + Bytes.toString(column)
-                + " !!! - ooo Omid ooo");
-               Configuration tsoClientConf = HBaseConfiguration.create();
-               tsoClientConf.set("tso.host", "localhost");
-               tsoClientConf.setInt("tso.port", 1234);
+            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey,
+                    TransactionState tx) {
+                logger.info("ooo Omid ooo -" + "I'M OBSERVER o1." + " An update has occurred on Table: "
+                        + Bytes.toString(table) + " RowKey: " + Bytes.toString(rowKey) + " ColumnFamily: "
+                        + Bytes.toString(columnFamily) + " Column: " + Bytes.toString(column) + " !!! - ooo Omid ooo");
+                Configuration tsoClientConf = HBaseConfiguration.create();
+                tsoClientConf.set("tso.host", "localhost");
+                tsoClientConf.setInt("tso.port", 1234);
 
-               try {
-                   TransactionalTable tt = new TransactionalTable(tsoClientConf, TABLE_1);
-                   doTransactionalPut(tx, tt, rowKey, Bytes.toBytes(COLUMN_FAMILY_1),
-                           Bytes.toBytes(COLUMN_2), Bytes.toBytes("Data written by OBSERVER o1"));
-                   logger.info("ooo Omid ooo - o1 INSERTED ROW ON COL " + COLUMN_2 + " (TX " + tx + ") - ooo Omid ooo");
-               } catch (IOException e) {
-                   e.printStackTrace();
-               }
-               cdl.countDown();
+                TransactionalTable tt = null;
+                try {
+                    tt = new TransactionalTable(tsoClientConf, TABLE_1);
+                    doTransactionalPut(tx, tt, rowKey, Bytes.toBytes(COLUMN_FAMILY_1), Bytes.toBytes(COLUMN_2),
+                            Bytes.toBytes("Data written by OBSERVER o1"));
+                    logger.info("ooo Omid ooo - o1 INSERTED ROW ON COL " + COLUMN_2 + " (TX " + tx + ") - ooo Omid ooo");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    try {
+                        if (tt != null) {
+                            tt.close();
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                cdl.countDown();
             }
 
             @Override
@@ -149,21 +149,15 @@ public class ClientNotificationAppExample {
         Observer obs2 = new Observer() {
 
             Interest interestObs2 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_2);
-            
-            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
-                logger.info("ooo Omid ooo - "
-                + "I'M OBSERVER o2."
-                + " An update has occurred on Table: "
-                + Bytes.toString(table)
-                + " RowKey: "
-                + Bytes.toString(rowKey)
-                + " ColumnFamily: "
-                + Bytes.toString(columnFamily)
-                + " Column: "
-                + Bytes.toString(column)
-                + " !!! I'M NOT GONNA DO ANYTHING ELSE - ooo Omid ooo");
+
+            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey,
+                    TransactionState tx) {
+                logger.info("ooo Omid ooo - " + "I'M OBSERVER o2." + " An update has occurred on Table: "
+                        + Bytes.toString(table) + " RowKey: " + Bytes.toString(rowKey) + " ColumnFamily: "
+                        + Bytes.toString(columnFamily) + " Column: " + Bytes.toString(column)
+                        + " !!! I'M NOT GONNA DO ANYTHING ELSE - ooo Omid ooo");
                 cdl.countDown();
-           }
+            }
 
             @Override
             public String getName() {
@@ -177,12 +171,9 @@ public class ClientNotificationAppExample {
         };
 
         // Create application
-        final IncrementalApplication app = new DeltaOmid.AppBuilder("ExampleApp", 6666)
-                                                    .addObserver(obs1)
-                                                    .addObserver(obs2)
-                                                    .build();
-        
-        
+        final IncrementalApplication app = new DeltaOmid.AppBuilder("ExampleApp", 6666).addObserver(obs1)
+                .addObserver(obs2).build();
+
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run() {
                 try {
@@ -234,7 +225,7 @@ public class ClientNotificationAppExample {
         }
 
         @Override
-        protected void processOption(final String arg, final ListIterator iter) throws     ParseException {
+        protected void processOption(final String arg, final ListIterator iter) throws ParseException {
             boolean hasOption = getOptions().hasOption(arg);
 
             if (hasOption || !ignoreUnrecognizedOption) {
@@ -243,6 +234,7 @@ public class ClientNotificationAppExample {
         }
 
     }
+
     private static void doTransactionalPut(TransactionState tx, TransactionalTable tt, byte[] rowName,
             byte[] colFamName, byte[] colName, byte[] dataValue) throws IOException {
         Put row = new Put(rowName);
