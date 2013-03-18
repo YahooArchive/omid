@@ -100,7 +100,7 @@ public class DeltaOmid implements IncrementalApplication {
         this.name = builder.appName;
         this.port = builder.port;
         this.conf = builder.conf;
-        this.metrics = new ClientSideAppMetrics(this.name);
+        this.metrics = new ClientSideAppMetrics(this.name, conf);
         
         this.appObserverSystem = ActorSystem.create(name + "ObserverSystem", ConfigFactory.load().getConfig("DeltaOmid"));
         List<String> observersInterests = new ArrayList<String>();
@@ -117,7 +117,7 @@ public class DeltaOmid implements IncrementalApplication {
             registeredObservers.put(obsName, obsActor);
             List<Interest> interests = observer.getInterests();
             if(interests == null || interests.size() == 0) {
-                logger.warn("Observer " + obsName + " doesn't have interests, so it will never be notified");
+                logger.warn("Observer " + obsName + " doesn't have interests: it will never be notified");
                 continue;
             }
             for(Interest interest : interests) {

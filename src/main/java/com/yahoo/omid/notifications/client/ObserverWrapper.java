@@ -179,12 +179,12 @@ public class ObserverWrapper extends UntypedActor {
                 put.add(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumnObserverAck), Bytes.toBytes(observer.getName()));
                 tt.put(tx, put); // Transactional put
             } else {
-                logger.error("Observer " + observer.getName() + " already executed for change on " + Bytes.toString(columnFamily) + "/"
+                logger.trace("Observer " + observer.getName() + " already executed for change on " + Bytes.toString(columnFamily) + "/"
                         + Bytes.toString(column) + " row " + Bytes.toString(rowKey));
                 throw new NotificationException("Observer already executed");
             }
         } else {
-            logger.error("Notify its not true!!! So, another notificiation for observer "
+            logger.trace("Notify its not true!!! So, another notificiation for observer "
                     + observer.getName() + " was previously executed for " + Bytes.toString(columnFamily) + "/"
                     + Bytes.toString(column) + " row " + Bytes.toString(rowKey));
             throw new NotificationException("Notify is not true");

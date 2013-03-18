@@ -21,7 +21,7 @@ public class ServerSideAppMetrics {
         logger.info("Reporting metrics on the console with frequency of " + period + timeUnit.name());
         ConsoleReporter.enable(period, timeUnit);
         
-        notificationsMeter = Metrics.newMeter(Scanner.class, appName + "@notifications-sent", "notifications", TimeUnit.SECONDS);
+        notificationsMeter = Metrics.defaultRegistry().newMeter(Scanner.class, appName + "@notifications-sent", "notifications", TimeUnit.SECONDS);
     }
 
 

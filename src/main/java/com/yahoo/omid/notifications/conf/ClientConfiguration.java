@@ -15,16 +15,44 @@
  */
 package com.yahoo.omid.notifications.conf;
 
+import java.net.URL;
+
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.PropertiesConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Strings;
+import com.google.common.io.Resources;
+
 
 public class ClientConfiguration extends AbstractConfiguration {
 
-    protected final static String OMID_SERVER = "omidServer";
+    private static Logger LOG = LoggerFactory.getLogger(ClientConfiguration.class);
+	
+	protected final static String OMID_SERVER = "omidServer";
+    
     
     /**
      * Build a default client-side configuration
      */
     public ClientConfiguration() {
         super();
+        
+        try {
+        	// if there is an omid.client.properties file in the classpath, we use it for configuration parameters
+        	URL configURL = Resources.getResource("omid.client.properties");
+            try {
+        		addConfiguration(new PropertiesConfiguration(configURL));
+        		LOG.info("Read omid configuration from {}", configURL.toString());
+        		} catch (ConfigurationException e) {
+        			throw new RuntimeException("Cannot read configuration file omid.client.properties from classpath");
+        		}
+        } catch (IllegalArgumentException e) {
+        	LOG.info("No omid.client.properties file found in classpath. Using default configuration parameters");
+        }
+        	
+         
     }
     
     
