@@ -300,7 +300,7 @@ public class AppSandbox implements PathChildrenCacheListener {
 //                            logger.trace("App " + name + " sent message " + msg + " to actor " + instance + " with index " + calculatedIdx);
                             instanceIdx++;
                         } else {
-                            logger.warn("App " + name + " has no instances to redirect");
+                            logger.warn("App " + name + " has no instances to redirect to");
                         }
                     }
                     
