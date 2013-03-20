@@ -76,12 +76,12 @@ public class ClientSideAppMetrics {
     }
 
     public void addObserver(String obsName) {
-        observerInvocationMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "/" + obsName + "@invocations", "invocations", TimeUnit.SECONDS));
-        observerCompletionMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "/" + obsName + "@completions", "completions", TimeUnit.SECONDS));
-        observerAbortMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "/" + obsName + "@aborts", "aborts", TimeUnit.SECONDS));
-        omidAbortMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "/" + obsName + "@omid-aborts", "omid-aborts", TimeUnit.SECONDS));
-        unknownAbortMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "/" + obsName + "@unknown-aborts", "unknown-aborts", TimeUnit.SECONDS));
-        observerExecutionTimers.put(obsName, Metrics.newTimer(ObserverWrapper.class, this.appName + "/" + obsName + "-processing-time"));
+        observerInvocationMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "_" + obsName + "@invocations", "invocations", TimeUnit.SECONDS));
+        observerCompletionMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "_" + obsName + "@completions", "completions", TimeUnit.SECONDS));
+        observerAbortMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "_" + obsName + "@aborts", "aborts", TimeUnit.SECONDS));
+        omidAbortMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "_" + obsName + "@omid-aborts", "omid-aborts", TimeUnit.SECONDS));
+        unknownAbortMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "_" + obsName + "@unknown-aborts", "unknown-aborts", TimeUnit.SECONDS));
+        observerExecutionTimers.put(obsName, Metrics.newTimer(ObserverWrapper.class, this.appName + "_" + obsName + "-processing-time"));
     }
 
     public void notificationReceivedEvent() {
