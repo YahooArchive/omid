@@ -44,6 +44,8 @@ import org.apache.log4j.Logger;
 
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.yahoo.omid.client.CommitUnsuccessfulException;
+import com.yahoo.omid.client.TransactionException;
 import com.yahoo.omid.client.TransactionManager;
 import com.yahoo.omid.client.TransactionState;
 import com.yahoo.omid.client.TransactionalTable;
@@ -240,14 +242,23 @@ public class AppExampleWithMultipleEventInjectors {
                 startCdl.await();
                 while (true) {
                     rateLimiter.acquire();
-                    // Transaction adding to rows to a table
-                    TransactionState tx = tm.beginTransaction();
-                    String rowId = Long.toString(randGen.nextLong());
-                    doTransactionalPut(tx, tt, Bytes.toBytes("row-" + rowId), Bytes.toBytes(COLUMN_FAMILY_1),
-                            Bytes.toBytes(COLUMN_1), Bytes.toBytes("injector wrote on row-" + rowId));
-                    tm.tryCommit(tx);
+                    TransactionState tx = null;
+                    try {
+                        // Transaction adding to rows to a table
+                        tx = tm.beginTransaction();
+                        String rowId = Long.toString(randGen.nextLong());
+                        doTransactionalPut(tx, tt, Bytes.toBytes("row-" + rowId), Bytes.toBytes(COLUMN_FAMILY_1),
+                                Bytes.toBytes(COLUMN_1), Bytes.toBytes("injector wrote on row-" + rowId));
+                        tm.tryCommit(tx);
+                    } catch (CommitUnsuccessfulException e) {
+                        logger.warn("Could not commit Tx " + tx, e);
+                    } catch (IOException e) {
+                        logger.warn("Error during transactional put ", e);
+                    } catch (TransactionException e) {
+                        logger.warn("Tx exception ", e);
+                    }
                 }
-            } catch (Exception e) {
+            } catch (InterruptedException e) {
                 e.printStackTrace();
             } finally {
                 try {
