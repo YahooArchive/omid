@@ -54,7 +54,7 @@ import com.yahoo.omid.notifications.conf.DeltaOmidServerConfig;
 public class ScannerSandbox {
 
     private static final Log logger = LogFactory.getLog(ScannerSandbox.class);
-    
+
     // Lock used by ScannerContainers to protect concurrent accesses to HBaseAdmin when meta-data is created in HTables
     private static final Lock htableLock = new ReentrantLock();
 
@@ -73,12 +73,12 @@ public class ScannerSandbox {
     }
 
     public void registerInterestsFromApplication(App app) throws Exception {
-        for(String appInterest : app.getInterests()) {
+        for (String appInterest : app.getInterests()) {
             ScannerContainer scannerContainer = scanners.get(appInterest);
             if (scannerContainer == null) {
                 scannerContainer = new ScannerContainer(appInterest);
                 ScannerContainer previousScannerContainer = scanners.putIfAbsent(appInterest, scannerContainer);
-                if(previousScannerContainer != null) {
+                if (previousScannerContainer != null) {
                     previousScannerContainer.addInterestedApplication(app);
                     logger.trace("Application added to ScannerContainer for interest " + appInterest);
                     System.out.println("Application added to ScannerContainer for interest " + appInterest);
@@ -93,28 +93,29 @@ public class ScannerSandbox {
     }
 
     public void removeInterestsFromApplication(App app) throws InterruptedException {
-        for(String appInterest : app.getInterests()) {
+        for (String appInterest : app.getInterests()) {
             ScannerContainer scannerContainer = scanners.get(appInterest);
             if (scannerContainer != null) {
-                synchronized(scannerContainer) {
+                synchronized (scannerContainer) {
                     scannerContainer.removeInterestedApplication(app);
-                    if(scannerContainer.countInterestedApplications() == 0) {
+                    if (scannerContainer.countInterestedApplications() == 0) {
                         scannerContainer.stop();
-                        scanners.remove(appInterest);                        
+                        scanners.remove(appInterest);
                     }
-                }                
+                }
             }
         }
     }
 
     /**
      * Added for testing
+     * 
      * @return a map of scanner containers keyed by interest
      */
     public Map<String, ScannerContainer> getScanners() {
         return scanners;
     }
-    
+
     public class ScannerContainer {
 
         private final Logger logger = Logger.getLogger(ScannerContainer.class);
@@ -131,11 +132,12 @@ public class ScannerSandbox {
         /**
          * @param interest
          * @param appSandbox
-         * @throws IOException 
+         * @throws IOException
          */
         public ScannerContainer(String interest) throws IOException {
             this.interest = Interest.fromString(interest);
-            this.exec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("Scanner container [" + interest + "]").build());
+            this.exec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat(
+                    "Scanner container [" + interest + "]").build());
             // Generate scaffolding on HBase to maintain the information required to
             // perform notifications
             htableLock.lock();
@@ -146,7 +148,7 @@ public class ScannerSandbox {
                 if (!tableDesc.hasFamily(Bytes.toBytes(Constants.HBASE_META_CF))) {
                     String tableName = this.interest.getTable();
 
-                    if(admin.isTableEnabled(tableName)) {
+                    if (admin.isTableEnabled(tableName)) {
                         admin.disableTable(tableName);
                     }
 
@@ -164,7 +166,7 @@ public class ScannerSandbox {
                     logger.trace("Column family metadata added!!!");
                 } else {
                     logger.trace("Column family metadata was already added!!! Skipping...");
-                }            
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
@@ -176,15 +178,15 @@ public class ScannerSandbox {
         public void addInterestedApplication(App app) {
             interestedApps.add(app);
         }
-        
+
         public void removeInterestedApplication(App app) {
             interestedApps.remove(app);
         }
-        
+
         public int countInterestedApplications() {
             return interestedApps.size();
         }
-        
+
         public void start() throws Exception {
             // TODO Start the number of required scanners instead of only one
             exec.submit(new Scanner());
@@ -212,14 +214,15 @@ public class ScannerSandbox {
                     table = new HTable(config, interest.getTable());
                     while (!Thread.currentThread().isInterrupted()) {
                         try {
-                            logger.trace(interest + " scanner waiting " + scanIntervalMs + " millis");
+                            // logger.trace(interest + " scanner waiting " + scanIntervalMs + " millis");
                             Thread.sleep(scanIntervalMs);
                             chooseRandomRegionToScan();
                             scanner = table.getScanner(scan);
                             for (Result result : scanner) { // TODO Maybe paginate the result traversal
-                                UpdatedInterestMsg msg = new UpdatedInterestMsg(interest.toStringRepresentation(), result.getRow());
+                                UpdatedInterestMsg msg = new UpdatedInterestMsg(interest.toStringRepresentation(),
+                                        result.getRow());
                                 synchronized (interestedApps) {
-                                     logger.trace("interested apps size " + interestedApps.size());
+                                    // logger.trace("interested apps size " + interestedApps.size());
                                     for (App app : interestedApps) {
                                         app.getAppInstanceRedirector().tell(msg);
                                         app.getMetrics().notificationSentEvent();
@@ -232,14 +235,14 @@ public class ScannerSandbox {
                     }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
-                    logger.warn("Scanner on interest " + interest + " finished");          
+                    logger.warn("Scanner on interest " + interest + " finished");
                 } catch (IOException e) {
                     logger.warn("Scanner on interest " + interest + " not initiated because can't get table");
                 } finally {
-                    if(scanner != null) {
+                    if (scanner != null) {
                         scanner.close();
                     }
-                    if(table != null) {
+                    if (table != null) {
                         try {
                             table.close();
                         } catch (IOException e) {
@@ -257,20 +260,21 @@ public class ScannerSandbox {
                 String column = interest.getColumnFamily() + "/" + interest.getColumn() + Constants.HBASE_NOTIFY_SUFFIX;
                 byte[] c = Bytes.toBytes(column);
                 byte[] v = Bytes.toBytes("true");
-                
+
                 // Filter by value of the notify column
-                SingleColumnValueFilter valueFilter = new SingleColumnValueFilter(cf, c, CompareFilter.CompareOp.EQUAL, new BinaryComparator(v));
+                SingleColumnValueFilter valueFilter = new SingleColumnValueFilter(cf, c, CompareFilter.CompareOp.EQUAL,
+                        new BinaryComparator(v));
                 valueFilter.setFilterIfMissing(true);
                 scan.setFilter(valueFilter);
             }
-            
+
             private void chooseRandomRegionToScan() {
                 try {
                     Pair<byte[][], byte[][]> startEndKeys = table.getStartEndKeys();
                     byte[][] startKeys = startEndKeys.getFirst();
                     byte[][] endKeys = startEndKeys.getSecond();
                     int regionIdx = regionRoller.nextInt(startKeys.length);
-                    
+
                     scan.setStartRow(startKeys[regionIdx]);
                     byte[] stopRow = endKeys[regionIdx];
                     // Take into account that the stop row is exclusive, so we need
@@ -280,15 +284,16 @@ public class ScannerSandbox {
                         stopRow = addTrailingZeroToBA(endKeys[regionIdx]);
                     }
                     scan.setStopRow(stopRow);
-//                    logger.trace("Number of startKeys and endKeys in table: " + startKeys.length + " " + endKeys.length);
-//                    logger.trace("Region chosen: " + regionIdx);
-//                    logger.trace("Start & Stop Keys: " + Arrays.toString(startKeys[regionIdx]) + " "
-//                            + Arrays.toString(stopRow));
+                    // logger.trace("Number of startKeys and endKeys in table: " + startKeys.length + " " +
+                    // endKeys.length);
+                    // logger.trace("Region chosen: " + regionIdx);
+                    // logger.trace("Start & Stop Keys: " + Arrays.toString(startKeys[regionIdx]) + " "
+                    // + Arrays.toString(stopRow));
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
-            
+
             // Returns a new bytearray that will occur after the original one passed
             // by padding its contents with a trailing 0 byte (remember that a
             // byte[] is initialized to 0)
