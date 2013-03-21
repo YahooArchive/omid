@@ -50,9 +50,9 @@ import com.yahoo.omid.notifications.conf.ClientConfiguration;
 import com.yahoo.omid.notifications.metrics.ClientSideAppMetrics;
 
 public class DeltaOmid implements IncrementalApplication {
-    
+
     private static final Logger logger = Logger.getLogger(DeltaOmid.class);
-    
+
     private final CuratorFramework zkClient;
     private final String name;
     private final int port;
@@ -61,13 +61,13 @@ public class DeltaOmid implements IncrementalApplication {
     private final String zkAppInstancePath;
     private final NotificationManager notificationManager;
     private final ActorSystem appObserverSystem;
-    
+
     // The main structure shared by the InterestRecorder and NotificiationListener services in order to register and
     // notify observers
     // Key: The name of a registered observer
     // Value: The TransactionalObserver infrastructure that delegates on the implementation of the ObserverBehaviour
-    private final Map<String, ActorRef> registeredObservers = new HashMap<String, ActorRef>();    
-    
+    private final Map<String, ActorRef> registeredObservers = new HashMap<String, ActorRef>();
+
     public static class AppBuilder {
         // Required parameters
         private final String appName;
@@ -80,17 +80,17 @@ public class DeltaOmid implements IncrementalApplication {
             this.appName = appName;
             this.port = port;
         }
-        
+
         public AppBuilder setConfiguration(ClientConfiguration conf) {
             this.conf = conf;
-            return this; 
+            return this;
         }
-        
-        public AppBuilder addObserver(Observer observer) { 
+
+        public AppBuilder addObserver(Observer observer) {
             this.observers.add(observer);
             return this;
         }
-        
+
         public IncrementalApplication build() throws NotificationException {
             return new DeltaOmid(this);
         }
@@ -101,26 +101,26 @@ public class DeltaOmid implements IncrementalApplication {
         this.port = builder.port;
         this.conf = builder.conf;
         this.metrics = new ClientSideAppMetrics(this.name, conf);
-        
-        this.appObserverSystem = ActorSystem.create(name + "ObserverSystem", ConfigFactory.load().getConfig("DeltaOmid"));
+
+        this.appObserverSystem = ActorSystem.create(name + "ObserverSystem", ConfigFactory.load()
+                .getConfig("DeltaOmid"));
         List<String> observersInterests = new ArrayList<String>();
-        for(final Observer observer : builder.observers) {
+        for (final Observer observer : builder.observers) {
             String obsName = observer.getName();
             // Create an observer wrapper and register it in shared table
-            ActorRef obsActor = appObserverSystem.actorOf(
-                    new Props(new UntypedActorFactory() {
-                        public UntypedActor create() {
-                            return new ObserverWrapper(observer, conf.getOmidServer(), metrics);
-                        }
-                    }).withDispatcher("omidPinnedDispatcher").withRouter(new RoundRobinRouter(4)), obsName);
+            ActorRef obsActor = appObserverSystem.actorOf(new Props(new UntypedActorFactory() {
+                public UntypedActor create() {
+                    return new ObserverWrapper(observer, conf.getOmidServer(), metrics);
+                }
+            }).withDispatcher("omidPinnedDispatcher").withRouter(new RoundRobinRouter(4)), obsName);
             this.metrics.addObserver(obsName);
             registeredObservers.put(obsName, obsActor);
             List<Interest> interests = observer.getInterests();
-            if(interests == null || interests.size() == 0) {
+            if (interests == null || interests.size() == 0) {
                 logger.warn("Observer " + obsName + " doesn't have interests: it will never be notified");
                 continue;
             }
-            for(Interest interest : interests) {
+            for (Interest interest : interests) {
                 observersInterests.add(obsName + "/" + interest.toZkNodeRepresentation());
             }
         }
@@ -128,12 +128,14 @@ public class DeltaOmid implements IncrementalApplication {
         this.notificationManager = new NotificationManager(this, metrics);
         this.notificationManager.start();
         // Finally register the app in the ZK tree
-        this.zkClient = CuratorFrameworkFactory.newClient(this.conf.getZkServers(), new ExponentialBackoffRetry(3000, 3));
+        this.zkClient = CuratorFrameworkFactory.newClient(this.conf.getZkServers(),
+                new ExponentialBackoffRetry(3000, 3));
         this.zkClient.start();
         ZNRecord zkData = new ZNRecord(name);
         zkData.putListField(ZK_APP_DATA_NODE, observersInterests);
         try {
-            String zkAppPath = createZkSubBranch(ZkTreeUtils.getAppsNodePath(), name, new ZNRecordSerializer().serialize(zkData), false);
+            String zkAppPath = createZkSubBranch(ZkTreeUtils.getAppsNodePath(), name,
+                    new ZNRecordSerializer().serialize(zkData), false);
             String instanceName = InetAddress.getLocalHost().getHostAddress() + ":" + this.port;
             this.zkAppInstancePath = createZkSubBranch(zkAppPath, instanceName, new byte[0], true);
         } catch (Exception e) {
@@ -146,7 +148,7 @@ public class DeltaOmid implements IncrementalApplication {
     public String getName() {
         return name;
     }
-    
+
     @Override
     public int getPort() {
         return port;
@@ -170,18 +172,21 @@ public class DeltaOmid implements IncrementalApplication {
         }
         logger.trace(getName() + " instance running in " + InetAddress.getLocalHost() + ":" + getPort() + " finished");
     }
-    
-    private String createZkSubBranch(String mainBranchPath, String subBranchPath, byte[] data, boolean ephemeral) throws Exception {
+
+    private String createZkSubBranch(String mainBranchPath, String subBranchPath, byte[] data, boolean ephemeral)
+            throws Exception {
         String completeBranchPath = ZKPaths.makePath(mainBranchPath, subBranchPath);
         Stat s = zkClient.checkExists().forPath(completeBranchPath);
         if (s == null) {
-            if(data == null) {
+            if (data == null) {
                 data = new byte[0];
             }
-            if(ephemeral) {
-                return zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL).forPath(completeBranchPath, data);
+            if (ephemeral) {
+                return zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL)
+                        .forPath(completeBranchPath, data);
             } else {
-                return zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(completeBranchPath, data);
+                return zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT)
+                        .forPath(completeBranchPath, data);
             }
         }
         return completeBranchPath;
@@ -193,6 +198,4 @@ public class DeltaOmid implements IncrementalApplication {
                 + appObserverSystem + ", registeredObservers=" + registeredObservers + "]";
     }
 
-    
-    
 }
