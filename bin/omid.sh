@@ -33,15 +33,8 @@ for j in ../lib/*.jar; do
     CLASSPATH=$CLASSPATH:$j
 done
 
-if which greadlink; then
-	READLINK=greadlink
-else
-	READLINK=readlink
-fi
-
 tso() {
-    export LD_LIBRARY_PATH=`$READLINK -f ../lib`
-    exec java -Xmx1024m -cp $CLASSPATH -Domid.maxItems=100000 -Domid.maxCommits=100000 -Djava.library.path=$LD_LIBRARY_PATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.tso.TSOServer -port 1234 -batch $BATCHSIZE -ensemble 4 -quorum 2 -zk localhost:2181
+    exec java -Xmx1024m -cp $CLASSPATH -Domid.maxItems=1000000 -Domid.maxCommits=1000000 -Dlog4j.configuration=log4j.properties com.yahoo.omid.tso.TSOServer -port 1234 -batch $BATCHSIZE -zk localhost:2181
 }
 
 tsobench() {

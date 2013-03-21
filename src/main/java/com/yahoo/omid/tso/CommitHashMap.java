@@ -44,10 +44,9 @@ import org.jboss.netty.util.internal.ConcurrentHashMap;
 
 class CommitHashMap {
 
-    private final int size;
     private long largestDeletedTimestamp;
-    private final long[] startCommitMapping;
-    private final long[] rowsCommitMapping;
+    private final Cache startCommitMapping;
+    private final Cache rowsCommitMapping;
 
     /**
      * Constructs a new, empty hashtable with a default size of 1000
@@ -69,53 +68,29 @@ class CommitHashMap {
             throw new IllegalArgumentException("Illegal size: " + size);
         }
 
-        this.size = size;
-        this.startCommitMapping = new long[size * 2];
-        this.rowsCommitMapping = new long[size * 2];
-    }
-
-    private int index(long hash) {
-        return (int) (Math.abs(hash) % size);
+        this.startCommitMapping = new LongCache(size, 4);
+        this.rowsCommitMapping = new LongCache(size, 32);
     }
 
     public long getLatestWriteForRow(long hash) {
-        int index = index(hash);
-        return rowsCommitMapping[index];
+        return rowsCommitMapping.get(hash);
     }
 
     public void putLatestWriteForRow(long hash, long commitTimestamp) {
-        int index = index(hash);
-        long oldCommitTS = rowsCommitMapping[index];
-
-        if (oldCommitTS == commitTimestamp)
-            return;
-
-        rowsCommitMapping[index] = commitTimestamp;
-        largestDeletedTimestamp = Math.max(oldCommitTS, largestDeletedTimestamp);
+        long oldCommitTS = rowsCommitMapping.set(hash, commitTimestamp);
+        largestDeletedTimestamp = Math
+                .max(oldCommitTS, largestDeletedTimestamp);
     }
 
     public long getCommittedTimestamp(long startTimestamp) {
-        int indexStart = 2 * index(startTimestamp);
-        int indexCommit = indexStart + 1;
-
-        if (startCommitMapping[indexStart] == startTimestamp) {
-            return startCommitMapping[indexCommit];
-        } else {
-            return 0;
-        }
+        return startCommitMapping.get(startTimestamp);
     }
 
     public void setCommittedTimestamp(long startTimestamp, long commitTimestamp) {
-        int indexStart = 2 * index(startTimestamp);
-        int indexCommit = indexStart + 1;
+        long oldCommitTS = startCommitMapping.set(startTimestamp, commitTimestamp);
 
-        long oldCommitTS = startCommitMapping[indexCommit];
-        if (oldCommitTS == commitTimestamp)
-            return;
-
-        startCommitMapping[indexStart] = startTimestamp;
-        startCommitMapping[indexCommit] = commitTimestamp;
-        largestDeletedTimestamp = Math.max(oldCommitTS, largestDeletedTimestamp);
+        largestDeletedTimestamp = Math
+                .max(oldCommitTS, largestDeletedTimestamp);
     }
 
     // set of half aborted transactions
