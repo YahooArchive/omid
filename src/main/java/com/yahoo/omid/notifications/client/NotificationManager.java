@@ -43,22 +43,22 @@ public class NotificationManager {
     private static final long TIMEOUT = 3;
 
     private final IncrementalApplication app;
-    
+
     private final ClientSideAppMetrics metrics;
-    
+
     private final ExecutorService notificatorAcceptorExecutor;
-       
+
     public NotificationManager(IncrementalApplication app, ClientSideAppMetrics metrics) {
         this.app = app;
         this.metrics = metrics;
         this.notificatorAcceptorExecutor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat(
                 app.getName() + "-Notificator-%d").build());
     }
-    
+
     public void start() throws NotificationException {
-         notificatorAcceptorExecutor.execute(new NotificationDispatcher());
+        notificatorAcceptorExecutor.execute(new NotificationDispatcher());
     }
-    
+
     public void stop() {
         notificatorAcceptorExecutor.shutdown();
         try {
@@ -76,8 +76,8 @@ public class NotificationManager {
         public void run() {
             try {
                 TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(app.getPort());
-                NotificationReceiverService.Processor<NotificationDispatcher> processor = 
-                        new NotificationReceiverService.Processor<NotificationDispatcher>(this);
+                NotificationReceiverService.Processor<NotificationDispatcher> processor = new NotificationReceiverService.Processor<NotificationDispatcher>(
+                        this);
                 server = new TNonblockingServer(new TNonblockingServer.Args(serverTransport).processor(processor));
                 logger.info("App " + app.getName() + " listening for notifications on port " + app.getPort());
                 server.serve();
@@ -89,7 +89,7 @@ public class NotificationManager {
         }
 
         private void stop() {
-            if(server != null) {
+            if (server != null) {
                 server.stop();
                 logger.info("App " + app.getName() + " stopped listening for notifications on port " + app.getPort());
             }
@@ -103,7 +103,7 @@ public class NotificationManager {
             metrics.notificationReceivedEvent();
             ActorRef obsRef = app.getRegisteredObservers().get(notification.getObserver());
             if (obsRef != null) {
-                obsRef.tell(notification);                
+                obsRef.tell(notification);
             } else {
                 logger.error("Observer " + notification.getObserver() + " can not be notified");
             }
