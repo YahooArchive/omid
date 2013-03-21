@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.log4j.Logger;
+import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TFramedTransport;
@@ -61,7 +62,7 @@ public class AppSandbox implements PathChildrenCacheListener {
     private ScannerSandbox scannerSandbox;
 
     private ActorSystem appSandboxActorSystem;
-    
+
     private PathChildrenCache appsCache;
 
     private ConcurrentHashMap<String, App> registeredApps = new ConcurrentHashMap<String, App>();
@@ -103,33 +104,32 @@ public class AppSandbox implements PathChildrenCacheListener {
         }
     }
 
-    
     public void createApplication(String appName) throws Exception {
-        
-        synchronized(registeredApps) {
-            if(!registeredApps.containsKey(appName)) {
+
+        synchronized (registeredApps) {
+            if (!registeredApps.containsKey(appName)) {
                 String appNodePath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), appName);
                 logger.trace("Getting data from: " + appNodePath);
                 byte[] rawData = zkClient.getData().forPath(appNodePath);
                 ZNRecord appData = (ZNRecord) new ZNRecordSerializer().deserialize(rawData);
-                if(!appName.equals(appData.getId())) {
+                if (!appName.equals(appData.getId())) {
                     throw new RuntimeException("App data retrieved doesn't corresponds to app: " + appName);
-                }        
+                }
                 App app = new App(appName, appData);
                 registeredApps.put(appName, app);
                 scannerSandbox.registerInterestsFromApplication(app);
                 // NOTE: It is not necessary to create the instances. It is triggered automatically by curator
-                // through the App.childEvent() callback when constructing the App object (particularly, when 
+                // through the App.childEvent() callback when constructing the App object (particularly, when
                 // registering the interest in the Zk app node)
             }
         }
     }
-    
+
     private App removeApplication(String appName) throws Exception {
         App removedApp = null;
-        synchronized(registeredApps) {
+        synchronized (registeredApps) {
             removedApp = registeredApps.remove(appName);
-            if(removedApp != null) {
+            if (removedApp != null) {
                 scannerSandbox.removeInterestsFromApplication(removedApp);
             } else {
                 throw new Exception("App " + appName + " was not registered in AppSanbox");
@@ -137,26 +137,26 @@ public class AppSandbox implements PathChildrenCacheListener {
         }
         return removedApp;
     }
-    
+
     /**
-     * Represents an Application on the server side part of the notification framework.
-     * It contains the required meta-data to perform notification to the client side part of the framework
-     *
+     * Represents an Application on the server side part of the notification framework. It contains the required
+     * meta-data to perform notification to the client side part of the framework
+     * 
      */
     class App implements PathChildrenCacheListener {
 
         private final Logger logger = Logger.getLogger(App.class);
-        
+
         private String name;
-        
+
         private ServerSideAppMetrics metrics;
-        
+
         private ActorRef appInstanceRedirector;
-        
+
         private PathChildrenCache appsInstanceCache;
-        
+
         private ConcurrentHashMap<String, ActorRef> instances = new ConcurrentHashMap<String, ActorRef>();
-//        private List<ActorRef> instances = new ArrayList<ActorRef>();
+        // private List<ActorRef> instances = new ArrayList<ActorRef>();
         // A mapping between an interest and the observer wanting notifications for changes in that interest
         // Key: The interest as String
         // Value: The AppInstanceNotifer actor in charge of sending notifications to the corresponding app instance
@@ -164,22 +164,21 @@ public class AppSandbox implements PathChildrenCacheListener {
         // Otherwise a List of Observers would be required as a second paramter of the list
         // The Thrift class would need also to be modified
         private ConcurrentHashMap<String, String> interestObserverMap = new ConcurrentHashMap<String, String>();
-        
+
         public App(String appName, ZNRecord appData) throws Exception {
             this.name = appName;
             this.metrics = new ServerSideAppMetrics(appName);
-            appInstanceRedirector = appSandboxActorSystem.actorOf(
-                    new Props(new UntypedActorFactory() {
-                        public UntypedActor create() {
-                            return new AppInstanceRedirector();
-                        }
-                    }), this.name + "AppInstanceRedirector");
+            appInstanceRedirector = appSandboxActorSystem.actorOf(new Props(new UntypedActorFactory() {
+                public UntypedActor create() {
+                    return new AppInstanceRedirector();
+                }
+            }), this.name + "AppInstanceRedirector");
             // Retrieve the obs/interest data from each app data node
             List<String> observersInterests = appData.getListField(ZK_APP_DATA_NODE);
-            for(String observerInterest : observersInterests) {
+            for (String observerInterest : observersInterests) {
                 Iterable<String> tokens = Splitter.on("/").split(observerInterest);
                 ArrayList<String> tokenList = Lists.newArrayList(tokens);
-                if(tokenList.size() != 2) {
+                if (tokenList.size() != 2) {
                     throw new RuntimeException("Error extracting data from app node: " + appName);
                 }
                 String obsName = tokenList.get(0);
@@ -195,22 +194,22 @@ public class AppSandbox implements PathChildrenCacheListener {
         public ServerSideAppMetrics getMetrics() {
             return metrics;
         }
-        
+
         public ActorRef getAppInstanceRedirector() {
             return appInstanceRedirector;
         }
-        
+
         public Set<String> getInterests() {
             return interestObserverMap.keySet();
         }
-                
+
         private void addInterestToObserver(String interest, String observer) {
             String result = interestObserverMap.putIfAbsent(interest, observer);
-            if(result != null) {            
+            if (result != null) {
                 logger.warn("Other observer than " + observer + " manifested already interest in " + interest);
             }
         }
-        
+
         @Override
         public void childEvent(CuratorFramework client, PathChildrenCacheEvent event) throws Exception {
             String nodeNamePath = event.getData().getPath();
@@ -228,7 +227,7 @@ public class AppSandbox implements PathChildrenCacheListener {
             }
 
             case CHILD_REMOVED: {
-                synchronized(instances) {
+                synchronized (instances) {
                     logger.trace("Removing node: " + nodeNamePath + " Instances left: " + instances.size());
                     ActorRef removedAppInstance = instances.remove(hostnameAndPort);
                     if (removedAppInstance != null) {
@@ -251,32 +250,30 @@ public class AppSandbox implements PathChildrenCacheListener {
 
         public void addInstance(String hostnameAndPort) {
             final HostAndPort hp = HostAndPort.fromString(hostnameAndPort);
-            ActorRef appNotifierActor = appSandboxActorSystem.actorOf(
-                    new Props(new UntypedActorFactory() {
-                        public UntypedActor create() {
-                            return new AppInstanceNotifier(hp.getHostText(), hp.getPort());
-                        }
-                    }), name + hostnameAndPort);
+            ActorRef appNotifierActor = appSandboxActorSystem.actorOf(new Props(new UntypedActorFactory() {
+                public UntypedActor create() {
+                    return new AppInstanceNotifier(hp.getHostText(), hp.getPort());
+                }
+            }), name + hostnameAndPort);
             ActorRef result = instances.putIfAbsent(hostnameAndPort, appNotifierActor);
-            if(result != null) {            
+            if (result != null) {
                 logger.warn("App instance already running on " + hostnameAndPort);
             }
             logger.trace("Instance " + hostnameAndPort + " added to " + this);
         }
-        
+
         @Override
         public String toString() {
             return "App [name=" + name + ", instances=" + instances + ", interestObserverMap=" + interestObserverMap
                     + "]";
         }
 
-
         /**
          * There's only one actor to redirect messages to application
          * 
          */
         private class AppInstanceRedirector extends UntypedActor {
-            
+
             int instanceIdx = 0;
 
             @Override
@@ -287,23 +284,24 @@ public class AppSandbox implements PathChildrenCacheListener {
             @Override
             public void onReceive(Object msg) throws Exception {
                 if (msg instanceof UpdatedInterestMsg) {
-                    
-                    synchronized(instances) {
+
+                    synchronized (instances) {
                         int instanceCount = instances.size();
-                        if(instanceCount != 0) {
-                            if(instanceIdx == instanceCount) {
+                        if (instanceCount != 0) {
+                            if (instanceIdx == instanceCount) {
                                 instanceIdx = 0;
                             }
-                            int calculatedIdx = instanceIdx % instanceCount;                            
-                            ActorRef instance = (ActorRef) instances.values().toArray()[calculatedIdx]; //instances.get(instanceIdx % instanceCount);// 
+                            int calculatedIdx = instanceIdx % instanceCount;
+                            ActorRef instance = (ActorRef) instances.values().toArray()[calculatedIdx];
                             instance.tell(msg);
-//                            logger.trace("App " + name + " sent message " + msg + " to actor " + instance + " with index " + calculatedIdx);
+                            // logger.trace("App " + name + " sent message " + msg + " to actor " + instance +
+                            // " with index " + calculatedIdx);
                             instanceIdx++;
                         } else {
                             logger.warn("App " + name + " has no instances to redirect to");
                         }
                     }
-                    
+
                 } else {
                     unhandled(msg);
                 }
@@ -314,19 +312,18 @@ public class AppSandbox implements PathChildrenCacheListener {
                 logger.trace("App Instance Redirector stopped");
             }
         }
-        
+
         /**
          * There's one actor per application instance deployed
-         *
+         * 
          */
         private class AppInstanceNotifier extends UntypedActor {
-            
+
             private String host;
             private int port;
             private TTransport transport;
-            private NotificationReceiverService.Client client;
+            private NotificationReceiverService.Client appInstanceClient;
 
-            
             public AppInstanceNotifier(String host, int port) {
                 this.host = host;
                 this.port = port;
@@ -337,7 +334,7 @@ public class AppSandbox implements PathChildrenCacheListener {
                 // Start Thrift communication
                 transport = new TFramedTransport(new TSocket(host, port));
                 TProtocol protocol = new TBinaryProtocol(transport);
-                client = new NotificationReceiverService.Client(protocol);
+                appInstanceClient = new NotificationReceiverService.Client(protocol);
                 try {
                     transport.open();
                 } catch (TTransportException e) {
@@ -346,29 +343,47 @@ public class AppSandbox implements PathChildrenCacheListener {
                 }
                 logger.trace("App Notifier started");
             }
-            
+
             @Override
             public void onReceive(Object msg) throws Exception {
                 if (msg instanceof UpdatedInterestMsg) {
                     String updatedInterest = ((UpdatedInterestMsg) msg).interest;
                     byte[] updatedRowKey = ((UpdatedInterestMsg) msg).rowKey;
-                    
+
                     String observer = interestObserverMap.get(updatedInterest);
-                    
-                    if(observer != null) {
+
+                    if (observer != null) {
                         Interest interest = Interest.fromString(updatedInterest);
-                        Notification notification = new Notification(observer, 
-                                ByteBuffer.wrap(interest.getTableAsHBaseByteArray()),
-                                ByteBuffer.wrap(updatedRowKey), // This is the row that has been modified
-                                ByteBuffer.wrap(interest.getColumnFamilyAsHBaseByteArray()),
-                                ByteBuffer.wrap(interest.getColumnAsHBaseByteArray()));
+                        Notification notification = new Notification(observer, ByteBuffer.wrap(interest
+                                .getTableAsHBaseByteArray()), ByteBuffer.wrap(updatedRowKey), // This is the row that
+                                                                                              // has been modified
+                                ByteBuffer.wrap(interest.getColumnFamilyAsHBaseByteArray()), ByteBuffer.wrap(interest
+                                        .getColumnAsHBaseByteArray()));
                         try {
-        
-                            client.notify(notification);
-//                            logger.trace("App notifier sent notification " + notification + " to app running on " + host + ":" + port);
-                        } catch (Exception e) {
-                            logger.error(name + " app notifier could not send notification " + notification
-                                    + " to instance on " + host + ":" + port);
+                            appInstanceClient.notify(notification);
+                            // logger.trace("App notifier sent notification " + notification + " to app running on " +
+                            // host + ":" + port);
+                        } catch (TException te) {
+                            if (!transport.peek()) {
+                                // TODO WARN We added this in order to re-open the comm channel if something went wrong
+                                // However, when the app instance is removed, this condition seems to be never fulfilled
+                                // , what is strange. Maybe is because this actor is removed before the timeout of
+                                // the channel is expired
+                                try {
+                                    logger.warn("Trying to re-open transport to instance on " + host + ":" + port, te);
+                                    transport.close();
+                                    transport.open();
+                                } catch (TTransportException e) {
+                                    logger.error(name + " app notifier could not re-open transport to instance on "
+                                            + host + ":" + port + " Stopping app notifier", te);
+                                    getContext().stop(getSelf());
+                                }
+                            } else {
+                                logger.error(name + " app notifier could not send notification " + notification
+                                        + " to instance on " + host + ":" + port + " Destination mailbox may be full",
+                                        te);
+                                // TODO Add control flow at the application instance level
+                            }
                         }
                     } else {
                         logger.warn(name + " app notifier could not send notification to instance on " + host + ":"
@@ -378,10 +393,10 @@ public class AppSandbox implements PathChildrenCacheListener {
                     unhandled(msg);
                 }
             }
-            
+
             @Override
             public void postStop() {
-                if(transport != null) {
+                if (transport != null) {
                     transport.close();
                 }
                 logger.trace("App Notifier stopped");
