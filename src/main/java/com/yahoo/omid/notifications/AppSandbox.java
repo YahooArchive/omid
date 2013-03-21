@@ -191,10 +191,6 @@ public class AppSandbox implements PathChildrenCacheListener {
             appsInstanceCache.getListenable().addListener(this);
         }
 
-        public ServerSideAppMetrics getMetrics() {
-            return metrics;
-        }
-
         public ActorRef getAppInstanceRedirector() {
             return appInstanceRedirector;
         }
@@ -361,6 +357,7 @@ public class AppSandbox implements PathChildrenCacheListener {
                                         .getColumnAsHBaseByteArray()));
                         try {
                             appInstanceClient.notify(notification);
+                            metrics.notificationSentEvent();
                             // logger.trace("App notifier sent notification " + notification + " to app running on " +
                             // host + ":" + port);
                         } catch (TException te) {

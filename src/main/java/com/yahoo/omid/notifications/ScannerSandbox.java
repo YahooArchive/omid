@@ -231,7 +231,6 @@ public class ScannerSandbox {
                                 synchronized (interestedApps) {
                                     for (App app : interestedApps) {
                                         app.getAppInstanceRedirector().tell(msg);
-                                        app.getMetrics().notificationSentEvent();
                                     }
                                 }
                                 count++;
