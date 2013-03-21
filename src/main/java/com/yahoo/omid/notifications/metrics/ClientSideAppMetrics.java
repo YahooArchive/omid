@@ -36,7 +36,7 @@ public class ClientSideAppMetrics {
         this.appName = appName;
         String metricsConfig = conf.getString("omid.metrics");
         logger.info("metrics= {}", metricsConfig);
-
+        MetricsUtils.initMetrics(metricsConfig);
         notificationsMeter = Metrics.defaultRegistry().newMeter(NotificationManager.class,
                 this.appName + "@notifications-received", "notifications", TimeUnit.SECONDS);
     }
