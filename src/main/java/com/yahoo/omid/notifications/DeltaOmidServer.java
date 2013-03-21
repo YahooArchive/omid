@@ -29,17 +29,19 @@ import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.netflix.curator.retry.ExponentialBackoffRetry;
 import com.yahoo.omid.notifications.conf.DeltaOmidServerConfig;
+import com.yahoo.omid.notifications.conf.ServerConfiguration;
+import com.yahoo.omid.notifications.metrics.MetricsUtils;
 
 public class DeltaOmidServer {
 
     private static final Logger logger = Logger.getLogger(DeltaOmidServer.class);
-    
+
     private static CuratorFramework zkClient;
-    
+
     private static ScannerSandbox scannerSandbox;
-    
+
     private static AppSandbox appSandbox;
-    
+
     /**
      * This is where all starts...
      * 
@@ -49,28 +51,32 @@ public class DeltaOmidServer {
 
         DeltaOmidServerConfig conf = DeltaOmidServerConfig.parseConfig(args);
 
+        ServerConfiguration serverConfiguration = new ServerConfiguration();
+        if (serverConfiguration.containsKey("omid.metrics")) {
+            MetricsUtils.initMetrics(serverConfiguration.getString("omid.metrics"));
+        }
         logger.info("ooo Omid ooo - Starting Delta Omid Notification Server - ooo Omid ooo");
 
         zkClient = CuratorFrameworkFactory.newClient(conf.getZkServers(), new ExponentialBackoffRetry(1000, 3));
         zkClient.start();
         logger.info("ZK client started");
 
-        scannerSandbox = new ScannerSandbox(conf);        
+        scannerSandbox = new ScannerSandbox(conf);
         logger.info("Scanner Sandbox started");
-        
+
         appSandbox = new AppSandbox(zkClient, scannerSandbox);
         logger.info("App Sandbox started");
 
         createOrRecoverServerConfigFromZkTree();
-        
+
         logger.info("ooo Omid ooo - Delta Omid Notification Server started - ooo Omid ooo");
-        
+
     }
-    
+
     private static void createOrRecoverServerConfigFromZkTree() throws Exception {
         logger.info("Configuring server based on current ZK structure");
         Stat s = zkClient.checkExists().forPath(ZkTreeUtils.getRootNodePath());
-        if(s == null) {
+        if (s == null) {
             createZkTree();
         } else {
             recoverCurrentZkAppBranch();
@@ -78,7 +84,7 @@ public class DeltaOmidServer {
         appSandbox.startWatchingAppsNode();
         logger.info("Server configuration finished");
     }
-    
+
     private static void createZkTree() throws Exception {
         logger.info("Creating a new ZK Tree");
         zkClient.create().creatingParentsIfNeeded().forPath(ZkTreeUtils.getAppsNodePath());
@@ -89,11 +95,11 @@ public class DeltaOmidServer {
         logger.info("Recovering existing ZK Tree");
         String appsNodePath = ZkTreeUtils.getAppsNodePath();
         List<String> appNames = zkClient.getChildren().forPath(appsNodePath);
-        for(String appName : appNames) {
+        for (String appName : appNames) {
             appSandbox.createApplication(appName);
         }
     }
-    
+
     public static boolean waitForServerUp(String targetHostPort, long timeout) {
         long start = System.currentTimeMillis();
         String split[] = targetHostPort.split(":");
@@ -108,9 +114,7 @@ public class DeltaOmidServer {
                     outstream.write("stat".getBytes());
                     outstream.flush();
 
-                    reader =
-                        new BufferedReader(
-                                new InputStreamReader(sock.getInputStream()));
+                    reader = new BufferedReader(new InputStreamReader(sock.getInputStream()));
                     String line = reader.readLine();
                     if (line != null && line.startsWith("Zookeeper version:")) {
                         logger.info("Server UP");

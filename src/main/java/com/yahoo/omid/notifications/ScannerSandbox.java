@@ -50,6 +50,8 @@ import org.apache.log4j.Logger;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.notifications.AppSandbox.App;
 import com.yahoo.omid.notifications.conf.DeltaOmidServerConfig;
+import com.yahoo.omid.notifications.metrics.ServerSideInterestMetrics;
+import com.yammer.metrics.core.TimerContext;
 
 public class ScannerSandbox {
 
@@ -129,6 +131,8 @@ public class ScannerSandbox {
 
         private Set<App> interestedApps = Collections.synchronizedSet(new HashSet<App>());
 
+        ServerSideInterestMetrics metrics;
+
         /**
          * @param interest
          * @param appSandbox
@@ -136,6 +140,7 @@ public class ScannerSandbox {
          */
         public ScannerContainer(String interest) throws IOException {
             this.interest = Interest.fromString(interest);
+            metrics = new ServerSideInterestMetrics(interest);
             this.exec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat(
                     "Scanner container [" + interest + "]").build());
             // Generate scaffolding on HBase to maintain the information required to
@@ -218,17 +223,21 @@ public class ScannerSandbox {
                             Thread.sleep(scanIntervalMs);
                             chooseRandomRegionToScan();
                             scanner = table.getScanner(scan);
+                            TimerContext timer = metrics.scanStart();
+                            int count = 0;
                             for (Result result : scanner) { // TODO Maybe paginate the result traversal
                                 UpdatedInterestMsg msg = new UpdatedInterestMsg(interest.toStringRepresentation(),
                                         result.getRow());
                                 synchronized (interestedApps) {
-                                    // logger.trace("interested apps size " + interestedApps.size());
                                     for (App app : interestedApps) {
                                         app.getAppInstanceRedirector().tell(msg);
                                         app.getMetrics().notificationSentEvent();
                                     }
                                 }
+                                count++;
                             }
+                            metrics.scanEnd(timer);
+                            metrics.matched(count);
                         } catch (IOException e) {
                             logger.warn("Can't get scanner for table " + interest.getTable() + " retrying");
                         }

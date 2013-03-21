@@ -15,21 +15,43 @@
  */
 package com.yahoo.omid.notifications.conf;
 
+import java.net.URL;
+
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.PropertiesConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.io.Resources;
+
 public class ServerConfiguration extends AbstractConfiguration {
 
-protected final static String SCAN_INTERVAL_MS = "scanIntervalMs";
-    
+    protected final static String SCAN_INTERVAL_MS = "scanIntervalMs";
+    static Logger LOG = LoggerFactory.getLogger(ServerConfiguration.class);
+
     /**
      * Build a default server-side configuration
      */
     public ServerConfiguration() {
         super();
+
+        try {
+            // if there is an omid.client.properties file in the classpath, we use it for configuration parameters
+            URL configURL = Resources.getResource("omid.server.properties");
+            try {
+                addConfiguration(new PropertiesConfiguration(configURL));
+                LOG.info("Read omid configuration from {}", configURL.toString());
+            } catch (ConfigurationException e) {
+                throw new RuntimeException("Cannot read configuration file omid.client.properties from classpath");
+            }
+        } catch (IllegalArgumentException e) {
+            LOG.info("No omid.server.properties file found in classpath. Using default configuration parameters");
+        }
     }
-    
-    
+
     /**
      * Get interval between scans in milliseconds
-     *
+     * 
      * @return scan interval in millis
      */
     public long getScanIntervalMs() {
@@ -38,13 +60,13 @@ protected final static String SCAN_INTERVAL_MS = "scanIntervalMs";
 
     /**
      * Set interval between scans in milliseconds
-     *
+     * 
      * @param scanIntervalMs
-     *          scan interval in millis
+     *            scan interval in millis
      */
     public ServerConfiguration setScanIntervalMs(long scanIntervalMs) {
         setProperty(SCAN_INTERVAL_MS, scanIntervalMs);
         return this;
     }
-    
+
 }
