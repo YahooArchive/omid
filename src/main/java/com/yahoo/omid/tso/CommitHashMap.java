@@ -58,8 +58,8 @@ class CommitHashMap {
             throw new IllegalArgumentException("Illegal size: " + size);
         }
 
-        this.startCommitMapping = new LongCache(size, 2);
-        this.rowsCommitMapping = new LongCache(size, 8);
+        this.startCommitMapping = new LongCache(size, 16);
+        this.rowsCommitMapping = new LongCache(size, 32);
     }
 
     public long getLatestWriteForRow(long hash) {
