@@ -46,47 +46,24 @@ to restart the server without losing any commit information.</p>
 
 <h2>Compilation</h2>
 
-<p>Omid uses Maven for its build system. We are using a temporary repository for zookeeper and bookkeeper packages to ease
-the installation procedure</p>
+<p>Omid uses Maven for its build system. </p>
 
 <p>Then to compile omid:</p>
 
-<pre><code>$ tar jxvf omid-1.0-SNAPSHOT.tar.bz2
-$ cd omid-1.0-SNAPSHOT
-$ mvn install
+<pre><code>$ git clone https://github.com/yahoo/omid.git omid
+$ cd omid
+$ mvn install -DskipTests
 </code></pre>
 
-<p>Tests should run cleanly.</p>
+<p>Tests should run cleanly if you want to run them.</p>
 
 <h2>Running</h2>
 
-<p>You need to run four components before running the transactional
-client. They are bookkeeper, zookeeper, omid tso and
-hbase. Bookkeeper is needed by the TSO. Zookeeper is needed by
-bookkeeper and hbase. The TSO is needed by hbase. Hence, the order of
-starting should be: 
-     1. Zookeeper
-     2. Bookkeeper
-     3. TSO
-     4. Hbase</p>
+<p>To test Omid you might want to run a benchmark.</p>
 
-<h3>Zookeeper &amp; Bookkeeper</h3>
+<h3>Status Oracle</h3>
 
-<p>For simplicity we've included a utility script which starts zookeeper
-and bookkeeper. Run:</p>
-
-<pre><code>$ bin/omid.sh bktest
-</code></pre>
-
-<p>Omid doesn't use anything special in zookeeper or bookkeeper, so you
-can use any install for these. However, if you are running this
-anywhere but localhost, you need to update the setting for hbase and 
-TSO. See the hbase docs for changing the zookeeper quorum. For TSO,
-you need to modify bin/omid.sh.</p>
-
-<h3>TSO</h3>
-
-<p>To start the TSO, run:</p>
+<p>To start the SO, run:</p>
 
 <pre><code>$ bin/omid.sh tso
 </code></pre>
@@ -98,23 +75,13 @@ you need to modify bin/omid.sh.</p>
 <pre><code>$ bin/omid.sh tsobench
 </code></pre>
 
-<h3>HBase</h3>
-
-<p>We've included a utility script to start a HBase cluster on your local
-machine. Run:</p>
-
-<pre><code>$ bin/omid.sh tran-hbase
-</code></pre>
-
-<p>For running in a cluster</p>
-
 <h2>API</h2>
 
 <p>The public api is in</p>
 
-<pre><code>src/main/java/com/yahoo/omid/client/TransactionalTable.java
-src/main/java/com/yahoo/omid/client/TransactionState.java
-src/main/java/com/yahoo/omid/client/TransactionManager.java
+<pre><code>src/main/java/com/yahoo/omid/transaction/TTable.java
+src/main/java/com/yahoo/omid/transaction/Transaction.java
+src/main/java/com/yahoo/omid/transaction/TransactionManager.java
 </code></pre>
 
 <p>For an example of usage, look in</p>
@@ -127,6 +94,11 @@ src/main/java/com/yahoo/omid/client/TransactionManager.java
 <p>Logging can be adjusted in src/main/resource/log4j.properties.</p>
       </section>
     </div>
+
+<h2>Extra</h2>
+
+<a href="docs/hadoop-summit-europe-2013.pptx">Hadoop Summit Europe slides</a> 
+<a href="docs/hadoop-summit-europe-2013.pdf">Hadoop Summit Europe slides (pdf)</a> 
 
     <!-- FOOTER  -->
     <div id="footer_wrap" class="outer">
