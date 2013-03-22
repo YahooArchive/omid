@@ -294,7 +294,8 @@ public class AppSandbox implements PathChildrenCacheListener {
                             // " with index " + calculatedIdx);
                             instanceIdx++;
                         } else {
-                            logger.warn("App " + name + " has no instances to redirect to");
+                            logger.warn("App " + name + " has 0 instances to redirect to. Removing actor");
+                            getContext().stop(getSelf()); // Stop itself
                         }
                     }
 
@@ -361,26 +362,20 @@ public class AppSandbox implements PathChildrenCacheListener {
                             // logger.trace("App notifier sent notification " + notification + " to app running on " +
                             // host + ":" + port);
                         } catch (TException te) {
-                            if (!transport.peek()) {
-                                // TODO WARN We added this in order to re-open the comm channel if something went wrong
-                                // However, when the app instance is removed, this condition seems to be never fulfilled
-                                // , what is strange. Maybe is because this actor is removed before the timeout of
-                                // the channel is expired
-                                try {
-                                    logger.warn("Trying to re-open transport to instance on " + host + ":" + port, te);
-                                    transport.close();
-                                    transport.open();
-                                } catch (TTransportException e) {
-                                    logger.error(name + " app notifier could not re-open transport to instance on "
-                                            + host + ":" + port + " Stopping app notifier", te);
-                                    getContext().stop(getSelf());
-                                }
-                            } else {
-                                logger.error(name + " app notifier could not send notification " + notification
-                                        + " to instance on " + host + ":" + port + " Destination mailbox may be full",
-                                        te);
-                                // TODO Add control flow at the application instance level
+                            logger.warn(name + " app notifier could not send notification " + notification
+                                    + " to instance on " + host + ":" + port
+                                    + " Destination mailbox may be full or communication channel broken."
+                                    + " Trying to re-open transport to instance", te);
+                            try {
+                                transport.close();
+                                transport.open();
+                            } catch (TTransportException e) {
+                                logger.error(name + " app notifier could not re-open transport to instance on " + host
+                                        + ":" + port + " Stopping app notifier", e);
+                                getContext().stop(getSelf());
+                                throw e;
                             }
+                            // TODO Add control flow at the application instance level
                         }
                     } else {
                         logger.warn(name + " app notifier could not send notification to instance on " + host + ":"
