@@ -37,11 +37,18 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Coprocessor;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.MasterNotRunningException;
+import org.apache.hadoop.hbase.ZooKeeperConnectionException;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
+import com.google.common.net.HostAndPort;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.client.CommitUnsuccessfulException;
@@ -49,10 +56,13 @@ import com.yahoo.omid.client.TransactionException;
 import com.yahoo.omid.client.TransactionManager;
 import com.yahoo.omid.client.TransactionState;
 import com.yahoo.omid.client.TransactionalTable;
+import com.yahoo.omid.examples.Constants;
 import com.yahoo.omid.notifications.Interest;
+import com.yahoo.omid.notifications.TransactionCommittedRegionCoprocessor;
 import com.yahoo.omid.notifications.client.DeltaOmid;
 import com.yahoo.omid.notifications.client.IncrementalApplication;
 import com.yahoo.omid.notifications.client.Observer;
+import com.yahoo.omid.notifications.conf.ClientConfiguration;
 
 /**
  * This applications shows the basic usage of the Omid's notification framework
@@ -76,6 +86,13 @@ public class AppExampleWithMultipleEventInjectors {
         options.addOption(OptionBuilder.withLongOpt("port")
                 .withDescription("app instance port to receive notifications").withType(Number.class).hasArg()
                 .withArgName("argname").create());
+        options.addOption(OptionBuilder.withArgName("zk_cluster").hasArg()
+                .withDescription("comma separated zk server list: host1:port1,host2:port2...").create("zk"));
+        options.addOption(OptionBuilder.withArgName("hbase_master").hasArg()
+                .withDescription("hbase master server: host1:port1").create("hbase"));
+        options.addOption("createDB", false, "If present, the database will be re-created");
+        options.addOption(OptionBuilder.withArgName("omid_server").hasArg().withDescription("omid server: host1:port1")
+                .create("omid"));
         options.addOption("inject", false, "If present, load will be injected");
         options.addOption(OptionBuilder.withLongOpt("injectors").withDescription("Number of tasks to inject txs")
                 .withType(Number.class).hasArg().withArgName("argname").create());
@@ -84,15 +101,35 @@ public class AppExampleWithMultipleEventInjectors {
                 .withArgName("argname").create());
 
         boolean inject = false;
+        boolean createDB = false;
         int nOfInjectorTasks = 1;
         int txRate = 1;
         int appInstancePort = 6666;
+        String zk = "localhost:2181";
+        String hbase = "localhost:2181";
+        String omid = "localhost:1234";
 
         try {
             CommandLine cmdLine = cmdLineParser.parse(options, args);
 
             if (cmdLine.hasOption("port")) {
                 appInstancePort = ((Number) cmdLine.getParsedOptionValue("port")).intValue();
+            }
+
+            if (cmdLine.hasOption("zk")) {
+                zk = cmdLine.getOptionValue("zk");
+            }
+
+            if (cmdLine.hasOption("hbase")) {
+                hbase = cmdLine.getOptionValue("hbase");
+            }
+
+            if (cmdLine.hasOption("omid")) {
+                omid = cmdLine.getOptionValue("omid");
+            }
+
+            if (cmdLine.hasOption("createDB")) {
+                createDB = true;
             }
 
             if (cmdLine.hasOption("inject")) {
@@ -112,9 +149,22 @@ public class AppExampleWithMultipleEventInjectors {
         }
 
         // TSO Client setup
-        Configuration tsoClientHbaseConf = HBaseConfiguration.create();
-        tsoClientHbaseConf.set("tso.host", "localhost");
-        tsoClientHbaseConf.setInt("tso.port", 1234);
+        Configuration hbaseConf = HBaseConfiguration.create();
+        final HostAndPort hbaseHp = HostAndPort.fromString(hbase);
+        hbaseConf.set("hbase.zookeeper.quorum", hbaseHp.getHostText());
+        hbaseConf.set("hbase.zookeeper.property.clientPort", Integer.toString(hbaseHp.getPortOrDefault(2181)));
+
+        if (createDB) {
+            createTables(hbaseConf);
+        }
+
+        Configuration tsoClientConf = HBaseConfiguration.create();
+        final HostAndPort omidHp = HostAndPort.fromString(omid);
+        tsoClientConf.set("hbase.zookeeper.quorum", hbaseHp.getHostText());
+        tsoClientConf.set("hbase.zookeeper.property.clientPort", Integer.toString(hbaseHp.getPortOrDefault(2181)));
+        tsoClientConf.set("tso.host", omidHp.getHostText());
+        tsoClientConf.setInt("tso.port", omidHp.getPortOrDefault(1234));
+        logger.trace(omidHp.getHostText() + " " + omidHp.getPortOrDefault(1234));
 
         logger.info("ooo Omid ooo - STARTING OMID'S EXAMPLE NOTIFICATION APP. - ooo Omid ooo");
 
@@ -128,13 +178,17 @@ public class AppExampleWithMultipleEventInjectors {
                     TransactionState tx) {
                 // logger.info("o1 -> Update on " + Bytes.toString(table) + Bytes.toString(rowKey)
                 // + Bytes.toString(columnFamily) + Bytes.toString(column));
-                Configuration tsoClientConf = HBaseConfiguration.create();
-                tsoClientConf.set("tso.host", "localhost");
-                tsoClientConf.setInt("tso.port", 1234);
 
                 TransactionalTable tt = null;
                 try {
-                    tt = new TransactionalTable(tsoClientConf, TABLE_1);
+                    Configuration tsoClientHbaseConfObs = HBaseConfiguration.create();
+                    tsoClientHbaseConfObs.set("hbase.zookeeper.quorum", hbaseHp.getHostText());
+                    tsoClientHbaseConfObs.set("hbase.zookeeper.property.clientPort",
+                            Integer.toString(hbaseHp.getPortOrDefault(2181)));
+                    tsoClientHbaseConfObs.set("tso.host", omidHp.getHostText());
+                    tsoClientHbaseConfObs.setInt("tso.port", omidHp.getPortOrDefault(1234));
+
+                    tt = new TransactionalTable(tsoClientHbaseConfObs, TABLE_1);
                     doTransactionalPut(tx, tt, rowKey, Bytes.toBytes(COLUMN_FAMILY_1), Bytes.toBytes(COLUMN_2),
                             Bytes.toBytes("data written by observer o1"));
                 } catch (IOException e) {
@@ -183,8 +237,11 @@ public class AppExampleWithMultipleEventInjectors {
         };
 
         // Create application
-        final IncrementalApplication app = new DeltaOmid.AppBuilder("ExampleApp", appInstancePort).addObserver(obs1)
-                .addObserver(obs2).build();
+        ClientConfiguration cf = new ClientConfiguration();
+        cf.setOmidServer(omid);
+        cf.setZkServers(zk);
+        final IncrementalApplication app = new DeltaOmid.AppBuilder("ExampleApp", appInstancePort).setConfiguration(cf)
+                .addObserver(obs1).addObserver(obs2).build();
 
         logger.info("ooo Omid ooo - APP Instance Created - ooo Omid ooo");
 
@@ -207,7 +264,7 @@ public class AppExampleWithMultipleEventInjectors {
                     .setNameFormat("Injector-%d").build());
             CountDownLatch startCdl = new CountDownLatch(1);
             for (int i = 0; i < nOfInjectorTasks; i++) {
-                injectors.execute(new EventInjectorTask(tsoClientHbaseConf, startCdl, txRate));
+                injectors.execute(new EventInjectorTask(tsoClientConf, startCdl, txRate));
             }
             logger.info("ooo Omid ooo - STARTING " + nOfInjectorTasks + " LOOP TASKS INJECTING AT " + txRate
                     + " TX/S IN COLUMN " + COLUMN_1 + " - ooo Omid ooo");
@@ -295,4 +352,30 @@ public class AppExampleWithMultipleEventInjectors {
         tt.put(tx, row);
     }
 
+    private static void createTables(Configuration hbaseConf) throws MasterNotRunningException,
+            ZooKeeperConnectionException, IOException {
+        logger.info("Re-Creating Tables");
+        HBaseAdmin admin = new HBaseAdmin(hbaseConf);
+
+        if (admin.tableExists(TABLE_1)) {
+            if (admin.isTableEnabled(TABLE_1)) {
+                admin.disableTable(TABLE_1);
+            }
+            admin.deleteTable(Constants.TABLE_1);
+        }
+        HTableDescriptor table = new HTableDescriptor(TABLE_1);
+        table.addCoprocessor(TransactionCommittedRegionCoprocessor.class.getName(), null, Coprocessor.PRIORITY_USER,
+                null);
+        HColumnDescriptor columnFamily = new HColumnDescriptor(COLUMN_FAMILY_1);
+        columnFamily.setMaxVersions(Integer.MAX_VALUE);
+        table.addFamily(columnFamily);
+
+        admin.createTable(table);
+
+        HTableDescriptor[] tables = admin.listTables();
+        for (HTableDescriptor t : tables) {
+            logger.info("Tables:" + t.getNameAsString());
+        }
+        admin.close();
+    }
 }
