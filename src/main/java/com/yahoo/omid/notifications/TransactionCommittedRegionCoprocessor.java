@@ -20,20 +20,19 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
 import org.apache.hadoop.hbase.coprocessor.ObserverContext;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TransactionCommittedRegionCoprocessor extends BaseRegionObserver {
 
-    private static final Logger logger = Logger.getLogger(TransactionCommittedRegionCoprocessor.class);
+    private static final Logger logger = LoggerFactory.getLogger(TransactionCommittedRegionCoprocessor.class);
 
     @Override
     public void start(CoprocessorEnvironment e) throws IOException {
@@ -47,33 +46,28 @@ public class TransactionCommittedRegionCoprocessor extends BaseRegionObserver {
         byte[] tableNameAsBytes = c.getEnvironment().getRegion().getTableDesc().getName();
         String tableName = Bytes.toString(tableNameAsBytes);
 
-        if (tableName.equals(".META.")|| tableName.equals("-ROOT-")) {
-        	// do not instrument hbase meta tables
-        	// TODO allow filtering out more tables?
-        	return;
+        if (tableName.equals(".META.") || tableName.equals("-ROOT-")) {
+            // do not instrument hbase meta tables
+            // TODO allow filtering out more tables?
+            return;
         }
 
-        //logger.trace("We're in pre-put");
-        HTable table = new HTable(HBaseConfiguration.create(), tableName);
-        
         Map<byte[], List<KeyValue>> kvs = put.getFamilyMap();
 
         for (List<KeyValue> kvl : kvs.values()) {
             for (KeyValue kv : kvl) {
                 String cf = Bytes.toString(kv.getFamily());
-                // TODO Here we should filter the columns that are not requested to be observed, 
+                // TODO Here we should filter the columns that are not requested to be observed,
                 // but cannot access to the required structures from a BaseRegionObserver
-                if(!cf.equals(Constants.HBASE_META_CF)) {
+                if (!cf.equals(Constants.HBASE_META_CF)) {
                     String col = Bytes.toString(kv.getQualifier());
                     // Pattern for notify column in framework's metadata column family: <cf>/<c>-notify
                     put.add(Bytes.toBytes(Constants.HBASE_META_CF),
-                            Bytes.toBytes(cf + "/" + col + Constants.HBASE_NOTIFY_SUFFIX), kv.getTimestamp(), Bytes.toBytes("true"));
-                    logger.trace("This is the put added : " + put);
+                            Bytes.toBytes(cf + "/" + col + Constants.HBASE_NOTIFY_SUFFIX), kv.getTimestamp(),
+                            Bytes.toBytes("true"));
                 }
             }
         }
-        table.close();
-        //logger.trace("Out of pre-put");
     }
 
 }
