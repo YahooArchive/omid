@@ -45,7 +45,7 @@ import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
-import org.apache.log4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.notifications.AppSandbox.App;
@@ -120,7 +120,7 @@ public class ScannerSandbox {
 
     public class ScannerContainer {
 
-        private final Logger logger = Logger.getLogger(ScannerContainer.class);
+        private final org.slf4j.Logger logger = LoggerFactory.getLogger(ScannerContainer.class);
 
         private final long TIMEOUT = 3;
         private final TimeUnit UNIT = TimeUnit.SECONDS;
@@ -141,6 +141,7 @@ public class ScannerSandbox {
         public ScannerContainer(String interest) throws IOException {
             this.interest = Interest.fromString(interest);
             metrics = new ServerSideInterestMetrics(interest);
+
             this.exec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat(
                     "Scanner container [" + interest + "]").build());
             // Generate scaffolding on HBase to maintain the information required to
@@ -193,9 +194,8 @@ public class ScannerSandbox {
         }
 
         public void start() throws Exception {
-            // TODO Start the number of required scanners instead of only one
             exec.submit(new Scanner());
-            logger.trace("Scanners on " + interest + " started");
+            logger.trace("{} scanner(s) on " + interest + " started", "" + 1);
         }
 
         public void stop() throws InterruptedException {
@@ -214,29 +214,44 @@ public class ScannerSandbox {
             public Boolean call() { // Scan and notify
                 long scanIntervalMs = conf.getScanIntervalMs();
                 ResultScanner scanner = null;
-                configureBasicScanProperties();
                 try {
                     table = new HTable(config, interest.getTable());
+                    long initTimeMillis = System.currentTimeMillis();
                     while (!Thread.currentThread().isInterrupted()) {
+                        scan = new Scan();
+                        configureBasicScanProperties();
+
                         try {
-                            // logger.trace(interest + " scanner waiting " + scanIntervalMs + " millis");
-                            Thread.sleep(scanIntervalMs);
+                            if (System.currentTimeMillis() < (initTimeMillis + scanIntervalMs)) {
+                                long waitTime = scanIntervalMs - (System.currentTimeMillis() - initTimeMillis);
+                                logger.trace(interest + " scanner waiting " + waitTime + " millis");
+                                Thread.sleep(waitTime);
+                            }
+                            initTimeMillis = System.currentTimeMillis();
                             chooseRandomRegionToScan();
                             scanner = table.getScanner(scan);
-                            TimerContext timer = metrics.scanStart();
-                            int count = 0;
-                            for (Result result : scanner) { // TODO Maybe paginate the result traversal
-                                UpdatedInterestMsg msg = new UpdatedInterestMsg(interest.toStringRepresentation(),
-                                        result.getRow());
-                                synchronized (interestedApps) {
-                                    for (App app : interestedApps) {
-                                        app.getAppInstanceRedirector().tell(msg);
+                            logger.trace("NEW scan for {}", interest.toStringRepresentation());
+                            try {
+                                TimerContext timer = metrics.scanStart();
+                                int count = 0;
+                                for (Result result : scanner) { // TODO Maybe paginate the result traversal
+                                    // TODO check consistent when loading only scanned families?
+                                    UpdatedInterestMsg msg = new UpdatedInterestMsg(interest.toStringRepresentation(),
+                                            result.getRow());
+                                    logger.trace("Found update for {} in row {}", interest.toStringRepresentation(),
+                                            Bytes.toString(result.getRow()));
+                                    synchronized (interestedApps) {
+                                        for (App app : interestedApps) {
+                                            app.getAppInstanceRedirector().tell(msg);
+                                        }
                                     }
+                                    count++;
                                 }
-                                count++;
+                                metrics.scanEnd(timer);
+                                metrics.matched(count);
+                            } finally {
+                                scanner.close();
                             }
-                            metrics.scanEnd(timer);
-                            metrics.matched(count);
                         } catch (IOException e) {
                             logger.warn("Can't get scanner for table " + interest.getTable() + " retrying");
                         }
@@ -258,6 +273,7 @@ public class ScannerSandbox {
                         }
                     }
                 }
+                logger.error("LEAVING SCANNER");
                 return new Boolean(true);
             }
 
@@ -274,6 +290,12 @@ public class ScannerSandbox {
                         new BinaryComparator(v));
                 valueFilter.setFilterIfMissing(true);
                 scan.setFilter(valueFilter);
+                // NOTE fine with respect to consistency: in our case we are only interested in this column
+                // scan.setLoadColumnFamiliesOnDemand(true);
+                // TODO configurable
+                // NOTE: apparently that does not get set from hbase.client.scanner.caching , so we set it manually here
+                scan.setCaching(500);
+                logger.info("SCANNER WITH CACHING OF " + scan.getCaching());
             }
 
             private void chooseRandomRegionToScan() {
@@ -292,6 +314,11 @@ public class ScannerSandbox {
                         stopRow = addTrailingZeroToBA(endKeys[regionIdx]);
                     }
                     scan.setStopRow(stopRow);
+
+                    logger.trace(
+                            "Scanning {} region{} from {} to {}",
+                            new String[] { Bytes.toString(table.getTableName()), "" + regionIdx,
+                                    Bytes.toString(startKeys[regionIdx]), Bytes.toString(endKeys[regionIdx]) });
                     // logger.trace("Number of startKeys and endKeys in table: " + startKeys.length + " " +
                     // endKeys.length);
                     // logger.trace("Region chosen: " + regionIdx);

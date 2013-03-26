@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.log4j.Logger;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -31,6 +30,8 @@ import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
@@ -55,7 +56,7 @@ import com.yahoo.omid.notifications.thrift.generated.NotificationReceiverService
 
 public class AppSandbox implements PathChildrenCacheListener {
 
-    private static final Logger logger = Logger.getLogger(AppSandbox.class);
+    private static final Logger logger = LoggerFactory.getLogger(AppSandbox.class);
 
     private CuratorFramework zkClient;
 
@@ -145,7 +146,7 @@ public class AppSandbox implements PathChildrenCacheListener {
      */
     class App implements PathChildrenCacheListener {
 
-        private final Logger logger = Logger.getLogger(App.class);
+        private final Logger logger = LoggerFactory.getLogger(App.class);
 
         private String name;
 
@@ -183,6 +184,7 @@ public class AppSandbox implements PathChildrenCacheListener {
                 }
                 String obsName = tokenList.get(0);
                 String interest = tokenList.get(1);
+                logger.trace("Adding interest {} to observer {}", interest, obsName);
                 addInterestToObserver(interest, obsName);
             }
             String appPath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), this.name);
