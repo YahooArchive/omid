@@ -38,6 +38,7 @@ import org.jboss.netty.handler.codec.serialization.ObjectEncoder;
 import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
 import org.jboss.netty.util.ObjectSizeEstimator;
 
+import com.yahoo.omid.notifications.metrics.MetricsUtils;
 import com.yahoo.omid.tso.persistence.BookKeeperStateBuilder;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
 import com.yahoo.omid.tso.persistence.LoggerProtocol;
@@ -126,6 +127,11 @@ public class TSOServer implements Runnable {
             public void addRecordComplete(int rc, Object ctx) {
             }
         }, null);
+
+        String metricsConfig = config.getMetrics();
+        if (metricsConfig != null) {
+            MetricsUtils.initMetrics(metricsConfig);
+        }
 
         TSOState.BATCH_SIZE = config.getBatchSize();
         System.out.println("PARAM MAX_ITEMS: " + TSOState.MAX_ITEMS);

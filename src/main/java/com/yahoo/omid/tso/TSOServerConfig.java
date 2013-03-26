@@ -63,7 +63,10 @@ public class TSOServerConfig {
 
     @Parameter(names = "-quorum", description = "WAL quorum size")
     private int quorum;
-    
+
+    @Parameter(names = "-metrics", description = "Metrics config")
+    private String metrics;
+
     TSOServerConfig(){
         this.port = Integer.parseInt(System.getProperty("PORT", "1234"));
         this.batch = Integer.parseInt(System.getProperty("BATCH", "0"));
@@ -104,5 +107,9 @@ public class TSOServerConfig {
     
     public int getQuorumSize(){
         return quorum;
+    }
+    
+    public String getMetrics() {
+        return metrics;
     }
 }

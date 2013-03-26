@@ -56,10 +56,12 @@ import com.yahoo.omid.tso.messages.FullAbortRequest;
 import com.yahoo.omid.tso.messages.LargestDeletedTimestampReport;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
+import com.yahoo.omid.tso.metrics.StatusOracleMetrics;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
 import com.yahoo.omid.tso.persistence.LoggerException;
 import com.yahoo.omid.tso.persistence.LoggerException.Code;
 import com.yahoo.omid.tso.persistence.LoggerProtocol;
+import com.yammer.metrics.core.TimerContext;
 
 /**
  * ChannelHandler for the TSO Server
@@ -94,6 +96,8 @@ public class TSOHandler extends SimpleChannelHandler {
      */
     private TSOState sharedState;
 
+    private StatusOracleMetrics metrics;
+
     private FlushThread flushThread;
     private ScheduledExecutorService scheduledExecutor;
     private ScheduledFuture<?> flushFuture;
@@ -109,6 +113,7 @@ public class TSOHandler extends SimpleChannelHandler {
         this.channelGroup = channelGroup;
         this.timestampOracle = state.getSO();
         this.sharedState = state;
+        this.metrics = new StatusOracleMetrics();
     }
 
     public void start() {
@@ -184,6 +189,7 @@ public class TSOHandler extends SimpleChannelHandler {
                 e.printStackTrace();
             }
             abortCount++;
+            metrics.selfAborted();
             sharedState.processAbort(msg.startTimestamp);
             synchronized (sharedMsgBufLock) {
                 queueHalfAbort(msg.startTimestamp);
@@ -195,6 +201,8 @@ public class TSOHandler extends SimpleChannelHandler {
      * Handle the TimestampRequest message
      */
     public void handle(TimestampRequest msg, ChannelHandlerContext ctx) {
+        metrics.begin();
+        TimerContext timer = metrics.startBeginProcessing();
         long timestamp;
         synchronized (sharedState) {
             try {
@@ -239,6 +247,7 @@ public class TSOHandler extends SimpleChannelHandler {
         }
         Channels.write(ctx, future, cb);
         Channels.write(channel, new TimestampResponse(timestamp));
+        timer.stop();
     }
 
     ChannelBuffer cb = ChannelBuffers.buffer(10);
@@ -293,6 +302,8 @@ public class TSOHandler extends SimpleChannelHandler {
      * Handle the CommitRequest message
      */
     public void handle(CommitRequest msg, ChannelHandlerContext ctx) {
+        TimerContext timerProcessing = metrics.startCommitProcessing();
+        TimerContext timerLatency = metrics.startCommitLatency();
         CommitResponse reply = new CommitResponse(msg.startTimestamp);
         ByteArrayOutputStream baos = sharedState.baos;
         DataOutputStream toWAL = sharedState.toWAL;
@@ -326,6 +337,7 @@ public class TSOHandler extends SimpleChannelHandler {
             }
 
             if (reply.committed) {
+                metrics.commited();
                 // 2. commit
                 try {
                     long commitTimestamp = timestampOracle.next(toWAL);
@@ -379,6 +391,7 @@ public class TSOHandler extends SimpleChannelHandler {
                 }
             } else { // add it to the aborted list
                 abortCount++;
+                metrics.aborted();
                 try {
                     toWAL.writeByte(LoggerProtocol.ABORT);
                     toWAL.writeLong(msg.startTimestamp);
@@ -394,7 +407,7 @@ public class TSOHandler extends SimpleChannelHandler {
 
             TSOHandler.transferredBytes.incrementAndGet();
 
-            ChannelandMessage cam = new ChannelandMessage(ctx, reply);
+            ChannelandMessage cam = new ChannelandMessage(ctx, reply, timerLatency);
 
             sharedState.nextBatch.add(cam);
             if (sharedState.baos.size() >= TSOState.BATCH_SIZE) {
@@ -415,6 +428,7 @@ public class TSOHandler extends SimpleChannelHandler {
                                 ArrayList<ChannelandMessage> theBatch = (ArrayList<ChannelandMessage>) ctx;
                                 for (ChannelandMessage cam : theBatch) {
                                     Channels.write(cam.ctx, Channels.succeededFuture(cam.ctx.getChannel()), cam.msg);
+                                    cam.timer.stop();
                                 }
                             }
 
@@ -427,12 +441,14 @@ public class TSOHandler extends SimpleChannelHandler {
 
         }
 
+        timerProcessing.stop();
     }
 
     /**
      * Handle the CommitQueryRequest message
      */
     public void handle(CommitQueryRequest msg, ChannelHandlerContext ctx) {
+        metrics.query();
         CommitQueryResponse reply = new CommitQueryResponse(msg.startTimestamp);
         reply.queryTimestamp = msg.queryTimestamp;
         synchronized (sharedState) {
@@ -479,6 +495,7 @@ public class TSOHandler extends SimpleChannelHandler {
                             ArrayList<ChannelandMessage> theBatch = (ArrayList<ChannelandMessage>) ctx;
                             for (ChannelandMessage cam : theBatch) {
                                 Channels.write(cam.ctx, Channels.succeededFuture(cam.ctx.getChannel()), cam.msg);
+                                cam.timer.stop();
                             }
                         }
 
@@ -554,10 +571,12 @@ public class TSOHandler extends SimpleChannelHandler {
     public static class ChannelandMessage {
         ChannelHandlerContext ctx;
         TSOMessage msg;
+        TimerContext timer;
 
-        ChannelandMessage(ChannelHandlerContext c, TSOMessage m) {
+        ChannelandMessage(ChannelHandlerContext c, TSOMessage m, TimerContext t) {
             ctx = c;
             msg = m;
+            timer = t;
         }
     }
 
