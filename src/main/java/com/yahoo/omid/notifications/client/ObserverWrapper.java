@@ -22,6 +22,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -114,11 +115,28 @@ public class ObserverWrapper extends UntypedActor {
             // logger.trace("TRANSACTION " + tx + " COMMITTED");
         } catch (NotificationException e) {
             // logger.trace("Aborting tx " + tx);
+            long ts = tx.getStartTimestamp();
             try {
                 tm.abort(tx);
-                metrics.observerAbortEvent(observer.getName());
             } catch (TransactionException e1) {
+                // Do nothing
             }
+            HTable ht = null;
+            try {
+                ht = new HTable(tsoClientHbaseConf, table);
+                clearNotifyFlagUntransactionally(ht, ts, rowKey, columnFamily, column);
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            } finally {
+                if (ht != null) {
+                    try {
+                        ht.close();
+                    } catch (IOException e1) {
+                        // Do nothing
+                    }
+                }
+            }
+            metrics.observerAbortEvent(observer.getName());
         } catch (CommitUnsuccessfulException e) {
             metrics.omidAbortEvent(observer.getName());
         } catch (Exception e) {
@@ -232,4 +250,26 @@ public class ObserverWrapper extends UntypedActor {
         }
     }
 
+    /**
+     * Clears the notify flag on the corresponding RowKey/Column outside the Omid's transactional context
+     * 
+     * @param table
+     * @param rowKey
+     * @param columnFamily
+     * @param column
+     */
+    private void clearNotifyFlagUntransactionally(HTable ht, long ts, byte[] rowKey, byte[] columnFamily, byte[] column) {
+        String targetColumnFamily = Constants.HBASE_META_CF;
+        String targetColumn = Bytes.toString(columnFamily) + "/" + Bytes.toString(column)
+                + Constants.HBASE_NOTIFY_SUFFIX;
+
+        Put put = new Put(rowKey);
+        put.add(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumn), ts, Bytes.toBytes("false"));
+        try {
+            ht.put(put); // Transactional put
+        } catch (Exception e) {
+            logger.error("Error clearing Notify Flag untransactionally for: " + put);
+            e.printStackTrace();
+        }
+    }
 }
