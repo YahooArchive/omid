@@ -1,5 +1,5 @@
 /**
-  * Copyright (c) 2011 Yahoo! Inc. All rights reserved.
+ * Copyright (c) 2011 Yahoo! Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package com.yahoo.omid.notifications;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -28,6 +29,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -45,284 +47,286 @@ import com.yahoo.omid.notifications.client.Observer;
 public class TestSimpleNotification extends TestInfrastructure {
 
     private static final Log logger = LogFactory.getLog(TestSimpleNotification.class);
-    
-    private static final String VAL_1= "testWrite-1";
-    private static final String VAL_2= "testWrite-2";
-    private static final String VAL_3= "testWrite-3";
-    
+
+    private static final String VAL_1 = "testWrite-1";
+    private static final String VAL_2 = "testWrite-2";
+    private static final String VAL_3 = "testWrite-3";
+
+    private static long st;
+
     @Test
     public void testObserverReceivesACorrectNotification() throws Exception {
 
         final CountDownLatch cdl = new CountDownLatch(1); // # of observers
-        
-        Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
-        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
-                                        .addObserver(buildPassiveTransactionalObserver("obs", interestObs, VAL_1, cdl))
-                                        .build();
-        
-        Thread.currentThread().sleep(5000);
-
-        startTriggerTransaction("row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
-
-        cdl.await();
-        app.close();
-    }
-    
-    @Test
-    public void testTwoObserversWithTheSameInterestReceiveACorrectNotification() throws Exception {
-
-        final CountDownLatch cdl = new CountDownLatch(2); // # of observers
 
         Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
-        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
-                                        .addObserver(buildPassiveTransactionalObserver("obs1", interestObs, VAL_1, cdl))
-                                        .addObserver(buildPassiveTransactionalObserver("obs2", interestObs, VAL_1, cdl))
-                                        .build();
-                
+        IncrementalApplication app = new DeltaOmid.AppBuilder("testObserverReceivesACorrectNotificationApp", 6666)
+                .addObserver(buildPassiveTransactionalObserver("obs", interestObs, VAL_1, cdl)).build();
+
         Thread.currentThread().sleep(5000);
 
-        startTriggerTransaction("row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
+        startTriggerTransaction(true, "row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
 
         cdl.await();
         app.close();
     }
 
-    @Test
-    public void testTwoObserversWithTheSameInterestReceiveACorrectNotificationAndCanWriteInTheSameColumnValueOfTwoDifferentRows() throws Exception {
-
-        final CountDownLatch cdl = new CountDownLatch(2); // # of observers
-        
-        Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
-        
-        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
-                                        .addObserver(buildActiveTransactionalObserver("obs1", interestObs, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl))
-                                        .addObserver(buildActiveTransactionalObserver("obs2", interestObs, VAL_1, 0, "row-3", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_3, cdl))
-                                        .build();
-        
-        Thread.currentThread().sleep(5000);
-
-        startTriggerTransaction("row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
-
-        cdl.await();
-        app.close();
-    }
-
-    @Test
-    public void testTwoObserversWithTheSameInterestReceiveACorrectNotificationAndOneOfThemAbortsBecauseCannotWriteInTheSameColumnValueOfTheSameRow() throws Exception {
-        final CountDownLatch cdl = new CountDownLatch(2); // # of observers
-        
-        Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
-        
-        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
-                                        .addObserver(buildActiveTransactionalObserver("obs1", interestObs, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl))
-                                        .addObserver(buildActiveTransactionalObserver("obs2", interestObs, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_3, cdl))
-                                        .build();
-        
-        Thread.currentThread().sleep(5000);
-
-        startTriggerTransaction("row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
-
-        Configuration tsoClientConf = HBaseConfiguration.create();
-        tsoClientConf.set("tso.host", "localhost");
-        tsoClientConf.setInt("tso.port", 1234);
-        
-        Thread.currentThread().sleep(10000);
-        
-        // Check number of versions in Column 2 of Row 2
-        TransactionalTable tt = new TransactionalTable(tsoClientConf, TestConstants.TABLE);
-        Get row = new Get(Bytes.toBytes("row-2")).setMaxVersions();
-        Result result = tt.get(row);
-        List<KeyValue> kvl = result.getColumn(Bytes.toBytes(TestConstants.COLUMN_FAMILY_1),
-                Bytes.toBytes(TestConstants.COLUMN_2));
-        assertEquals("Only one KeyValue should appear on list", 1, kvl.size());
-        for(KeyValue kv : kvl) {
-            logger.info("TS " + kv.getTimestamp() + " VAL " + new String(kv.getValue()));
-        }
-        tt.close();
-        
-        cdl.await();
-
-    }
-    
-    @Test
-    public void testTwoObserversWithTheSameInterestReceiveACorrectNotificationAndOneOfThemAbortsBecauseCannotWriteInTwoDifferentColumnsOfTheSameRow() throws Exception {
-        final CountDownLatch cdl = new CountDownLatch(2); // # of observers
-        
-        Interest interestObs = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
-
-        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
-                                        .addObserver(buildActiveTransactionalObserver("obs1", interestObs, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl))
-                                        .addObserver(buildActiveTransactionalObserver("obs2", interestObs, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_3, VAL_3, cdl))
-                                        .build();
-        
-        Thread.currentThread().sleep(5000);
-
-        startTriggerTransaction("row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
-
-        Configuration tsoClientConf = HBaseConfiguration.create();
-        tsoClientConf.set("tso.host", "localhost");
-        tsoClientConf.setInt("tso.port", 1234);
-        
-        Thread.currentThread().sleep(10000);
-        
-        // Check number of versions in Column 2 of Row 2
-        TransactionalTable tt = new TransactionalTable(tsoClientConf, TestConstants.TABLE);
-        Get row = new Get(Bytes.toBytes("row-2")).setMaxVersions();
-        Result result = tt.get(row);
-        List<KeyValue> kvlc2 = result.getColumn(Bytes.toBytes(TestConstants.COLUMN_FAMILY_1),
-                Bytes.toBytes(TestConstants.COLUMN_2));
-        List<KeyValue> kvlc3 = result.getColumn(Bytes.toBytes(TestConstants.COLUMN_FAMILY_1),
-                Bytes.toBytes(TestConstants.COLUMN_3));
-        if(kvlc2.size() != 0) {
-            assertEquals("Only one KeyValue should appear on list", 1, kvlc2.size());
-            assertEquals("No KeyValue should appear on list", 0, kvlc3.size());
-        } else {
-            assertEquals("No KeyValue should appear on list", 0, kvlc2.size());
-            assertEquals("Only one KeyValue should appear on list", 1, kvlc3.size());
-        }
-
-        tt.close();
-        
-        cdl.await();
-
-    }
-    
     @Test
     public void testThreeChainedObserversReceiveTheCorrectNotifications() throws Exception {
 
         final CountDownLatch cdl = new CountDownLatch(3); // # of observers
-        
+
         Interest interestObs1 = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
         Interest interestObs2 = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2);
         Interest interestObs3 = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_3);
-        
-        IncrementalApplication app = new DeltaOmid.AppBuilder("TestApp", 6666)
-                                    .addObserver(buildActiveTransactionalObserver("obs1", interestObs1, VAL_1, 0, "row-2", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl))
-                                    .addObserver(buildActiveTransactionalObserver("obs2", interestObs2, VAL_2, 0, "row-3", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_3, VAL_3, cdl))
-                                    .addObserver(buildPassiveTransactionalObserver("obs3", interestObs3, VAL_3, cdl))
-                                    .build();
-        
-        Thread.currentThread().sleep(5000);        
 
-        startTriggerTransaction("row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
+        IncrementalApplication app = new DeltaOmid.AppBuilder(
+                "testThreeChainedObserversReceiveTheCorrectNotificationsApp", 6667)
+                .addObserver(
+                        buildActiveTransactionalObserver("obs1", interestObs1, VAL_1, 0, "row-2",
+                                TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_2, VAL_2, cdl))
+                .addObserver(
+                        buildActiveTransactionalObserver("obs2", interestObs2, VAL_2, 0, "row-3",
+                                TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_3, VAL_3, cdl))
+                .addObserver(buildPassiveTransactionalObserver("obs3", interestObs3, VAL_3, cdl)).build();
+
+        Thread.currentThread().sleep(10000);
+
+        startTriggerTransaction(true, "row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
 
         cdl.await();
+        app.close();
+    }
+
+    @Test
+    public void testTxWritesTheRightMetadataOnCommit() throws Exception {
+
+        final CountDownLatch cdl = new CountDownLatch(1); // # of observers
+
+        Observer observer = new Observer() {
+            Interest interest = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
+
+            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey,
+                    TransactionState tx) {
+                st = tx.getStartTimestamp();
+                Configuration hbaseClientConf = HBaseConfiguration.create();
+                try {
+                    TransactionalTable tt = new TransactionalTable(hbaseClientConf, Bytes.toString(table));
+                    Get row = new Get(rowKey);
+                    Result result = tt.get(row);
+                    byte[] val = result.getValue(
+                            Bytes.toBytes(Constants.HBASE_META_CF),
+                            Bytes.toBytes(TestConstants.COLUMN_FAMILY_1 + "/" + TestConstants.COLUMN_1
+                                    + Constants.HBASE_NOTIFY_SUFFIX));
+                    assertEquals("Values for this row are different", "true", Bytes.toString(val));
+                    tt.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    cdl.countDown();
+                }
+                cdl.countDown();
+            }
+
+            @Override
+            public String getName() {
+                return "obs";
+            }
+
+            @Override
+            public List<Interest> getInterests() {
+                return Collections.singletonList(interest);
+            }
+        };
+
+        IncrementalApplication app = new DeltaOmid.AppBuilder("testTxWritesTheRightMetadataOnCommitApp", 6668)
+                .addObserver(observer).build();
+
+        Thread.currentThread().sleep(10000); // Let's the application to register itself
+
+        long tst = startTriggerTransaction(true, "row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
+
+        cdl.await();
+
+        Thread.currentThread().sleep(10000); // Let's the observer transaction to commit
+
+        // Check all the metadata values
+        Configuration hbaseConfig = HBaseConfiguration.create();
+        HTable ht = null;
+        Result result = null;
+        try {
+            ht = new HTable(hbaseConfig, TestConstants.TABLE);
+            Get row = new Get(Bytes.toBytes("row-1"));
+            result = ht.get(row);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            assertNotNull("Result shouldn't be null", result);
+
+            // Check timestamps
+            KeyValue[] kvs = result.raw();
+            assertEquals("Only 3 KV should be returned", 3, kvs.length);
+            assertEquals("Incorrect timestamp", tst, kvs[0].getTimestamp()); // 0 = Value written
+            assertEquals("Incorrect timestamp", st, kvs[1].getTimestamp()); // 1 = *-notify meta-column
+            assertEquals("Incorrect timestamp", st, kvs[2].getTimestamp()); // 2 = *-observer meta-column
+
+            byte[] val = null;
+            byte[] notifyVal = null;
+            byte[] obsVal = null;
+            val = result.getValue(Bytes.toBytes(TestConstants.COLUMN_FAMILY_1), Bytes.toBytes(TestConstants.COLUMN_1));
+            notifyVal = result.getValue(
+                    Bytes.toBytes(Constants.HBASE_META_CF),
+                    Bytes.toBytes(TestConstants.COLUMN_FAMILY_1 + "/" + TestConstants.COLUMN_1
+                            + Constants.HBASE_NOTIFY_SUFFIX));
+            obsVal = result.getValue(Bytes.toBytes(Constants.HBASE_META_CF),
+                    Bytes.toBytes(TestConstants.COLUMN_FAMILY_1 + "/" + TestConstants.COLUMN_1 + "-obs"));
+            assertEquals("Values for this column are different", VAL_1, Bytes.toString(val));
+            assertEquals("Values for this column are different", "false", Bytes.toString(notifyVal));
+            assertEquals("Values for this column are different", "obs", Bytes.toString(obsVal));
+            if (ht != null) {
+                ht.close();
+            }
+        }
+
+        app.close();
+    }
+
+    @Test
+    public void testTxWritesTheRightMetadataOnAbort() throws Exception {
+
+        final CountDownLatch cdl = new CountDownLatch(1); // # of observers
+
+        Observer observer = new Observer() {
+            Interest interest = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
+
+            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey,
+                    TransactionState tx) {
+                st = tx.getStartTimestamp();
+                logger.info("Observer TS: " + KeyValue.humanReadableTimestamp(st));
+            }
+
+            @Override
+            public String getName() {
+                return "obs";
+            }
+
+            @Override
+            public List<Interest> getInterests() {
+                return Collections.singletonList(interest);
+            }
+        };
+
+        IncrementalApplication app = new DeltaOmid.AppBuilder("testTxWritesTheRightMetadataOnAbortApp", 6669)
+                .addObserver(observer).build();
+
+        Thread.currentThread().sleep(10000); // Let's the application to register itself
+
+        long tst = startTriggerTransaction(false, "row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
+
+        Thread.currentThread().sleep(10000); // Let's the observer transaction to commit
+
+        // Check all the metadata values
+        Configuration hbaseConfig = HBaseConfiguration.create();
+        HTable ht = null;
+        Result result = null;
+        try {
+            ht = new HTable(hbaseConfig, TestConstants.TABLE);
+            Get row = new Get(Bytes.toBytes("row-1"));
+            result = ht.get(row);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            assertNotNull("Result shouldn't be null", result);
+
+            // Check timestamps
+            KeyValue[] kvs = result.raw();
+            assertEquals("Only one should be returned", 1, kvs.length); // 0 = *-notify meta-column
+
+            byte[] notifyVal = result.getValue(
+                    Bytes.toBytes(Constants.HBASE_META_CF),
+                    Bytes.toBytes(TestConstants.COLUMN_FAMILY_1 + "/" + TestConstants.COLUMN_1
+                            + Constants.HBASE_NOTIFY_SUFFIX));
+            assertEquals("Values for this column are different", "false", Bytes.toString(notifyVal));
+            if (ht != null) {
+                ht.close();
+            }
+        }
+        app.close();
     }
 
     /**
-     * @param r Row Key
-     * @param cf Column Familiy
-     * @param c Column
-     * @param v Value
+     * @param commit
+     *            if tx must commit or not
+     * @param r
+     *            Row Key
+     * @param cf
+     *            Column Familiy
+     * @param c
+     *            Column
+     * @param v
+     *            Value
+     * @return start timestamp of the triggered transaction
      * @throws TransactionException
      * @throws IOException
      * @throws CommitUnsuccessfulException
      */
-    private void startTriggerTransaction(String r, String cf, String c, String v) throws TransactionException, IOException, CommitUnsuccessfulException {
+    private long startTriggerTransaction(boolean commit, String r, String cf, String c, String v)
+            throws TransactionException, IOException, CommitUnsuccessfulException {
         TransactionManager tm = new TransactionManager(hbaseConf);
         TransactionalTable tt = new TransactionalTable(hbaseConf, TestConstants.TABLE);
 
         TransactionState tx = tm.beginTransaction();
+        long st = tx.getStartTimestamp();
 
         Put row = new Put(Bytes.toBytes(r));
-        row.add(Bytes.toBytes(cf), Bytes.toBytes(c),
-                Bytes.toBytes(v));
+        row.add(Bytes.toBytes(cf), Bytes.toBytes(c), Bytes.toBytes(v));
         tt.put(tx, row);
-        
-        tm.tryCommit(tx);
-        
+
+        if (commit) {
+            tm.tryCommit(tx);
+        } else {
+            tm.abort(tx);
+        }
+
         tt.close();
+
+        return st;
     }
-    
+
     /**
      * The observer built by this method just checks that the value received when its notified is the expected
      * 
      * @param obsName
-     * @param interest The interest of the observer
-     * @param expectedValue The value that this observer will check 
-     * @param cdl Count down latch
+     * @param interest
+     *            The interest of the observer
+     * @param expectedValue
+     *            The value that this observer will check
+     * @param cdl
+     *            Count down latch
      * @return A passive observer
      * @throws Exception
      */
-    private Observer buildPassiveTransactionalObserver(final String obsName, final Interest interest, final String expectedValue, final CountDownLatch cdl) throws Exception {
+    private Observer buildPassiveTransactionalObserver(final String obsName, final Interest interest,
+            final String expectedValue, final CountDownLatch cdl) throws Exception {
         return new Observer() {
-            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
+            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey,
+                    TransactionState tx) {
                 Configuration tsoClientConf = HBaseConfiguration.create();
                 tsoClientConf.set("tso.host", "localhost");
                 tsoClientConf.setInt("tso.port", 1234);
-                
+
                 try {
                     TransactionalTable tt = new TransactionalTable(tsoClientConf, Bytes.toString(table));
                     Get row = new Get(rowKey);
                     Result result = tt.get(row);
                     byte[] val = result.getValue(columnFamily, column);
                     assertEquals("Values for this row are different", expectedValue, Bytes.toString(val));
-                    tt.close();                    
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } finally {
-                    cdl.countDown();
-                }
-            }
-
-            @Override
-            public String getName() {
-                return obsName;
-            }
-
-            @Override
-            public List<Interest> getInterests() {                
-                return Collections.singletonList(interest);
-            }
-        };
-    }
-
-    /**
-     * The observer built by this method checks that the value received when its notified is the expected and generates
-     * a new value on a row as part of the transactional context it has.
-     * 
-     * @param obsName
-     * @param interest The interest of the observer
-     * @param expectedValue The value that this observer will check 
-     * @param r Row Key to write in
-     * @param cf Column Family to write in
-     * @param c Column to write in
-     * @param v Value to write
-     * @param cdl Count down latch
-     * @return An active observer
-     * @throws Exception
-     */
-    private Observer buildActiveTransactionalObserver(final String obsName, final Interest interest,
-            final String expectedValue, final int delay, final String r, final String cf, final String c,
-            final String v, final CountDownLatch cdl) throws Exception {
-        return new Observer() {
-            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey, TransactionState tx) {
-                if(delay != 0) {
-                    try {
-                        logger.info("Waitingggggggg");
-                        Thread.currentThread().sleep(delay);
-                    } catch (InterruptedException e1) {
-                        e1.printStackTrace();
-                    }
-                }
-                logger.info("Running to write " + v);
-                Configuration tsoClientConf = HBaseConfiguration.create();
-                tsoClientConf.set("tso.host", "localhost");
-                tsoClientConf.setInt("tso.port", 1234);
-                
-                try {
-                    TransactionalTable tt = new TransactionalTable(tsoClientConf, Bytes.toString(table));
-                    Get row = new Get(rowKey);
-                    Result result = tt.get(row);
-                    byte[] val = result.getValue(columnFamily, column);
-                    assertEquals("Values for this row are different", expectedValue, Bytes.toString(val));                    
-                    doTransactionalPut(tx, tt, Bytes.toBytes(r), Bytes.toBytes(cf), Bytes.toBytes(c), Bytes.toBytes(v));
                     tt.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 } finally {
                     cdl.countDown();
-                }   
+                }
             }
 
             @Override
@@ -336,7 +340,75 @@ public class TestSimpleNotification extends TestInfrastructure {
             }
         };
     }
-    
+
+    /**
+     * The observer built by this method checks that the value received when its notified is the expected and generates
+     * a new value on a row as part of the transactional context it has.
+     * 
+     * @param obsName
+     * @param interest
+     *            The interest of the observer
+     * @param expectedValue
+     *            The value that this observer will check
+     * @param r
+     *            Row Key to write in
+     * @param cf
+     *            Column Family to write in
+     * @param c
+     *            Column to write in
+     * @param v
+     *            Value to write
+     * @param cdl
+     *            Count down latch
+     * @return An active observer
+     * @throws Exception
+     */
+    private Observer buildActiveTransactionalObserver(final String obsName, final Interest interest,
+            final String expectedValue, final int delay, final String r, final String cf, final String c,
+            final String v, final CountDownLatch cdl) throws Exception {
+        return new Observer() {
+            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey,
+                    TransactionState tx) {
+                if (delay != 0) {
+                    try {
+                        logger.info("Waitingggggggg");
+                        Thread.currentThread().sleep(delay);
+                    } catch (InterruptedException e1) {
+                        e1.printStackTrace();
+                    }
+                }
+                logger.info("Running to write " + v);
+                Configuration tsoClientConf = HBaseConfiguration.create();
+                tsoClientConf.set("tso.host", "localhost");
+                tsoClientConf.setInt("tso.port", 1234);
+
+                try {
+                    TransactionalTable tt = new TransactionalTable(tsoClientConf, Bytes.toString(table));
+                    Get row = new Get(rowKey);
+                    Result result = tt.get(row);
+                    byte[] val = result.getValue(columnFamily, column);
+                    assertEquals("Values for this row are different", expectedValue, Bytes.toString(val));
+                    doTransactionalPut(tx, tt, Bytes.toBytes(r), Bytes.toBytes(cf), Bytes.toBytes(c), Bytes.toBytes(v));
+                    tt.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    cdl.countDown();
+                }
+            }
+
+            @Override
+            public String getName() {
+                return obsName;
+            }
+
+            @Override
+            public List<Interest> getInterests() {
+                return Collections.singletonList(interest);
+            }
+        };
+    }
+
     private static void doTransactionalPut(TransactionState tx, TransactionalTable tt, byte[] rowKey,
             byte[] colFamName, byte[] colName, byte[] dataValue) throws IOException {
         Put row = new Put(rowKey);

@@ -18,6 +18,9 @@ public class MetricsUtils {
             .compile("(csv:.+|console):(\\d+):(DAYS|HOURS|MICROSECONDS|MILLISECONDS|MINUTES|NANOSECONDS|SECONDS)");
 
     public static void initMetrics(String metricsConfig) {
+        if (metricsConfig == null || metricsConfig.equals("")) {
+            metricsConfig = "console:1:MINUTES";
+        }
         Matcher matcher = METRICS_CONFIG_PATTERN.matcher(metricsConfig);
         if (!matcher.matches()) {
             logger.error(
