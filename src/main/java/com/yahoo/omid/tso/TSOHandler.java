@@ -170,6 +170,9 @@ public class TSOHandler extends SimpleChannelHandler {
         } else if (msg instanceof CommitRequest) {
             handle((CommitRequest) msg, ctx);
             return;
+        } else if (msg instanceof AbortRequest) {
+            handle((AbortRequest) msg, ctx);
+            return;
         } else if (msg instanceof FullAbortRequest) {
             handle((FullAbortRequest) msg, ctx);
             return;
