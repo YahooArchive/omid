@@ -15,6 +15,9 @@
  */
 package com.yahoo.omid.notifications;
 
+import static com.yahoo.omid.notifications.Constants.HBASE_META_CF;
+import static com.yahoo.omid.notifications.Constants.HBASE_NOTIFY_SUFFIX;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -46,8 +49,8 @@ public class TransactionCommittedRegionCoprocessor extends BaseRegionObserver {
         byte[] tableNameAsBytes = c.getEnvironment().getRegion().getTableDesc().getName();
         String tableName = Bytes.toString(tableNameAsBytes);
 
+        // Do not instrument hbase meta tables
         if (tableName.equals(".META.") || tableName.equals("-ROOT-")) {
-            // do not instrument hbase meta tables
             // TODO allow filtering out more tables?
             return;
         }
@@ -57,17 +60,18 @@ public class TransactionCommittedRegionCoprocessor extends BaseRegionObserver {
         for (List<KeyValue> kvl : kvs.values()) {
             for (KeyValue kv : kvl) {
                 String cf = Bytes.toString(kv.getFamily());
-                // TODO Here we should filter the columns that are not requested to be observed,
+
+                // TODO Here we should filter the qualifiers that are not requested to be observed,
                 // but cannot access to the required structures from a BaseRegionObserver
-                if (!cf.equals(Constants.HBASE_META_CF)) {
-                    String col = Bytes.toString(kv.getQualifier());
-                    // Pattern for notify column in framework's metadata column family: <cf>/<c>-notify
-                    put.add(Bytes.toBytes(Constants.HBASE_META_CF),
-                            Bytes.toBytes(cf + "/" + col + Constants.HBASE_NOTIFY_SUFFIX), kv.getTimestamp(),
-                            Bytes.toBytes("true"));
+                if (!cf.equals(HBASE_META_CF)) {
+                    String q = Bytes.toString(kv.getQualifier());
+                    // Pattern for notify qualifier in framework's metadata column family: <cf>/<c>-notify
+                    put.add(Bytes.toBytes(HBASE_META_CF), Bytes.toBytes(cf + "/" + q + HBASE_NOTIFY_SUFFIX),
+                            kv.getTimestamp(), Bytes.toBytes("true"));
                 }
             }
         }
+
     }
 
 }
