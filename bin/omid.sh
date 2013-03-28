@@ -53,10 +53,6 @@ notifsrv() {
     exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.notifications.DeltaOmidServer -zk localhost:2181 -scanIntervalMs 20000
 }
 
-notifexampleapp() {
-    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.examples.notifications.ClientNotificationAppExample -txs 100 -rows-per-tx 2
-}
-
 appwi() {
     exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.examples.notifications.AppExampleWithMultipleEventInjectors -zk localhost:2181 -hbase localhost:2181 -createDB -omid localhost:1234 -port 6666 -inject -injectors 1 -tx-rate 1 -Dlog4j.configuration=log4j.properties
 }
@@ -89,7 +85,6 @@ usage() {
     echo "  tso           Starts the timestamp oracle server."
     echo "  notif-inf     Starts the infrastructure for the notification example app."
     echo "  notif-srv     Starts the notification framework."
-    echo "  notif-app     Starts the notification example app."
     echo "  app-wi        Starts the notification example app. With multiple Injectors (wi) and creating the database"
     echo "  app-woi       Starts the notification example app. WithOut Injectors (woi) and without creating the database"    
     echo "  tsobench      Runs a simple benchmark of the TSO."
@@ -112,8 +107,6 @@ elif [ "$COMMAND" = "notif-inf" ]; then
     notifinf;
 elif [ "$COMMAND" = "notif-srv" ]; then
     notifsrv;
-elif [ "$COMMAND" = "notif-app" ]; then
-    notifexampleapp;
 elif [ "$COMMAND" = "app-woi" ]; then
     appwoi;
 elif [ "$COMMAND" = "app-wi" ]; then
