@@ -34,7 +34,12 @@ public class MetricsUtils {
                 long period = Long.valueOf(matcher.group(2));
                 TimeUnit timeUnit = TimeUnit.valueOf(matcher.group(3));
                 if (!(new File(outputDir).exists())) {
-                    logger.error("output dir {} does not exist", outputDir);
+                    logger.warn("Output dir for metrics {} does not exist! Creating...", outputDir);
+                    boolean success = (new File(outputDir)).mkdirs();
+                    if (!success) {
+                        logger.error("Output dir for metrics {} cannot be created! NO metrics provided!", outputDir);
+                        return;
+                    }
                 }
                 logger.info("Reporting metrics through csv files in directory [{}] with frequency of [{}] [{}]",
                         new String[] { outputDir, String.valueOf(period), timeUnit.name() });
