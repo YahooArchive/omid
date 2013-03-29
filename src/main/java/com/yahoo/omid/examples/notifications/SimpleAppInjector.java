@@ -54,6 +54,9 @@ import com.yahoo.omid.client.TransactionalTable;
 import com.yahoo.omid.examples.Constants;
 import com.yahoo.omid.examples.notifications.ExamplesUtils.ExtendedPosixParser;
 import com.yahoo.omid.notifications.TransactionCommittedRegionCoprocessor;
+import com.yahoo.omid.notifications.metrics.MetricsUtils;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.Meter;
 
 /**
  * This applications shows the basic usage of the Omid's notification framework
@@ -77,19 +80,23 @@ public class SimpleAppInjector {
         options.addOption("createDB", false, "If present, the database will be re-created");
         options.addOption(OptionBuilder.withLongOpt("injectors").withDescription("Number of tasks to inject txs")
                 .withType(Number.class).hasArg().withArgName("argname").create());
-        options.addOption(OptionBuilder.withLongOpt("tx-rate")
+        options.addOption(OptionBuilder.withLongOpt("txRate")
                 .withDescription("Number of txs/s to execute per injector thread").withType(Number.class).hasArg()
-                .withArgName("argname").create());
+                .withArgName("tx_rate").create());
         options.addOption(OptionBuilder.withArgName("hbase_master").hasArg()
-                .withDescription("hbase master server: host1:port1").create("hbase"));
-        options.addOption(OptionBuilder.withArgName("omid_server").hasArg().withDescription("omid server: host1:port1")
+                .withDescription("HBase Master server: host1:port1").create("hbase"));
+        options.addOption(OptionBuilder.withArgName("omid_server").hasArg().withDescription("Omid server: host1:port1")
                 .create("omid"));
+        options.addOption(OptionBuilder.withArgName("metrics_output_dir").hasArg()
+                .withDescription("Output directory for Metrics").create("metricsOutputDir"));
 
         boolean createDB = false;
         int nOfInjectorTasks = 1;
         int txRate = 1;
         String hbase = "localhost:2181";
         String omid = "localhost:1234";
+        boolean writeMetricsToFile = false;
+        String metricsOutputDir = System.getProperty("user.dir");
 
         try {
             CommandLine cmdLine = cmdLineParser.parse(options, args);
@@ -102,8 +109,8 @@ public class SimpleAppInjector {
                 nOfInjectorTasks = ((Number) cmdLine.getParsedOptionValue("injectors")).intValue();
             }
 
-            if (cmdLine.hasOption("tx-rate")) {
-                txRate = ((Number) cmdLine.getParsedOptionValue("tx-rate")).intValue();
+            if (cmdLine.hasOption("txRate")) {
+                txRate = ((Number) cmdLine.getParsedOptionValue("txRate")).intValue();
             }
 
             if (cmdLine.hasOption("hbase")) {
@@ -114,6 +121,11 @@ public class SimpleAppInjector {
                 omid = cmdLine.getOptionValue("omid");
             }
 
+            if (cmdLine.hasOption("metricsOutputDir")) {
+                writeMetricsToFile = true;
+                metricsOutputDir = cmdLine.getOptionValue("metricsOutputDir");
+                logger.info(metricsOutputDir);
+            }
         } catch (ParseException e) {
             e.printStackTrace();
             System.exit(1);
@@ -146,9 +158,20 @@ public class SimpleAppInjector {
             }
         });
 
+        // Metrics
+        String metricsConfig;
+        if (writeMetricsToFile) {
+            metricsConfig = "csv:" + metricsOutputDir + ":10:SECONDS";
+        } else {
+            metricsConfig = "console:10:SECONDS";
+        }
+        MetricsUtils.initMetrics(metricsConfig);
+        final Meter invocations = Metrics.newMeter(SimpleAppInjector.class, "injector@invocations", "invocations",
+                TimeUnit.SECONDS);
+
         CountDownLatch startCdl = new CountDownLatch(1);
         for (int i = 0; i < nOfInjectorTasks; i++) {
-            injectors.execute(new EventInjectorTask(tsoClientConf, startCdl, txRate));
+            injectors.execute(new EventInjectorTask(tsoClientConf, startCdl, txRate, invocations));
         }
         logger.info("ooo Injectors ooo - STARTING " + nOfInjectorTasks + " LOOP TASKS INJECTING AT " + txRate
                 + " TX/S IN COLUMN " + COLUMN_1 + " - ooo Injectors ooo");
@@ -163,8 +186,9 @@ public class SimpleAppInjector {
         private TransactionManager tm;
         private TransactionalTable tt;
         private int txRate;
+        private Meter invocations;
 
-        public EventInjectorTask(Configuration conf, CountDownLatch startCdl, int txRate) {
+        public EventInjectorTask(Configuration conf, CountDownLatch startCdl, int txRate, Meter invocations) {
             try {
                 this.tm = new TransactionManager(conf);
                 this.tt = new TransactionalTable(conf, TABLE_1);
@@ -173,6 +197,7 @@ public class SimpleAppInjector {
             }
             this.startCdl = startCdl;
             this.txRate = txRate;
+            this.invocations = invocations;
         }
 
         public void run() {
@@ -196,6 +221,8 @@ public class SimpleAppInjector {
                         logger.warn("Error during transactional put ", e);
                     } catch (TransactionException e) {
                         logger.warn("Tx exception ", e);
+                    } finally {
+                        invocations.mark();
                     }
                 }
             } catch (InterruptedException e) {

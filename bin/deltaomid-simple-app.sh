@@ -43,7 +43,7 @@ app() {
 }
 
 inject() {
-    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.examples.notifications.SimpleAppInjector -hbase localhost:2181 -omid localhost:1234 -injectors 1 -tx-rate 1
+    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.examples.notifications.SimpleAppInjector -hbase localhost:2181 -omid localhost:1234 -injectors 1 -txRate 1 -metricsOutputDir ~/metrics
 }
 
 usage() {
