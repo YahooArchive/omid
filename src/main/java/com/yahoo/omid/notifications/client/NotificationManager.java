@@ -19,14 +19,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.TNonblockingServer;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 import org.apache.thrift.transport.TTransportException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import akka.actor.ActorRef;
 
@@ -38,7 +38,7 @@ import com.yahoo.omid.notifications.thrift.generated.NotificationReceiverService
 
 public class NotificationManager {
 
-    private static final Log logger = LogFactory.getLog(NotificationManager.class);
+    private static final Logger logger = LoggerFactory.getLogger(NotificationManager.class);
 
     private static final long TIMEOUT = 3;
 
@@ -105,7 +105,7 @@ public class NotificationManager {
             if (obsRef != null) {
                 obsRef.tell(notification);
             } else {
-                logger.error("Observer " + notification.getObserver() + " can not be notified");
+                logger.error("Observer " + notification.getObserver() + " cannot be notified");
             }
         }
     }

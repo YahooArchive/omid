@@ -57,7 +57,8 @@ public class DeltaOmidServer {
         }
         logger.info("ooo Omid ooo - Starting Delta Omid Notification Server - ooo Omid ooo");
 
-        zkClient = CuratorFrameworkFactory.newClient(conf.getZkServers(), new ExponentialBackoffRetry(1000, 3));
+        // TODO enable configurable reconnection parameters
+        zkClient = CuratorFrameworkFactory.newClient(conf.getZkServers(), new ExponentialBackoffRetry(10000, 3));
         zkClient.start();
         logger.info("ZK client started");
 

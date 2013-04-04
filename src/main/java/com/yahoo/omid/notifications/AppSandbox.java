@@ -82,13 +82,12 @@ public class AppSandbox implements PathChildrenCacheListener {
 
     @Override
     public void childEvent(CuratorFramework client, PathChildrenCacheEvent event) throws Exception {
-        String nodeNamePath = event.getData().getPath();
-        String appName = ZKPaths.getNodeFromPath(nodeNamePath);
 
         switch (event.getType()) {
         case CHILD_ADDED: {
-            logger.trace("App Node added: " + nodeNamePath);
-            createApplication(appName);
+
+            logger.trace("App Node added : {}", event.getData().getPath());
+            createApplication(ZKPaths.getNodeFromPath(event.getData().getPath()));
             break;
         }
 
@@ -99,9 +98,23 @@ public class AppSandbox implements PathChildrenCacheListener {
 
         case CHILD_REMOVED: {
             logger.trace("App Node removed: " + event.getData().getPath());
-            removeApplication(appName);
+            removeApplication(ZKPaths.getNodeFromPath(event.getData().getPath()));
             break;
         }
+        case CONNECTION_LOST:
+            logger.error("Lost connection with ZooKeeper {}", zkClient.getZookeeperClient()
+                    .getCurrentConnectionString());
+            break;
+        case CONNECTION_RECONNECTED:
+            logger.warn("Reconnected to ZooKeeper {}", zkClient.getZookeeperClient().getCurrentConnectionString());
+            break;
+        case CONNECTION_SUSPENDED:
+            logger.error("Connection suspended to ZooKeeper {}", zkClient.getZookeeperClient()
+                    .getCurrentConnectionString());
+            break;
+        default:
+            logger.error("Unknown event type {}", event.getType().toString());
+            break;
         }
     }
 
@@ -210,12 +223,10 @@ public class AppSandbox implements PathChildrenCacheListener {
 
         @Override
         public void childEvent(CuratorFramework client, PathChildrenCacheEvent event) throws Exception {
-            String nodeNamePath = event.getData().getPath();
-            String hostnameAndPort = ZKPaths.getNodeFromPath(nodeNamePath);
             switch (event.getType()) {
             case CHILD_ADDED: {
-                logger.trace("Instance node added: " + nodeNamePath);
-                addInstance(hostnameAndPort);
+                logger.trace("Instance node added: " + event.getData().getPath());
+                addInstance(ZKPaths.getNodeFromPath(event.getData().getPath()));
                 break;
             }
 
@@ -226,8 +237,8 @@ public class AppSandbox implements PathChildrenCacheListener {
 
             case CHILD_REMOVED: {
                 synchronized (instances) {
-                    logger.trace("Removing node: " + nodeNamePath + " Instances left: " + instances.size());
-                    ActorRef removedAppInstance = instances.remove(hostnameAndPort);
+                    logger.trace("Removing node: " + event.getData().getPath() + " Instances left: " + instances.size());
+                    ActorRef removedAppInstance = instances.remove(ZKPaths.getNodeFromPath(event.getData().getPath()));
                     if (removedAppInstance != null) {
                         removedAppInstance.tell(PoisonPill.getInstance());
                         if (instances.size() == 0) {
@@ -236,13 +247,28 @@ public class AppSandbox implements PathChildrenCacheListener {
                             zkClient.delete().forPath(appPath);
                             appInstanceRedirector.tell(PoisonPill.getInstance());
                         }
-                        logger.trace("Instance node removed: " + nodeNamePath + " Instances left: " + instances.size());
+                        logger.trace("Instance node removed: " + event.getData().getPath() + " Instances left: "
+                                + instances.size());
                     } else {
-                        logger.warn("No instance was removed for this node path: " + nodeNamePath);
+                        logger.warn("No instance was removed for this node path: " + event.getData().getPath());
                     }
                 }
                 break;
             }
+            case CONNECTION_LOST:
+                logger.error("Lost connection with ZooKeeper {}", zkClient.getZookeeperClient()
+                        .getCurrentConnectionString());
+                break;
+            case CONNECTION_RECONNECTED:
+                logger.warn("Reconnected to ZooKeeper {}", zkClient.getZookeeperClient().getCurrentConnectionString());
+                break;
+            case CONNECTION_SUSPENDED:
+                logger.error("Connection suspended to ZooKeeper {}", zkClient.getZookeeperClient()
+                        .getCurrentConnectionString());
+                break;
+            default:
+                logger.error("Unknown event type {}", event.getType().toString());
+                break;
             }
         }
 
