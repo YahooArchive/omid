@@ -108,8 +108,8 @@ public class TimestampOracle {
      * @param timestamp
      */
     public void initialize(long timestamp){
-        LOG.info("Initializing timestamp oracle");
         this.last = this.first = Math.max(this.last, timestamp + TIMESTAMP_BATCH);
+        LOG.info("Initializing timestamp oracle with timestamp " + this.last);
         maxTimestamp = this.first + 1; // max timestamp will be persisted
         LOG.info("First: " + this.first + ", Last: " + this.last);
         initialize();

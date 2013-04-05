@@ -34,7 +34,7 @@ for j in ../lib/*.jar; do
 done
 
 tso() {
-    exec java -Xmx1024m -cp $CLASSPATH -Domid.maxItems=100000 -Domid.maxCommits=100000 -Dlog4j.configuration=log4j.properties com.yahoo.omid.tso.TSOServer -port 1234 -batch $BATCHSIZE -ensemble 4 -quorum 2 -zk localhost:2181
+    exec java -Xmx1024m -cp $CLASSPATH -Domid.maxItems=100000 -Domid.maxCommits=100000 -Dlog4j.configuration=log4j.properties com.yahoo.omid.tso.TSOServer -port 1234 -batch $BATCHSIZE -zk localhost:2181 -ha -fsLog /tmp/omid
 }
 
 notifsrv() {

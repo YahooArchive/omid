@@ -20,20 +20,21 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 
 /**
- * Holds the configuration parameters of a TSO server instance. 
- *
+ * Holds the configuration parameters of a TSO server instance.
+ * 
  */
 public class TSOServerConfig {
-    
-    static public TSOServerConfig configFactory(){
+
+    static public TSOServerConfig configFactory() {
         return new TSOServerConfig();
     }
-    
-    static public TSOServerConfig configFactory(int port, int batch, boolean recoveryEnabled, int ensSize, int qSize, String zkservers){
+
+    static public TSOServerConfig configFactory(int port, int batch, boolean recoveryEnabled, int ensSize, int qSize,
+            String zkservers) {
         return new TSOServerConfig(port, batch, recoveryEnabled, ensSize, qSize, zkservers);
     }
 
-    static public TSOServerConfig parseConfig(String args[]){
+    static public TSOServerConfig parseConfig(String args[]) {
         TSOServerConfig config = new TSOServerConfig();
 
         if (args.length == 0) {
@@ -64,10 +65,13 @@ public class TSOServerConfig {
     @Parameter(names = "-quorum", description = "WAL quorum size")
     private int quorum;
 
+    @Parameter(names = "-fsLog", description = "local FS WAL directory")
+    private String fsLog;
+
     @Parameter(names = "-metrics", description = "Metrics config")
     private String metrics;
 
-    TSOServerConfig(){
+    TSOServerConfig() {
         this.port = Integer.parseInt(System.getProperty("PORT", "1234"));
         this.batch = Integer.parseInt(System.getProperty("BATCH", "0"));
         this.recoveryEnabled = Boolean.parseBoolean(System.getProperty("RECOVERABLE", "false"));
@@ -75,8 +79,8 @@ public class TSOServerConfig {
         this.ensemble = Integer.parseInt(System.getProperty("ENSEMBLE", "3"));
         this.quorum = Integer.parseInt(System.getProperty("QUORUM", "2"));
     }
-    
-    TSOServerConfig(int port, int batch, boolean recoveryEnabled, int ensemble, int quorum, String zkServers){
+
+    TSOServerConfig(int port, int batch, boolean recoveryEnabled, int ensemble, int quorum, String zkServers) {
         this.port = port;
         this.batch = batch;
         this.recoveryEnabled = recoveryEnabled;
@@ -84,32 +88,36 @@ public class TSOServerConfig {
         this.ensemble = ensemble;
         this.quorum = quorum;
     }
-    
-    public int getPort(){
+
+    public int getPort() {
         return port;
     }
-    
-    public int getBatchSize(){
+
+    public int getBatchSize() {
         return batch;
     }
-    
-    public boolean isRecoveryEnabled(){
+
+    public boolean isRecoveryEnabled() {
         return recoveryEnabled;
     }
-    
-    public String getZkServers(){
+
+    public String getZkServers() {
         return zkServers;
     }
 
-    public int getEnsembleSize(){
+    public int getEnsembleSize() {
         return ensemble;
     }
-    
-    public int getQuorumSize(){
+
+    public int getQuorumSize() {
         return quorum;
     }
-    
+
     public String getMetrics() {
         return metrics;
+    }
+
+    public String getFsLog() {
+        return fsLog;
     }
 }

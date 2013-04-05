@@ -40,6 +40,7 @@ import org.jboss.netty.util.ObjectSizeEstimator;
 
 import com.yahoo.omid.notifications.metrics.MetricsUtils;
 import com.yahoo.omid.tso.persistence.BookKeeperStateBuilder;
+import com.yahoo.omid.tso.persistence.FileSystemTimestampOnlyStateBuilder;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
 import com.yahoo.omid.tso.persistence.LoggerProtocol;
 
@@ -111,11 +112,12 @@ public class TSOServer implements Runnable {
                   }
                }, Executors.defaultThreadFactory());
 
-        // This is the only object of timestamp oracle
-        // TODO: make it singleton
-        //TimestampOracle timestampOracle = new TimestampOracle();
-        // The wrapper for the shared state of TSO
-        state = BookKeeperStateBuilder.getState(this.config);
+        // TODO use dependency injection
+        if (config.getFsLog() != null) {
+            state = FileSystemTimestampOnlyStateBuilder.getState(config);
+        } else {
+            state = BookKeeperStateBuilder.getState(this.config);
+        }
         
         if(state == null){
             LOG.error("Couldn't build state");
