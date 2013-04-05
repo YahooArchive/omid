@@ -25,9 +25,10 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.log4j.Logger;
 
 import akka.actor.UntypedActor;
+import akka.event.Logging;
+import akka.event.LoggingAdapter;
 
 import com.google.common.net.HostAndPort;
 import com.yahoo.omid.client.CommitUnsuccessfulException;
@@ -43,7 +44,7 @@ import com.yammer.metrics.core.TimerContext;
 
 public class ObserverWrapper extends UntypedActor {
 
-    private static final Logger logger = Logger.getLogger(ObserverWrapper.class);
+    private LoggingAdapter logger = Logging.getLogger(getContext().system(), this);
 
     private Observer observer;
 
@@ -68,7 +69,8 @@ public class ObserverWrapper extends UntypedActor {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        logger.trace("Instance created for observer " + observer.getName());
+        logger.info("Instance created for observer " + observer.getName() + " using dispatcher "
+                + getContext().dispatcher() + " Context " + getContext().props());
     }
 
     /**

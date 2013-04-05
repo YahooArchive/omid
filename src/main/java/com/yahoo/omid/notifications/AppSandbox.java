@@ -39,6 +39,8 @@ import akka.actor.PoisonPill;
 import akka.actor.Props;
 import akka.actor.UntypedActor;
 import akka.actor.UntypedActorFactory;
+import akka.event.Logging;
+import akka.event.LoggingAdapter;
 
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
@@ -48,6 +50,7 @@ import com.netflix.curator.framework.recipes.cache.PathChildrenCache;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheEvent;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheListener;
 import com.netflix.curator.utils.ZKPaths;
+import com.typesafe.config.ConfigFactory;
 import com.yahoo.omid.notifications.comm.ZNRecord;
 import com.yahoo.omid.notifications.comm.ZNRecordSerializer;
 import com.yahoo.omid.notifications.metrics.ServerSideAppMetrics;
@@ -71,7 +74,7 @@ public class AppSandbox implements PathChildrenCacheListener {
     public AppSandbox(CuratorFramework zkClient, ScannerSandbox scannerSandbox) throws Exception {
         this.zkClient = zkClient;
         this.scannerSandbox = scannerSandbox;
-        appSandboxActorSystem = ActorSystem.create("AppSandbox");
+        appSandboxActorSystem = ActorSystem.create("AppSandbox", ConfigFactory.load().getConfig("DeltaOmidServer"));
         appsCache = new PathChildrenCache(this.zkClient, ZkTreeUtils.getAppsNodePath(), false);
         appsCache.getListenable().addListener(this);
     }
@@ -186,7 +189,7 @@ public class AppSandbox implements PathChildrenCacheListener {
                 public UntypedActor create() {
                     return new AppInstanceRedirector();
                 }
-            }), this.name + "AppInstanceRedirector");
+            }).withDispatcher("deltaOmidServerDispatcher"), this.name + "AppInstanceRedirector");
             // Retrieve the obs/interest data from each app data node
             List<String> observersInterests = appData.getListField(ZK_APP_DATA_NODE);
             for (String observerInterest : observersInterests) {
@@ -278,7 +281,7 @@ public class AppSandbox implements PathChildrenCacheListener {
                 public UntypedActor create() {
                     return new AppInstanceNotifier(hp.getHostText(), hp.getPort());
                 }
-            }), name + hostnameAndPort);
+            }).withDispatcher("deltaOmidServerDispatcher"), name + hostnameAndPort);
             ActorRef result = instances.putIfAbsent(hostnameAndPort, appNotifierActor);
             if (result != null) {
                 logger.warn("App instance already running on " + hostnameAndPort);
@@ -298,11 +301,14 @@ public class AppSandbox implements PathChildrenCacheListener {
          */
         private class AppInstanceRedirector extends UntypedActor {
 
+            private LoggingAdapter logger = Logging.getLogger(getContext().system(), this);
+
             int instanceIdx = 0;
 
             @Override
             public void preStart() {
-                logger.trace("App Instance Redirector started");
+                logger.info(name + "App Instance Redirector started using dispatcher " + getContext().dispatcher()
+                        + " Context " + getContext().props());
             }
 
             @Override
@@ -322,7 +328,7 @@ public class AppSandbox implements PathChildrenCacheListener {
                             // " with index " + calculatedIdx);
                             instanceIdx++;
                         } else {
-                            logger.warn("App " + name + " has 0 instances to redirect to. Removing actor");
+                            logger.warning("App " + name + " has 0 instances to redirect to. Removing actor");
                             getContext().stop(getSelf()); // Stop itself
                         }
                     }
@@ -334,7 +340,7 @@ public class AppSandbox implements PathChildrenCacheListener {
 
             @Override
             public void postStop() {
-                logger.trace("App Instance Redirector stopped");
+                logger.info(name + "App Instance Redirector stopped");
             }
         }
 
@@ -343,6 +349,8 @@ public class AppSandbox implements PathChildrenCacheListener {
          * 
          */
         private class AppInstanceNotifier extends UntypedActor {
+
+            private LoggingAdapter logger = Logging.getLogger(getContext().system(), this);
 
             private String host;
             private int port;
@@ -362,11 +370,12 @@ public class AppSandbox implements PathChildrenCacheListener {
                 appInstanceClient = new NotificationReceiverService.Client(protocol);
                 try {
                     transport.open();
+                    logger.info(name + "App Notifier started for host " + this.host + ":" + this.port
+                            + " using dispatcher " + getContext().dispatcher() + " Context " + getContext().props());
                 } catch (TTransportException e) {
                     e.printStackTrace();
                     getContext().stop(getSelf());
                 }
-                logger.trace("App Notifier started");
             }
 
             @Override
@@ -390,7 +399,7 @@ public class AppSandbox implements PathChildrenCacheListener {
                             // logger.trace("App notifier sent notification " + notification + " to app running on " +
                             // host + ":" + port);
                         } catch (TException te) {
-                            logger.warn(name + " app notifier could not send notification " + notification
+                            logger.warning(name + " app notifier could not send notification " + notification
                                     + " to instance on " + host + ":" + port
                                     + " Destination mailbox may be full or communication channel broken."
                                     + " Trying to re-open transport to instance", te);
@@ -406,7 +415,7 @@ public class AppSandbox implements PathChildrenCacheListener {
                             // TODO Add control flow at the application instance level
                         }
                     } else {
-                        logger.warn(name + " app notifier could not send notification to instance on " + host + ":"
+                        logger.warning(name + " app notifier could not send notification to instance on " + host + ":"
                                 + port + " because target observer has been removed.");
                     }
                 } else {
@@ -419,7 +428,7 @@ public class AppSandbox implements PathChildrenCacheListener {
                 if (transport != null) {
                     transport.close();
                 }
-                logger.trace("App Notifier stopped");
+                logger.info(name + "App Notifier stopped for host " + this.host + ":" + this.port);
             }
         }
 

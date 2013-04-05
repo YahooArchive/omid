@@ -102,8 +102,8 @@ public class DeltaOmid implements IncrementalApplication {
         this.conf = builder.conf;
         this.metrics = new ClientSideAppMetrics(this.name, conf);
 
-        this.appObserverSystem = ActorSystem.create(name + "ObserverSystem", ConfigFactory.load()
-                .getConfig("DeltaOmid"));
+        this.appObserverSystem = ActorSystem.create(name + "ObserverSystem",
+                ConfigFactory.load().getConfig("DeltaOmidClient"));
         List<String> observersInterests = new ArrayList<String>();
         for (final Observer observer : builder.observers) {
             String obsName = observer.getName();
@@ -112,7 +112,7 @@ public class DeltaOmid implements IncrementalApplication {
                 public UntypedActor create() {
                     return new ObserverWrapper(observer, conf.getOmidServer(), metrics);
                 }
-            }).withDispatcher("omidPinnedDispatcher").withRouter(new RoundRobinRouter(4)), obsName);
+            }).withDispatcher("deltaOmidClientDispatcher").withRouter(new RoundRobinRouter(4)), obsName);
             this.metrics.addObserver(obsName);
             registeredObservers.put(obsName, obsActor);
             List<Interest> interests = observer.getInterests();
