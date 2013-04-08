@@ -34,7 +34,7 @@ public class NotificationReceiverService {
 
   public interface Iface {
 
-    public void notify(Notification notif) throws org.apache.thrift.TException;
+    public void notify(Notification notif) throws ObserverOverloaded, org.apache.thrift.TException;
 
   }
 
@@ -64,7 +64,7 @@ public class NotificationReceiverService {
       super(iprot, oprot);
     }
 
-    public void notify(Notification notif) throws org.apache.thrift.TException
+    public void notify(Notification notif) throws ObserverOverloaded, org.apache.thrift.TException
     {
       send_notify(notif);
       recv_notify();
@@ -77,10 +77,13 @@ public class NotificationReceiverService {
       sendBase("notify", args);
     }
 
-    public void recv_notify() throws org.apache.thrift.TException
+    public void recv_notify() throws ObserverOverloaded, org.apache.thrift.TException
     {
       notify_result result = new notify_result();
       receiveBase(result, "notify");
+      if (result.e != null) {
+        throw result.e;
+      }
       return;
     }
 
@@ -124,7 +127,7 @@ public class NotificationReceiverService {
         prot.writeMessageEnd();
       }
 
-      public void getResult() throws org.apache.thrift.TException {
+      public void getResult() throws ObserverOverloaded, org.apache.thrift.TException {
         if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
           throw new IllegalStateException("Method call not finished!");
         }
@@ -166,7 +169,11 @@ public class NotificationReceiverService {
 
       public notify_result getResult(I iface, notify_args args) throws org.apache.thrift.TException {
         notify_result result = new notify_result();
-        iface.notify(args.notif);
+        try {
+          iface.notify(args.notif);
+        } catch (ObserverOverloaded e) {
+          result.e = e;
+        }
         return result;
       }
     }
@@ -535,6 +542,7 @@ public class NotificationReceiverService {
   public static class notify_result implements org.apache.thrift.TBase<notify_result, notify_result._Fields>, java.io.Serializable, Cloneable   {
     private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("notify_result");
 
+    private static final org.apache.thrift.protocol.TField E_FIELD_DESC = new org.apache.thrift.protocol.TField("e", org.apache.thrift.protocol.TType.STRUCT, (short)1);
 
     private static final Map<Class<? extends IScheme>, SchemeFactory> schemes = new HashMap<Class<? extends IScheme>, SchemeFactory>();
     static {
@@ -542,10 +550,11 @@ public class NotificationReceiverService {
       schemes.put(TupleScheme.class, new notify_resultTupleSchemeFactory());
     }
 
+    public ObserverOverloaded e; // required
 
     /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
     public enum _Fields implements org.apache.thrift.TFieldIdEnum {
-;
+      E((short)1, "e");
 
       private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
 
@@ -560,6 +569,8 @@ public class NotificationReceiverService {
        */
       public static _Fields findByThriftId(int fieldId) {
         switch(fieldId) {
+          case 1: // E
+            return E;
           default:
             return null;
         }
@@ -598,9 +609,13 @@ public class NotificationReceiverService {
         return _fieldName;
       }
     }
+
+    // isset id assignments
     public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
     static {
       Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.E, new org.apache.thrift.meta_data.FieldMetaData("e", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRUCT)));
       metaDataMap = Collections.unmodifiableMap(tmpMap);
       org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(notify_result.class, metaDataMap);
     }
@@ -608,10 +623,20 @@ public class NotificationReceiverService {
     public notify_result() {
     }
 
+    public notify_result(
+      ObserverOverloaded e)
+    {
+      this();
+      this.e = e;
+    }
+
     /**
      * Performs a deep copy on <i>other</i>.
      */
     public notify_result(notify_result other) {
+      if (other.isSetE()) {
+        this.e = new ObserverOverloaded(other.e);
+      }
     }
 
     public notify_result deepCopy() {
@@ -620,15 +645,51 @@ public class NotificationReceiverService {
 
     @Override
     public void clear() {
+      this.e = null;
+    }
+
+    public ObserverOverloaded getE() {
+      return this.e;
+    }
+
+    public notify_result setE(ObserverOverloaded e) {
+      this.e = e;
+      return this;
+    }
+
+    public void unsetE() {
+      this.e = null;
+    }
+
+    /** Returns true if field e is set (has been assigned a value) and false otherwise */
+    public boolean isSetE() {
+      return this.e != null;
+    }
+
+    public void setEIsSet(boolean value) {
+      if (!value) {
+        this.e = null;
+      }
     }
 
     public void setFieldValue(_Fields field, Object value) {
       switch (field) {
+      case E:
+        if (value == null) {
+          unsetE();
+        } else {
+          setE((ObserverOverloaded)value);
+        }
+        break;
+
       }
     }
 
     public Object getFieldValue(_Fields field) {
       switch (field) {
+      case E:
+        return getE();
+
       }
       throw new IllegalStateException();
     }
@@ -640,6 +701,8 @@ public class NotificationReceiverService {
       }
 
       switch (field) {
+      case E:
+        return isSetE();
       }
       throw new IllegalStateException();
     }
@@ -657,6 +720,15 @@ public class NotificationReceiverService {
       if (that == null)
         return false;
 
+      boolean this_present_e = true && this.isSetE();
+      boolean that_present_e = true && that.isSetE();
+      if (this_present_e || that_present_e) {
+        if (!(this_present_e && that_present_e))
+          return false;
+        if (!this.e.equals(that.e))
+          return false;
+      }
+
       return true;
     }
 
@@ -673,6 +745,16 @@ public class NotificationReceiverService {
       int lastComparison = 0;
       notify_result typedOther = (notify_result)other;
 
+      lastComparison = Boolean.valueOf(isSetE()).compareTo(typedOther.isSetE());
+      if (lastComparison != 0) {
+        return lastComparison;
+      }
+      if (isSetE()) {
+        lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.e, typedOther.e);
+        if (lastComparison != 0) {
+          return lastComparison;
+        }
+      }
       return 0;
     }
 
@@ -693,6 +775,13 @@ public class NotificationReceiverService {
       StringBuilder sb = new StringBuilder("notify_result(");
       boolean first = true;
 
+      sb.append("e:");
+      if (this.e == null) {
+        sb.append("null");
+      } else {
+        sb.append(this.e);
+      }
+      first = false;
       sb.append(")");
       return sb.toString();
     }
@@ -736,6 +825,15 @@ public class NotificationReceiverService {
             break;
           }
           switch (schemeField.id) {
+            case 1: // E
+              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) {
+                struct.e = new ObserverOverloaded();
+                struct.e.read(iprot);
+                struct.setEIsSet(true);
+              } else { 
+                org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              }
+              break;
             default:
               org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
           }
@@ -751,6 +849,11 @@ public class NotificationReceiverService {
         struct.validate();
 
         oprot.writeStructBegin(STRUCT_DESC);
+        if (struct.e != null) {
+          oprot.writeFieldBegin(E_FIELD_DESC);
+          struct.e.write(oprot);
+          oprot.writeFieldEnd();
+        }
         oprot.writeFieldStop();
         oprot.writeStructEnd();
       }
@@ -768,11 +871,25 @@ public class NotificationReceiverService {
       @Override
       public void write(org.apache.thrift.protocol.TProtocol prot, notify_result struct) throws org.apache.thrift.TException {
         TTupleProtocol oprot = (TTupleProtocol) prot;
+        BitSet optionals = new BitSet();
+        if (struct.isSetE()) {
+          optionals.set(0);
+        }
+        oprot.writeBitSet(optionals, 1);
+        if (struct.isSetE()) {
+          struct.e.write(oprot);
+        }
       }
 
       @Override
       public void read(org.apache.thrift.protocol.TProtocol prot, notify_result struct) throws org.apache.thrift.TException {
         TTupleProtocol iprot = (TTupleProtocol) prot;
+        BitSet incoming = iprot.readBitSet(1);
+        if (incoming.get(0)) {
+          struct.e = new ObserverOverloaded();
+          struct.e.read(iprot);
+          struct.setEIsSet(true);
+        }
       }
     }
 

@@ -29,12 +29,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import akka.actor.ActorRef;
+import akka.dispatch.MessageQueueAppendFailedException;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.notifications.NotificationException;
 import com.yahoo.omid.notifications.metrics.ClientSideAppMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
 import com.yahoo.omid.notifications.thrift.generated.NotificationReceiverService;
+import com.yahoo.omid.notifications.thrift.generated.ObserverOverloaded;
 
 public class NotificationManager {
 
@@ -99,11 +101,16 @@ public class NotificationManager {
          * Thrift generated
          */
         @Override
-        public void notify(Notification notification) throws TException {
+        public void notify(Notification notification) throws ObserverOverloaded, TException {
             metrics.notificationReceivedEvent();
             ActorRef obsRef = app.getRegisteredObservers().get(notification.getObserver());
             if (obsRef != null) {
-                obsRef.tell(notification);
+                try {
+                    obsRef.tell(notification);
+                } catch (MessageQueueAppendFailedException e) {
+                    logger.warn("Cannot place msg " + notification + " in Observer's queue");
+                    throw new ObserverOverloaded();
+                }
             } else {
                 logger.error("Observer " + notification.getObserver() + " cannot be notified");
             }

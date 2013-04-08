@@ -47,6 +47,8 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.slf4j.LoggerFactory;
 
+import akka.dispatch.MessageQueueAppendFailedException;
+
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.notifications.AppSandbox.App;
 import com.yahoo.omid.notifications.conf.DeltaOmidServerConfig;
@@ -230,7 +232,7 @@ public class ScannerSandbox {
                             initTimeMillis = System.currentTimeMillis();
                             chooseRandomRegionToScan();
                             scanner = table.getScanner(scan);
-                            logger.trace("NEW scan for {}", interest.toStringRepresentation());
+
                             try {
                                 TimerContext timer = metrics.scanStart();
                                 int count = 0;
@@ -238,11 +240,16 @@ public class ScannerSandbox {
                                     // TODO check consistent when loading only scanned families?
                                     UpdatedInterestMsg msg = new UpdatedInterestMsg(interest.toStringRepresentation(),
                                             result.getRow());
-                                    logger.trace("Found update for {} in row {}", interest.toStringRepresentation(),
-                                            Bytes.toString(result.getRow()));
+                                    // logger.trace("Found update for {} in row {}", interest.toStringRepresentation(),
+                                    // Bytes.toString(result.getRow()));
                                     synchronized (interestedApps) {
                                         for (App app : interestedApps) {
-                                            app.getAppInstanceRedirector().tell(msg);
+                                            try {
+                                                app.getAppInstanceRedirector().tell(msg);
+                                            } catch (MessageQueueAppendFailedException e) {
+                                                logger.warn("Cannot place msg " + msg
+                                                        + " in App Instance Redirector's queue");
+                                            }
                                         }
                                     }
                                     count++;
@@ -254,15 +261,22 @@ public class ScannerSandbox {
                             }
                         } catch (IOException e) {
                             logger.warn("Can't get scanner for table " + interest.getTable() + " retrying");
+                        } catch (RuntimeException e) {
+                            logger.warn("Timeout Exception for scanner");
+                            e.printStackTrace();
                         }
                     }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                     logger.warn("Scanner on interest " + interest + " finished");
                 } catch (IOException e) {
+                    e.printStackTrace();
                     logger.warn("Scanner on interest " + interest + " not initiated because can't get table");
+                } catch (Exception e) {
+                    e.printStackTrace();
                 } finally {
                     if (scanner != null) {
+                        logger.info("Closing scanner for interest " + interest);
                         scanner.close();
                     }
                     if (table != null) {

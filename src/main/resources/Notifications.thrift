@@ -8,6 +8,10 @@ struct Notification {
 	5: binary column
 }
 
+exception ObserverOverloaded {
+
+}
+
 service NotificationReceiverService {
-	void notify(1: Notification notif)
+	void notify(1: Notification notif) throws (1:ObserverOverloaded e)
 }

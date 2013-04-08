@@ -39,6 +39,7 @@ import akka.actor.PoisonPill;
 import akka.actor.Props;
 import akka.actor.UntypedActor;
 import akka.actor.UntypedActorFactory;
+import akka.dispatch.MessageQueueAppendFailedException;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 
@@ -56,6 +57,7 @@ import com.yahoo.omid.notifications.comm.ZNRecordSerializer;
 import com.yahoo.omid.notifications.metrics.ServerSideAppMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
 import com.yahoo.omid.notifications.thrift.generated.NotificationReceiverService;
+import com.yahoo.omid.notifications.thrift.generated.ObserverOverloaded;
 
 public class AppSandbox implements PathChildrenCacheListener {
 
@@ -323,7 +325,11 @@ public class AppSandbox implements PathChildrenCacheListener {
                             }
                             int calculatedIdx = instanceIdx % instanceCount;
                             ActorRef instance = (ActorRef) instances.values().toArray()[calculatedIdx];
-                            instance.tell(msg);
+                            try {
+                                instance.tell(msg);
+                            } catch (MessageQueueAppendFailedException e) {
+                                logger.warning("Cannot place msg " + msg + " in App Instance's queue");
+                            }
                             // logger.trace("App " + name + " sent message " + msg + " to actor " + instance +
                             // " with index " + calculatedIdx);
                             instanceIdx++;
@@ -398,11 +404,14 @@ public class AppSandbox implements PathChildrenCacheListener {
                             metrics.notificationSentEvent();
                             // logger.trace("App notifier sent notification " + notification + " to app running on " +
                             // host + ":" + port);
-                        } catch (TException te) {
+                        } catch (ObserverOverloaded oo) {
                             logger.warning(name + " app notifier could not send notification " + notification
-                                    + " to instance on " + host + ":" + port
-                                    + " Destination mailbox may be full or communication channel broken."
-                                    + " Trying to re-open transport to instance", te);
+                                    + " to instance on " + host + ":" + port, oo);
+                            // TODO Add control flow at the application instance level
+                        } catch (TTransportException tte) {
+                            logger.warning(name + " app notifier could not send notification " + notification
+                                    + " to instance on " + host + ":" + port + " Communication channel may be broken."
+                                    + " Trying to re-open transport to instance", tte);
                             try {
                                 transport.close();
                                 transport.open();
@@ -412,7 +421,8 @@ public class AppSandbox implements PathChildrenCacheListener {
                                 getContext().stop(getSelf());
                                 throw e;
                             }
-                            // TODO Add control flow at the application instance level
+                        } catch (TException te) { // This is only for unexpected ex thrown at server side
+                            te.printStackTrace();
                         }
                     } else {
                         logger.warning(name + " app notifier could not send notification to instance on " + host + ":"
