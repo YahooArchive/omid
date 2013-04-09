@@ -29,6 +29,21 @@
         <project.build.sourceEncoding>
             UTF-8
         </project.build.sourceEncoding>
+        <thrift.executable>
+            /usr/local/bin/thrift
+        </thrift.executable>
+        <thrift.interface>
+            ${basedir}/src/main/resources/Notifications.thrift
+        </thrift.interface>
+    	<gendir.target>
+    	    ${basedir}/src/main/java
+    	</gendir.target>
+        <gendir.namespace>
+            com/yahoo/omid/notifications/thrift/generated
+        </gendir.namespace>
+        <gendir.src>
+            ${gendir.target}/${gendir.namespace}
+        </gendir.src>
         <akka.version>
         	2.0.3
         </akka.version>
@@ -76,7 +91,42 @@
                     </execution>
                 </executions>
             </plugin>
-        </plugins>
+            <plugin>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>1.6</version>
+                <configuration></configuration>
+                <executions>
+                    <execution>
+                        <id>generate-sources</id>
+                        <phase>generate-sources</phase>
+                            <configuration>
+                                <target>
+                                    <echo>
+                                        Preparing output directory for Thrift generated files
+                                    </echo> 
+                                    <mkdir dir="${gendir.src}" />
+                                    <delete>
+                                        <fileset dir="${gendir.src}" includes="**/*" />
+                                    </delete>                                
+                                    <echo>
+                                        Generating Thrift Java source files from ${thrift.interface}
+                                    </echo>
+                                    <exec executable="${thrift.executable}">
+                                        <arg value="--gen" />
+                                        <arg value="java"/>
+                                        <arg value="-out"/>
+                                        <arg value="${gendir.target}"/>
+                                        <arg value="${thrift.interface}"/>
+                                    </exec>
+                                </target>
+                            </configuration>
+                            <goals>
+                                <goal>run</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
         <pluginManagement>
             <plugins>
                 <!--This plugin's configuration is used to store Eclipse 
