@@ -9,7 +9,7 @@ struct Notification {
 }
 
 exception ObserverOverloaded {
-
+	1: string observer
 }
 
 service NotificationReceiverService {

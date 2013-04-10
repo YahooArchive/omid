@@ -19,11 +19,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.Socket;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
-import org.apache.log4j.Logger;
 import org.apache.zookeeper.data.Stat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
@@ -34,7 +37,7 @@ import com.yahoo.omid.notifications.metrics.MetricsUtils;
 
 public class DeltaOmidServer {
 
-    private static final Logger logger = Logger.getLogger(DeltaOmidServer.class);
+    private static final Logger logger = LoggerFactory.getLogger(DeltaOmidServer.class);
 
     private static CuratorFramework zkClient;
 
@@ -48,6 +51,15 @@ public class DeltaOmidServer {
      * @param args
      */
     public static void main(String[] args) throws Exception {
+
+        Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler() {
+
+            @Override
+            public void uncaughtException(Thread t, Throwable e) {
+                logger.error("Uncaught exception in thread {}", t.getName(), e);
+
+            }
+        });
 
         DeltaOmidServerConfig conf = DeltaOmidServerConfig.parseConfig(args);
 
@@ -71,6 +83,9 @@ public class DeltaOmidServer {
         createOrRecoverServerConfigFromZkTree();
 
         logger.info("ooo Omid ooo - Delta Omid Notification Server started - ooo Omid ooo");
+
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+        countDownLatch.await();
 
     }
 

@@ -17,11 +17,14 @@ package com.yahoo.omid.notifications.client;
 
 import java.io.Closeable;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 
-import akka.actor.ActorRef;
+import com.yahoo.omid.notifications.thrift.generated.Notification;
 
 public interface IncrementalApplication extends Closeable {
     public String getName();
+
     public int getPort();
-    public Map<String, ActorRef> getRegisteredObservers();
+
+    public Map<String, BlockingQueue<Notification>> getRegisteredObservers();
 }

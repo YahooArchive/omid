@@ -29,9 +29,6 @@
         <project.build.sourceEncoding>
             UTF-8
         </project.build.sourceEncoding>
-        <akka.version>
-        	2.0.3
-        </akka.version>
     </properties>
     
     <repositories>
@@ -182,11 +179,6 @@
             <artifactId>libthrift</artifactId>
             <version>0.9.0</version>
             <type>jar</type>
-        </dependency>
-        <dependency>
-        	<groupId>com.typesafe.akka</groupId>
-        	<artifactId>akka-actor</artifactId>
-        	<version>${akka.version}</version>
         </dependency>
         <dependency>
             <groupId>com.netflix.curator</groupId>

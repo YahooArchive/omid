@@ -15,12 +15,10 @@
  */
 package com.yahoo.omid.notifications.client;
 
-import java.util.List;
-
 import com.yahoo.omid.notifications.Interest;
 
 public interface Observer extends ObserverBehaviour {
     public String getName();
-    public List<Interest> getInterests(); // To take into account that it may have more than one interest
-}
 
+    public Interest getInterest();
+}

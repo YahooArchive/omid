@@ -18,29 +18,28 @@ package com.yahoo.omid.notifications.client;
 import static com.yahoo.omid.notifications.ZkTreeUtils.ZK_APP_DATA_NODE;
 
 import java.io.IOException;
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.data.Stat;
-
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.actor.Props;
-import akka.actor.UntypedActor;
-import akka.actor.UntypedActorFactory;
-import akka.routing.RoundRobinRouter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.io.Closeables;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.netflix.curator.retry.ExponentialBackoffRetry;
 import com.netflix.curator.utils.ZKPaths;
-import com.typesafe.config.ConfigFactory;
 import com.yahoo.omid.notifications.Interest;
 import com.yahoo.omid.notifications.NotificationException;
 import com.yahoo.omid.notifications.ZkTreeUtils;
@@ -48,10 +47,11 @@ import com.yahoo.omid.notifications.comm.ZNRecord;
 import com.yahoo.omid.notifications.comm.ZNRecordSerializer;
 import com.yahoo.omid.notifications.conf.ClientConfiguration;
 import com.yahoo.omid.notifications.metrics.ClientSideAppMetrics;
+import com.yahoo.omid.notifications.thrift.generated.Notification;
 
 public class DeltaOmid implements IncrementalApplication {
 
-    private static final Logger logger = Logger.getLogger(DeltaOmid.class);
+    private static final Logger logger = LoggerFactory.getLogger(DeltaOmid.class);
 
     private final CuratorFramework zkClient;
     private final String name;
@@ -60,13 +60,15 @@ public class DeltaOmid implements IncrementalApplication {
     private final ClientConfiguration conf;
     private final String zkAppInstancePath;
     private final NotificationManager notificationManager;
-    private final ActorSystem appObserverSystem;
+    public static final int NOTIFICATION_BUFFER_CAPACITY = 100;
+    public static final int OBSERVER_PROCESSOR_PARALLELISM = 2;
 
     // The main structure shared by the InterestRecorder and NotificiationListener services in order to register and
     // notify observers
     // Key: The name of a registered observer
     // Value: The TransactionalObserver infrastructure that delegates on the implementation of the ObserverBehaviour
-    private final Map<String, ActorRef> registeredObservers = new HashMap<String, ActorRef>();
+    private final Map<String, BlockingQueue<Notification>> observerBuffers = new HashMap<String, BlockingQueue<Notification>>();
+    private final Map<String, ExecutorService> observerExecutors = new HashMap<String, ExecutorService>();
 
     public static class AppBuilder {
         // Required parameters
@@ -91,38 +93,46 @@ public class DeltaOmid implements IncrementalApplication {
             return this;
         }
 
-        public IncrementalApplication build() throws NotificationException {
+        public IncrementalApplication build() throws NotificationException, IOException {
             return new DeltaOmid(this);
         }
     }
 
-    private DeltaOmid(AppBuilder builder) throws NotificationException {
+    private DeltaOmid(AppBuilder builder) throws NotificationException, IOException {
         this.name = builder.appName;
         this.port = builder.port;
         this.conf = builder.conf;
         this.metrics = new ClientSideAppMetrics(this.name, conf);
 
-        this.appObserverSystem = ActorSystem.create(name + "ObserverSystem",
-                ConfigFactory.load().getConfig("DeltaOmidClient"));
+        Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler() {
+
+            @Override
+            public void uncaughtException(Thread t, Throwable e) {
+                logger.error("Uncaught exception in thread {}", t.getName(), e);
+
+            }
+        });
+
         List<String> observersInterests = new ArrayList<String>();
         for (final Observer observer : builder.observers) {
             String obsName = observer.getName();
-            // Create an observer wrapper and register it in shared table
-            ActorRef obsActor = appObserverSystem.actorOf(new Props(new UntypedActorFactory() {
-                public UntypedActor create() {
-                    return new ObserverWrapper(observer, conf.getOmidServer(), metrics);
-                }
-            }).withDispatcher("deltaOmidClientDispatcher").withRouter(new RoundRobinRouter(4)), obsName);
+            BlockingQueue<Notification> observerQueue = new ArrayBlockingQueue<Notification>(
+                    NOTIFICATION_BUFFER_CAPACITY);
             this.metrics.addObserver(obsName);
-            registeredObservers.put(obsName, obsActor);
-            List<Interest> interests = observer.getInterests();
-            if (interests == null || interests.size() == 0) {
-                logger.warn("Observer " + obsName + " doesn't have interests: it will never be notified");
+            observerBuffers.put(obsName, observerQueue);
+            ExecutorService observersExecutor = Executors.newFixedThreadPool(OBSERVER_PROCESSOR_PARALLELISM,
+                    new ThreadFactoryBuilder().setNameFormat("Observer-[" + obsName + "]-processor-%d").build());
+            for (int i = 0; i < OBSERVER_PROCESSOR_PARALLELISM; i++) {
+                observersExecutor.submit(new ObserverWrapper(observer, conf.getOmidServer(), metrics, observerQueue));
+            }
+            Interest interest = observer.getInterest();
+            if (interest == null) {
+                logger.warn("Observer " + obsName + " doesn't have any interest: it will never be notified");
                 continue;
             }
-            for (Interest interest : interests) {
-                observersInterests.add(obsName + "/" + interest.toZkNodeRepresentation());
-            }
+
+            observersInterests.add(obsName + "/" + interest.toZkNodeRepresentation());
+
         }
         // Create the notification manager for notifying the app observers
         this.notificationManager = new NotificationManager(this, metrics);
@@ -155,21 +165,28 @@ public class DeltaOmid implements IncrementalApplication {
     }
 
     @Override
-    public Map<String, ActorRef> getRegisteredObservers() {
-        return registeredObservers;
+    public Map<String, BlockingQueue<Notification>> getRegisteredObservers() {
+        return observerBuffers;
     }
 
     @Override
     public void close() throws IOException {
         try {
             zkClient.delete().forPath(zkAppInstancePath);
+
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Cannot clean ZooKeeper node {}", zkAppInstancePath, e);
         } finally {
-            notificationManager.stop();
-            appObserverSystem.shutdown();
+            // notificationManager.stop();
+            // appObserverSystem.shutdown();
             Closeables.closeQuietly(zkClient);
         }
+        synchronized (observerExecutors) {
+            for (ExecutorService executor : observerExecutors.values()) {
+                executor.shutdownNow();
+            }
+        }
+
         logger.trace(getName() + " instance running in " + InetAddress.getLocalHost() + ":" + getPort() + " finished");
     }
 
@@ -194,8 +211,7 @@ public class DeltaOmid implements IncrementalApplication {
 
     @Override
     public String toString() {
-        return "DeltaOmid [name=" + name + ", zkAppInstancePath=" + zkAppInstancePath + ", appObserverSystem="
-                + appObserverSystem + ", registeredObservers=" + registeredObservers + "]";
+        return "DeltaOmid [name=" + name + ", zkAppInstancePath=" + zkAppInstancePath + ", registeredObservers="
+                + observerBuffers + "]";
     }
-
 }

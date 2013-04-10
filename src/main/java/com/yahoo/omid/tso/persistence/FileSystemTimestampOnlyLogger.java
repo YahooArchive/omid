@@ -27,12 +27,11 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Random;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
-import scala.actors.threadpool.Arrays;
 
 import com.yahoo.omid.tso.TSOServerConfig;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
@@ -146,19 +145,19 @@ class FileSystemTimestampOnlyLogger implements StateLogger {
                     break;
                 }
                 switch (type) {
-                    case LoggerProtocol.TIMESTAMPORACLE:
-                        timestampOracle = reader.readLong();
-                        break;
-                    // ignore all other cases, skipping 0, 1 or 2 longs
-                    case LoggerProtocol.COMMIT:
-                        reader.readLong();
-                    case LoggerProtocol.ABORT:
-                    case LoggerProtocol.FULLABORT:
-                    case LoggerProtocol.SNAPSHOT:
-                    case LoggerProtocol.LARGESTDELETEDTIMESTAMP:
-                        reader.readLong();
-                    case LoggerProtocol.LOGSTART:
-                        break;
+                case LoggerProtocol.TIMESTAMPORACLE:
+                    timestampOracle = reader.readLong();
+                    break;
+                // ignore all other cases, skipping 0, 1 or 2 longs
+                case LoggerProtocol.COMMIT:
+                    reader.readLong();
+                case LoggerProtocol.ABORT:
+                case LoggerProtocol.FULLABORT:
+                case LoggerProtocol.SNAPSHOT:
+                case LoggerProtocol.LARGESTDELETEDTIMESTAMP:
+                    reader.readLong();
+                case LoggerProtocol.LOGSTART:
+                    break;
                 }
             }
         } catch (IOException e) {

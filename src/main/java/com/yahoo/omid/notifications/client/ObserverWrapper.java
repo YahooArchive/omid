@@ -17,6 +17,8 @@ package com.yahoo.omid.notifications.client;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -25,10 +27,8 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
-
-import akka.actor.UntypedActor;
-import akka.event.Logging;
-import akka.event.LoggingAdapter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.net.HostAndPort;
 import com.yahoo.omid.client.CommitUnsuccessfulException;
@@ -40,11 +40,10 @@ import com.yahoo.omid.notifications.Constants;
 import com.yahoo.omid.notifications.NotificationException;
 import com.yahoo.omid.notifications.metrics.ClientSideAppMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
-import com.yammer.metrics.core.TimerContext;
 
-public class ObserverWrapper extends UntypedActor {
+public class ObserverWrapper implements Runnable {
 
-    private LoggingAdapter logger = Logging.getLogger(getContext().system(), this);
+    private static final Logger logger = LoggerFactory.getLogger(ObserverWrapper.class);
 
     private Observer observer;
 
@@ -54,10 +53,18 @@ public class ObserverWrapper extends UntypedActor {
 
     private ClientSideAppMetrics metrics;
 
-    public ObserverWrapper(Observer observer, String omidHostAndPort, ClientSideAppMetrics metrics) {
+    private BlockingQueue<Notification> notifQueue;
+
+    private TransactionalTable txTable;
+
+    public static final int PULL_TIMEOUT_MS = 5000;
+
+    public ObserverWrapper(final Observer observer, String omidHostAndPort, ClientSideAppMetrics metrics,
+            BlockingQueue<Notification> notifQueue) throws IOException {
         this.observer = observer;
         final HostAndPort hp = HostAndPort.fromString(omidHostAndPort);
         this.metrics = metrics;
+        this.notifQueue = notifQueue;
 
         // Configure connection with TSO
         tsoClientHbaseConf = HBaseConfiguration.create();
@@ -67,10 +74,13 @@ public class ObserverWrapper extends UntypedActor {
         try {
             tm = new TransactionManager(tsoClientHbaseConf);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Cannot create transaction manager", e);
+            return;
         }
-        logger.info("Instance created for observer " + observer.getName() + " using dispatcher "
-                + getContext().dispatcher() + " Context " + getContext().props());
+        txTable = new TransactionalTable(tsoClientHbaseConf, observer.getInterest().getTable());
+
+        // logger.info("Instance created for observer " + observer.getName() + " using dispatcher "
+        // + getContext().dispatcher() + " Context " + getContext().props());
     }
 
     /**
@@ -80,37 +90,51 @@ public class ObserverWrapper extends UntypedActor {
         return observer.getName();
     }
 
-    /**
-     * @see akka.actor.UntypedActor#onReceive(java.lang.Object)
-     */
     @Override
-    public void onReceive(Object msg) throws Exception {
-        if (msg instanceof Notification) {
-            Notification notification = (Notification) msg;
-            TimerContext timer = metrics.startObserverInvocation(observer.getName());
-            notify(notification.getTable(), notification.getRowKey(), notification.getColumnFamily(),
-                    notification.getColumn());
-            timer.stop();
-        } else {
-            unhandled(msg);
-        }
+    public void run() {
 
+        logger.info("Starting observer wrapper for observer {} for interest {}", observer.getName(), observer
+                .getInterest().toStringRepresentation());
+        while (!Thread.interrupted()) {
+            Notification notification;
+            try {
+                notification = notifQueue.poll(PULL_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                continue;
+            }
+            if (notification == null) {
+                logger.debug("No notification for observer {} after {} ms", observer.getName(),
+                        String.valueOf(PULL_TIMEOUT_MS));
+                continue;
+            }
+            try {
+                notify(notification.getTable(), notification.getRowKey(), notification.getColumnFamily(),
+                        notification.getColumn());
+            } catch (RuntimeException e) {
+                // runtime exception in user code - capture and log
+                logger.error(
+                        "Runtime exception in {} while processing {}:{}:{}:{}",
+                        new String[] { observer.getName(), Bytes.toString(notification.getTable()),
+                                Bytes.toString(notification.getRowKey()),
+                                Bytes.toString(notification.getColumnFamily()),
+                                Bytes.toString(notification.getColumn()) }, e);
+            }
+        }
     }
 
     private void notify(byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {
-        TransactionalTable tt = null;
         TransactionState tx = null;
         try {
             // Start tx
-            tt = new TransactionalTable(tsoClientHbaseConf, table);
             // Transaction adding to rows to a table
             tx = tm.beginTransaction();
             metrics.observerInvocationEvent(observer.getName());
-            checkIfAlreadyExecuted(tx, tt, rowKey, columnFamily, column);
+            checkIfAlreadyExecuted(tx, txTable, rowKey, columnFamily, column);
             // Perform the particular actions on the observer for this row
             observer.onColumnChanged(column, columnFamily, table, rowKey, tx);
             // Commit tx
-            clearNotifyFlag(tx, tt, rowKey, columnFamily, column);
+            clearNotifyFlag(tx, txTable, rowKey, columnFamily, column);
             tm.tryCommit(tx);
             metrics.observerCompletionEvent(observer.getName());
             // logger.trace("TRANSACTION " + tx + " COMMITTED");
@@ -120,26 +144,19 @@ public class ObserverWrapper extends UntypedActor {
             // datastore have been added to the transaction. So instead of aborting the transaction, we just clear the
             // flag and commit in order to avoid the scanners re-sending rows with the notify flag
             try {
-                clearNotifyFlag(tx, tt, rowKey, columnFamily, column);
+                clearNotifyFlag(tx, txTable, rowKey, columnFamily, column);
                 tm.tryCommit(tx);
             } catch (TransactionException e1) {
-                e1.printStackTrace();
+                logger.error("Problem when clearing tx flag in transaction [{}]", tx, e);
             } catch (CommitUnsuccessfulException e1) {
-                e1.printStackTrace();
+                logger.error("Cannot commit transaction [{}] for clearing tx flag", tx, e);
             }
             metrics.observerAbortEvent(observer.getName());
         } catch (CommitUnsuccessfulException e) {
             metrics.omidAbortEvent(observer.getName());
         } catch (Exception e) {
             metrics.unknownAbortEvent(observer.getName());
-            e.printStackTrace();
-        } finally {
-            if (tt != null) {
-                try {
-                    tt.close();
-                } catch (IOException e) {
-                }
-            }
+            logger.error("Unhandled exception", e);
         }
     }
 

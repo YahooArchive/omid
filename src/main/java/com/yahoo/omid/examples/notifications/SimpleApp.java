@@ -21,8 +21,6 @@ import static com.yahoo.omid.examples.Constants.COLUMN_FAMILY_1;
 import static com.yahoo.omid.examples.Constants.TABLE_1;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -140,8 +138,8 @@ public class SimpleApp {
             }
 
             @Override
-            public List<Interest> getInterests() {
-                return Collections.singletonList(interestObs1);
+            public Interest getInterest() {
+                return interestObs1;
             }
         };
 
@@ -161,8 +159,8 @@ public class SimpleApp {
             }
 
             @Override
-            public List<Interest> getInterests() {
-                return Collections.singletonList(interestObs2);
+            public Interest getInterest() {
+                return interestObs2;
             }
         };
 

@@ -16,16 +16,16 @@
 package com.yahoo.omid.notifications;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -47,10 +47,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.slf4j.LoggerFactory;
 
-import akka.dispatch.MessageQueueAppendFailedException;
-
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.notifications.AppSandbox.App;
 import com.yahoo.omid.notifications.conf.DeltaOmidServerConfig;
 import com.yahoo.omid.notifications.metrics.ServerSideInterestMetrics;
 import com.yammer.metrics.core.TimerContext;
@@ -65,6 +62,9 @@ public class ScannerSandbox {
     private DeltaOmidServerConfig conf;
 
     private Configuration config = HBaseConfiguration.create();
+
+    private static final SynchronousQueue<UpdatedInterestMsg> handOffQueue = new SynchronousQueue<UpdatedInterestMsg>(
+            true);
 
     // Key: Interest where the scanners running on the ScannerContainer will do
     // their work
@@ -84,8 +84,8 @@ public class ScannerSandbox {
                 ScannerContainer previousScannerContainer = scanners.putIfAbsent(appInterest, scannerContainer);
                 if (previousScannerContainer != null) {
                     previousScannerContainer.addInterestedApplication(app);
-                    logger.trace("Application added to ScannerContainer for interest " + appInterest);
-                    System.out.println("Application added to ScannerContainer for interest " + appInterest);
+                    logger.info("Application added to ScannerContainer for interest " + appInterest);
+                    // System.out.println("Application added to ScannerContainer for interest " + appInterest);
                     return;
                 } else {
                     scannerContainer.start();
@@ -120,6 +120,10 @@ public class ScannerSandbox {
         return scanners;
     }
 
+    public SynchronousQueue<UpdatedInterestMsg> getHandoffQueue() {
+        return handOffQueue;
+    }
+
     public class ScannerContainer {
 
         private final org.slf4j.Logger logger = LoggerFactory.getLogger(ScannerContainer.class);
@@ -131,9 +135,11 @@ public class ScannerSandbox {
 
         private Interest interest;
 
-        private Set<App> interestedApps = Collections.synchronizedSet(new HashSet<App>());
+        AtomicReference<App> currentApp = new AtomicReference<App>();
 
         ServerSideInterestMetrics metrics;
+
+        private Future<Boolean> scannerRef;
 
         /**
          * @param interest
@@ -184,26 +190,27 @@ public class ScannerSandbox {
         }
 
         public void addInterestedApplication(App app) {
-            interestedApps.add(app);
+            currentApp.set(app);
         }
 
         public void removeInterestedApplication(App app) {
-            interestedApps.remove(app);
+            currentApp.set(null);
         }
 
         public int countInterestedApplications() {
-            return interestedApps.size();
+            return (currentApp.get() == null ? 0 : 1);
         }
 
         public void start() throws Exception {
-            exec.submit(new Scanner());
-            logger.trace("{} scanner(s) on " + interest + " started", "" + 1);
+            scannerRef = exec.submit(new Scanner());
+            logger.info("{} scanner(s) on " + interest + " started", "" + 1);
         }
 
         public void stop() throws InterruptedException {
+            scannerRef.cancel(true);
             exec.shutdownNow();
             exec.awaitTermination(TIMEOUT, UNIT);
-            logger.trace("Scanners on " + interest + " stopped");
+            logger.info("Scanners on " + interest + " stopped");
         }
 
         public class Scanner implements Callable<Boolean> {
@@ -242,15 +249,16 @@ public class ScannerSandbox {
                                             result.getRow());
                                     // logger.trace("Found update for {} in row {}", interest.toStringRepresentation(),
                                     // Bytes.toString(result.getRow()));
-                                    synchronized (interestedApps) {
-                                        for (App app : interestedApps) {
-                                            try {
-                                                app.getAppInstanceRedirector().tell(msg);
-                                            } catch (MessageQueueAppendFailedException e) {
-                                                logger.warn("Cannot place msg " + msg
-                                                        + " in App Instance Redirector's queue");
-                                            }
-                                        }
+
+                                    if (currentApp.get() == null) {
+                                        break;
+                                    }
+
+                                    // TODO configurable timeout
+                                    if (!handOffQueue.offer(msg, 10, TimeUnit.SECONDS)) {
+                                        logger.error("Cannot deliver message {} to any receiver application after 10s",
+                                                msg);
+                                        break;
                                     }
                                     count++;
                                 }
@@ -267,13 +275,11 @@ public class ScannerSandbox {
                         }
                     }
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
-                    logger.warn("Scanner on interest " + interest + " finished");
+                    logger.warn("Scanner on interest " + interest + " finished", e);
                 } catch (IOException e) {
-                    e.printStackTrace();
-                    logger.warn("Scanner on interest " + interest + " not initiated because can't get table");
+                    logger.error("Scanner on interest " + interest + " not initiated because can't get table", e);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    logger.error("Unhandled error for scanner", e);
                 } finally {
                     if (scanner != null) {
                         logger.info("Closing scanner for interest " + interest);
@@ -309,7 +315,6 @@ public class ScannerSandbox {
                 // TODO configurable
                 // NOTE: apparently that does not get set from hbase.client.scanner.caching , so we set it manually here
                 scan.setCaching(500);
-                logger.info("SCANNER WITH CACHING OF " + scan.getCaching());
             }
 
             private void chooseRandomRegionToScan() {
@@ -329,7 +334,7 @@ public class ScannerSandbox {
                     }
                     scan.setStopRow(stopRow);
 
-                    logger.trace(
+                    logger.debug(
                             "Scanning {} region{} from {} to {}",
                             new String[] { Bytes.toString(table.getTableName()), "" + regionIdx,
                                     Bytes.toString(startKeys[regionIdx]), Bytes.toString(endKeys[regionIdx]) });

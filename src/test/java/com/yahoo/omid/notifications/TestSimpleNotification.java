@@ -19,9 +19,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import junit.framework.Assert;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -67,7 +68,7 @@ public class TestSimpleNotification extends TestInfrastructure {
 
         startTriggerTransaction(true, "row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
 
-        cdl.await();
+        Assert.assertTrue(cdl.await(10, TimeUnit.SECONDS));
         app.close();
     }
 
@@ -134,8 +135,8 @@ public class TestSimpleNotification extends TestInfrastructure {
             }
 
             @Override
-            public List<Interest> getInterests() {
-                return Collections.singletonList(interest);
+            public Interest getInterest() {
+                return interest;
             }
         };
 
@@ -211,8 +212,8 @@ public class TestSimpleNotification extends TestInfrastructure {
             }
 
             @Override
-            public List<Interest> getInterests() {
-                return Collections.singletonList(interest);
+            public Interest getInterest() {
+                return interest;
             }
         };
 
@@ -335,8 +336,8 @@ public class TestSimpleNotification extends TestInfrastructure {
             }
 
             @Override
-            public List<Interest> getInterests() {
-                return Collections.singletonList(interest);
+            public Interest getInterest() {
+                return interest;
             }
         };
     }
@@ -403,8 +404,8 @@ public class TestSimpleNotification extends TestInfrastructure {
             }
 
             @Override
-            public List<Interest> getInterests() {
-                return Collections.singletonList(interest);
+            public Interest getInterest() {
+                return interest;
             }
         };
     }

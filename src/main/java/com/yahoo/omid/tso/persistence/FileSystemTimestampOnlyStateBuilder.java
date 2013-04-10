@@ -16,9 +16,7 @@
 
 package com.yahoo.omid.tso.persistence;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
-import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -90,24 +88,32 @@ public class FileSystemTimestampOnlyStateBuilder extends StateBuilder {
 
     private long getTimestamp(File directory) {
         long maxTimestamp = 0;
-        for (File file : directory.listFiles()) {
-            BufferedReader reader = null;
-            try {
-                reader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
-                long currentTimestamp = Long.parseLong(reader.readLine());
-                maxTimestamp = Math.max(maxTimestamp, currentTimestamp);
-            } catch (IOException e) {
-                LOG.error("Couldn't read timestamp", e);
-            } catch (NumberFormatException e) {
-                LOG.error("Couldn't decode timestamp", e);
-            } finally {
-                if (reader != null) {
-                    try {
-                        reader.close();
-                    } catch (IOException e) {
-                        LOG.error(e);
+        if (directory.listFiles() != null) {
+            for (File file : directory.listFiles()) {
+                BufferedReader reader = null;
+                try {
+                    reader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
+                    long currentTimestamp = Long.parseLong(reader.readLine());
+                    maxTimestamp = Math.max(maxTimestamp, currentTimestamp);
+                } catch (IOException e) {
+                    LOG.error("Couldn't read timestamp", e);
+                } catch (NumberFormatException e) {
+                    LOG.error("Couldn't decode timestamp", e);
+                } finally {
+                    if (reader != null) {
+                        try {
+                            reader.close();
+                        } catch (IOException e) {
+                            LOG.error(e);
+                        }
                     }
                 }
+            }
+        } else {
+            if (!directory.exists()) {
+                LOG.info("Directory " + directory.getAbsolutePath() + " does not exist, maxTimeStamp will be 0");
+            } else {
+                LOG.info("Directory " + directory.getAbsolutePath() + " cannot be read, maxTimeStamp will be 0");
             }
         }
         return maxTimestamp;
