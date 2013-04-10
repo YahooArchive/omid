@@ -87,6 +87,9 @@ public class FileSystemTimestampOnlyStateBuilder extends StateBuilder {
     }
 
     private long getTimestamp(File directory) {
+        if (directory == null || !directory.exists()) {
+            return 0;
+        }
         long maxTimestamp = 0;
         if (directory.listFiles() != null) {
             for (File file : directory.listFiles()) {
