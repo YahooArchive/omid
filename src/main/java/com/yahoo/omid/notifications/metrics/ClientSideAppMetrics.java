@@ -1,7 +1,7 @@
 package com.yahoo.omid.notifications.metrics;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.LoggerFactory;
@@ -22,15 +22,15 @@ public class ClientSideAppMetrics {
 
     private Meter notificationsMeter;
 
-    private Map<String, Meter> observerInvocationMeters = new ConcurrentHashMap<String, Meter>(); // This is redundant
-                                                                                                  // with the counter
-                                                                                                  // offered by
-                                                                                                  // observerExexutionTimers
-    private Map<String, Meter> observerCompletionMeters = new ConcurrentHashMap<String, Meter>();
-    private Map<String, Meter> observerAbortMeters = new ConcurrentHashMap<String, Meter>();
-    private Map<String, Meter> omidAbortMeters = new ConcurrentHashMap<String, Meter>();
-    private Map<String, Meter> unknownAbortMeters = new ConcurrentHashMap<String, Meter>();
-    private Map<String, Timer> observerExecutionTimers = new ConcurrentHashMap<String, Timer>();
+    private Map<String, Meter> observerInvocationMeters = new HashMap<String, Meter>(); // This is redundant
+                                                                                        // with the counter
+                                                                                        // offered by
+                                                                                        // observerExexutionTimers
+    private Map<String, Meter> observerCompletionMeters = new HashMap<String, Meter>();
+    private Map<String, Meter> observerAbortMeters = new HashMap<String, Meter>();
+    private Map<String, Meter> omidAbortMeters = new HashMap<String, Meter>();
+    private Map<String, Meter> unknownAbortMeters = new HashMap<String, Meter>();
+    private Map<String, Timer> observerExecutionTimers = new HashMap<String, Timer>();
 
     public ClientSideAppMetrics(String appName, ClientConfiguration conf) {
         this.appName = appName;

@@ -75,7 +75,7 @@ class App implements PathChildrenCacheListener {
         String appPath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), this.name);
         appsInstanceCache = new PathChildrenCache(this.appSandbox.zkClient, appPath, false);
         appsInstanceCache.getListenable().addListener(this);
-        appsInstanceCache.start(true);
+        appsInstanceCache.start();
     }
 
     public Set<String> getInterests() {
@@ -133,10 +133,10 @@ class App implements PathChildrenCacheListener {
         if (notifiers.putIfAbsent(hp, notifier) != null) {
             notifier.cancel();
         } else {
+            logger.info("Adding notifier to {} for application {}", hp.toString(), name);
             notifier.start();
         }
 
-        logger.trace("Instance {} added to app {}", hostnameAndPort, name);
     }
 
     public void removeInstance(String hostnameAndPort) {

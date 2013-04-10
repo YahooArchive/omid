@@ -40,6 +40,7 @@ import com.yahoo.omid.notifications.Constants;
 import com.yahoo.omid.notifications.NotificationException;
 import com.yahoo.omid.notifications.metrics.ClientSideAppMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
+import com.yammer.metrics.core.TimerContext;
 
 public class ObserverWrapper implements Runnable {
 
@@ -108,9 +109,11 @@ public class ObserverWrapper implements Runnable {
                         String.valueOf(PULL_TIMEOUT_MS));
                 continue;
             }
+            TimerContext timer = metrics.startObserverInvocation(observer.getName());
             try {
                 notify(notification.getTable(), notification.getRowKey(), notification.getColumnFamily(),
                         notification.getColumn());
+                timer.stop();
             } catch (RuntimeException e) {
                 // runtime exception in user code - capture and log
                 logger.error(
@@ -119,6 +122,8 @@ public class ObserverWrapper implements Runnable {
                                 Bytes.toString(notification.getRowKey()),
                                 Bytes.toString(notification.getColumnFamily()),
                                 Bytes.toString(notification.getColumn()) }, e);
+            } finally {
+                timer.stop();
             }
         }
     }

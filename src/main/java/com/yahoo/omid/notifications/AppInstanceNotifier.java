@@ -31,7 +31,7 @@ class AppInstanceNotifier extends Thread {
     private HostAndPort hostAndPort;
     private TTransport transport;
     private NotificationReceiverService.Client appInstanceClient;
-    public static final int HOLDOFF_TIME_MS = 2000;
+    public static final int HOLDOFF_TIME_MS = 100;
 
     private static final Logger logger = LoggerFactory.getLogger(AppInstanceNotifier.class);
 

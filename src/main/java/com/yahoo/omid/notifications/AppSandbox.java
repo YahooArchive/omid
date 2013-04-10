@@ -93,7 +93,6 @@ public class AppSandbox implements PathChildrenCacheListener {
     public void createApplication(String appName) throws Exception {
 
         String appNodePath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), appName);
-        logger.info("Creating application {}  from {}", appName, appNodePath);
         byte[] rawData = zkClient.getData().forPath(appNodePath);
         ZNRecord appData = (ZNRecord) new ZNRecordSerializer().deserialize(rawData);
         if (!appName.equals(appData.getId())) {
@@ -102,6 +101,7 @@ public class AppSandbox implements PathChildrenCacheListener {
         App app = new App(this, appName, appData);
         if (null == registeredApps.putIfAbsent(appName, app)) {
             scannerSandbox.registerInterestsFromApplication(app);
+            logger.info("Registered new application {}", appData);
         }
         // NOTE: It is not necessary to create the instances. It is triggered automatically by curator
         // through the App.childEvent() callback when constructing the App object (particularly, when
@@ -113,6 +113,7 @@ public class AppSandbox implements PathChildrenCacheListener {
         removedApp = registeredApps.remove(appName);
         if (removedApp != null) {
             scannerSandbox.removeInterestsFromApplication(removedApp);
+            logger.info("Removed application {}", appName);
         } else {
             throw new Exception("App " + appName + " was not registered in AppSanbox");
         }
