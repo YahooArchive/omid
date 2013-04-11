@@ -166,24 +166,19 @@ public class TestSimpleNotification extends TestInfrastructure {
 
             // Check timestamps
             KeyValue[] kvs = result.raw();
-            assertEquals("Only 3 KV should be returned", 3, kvs.length);
+            assertEquals("Only 2 KV should be returned", 2, kvs.length);
             assertEquals("Incorrect timestamp", tst, kvs[0].getTimestamp()); // 0 = Value written
             assertEquals("Incorrect timestamp", st, kvs[1].getTimestamp()); // 1 = *-notify meta-column
-            assertEquals("Incorrect timestamp", st, kvs[2].getTimestamp()); // 2 = *-observer meta-column
 
             byte[] val = null;
             byte[] notifyVal = null;
-            byte[] obsVal = null;
             val = result.getValue(Bytes.toBytes(TestConstants.COLUMN_FAMILY_1), Bytes.toBytes(TestConstants.COLUMN_1));
             notifyVal = result.getValue(
                     Bytes.toBytes(Constants.HBASE_META_CF),
                     Bytes.toBytes(TestConstants.COLUMN_FAMILY_1 + "/" + TestConstants.COLUMN_1
                             + Constants.HBASE_NOTIFY_SUFFIX));
-            obsVal = result.getValue(Bytes.toBytes(Constants.HBASE_META_CF),
-                    Bytes.toBytes(TestConstants.COLUMN_FAMILY_1 + "/" + TestConstants.COLUMN_1 + "-obs"));
             assertEquals("Values for this column are different", VAL_1, Bytes.toString(val));
             assertEquals("Values for this column are different", "false", Bytes.toString(notifyVal));
-            assertEquals("Values for this column are different", "obs", Bytes.toString(obsVal));
             if (ht != null) {
                 ht.close();
             }

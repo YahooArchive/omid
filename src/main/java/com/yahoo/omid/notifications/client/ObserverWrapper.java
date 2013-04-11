@@ -176,9 +176,7 @@ public class ObserverWrapper implements Runnable {
     private void checkIfAlreadyExecuted(TransactionState tx, TransactionalTable tt, byte[] rowKey, byte[] columnFamily,
             byte[] column) throws Exception {
         String targetColumnFamily = Constants.HBASE_META_CF;
-        // Pattern for observer column in framework's metadata column family: <cf>/<c>-<obsName>
-        String targetColumnObserverAck = Bytes.toString(columnFamily) + "/" + Bytes.toString(column) + "-"
-                + observer.getName();
+
         // Pattern for notify column in framework's metadata column family: <cf>/<c>-notify
         String targetColumnNotify = Bytes.toString(columnFamily) + "/" + Bytes.toString(column)
                 + Constants.HBASE_NOTIFY_SUFFIX;
@@ -187,54 +185,17 @@ public class ObserverWrapper implements Runnable {
         Get get = new Get(rowKey);
         Result result = tt.get(tx, get); // Transactional get
 
-        List<KeyValue> listOfObserverAckColumnValues = result.getColumn(Bytes.toBytes(targetColumnFamily),
-                Bytes.toBytes(targetColumnObserverAck));
-
-        KeyValue lastValueAck = null;
-        byte[] valObserverAck = null;
-        long tsObserverAck = -1;
-
-        if (listOfObserverAckColumnValues.size() > 0) { // Check this because the observer may have not been initialized
-                                                        // yet
-            lastValueAck = listOfObserverAckColumnValues.get(0);
-            valObserverAck = lastValueAck.getValue();
-            tsObserverAck = lastValueAck.getTimestamp();
-        }
-
-        List<KeyValue> listOfNotifyColumnValues = result.getColumn(Bytes.toBytes(targetColumnFamily),
+        KeyValue lastValueNotify = result.getColumnLatest(Bytes.toBytes(targetColumnFamily),
                 Bytes.toBytes(targetColumnNotify));
 
-        KeyValue lastValueNotify = null;
-        byte[] valNotify = null;
-        long tsNotify = -1;
-
-        if (listOfNotifyColumnValues.size() > 0) {
-            lastValueNotify = listOfNotifyColumnValues.get(0);
-            valNotify = lastValueNotify.getValue();
-            tsNotify = lastValueNotify.getTimestamp();
+        if (lastValueNotify == null) {
+            throw new NotificationException("Notify flag not set");
         }
 
-        // logger.trace("Result :" + result);
-        // logger.trace("TS Notify :" + tsNotify + " TS Obs Ack " + tsObserverAck);
-        if (valNotify != null && Bytes.equals(valNotify, Bytes.toBytes("true"))) {
-            // Proceed if TS notify (set by the coprocessor with the TS of the start timestamp of
-            // the transaction) > TS ack set by the last observer executed
-            if (valObserverAck == null || tsObserverAck < tsNotify) {
-                // logger.trace("Setting put on observer");
-                Put put = new Put(rowKey, tx.getStartTimestamp());
-                put.add(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumnObserverAck),
-                        Bytes.toBytes(observer.getName()));
-                tt.put(tx, put); // Transactional put
-            } else {
-                // logger.trace("Observer " + observer.getName() + " already executed for change on "
-                // + Bytes.toString(columnFamily) + "/" + Bytes.toString(column) + " row "
-                // + Bytes.toString(rowKey));
-                throw new NotificationException("Observer already executed");
-            }
-        } else {
-            // logger.trace("Notify its not true!!! So, another notificiation for observer " + observer.getName()
-            // + " was previously executed for " + Bytes.toString(columnFamily) + "/" + Bytes.toString(column)
-            // + " row " + Bytes.toString(rowKey));
+        byte[] valNotify = lastValueNotify.getValue();
+        long tsNotify = lastValueNotify.getTimestamp();
+
+        if (valNotify == null || !Bytes.equals(valNotify, Bytes.toBytes("true"))) {
             throw new NotificationException("Notify is not true");
         }
     }
