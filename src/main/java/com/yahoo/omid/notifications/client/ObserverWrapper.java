@@ -16,7 +16,6 @@
 package com.yahoo.omid.notifications.client;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -58,7 +57,7 @@ public class ObserverWrapper implements Runnable {
 
     private TransactionalTable txTable;
 
-    public static final int PULL_TIMEOUT_MS = 5000;
+    public static final int PULL_TIMEOUT_MS = 100;
 
     public ObserverWrapper(final Observer observer, String omidHostAndPort, ClientSideAppMetrics metrics,
             BlockingQueue<Notification> notifQueue) throws IOException {
@@ -107,6 +106,7 @@ public class ObserverWrapper implements Runnable {
             if (notification == null) {
                 logger.debug("No notification for observer {} after {} ms", observer.getName(),
                         String.valueOf(PULL_TIMEOUT_MS));
+                metrics.observerStarvationEvent(observer.getName());
                 continue;
             }
             TimerContext timer = metrics.startObserverInvocation(observer.getName());

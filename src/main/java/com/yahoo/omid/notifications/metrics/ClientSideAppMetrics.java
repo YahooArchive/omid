@@ -31,6 +31,7 @@ public class ClientSideAppMetrics {
     private Map<String, Meter> omidAbortMeters = new HashMap<String, Meter>();
     private Map<String, Meter> unknownAbortMeters = new HashMap<String, Meter>();
     private Map<String, Timer> observerExecutionTimers = new HashMap<String, Timer>();
+    private Map<String, Meter> observerStarvationMeters = new HashMap<String, Meter>();
 
     public ClientSideAppMetrics(String appName, ClientConfiguration conf) {
         this.appName = appName;
@@ -54,6 +55,8 @@ public class ClientSideAppMetrics {
                 + "@unknown-aborts", "unknown-aborts", TimeUnit.SECONDS));
         observerExecutionTimers.put(obsName,
                 Metrics.newTimer(ObserverWrapper.class, this.appName + "_" + obsName + "-processing-time"));
+        observerStarvationMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "_" + obsName
+                + "@starvations", "starvations", TimeUnit.SECONDS));
     }
 
     public void notificationReceivedEvent() {
@@ -83,4 +86,9 @@ public class ClientSideAppMetrics {
     public TimerContext startObserverInvocation(String obsName) {
         return observerExecutionTimers.get(obsName).time();
     }
+
+    public void observerStarvationEvent(String obsName) {
+        observerStarvationMeters.get(obsName).mark();
+    }
+
 }
