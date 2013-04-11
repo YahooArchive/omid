@@ -104,31 +104,34 @@ public class SimpleApp {
 
             Interest interestObs1 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_1);
 
+            private ThreadLocal<TransactionalTable> txTable = new ThreadLocal<TransactionalTable>() {
+
+                @Override
+                protected TransactionalTable initialValue() {
+                    // TSO Client setup
+                    Configuration tsoClientHbaseConfObs = HBaseConfiguration.create();
+                    tsoClientHbaseConfObs.set("tso.host", omidHp.getHostText());
+                    tsoClientHbaseConfObs.setInt("tso.port", omidHp.getPortOrDefault(1234));
+                    try {
+                        logger.info("Returning new " + TABLE_1 + " txtable");
+                        return new TransactionalTable(tsoClientHbaseConfObs, TABLE_1);
+                    } catch (IOException e) {
+                        throw new RuntimeException("Cannot create transactional table on content table", e);
+                    }
+                }
+
+            };
+
             public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey,
                     TransactionState tx) {
                 // logger.info("o1 -> Update on " + Bytes.toString(table) + Bytes.toString(rowKey)
                 // + Bytes.toString(columnFamily) + Bytes.toString(column));
 
-                TransactionalTable tt = null;
                 try {
-                    // TSO Client setup
-                    Configuration tsoClientHbaseConfObs = HBaseConfiguration.create();
-                    tsoClientHbaseConfObs.set("tso.host", omidHp.getHostText());
-                    tsoClientHbaseConfObs.setInt("tso.port", omidHp.getPortOrDefault(1234));
-
-                    tt = new TransactionalTable(tsoClientHbaseConfObs, TABLE_1);
-                    ExamplesUtils.doTransactionalPut(tx, tt, rowKey, Bytes.toBytes(COLUMN_FAMILY_1),
+                    ExamplesUtils.doTransactionalPut(tx, txTable.get(), rowKey, Bytes.toBytes(COLUMN_FAMILY_1),
                             Bytes.toBytes(COLUMN_2), Bytes.toBytes("data written by observer o1"));
                 } catch (IOException e) {
                     e.printStackTrace();
-                } finally {
-                    try {
-                        if (tt != null) {
-                            tt.close();
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
                 }
             }
 
