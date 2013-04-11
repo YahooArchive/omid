@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 public class ObserverOverloaded extends TException implements org.apache.thrift.TBase<ObserverOverloaded, ObserverOverloaded._Fields>, java.io.Serializable, Cloneable {
   private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("ObserverOverloaded");
 
+  private static final org.apache.thrift.protocol.TField OBSERVER_FIELD_DESC = new org.apache.thrift.protocol.TField("observer", org.apache.thrift.protocol.TType.STRING, (short)1);
 
   private static final Map<Class<? extends IScheme>, SchemeFactory> schemes = new HashMap<Class<? extends IScheme>, SchemeFactory>();
   static {
@@ -40,10 +41,11 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
     schemes.put(TupleScheme.class, new ObserverOverloadedTupleSchemeFactory());
   }
 
+  public String observer; // required
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
-;
+    OBSERVER((short)1, "observer");
 
     private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
 
@@ -58,6 +60,8 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
      */
     public static _Fields findByThriftId(int fieldId) {
       switch(fieldId) {
+        case 1: // OBSERVER
+          return OBSERVER;
         default:
           return null;
       }
@@ -96,9 +100,13 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
       return _fieldName;
     }
   }
+
+  // isset id assignments
   public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
   static {
     Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+    tmpMap.put(_Fields.OBSERVER, new org.apache.thrift.meta_data.FieldMetaData("observer", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+        new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
     metaDataMap = Collections.unmodifiableMap(tmpMap);
     org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(ObserverOverloaded.class, metaDataMap);
   }
@@ -106,10 +114,20 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
   public ObserverOverloaded() {
   }
 
+  public ObserverOverloaded(
+    String observer)
+  {
+    this();
+    this.observer = observer;
+  }
+
   /**
    * Performs a deep copy on <i>other</i>.
    */
   public ObserverOverloaded(ObserverOverloaded other) {
+    if (other.isSetObserver()) {
+      this.observer = other.observer;
+    }
   }
 
   public ObserverOverloaded deepCopy() {
@@ -118,15 +136,51 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
 
   @Override
   public void clear() {
+    this.observer = null;
+  }
+
+  public String getObserver() {
+    return this.observer;
+  }
+
+  public ObserverOverloaded setObserver(String observer) {
+    this.observer = observer;
+    return this;
+  }
+
+  public void unsetObserver() {
+    this.observer = null;
+  }
+
+  /** Returns true if field observer is set (has been assigned a value) and false otherwise */
+  public boolean isSetObserver() {
+    return this.observer != null;
+  }
+
+  public void setObserverIsSet(boolean value) {
+    if (!value) {
+      this.observer = null;
+    }
   }
 
   public void setFieldValue(_Fields field, Object value) {
     switch (field) {
+    case OBSERVER:
+      if (value == null) {
+        unsetObserver();
+      } else {
+        setObserver((String)value);
+      }
+      break;
+
     }
   }
 
   public Object getFieldValue(_Fields field) {
     switch (field) {
+    case OBSERVER:
+      return getObserver();
+
     }
     throw new IllegalStateException();
   }
@@ -138,6 +192,8 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
     }
 
     switch (field) {
+    case OBSERVER:
+      return isSetObserver();
     }
     throw new IllegalStateException();
   }
@@ -155,6 +211,15 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
     if (that == null)
       return false;
 
+    boolean this_present_observer = true && this.isSetObserver();
+    boolean that_present_observer = true && that.isSetObserver();
+    if (this_present_observer || that_present_observer) {
+      if (!(this_present_observer && that_present_observer))
+        return false;
+      if (!this.observer.equals(that.observer))
+        return false;
+    }
+
     return true;
   }
 
@@ -171,6 +236,16 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
     int lastComparison = 0;
     ObserverOverloaded typedOther = (ObserverOverloaded)other;
 
+    lastComparison = Boolean.valueOf(isSetObserver()).compareTo(typedOther.isSetObserver());
+    if (lastComparison != 0) {
+      return lastComparison;
+    }
+    if (isSetObserver()) {
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.observer, typedOther.observer);
+      if (lastComparison != 0) {
+        return lastComparison;
+      }
+    }
     return 0;
   }
 
@@ -191,6 +266,13 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
     StringBuilder sb = new StringBuilder("ObserverOverloaded(");
     boolean first = true;
 
+    sb.append("observer:");
+    if (this.observer == null) {
+      sb.append("null");
+    } else {
+      sb.append(this.observer);
+    }
+    first = false;
     sb.append(")");
     return sb.toString();
   }
@@ -234,6 +316,14 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
           break;
         }
         switch (schemeField.id) {
+          case 1: // OBSERVER
+            if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              struct.observer = iprot.readString();
+              struct.setObserverIsSet(true);
+            } else { 
+              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+            }
+            break;
           default:
             org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
         }
@@ -249,6 +339,11 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
       struct.validate();
 
       oprot.writeStructBegin(STRUCT_DESC);
+      if (struct.observer != null) {
+        oprot.writeFieldBegin(OBSERVER_FIELD_DESC);
+        oprot.writeString(struct.observer);
+        oprot.writeFieldEnd();
+      }
       oprot.writeFieldStop();
       oprot.writeStructEnd();
     }
@@ -266,11 +361,24 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
     @Override
     public void write(org.apache.thrift.protocol.TProtocol prot, ObserverOverloaded struct) throws org.apache.thrift.TException {
       TTupleProtocol oprot = (TTupleProtocol) prot;
+      BitSet optionals = new BitSet();
+      if (struct.isSetObserver()) {
+        optionals.set(0);
+      }
+      oprot.writeBitSet(optionals, 1);
+      if (struct.isSetObserver()) {
+        oprot.writeString(struct.observer);
+      }
     }
 
     @Override
     public void read(org.apache.thrift.protocol.TProtocol prot, ObserverOverloaded struct) throws org.apache.thrift.TException {
       TTupleProtocol iprot = (TTupleProtocol) prot;
+      BitSet incoming = iprot.readBitSet(1);
+      if (incoming.get(0)) {
+        struct.observer = iprot.readString();
+        struct.setObserverIsSet(true);
+      }
     }
   }
 
