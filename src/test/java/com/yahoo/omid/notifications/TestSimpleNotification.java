@@ -188,9 +188,48 @@ public class TestSimpleNotification extends TestInfrastructure {
     }
 
     @Test
-    public void testTxWritesTheRightMetadataOnAbort() throws Exception {
+    public void testFlagCleanedUpAfterAbort() throws Exception {
 
-        final CountDownLatch cdl = new CountDownLatch(1); // # of observers
+        IncrementalApplication app = new DeltaOmid.AppBuilder("testTxWritesTheRightMetadataOnAbortApp", 6669)
+                .addObserver(new Observer() {
+                    @Override
+                    public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey,
+                            TransactionState tx) {
+                    }
+
+                    @Override
+                    public String getName() {
+                        return "obs1";
+                    }
+
+                    @Override
+                    public Interest getInterest() {
+                        return new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
+                    }
+                }).build();
+
+        Thread.sleep(10000);
+
+        startTriggerTransaction(false, "row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
+
+        // Check all the metadata values
+        Configuration hbaseConfig = HBaseConfiguration.create();
+        HTable ht = new HTable(hbaseConfig, TestConstants.TABLE);
+        Get row = new Get(Bytes.toBytes("row-1"));
+        Result result = ht.get(row);
+
+        assertNotNull("Result shouldn't be null", result);
+
+        // Check there are no kvs in the DB
+        KeyValue[] kvs = result.raw();
+        assertEquals("No KVs should be returned", 0, kvs.length);
+
+        ht.close();
+        app.close();
+    }
+
+    @Test
+    public void testTxWritesTheRightMetadataOnAbort() throws Exception {
 
         Observer observer = new Observer() {
             Interest interest = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);

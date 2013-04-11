@@ -24,6 +24,7 @@ import java.util.Map;
 
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
 import org.apache.hadoop.hbase.coprocessor.ObserverContext;
@@ -33,6 +34,9 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Intercepts transactional traffic to mark changed rows for the scanners
+ */
 public class TransactionCommittedRegionCoprocessor extends BaseRegionObserver {
 
     private static final Logger logger = LoggerFactory.getLogger(TransactionCommittedRegionCoprocessor.class);
@@ -42,6 +46,9 @@ public class TransactionCommittedRegionCoprocessor extends BaseRegionObserver {
         logger.trace("TransactionCommitterRegionObserver started");
     }
 
+    /**
+     * For each transactional write, mark the row as dirty writing to the special metadata column family
+     */
     @Override
     public void prePut(ObserverContext<RegionCoprocessorEnvironment> c, Put put, WALEdit edit, boolean writeToWAL)
             throws IOException {
@@ -68,6 +75,40 @@ public class TransactionCommittedRegionCoprocessor extends BaseRegionObserver {
                     // Pattern for notify qualifier in framework's metadata column family: <cf>/<c>-notify
                     put.add(Bytes.toBytes(HBASE_META_CF), Bytes.toBytes(cf + "/" + q + HBASE_NOTIFY_SUFFIX),
                             kv.getTimestamp(), Bytes.toBytes("true"));
+                }
+            }
+        }
+    }
+
+    /**
+     * When a transaction aborts and cleans the written data, clean also the notify flags
+     */
+    @Override
+    public void preDelete(ObserverContext<RegionCoprocessorEnvironment> c, Delete delete, WALEdit edit,
+            boolean writeToWAL) throws IOException {
+
+        byte[] tableNameAsBytes = c.getEnvironment().getRegion().getTableDesc().getName();
+        String tableName = Bytes.toString(tableNameAsBytes);
+
+        // Do not instrument hbase meta tables
+        if (tableName.equals(".META.") || tableName.equals("-ROOT-")) {
+            // TODO allow filtering out more tables?
+            return;
+        }
+
+        Map<byte[], List<KeyValue>> kvs = delete.getFamilyMap();
+
+        for (List<KeyValue> kvl : kvs.values()) {
+            for (KeyValue kv : kvl) {
+                String cf = Bytes.toString(kv.getFamily());
+
+                // TODO Here we should filter the qualifiers that are not requested to be observed,
+                // but cannot access to the required structures from a BaseRegionObserver
+                if (!cf.equals(HBASE_META_CF)) {
+                    String q = Bytes.toString(kv.getQualifier());
+                    // Pattern for notify qualifier in framework's metadata column family: <cf>/<c>-notify
+                    delete.deleteColumn(Bytes.toBytes(HBASE_META_CF),
+                            Bytes.toBytes(cf + "/" + q + HBASE_NOTIFY_SUFFIX), kv.getTimestamp());
                 }
             }
         }
