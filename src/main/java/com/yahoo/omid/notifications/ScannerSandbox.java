@@ -265,7 +265,9 @@ public class ScannerSandbox {
                                 metrics.scanEnd(timer);
                                 metrics.matched(count);
                             } finally {
-                                scanner.close();
+                                if (scanner != null) {
+                                    scanner.close();
+                                }
                             }
                         } catch (IOException e) {
                             logger.warn("Can't get scanner for table " + interest.getTable() + " retrying");
