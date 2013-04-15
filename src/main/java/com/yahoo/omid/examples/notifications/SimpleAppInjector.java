@@ -202,7 +202,7 @@ public class SimpleAppInjector {
 
         public void run() {
             final Random randGen = new Random();
-            RateLimiter rateLimiter = RateLimiter.create(txRate, 1, TimeUnit.MINUTES);
+            RateLimiter rateLimiter = RateLimiter.create(txRate, 10, TimeUnit.MINUTES);
             try {
                 startCdl.await();
                 while (true) {
