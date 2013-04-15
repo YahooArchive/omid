@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.io.Resources;
+import com.yahoo.omid.notifications.client.DeltaOmid;
 
 public class ClientConfiguration extends AbstractConfiguration {
 
@@ -58,6 +59,10 @@ public class ClientConfiguration extends AbstractConfiguration {
      */
     public String getOmidServer() {
         return getString(OMID_SERVER, "localhost:1234");
+    }
+
+    public int getObserverParallelism(String observerName) {
+        return getInt("observer." + observerName + ".parallelism", DeltaOmid.DEFAULT_OBSERVER_PARALLELISM);
     }
 
     /**

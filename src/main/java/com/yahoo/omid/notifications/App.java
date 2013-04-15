@@ -57,7 +57,6 @@ class App implements PathChildrenCacheListener {
     public App(AppSandbox appSandbox, String appName, ZNRecord appData) throws Exception {
         this.appSandbox = appSandbox;
         this.name = appName;
-        this.metrics = new ServerSideAppMetrics(appName);
 
         // Retrieve the obs/interest data from each app data node
         List<String> observersInterests = appData.getListField(ZK_APP_DATA_NODE);
@@ -72,6 +71,7 @@ class App implements PathChildrenCacheListener {
             logger.trace("Adding interest {} to observer {}", interest, obsName);
             addInterestToObserver(interest, obsName);
         }
+        this.metrics = new ServerSideAppMetrics(appName, interestObserverMap.keySet());
         String appPath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), this.name);
         appsInstanceCache = new PathChildrenCache(this.appSandbox.zkClient, appPath, false);
         appsInstanceCache.getListenable().addListener(this);

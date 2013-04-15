@@ -60,8 +60,8 @@ public class DeltaOmid implements IncrementalApplication {
     private final ClientConfiguration conf;
     private final String zkAppInstancePath;
     private final NotificationManager notificationManager;
-    public static final int NOTIFICATION_BUFFER_CAPACITY = 100;
-    public static final int OBSERVER_PROCESSOR_PARALLELISM = 2;
+    public static final int DEFAULT_NOTIFICATION_BUFFER_CAPACITY = 100;
+    public static final int DEFAULT_OBSERVER_PARALLELISM = 2;
 
     // The main structure shared by the InterestRecorder and NotificiationListener services in order to register and
     // notify observers
@@ -117,12 +117,15 @@ public class DeltaOmid implements IncrementalApplication {
         for (final Observer observer : builder.observers) {
             String obsName = observer.getName();
             BlockingQueue<Notification> observerQueue = new ArrayBlockingQueue<Notification>(
-                    NOTIFICATION_BUFFER_CAPACITY);
+                    DEFAULT_NOTIFICATION_BUFFER_CAPACITY);
             this.metrics.addObserver(obsName);
             observerBuffers.put(obsName, observerQueue);
-            ExecutorService observersExecutor = Executors.newFixedThreadPool(OBSERVER_PROCESSOR_PARALLELISM,
-                    new ThreadFactoryBuilder().setNameFormat("Observer-[" + obsName + "]-processor-%d").build());
-            for (int i = 0; i < OBSERVER_PROCESSOR_PARALLELISM; i++) {
+            int parallelism = conf.getObserverParallelism(obsName);
+            logger.info("Starting {} threads for observer {} on interest {}", new String[] { "" + parallelism, obsName,
+                    observer.getInterest().toStringRepresentation() });
+            ExecutorService observersExecutor = Executors.newFixedThreadPool(parallelism, new ThreadFactoryBuilder()
+                    .setNameFormat("Observer-[" + obsName + "]-processor-%d").build());
+            for (int i = 0; i < parallelism; i++) {
                 observersExecutor.submit(new ObserverWrapper(observer, conf.getOmidServer(), metrics, observerQueue));
             }
             Interest interest = observer.getInterest();

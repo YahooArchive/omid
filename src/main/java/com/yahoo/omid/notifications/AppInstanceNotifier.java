@@ -17,12 +17,13 @@ import com.google.common.net.HostAndPort;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
 import com.yahoo.omid.notifications.thrift.generated.NotificationReceiverService;
 import com.yahoo.omid.notifications.thrift.generated.ObserverOverloaded;
+import com.yammer.metrics.core.TimerContext;
 
 /**
  * There's one actor per application instance deployed
  * 
  */
-class AppInstanceNotifier extends Thread {
+public class AppInstanceNotifier extends Thread {
 
     /**
      * 
@@ -54,7 +55,7 @@ class AppInstanceNotifier extends Thread {
                 Thread.currentThread().interrupt();
             }
             if (msg == null) {
-                logger.warn("Could not get any message after 10s");
+                logger.warn("Could not get any notification after 10s");
                 continue;
             }
             String updatedInterest = msg.interest;
@@ -69,20 +70,26 @@ class AppInstanceNotifier extends Thread {
                                                                                       // has been modified
                         ByteBuffer.wrap(interest.getColumnFamilyAsHBaseByteArray()), ByteBuffer.wrap(interest
                                 .getColumnAsHBaseByteArray()));
+                TimerContext timer = app.metrics.startNotificationSendTimer(updatedInterest);
                 try {
                     appInstanceClient.notify(notification);
                     this.app.metrics.notificationSentEvent();
                     // logger.trace("App notifier sent notification " + notification + " to app running on " +
                     // host + ":" + port);
                 } catch (ObserverOverloaded oo) {
-                    app.logger.warn("App instance [{}]/[{}] saturated. Pausing for {} ms", new String[] { app.name,
-                            hostAndPort.toString(), String.valueOf(HOLDOFF_TIME_MS) });
+                    timer.stop();
+                    app.logger.warn(
+                            "App instance [{}]/[{}] saturated for observer [{}]. Pausing for {} ms",
+                            new String[] { app.name, hostAndPort.toString(),
+                                    (oo.getObserver() != null ? oo.getObserver() : "Unknown observer"),
+                                    String.valueOf(HOLDOFF_TIME_MS) });
                     try {
                         Thread.sleep(HOLDOFF_TIME_MS);
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
                 } catch (TException te) {
+                    timer.stop();
                     this.app.logger.warn(
                             "Communication with app instance [{}]/[{}] is broken. Will try to reconnect after {} ms.",
                             new String[] { app.name, hostAndPort.toString(), String.valueOf(HOLDOFF_TIME_MS) }, te);
@@ -100,7 +107,6 @@ class AppInstanceNotifier extends Thread {
                                 new String[] { app.name, hostAndPort.toString() }, e);
                         break;
                     }
-                    // TODO Add control flow at the application instance level
                 }
             } else {
                 this.app.logger.warn(this.app.name + " app notifier could not send notification to instance on "

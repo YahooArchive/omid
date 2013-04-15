@@ -21,7 +21,7 @@ class NotificationDispatcher implements Runnable, NotificationReceiverService.If
 
     private static final Logger logger = LoggerFactory.getLogger(NotificationDispatcher.class);
     private final NotificationManager notificationManager;
-    public static final int ENQUEUE_TIMEOUT_MS = 2000;
+    public static final int ENQUEUE_TIMEOUT_MS = 500;
 
     /**
      * @param notificationManager
@@ -74,8 +74,7 @@ class NotificationDispatcher implements Runnable, NotificationReceiverService.If
                 Thread.currentThread().interrupt();
             }
             if (!offered) {
-                // TODO add which observer is overloaded
-                throw new ObserverOverloaded();
+                throw new ObserverOverloaded(notification.getObserver());
             }
         } else {
             logger.warn(
