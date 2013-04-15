@@ -2,10 +2,7 @@ namespace java com.yahoo.omid.notifications.thrift.generated
 
 struct Notification {
 	1: string observer,
-	2: binary table,
-	3: binary rowKey,
-	4: binary columnFamily,
-	5: binary column
+	2: binary rowKey
 }
 
 exception ObserverOverloaded {

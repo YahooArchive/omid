@@ -78,9 +78,8 @@ class NotificationDispatcher implements Runnable, NotificationReceiverService.If
             }
         } else {
             logger.warn(
-                    "No target observer for notification {}:{}:{}:{}",
-                    new String[] { Bytes.toString(notification.getTable()),
-                            Bytes.toString(notification.getColumnFamily()), Bytes.toString(notification.getColumn()),
+                    "App {}: No target observer named {} found for delivering notification about changes on rowkey {}",
+                    new String[] { this.notificationManager.app.getName(), notification.getObserver(),
                             Bytes.toString(notification.getRowKey()) });
         }
 

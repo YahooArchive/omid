@@ -34,10 +34,7 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
   private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("Notification");
 
   private static final org.apache.thrift.protocol.TField OBSERVER_FIELD_DESC = new org.apache.thrift.protocol.TField("observer", org.apache.thrift.protocol.TType.STRING, (short)1);
-  private static final org.apache.thrift.protocol.TField TABLE_FIELD_DESC = new org.apache.thrift.protocol.TField("table", org.apache.thrift.protocol.TType.STRING, (short)2);
-  private static final org.apache.thrift.protocol.TField ROW_KEY_FIELD_DESC = new org.apache.thrift.protocol.TField("rowKey", org.apache.thrift.protocol.TType.STRING, (short)3);
-  private static final org.apache.thrift.protocol.TField COLUMN_FAMILY_FIELD_DESC = new org.apache.thrift.protocol.TField("columnFamily", org.apache.thrift.protocol.TType.STRING, (short)4);
-  private static final org.apache.thrift.protocol.TField COLUMN_FIELD_DESC = new org.apache.thrift.protocol.TField("column", org.apache.thrift.protocol.TType.STRING, (short)5);
+  private static final org.apache.thrift.protocol.TField ROW_KEY_FIELD_DESC = new org.apache.thrift.protocol.TField("rowKey", org.apache.thrift.protocol.TType.STRING, (short)2);
 
   private static final Map<Class<? extends IScheme>, SchemeFactory> schemes = new HashMap<Class<? extends IScheme>, SchemeFactory>();
   static {
@@ -46,18 +43,12 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
   }
 
   public String observer; // required
-  public ByteBuffer table; // required
   public ByteBuffer rowKey; // required
-  public ByteBuffer columnFamily; // required
-  public ByteBuffer column; // required
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
     OBSERVER((short)1, "observer"),
-    TABLE((short)2, "table"),
-    ROW_KEY((short)3, "rowKey"),
-    COLUMN_FAMILY((short)4, "columnFamily"),
-    COLUMN((short)5, "column");
+    ROW_KEY((short)2, "rowKey");
 
     private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
 
@@ -74,14 +65,8 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
       switch(fieldId) {
         case 1: // OBSERVER
           return OBSERVER;
-        case 2: // TABLE
-          return TABLE;
-        case 3: // ROW_KEY
+        case 2: // ROW_KEY
           return ROW_KEY;
-        case 4: // COLUMN_FAMILY
-          return COLUMN_FAMILY;
-        case 5: // COLUMN
-          return COLUMN;
         default:
           return null;
       }
@@ -127,13 +112,7 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
     Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
     tmpMap.put(_Fields.OBSERVER, new org.apache.thrift.meta_data.FieldMetaData("observer", org.apache.thrift.TFieldRequirementType.DEFAULT, 
         new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
-    tmpMap.put(_Fields.TABLE, new org.apache.thrift.meta_data.FieldMetaData("table", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-        new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING        , true)));
     tmpMap.put(_Fields.ROW_KEY, new org.apache.thrift.meta_data.FieldMetaData("rowKey", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-        new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING        , true)));
-    tmpMap.put(_Fields.COLUMN_FAMILY, new org.apache.thrift.meta_data.FieldMetaData("columnFamily", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-        new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING        , true)));
-    tmpMap.put(_Fields.COLUMN, new org.apache.thrift.meta_data.FieldMetaData("column", org.apache.thrift.TFieldRequirementType.DEFAULT, 
         new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING        , true)));
     metaDataMap = Collections.unmodifiableMap(tmpMap);
     org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(Notification.class, metaDataMap);
@@ -144,17 +123,11 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
 
   public Notification(
     String observer,
-    ByteBuffer table,
-    ByteBuffer rowKey,
-    ByteBuffer columnFamily,
-    ByteBuffer column)
+    ByteBuffer rowKey)
   {
     this();
     this.observer = observer;
-    this.table = table;
     this.rowKey = rowKey;
-    this.columnFamily = columnFamily;
-    this.column = column;
   }
 
   /**
@@ -164,20 +137,8 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
     if (other.isSetObserver()) {
       this.observer = other.observer;
     }
-    if (other.isSetTable()) {
-      this.table = org.apache.thrift.TBaseHelper.copyBinary(other.table);
-;
-    }
     if (other.isSetRowKey()) {
       this.rowKey = org.apache.thrift.TBaseHelper.copyBinary(other.rowKey);
-;
-    }
-    if (other.isSetColumnFamily()) {
-      this.columnFamily = org.apache.thrift.TBaseHelper.copyBinary(other.columnFamily);
-;
-    }
-    if (other.isSetColumn()) {
-      this.column = org.apache.thrift.TBaseHelper.copyBinary(other.column);
 ;
     }
   }
@@ -189,10 +150,7 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
   @Override
   public void clear() {
     this.observer = null;
-    this.table = null;
     this.rowKey = null;
-    this.columnFamily = null;
-    this.column = null;
   }
 
   public String getObserver() {
@@ -216,40 +174,6 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
   public void setObserverIsSet(boolean value) {
     if (!value) {
       this.observer = null;
-    }
-  }
-
-  public byte[] getTable() {
-    setTable(org.apache.thrift.TBaseHelper.rightSize(table));
-    return table == null ? null : table.array();
-  }
-
-  public ByteBuffer bufferForTable() {
-    return table;
-  }
-
-  public Notification setTable(byte[] table) {
-    setTable(table == null ? (ByteBuffer)null : ByteBuffer.wrap(table));
-    return this;
-  }
-
-  public Notification setTable(ByteBuffer table) {
-    this.table = table;
-    return this;
-  }
-
-  public void unsetTable() {
-    this.table = null;
-  }
-
-  /** Returns true if field table is set (has been assigned a value) and false otherwise */
-  public boolean isSetTable() {
-    return this.table != null;
-  }
-
-  public void setTableIsSet(boolean value) {
-    if (!value) {
-      this.table = null;
     }
   }
 
@@ -287,74 +211,6 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
     }
   }
 
-  public byte[] getColumnFamily() {
-    setColumnFamily(org.apache.thrift.TBaseHelper.rightSize(columnFamily));
-    return columnFamily == null ? null : columnFamily.array();
-  }
-
-  public ByteBuffer bufferForColumnFamily() {
-    return columnFamily;
-  }
-
-  public Notification setColumnFamily(byte[] columnFamily) {
-    setColumnFamily(columnFamily == null ? (ByteBuffer)null : ByteBuffer.wrap(columnFamily));
-    return this;
-  }
-
-  public Notification setColumnFamily(ByteBuffer columnFamily) {
-    this.columnFamily = columnFamily;
-    return this;
-  }
-
-  public void unsetColumnFamily() {
-    this.columnFamily = null;
-  }
-
-  /** Returns true if field columnFamily is set (has been assigned a value) and false otherwise */
-  public boolean isSetColumnFamily() {
-    return this.columnFamily != null;
-  }
-
-  public void setColumnFamilyIsSet(boolean value) {
-    if (!value) {
-      this.columnFamily = null;
-    }
-  }
-
-  public byte[] getColumn() {
-    setColumn(org.apache.thrift.TBaseHelper.rightSize(column));
-    return column == null ? null : column.array();
-  }
-
-  public ByteBuffer bufferForColumn() {
-    return column;
-  }
-
-  public Notification setColumn(byte[] column) {
-    setColumn(column == null ? (ByteBuffer)null : ByteBuffer.wrap(column));
-    return this;
-  }
-
-  public Notification setColumn(ByteBuffer column) {
-    this.column = column;
-    return this;
-  }
-
-  public void unsetColumn() {
-    this.column = null;
-  }
-
-  /** Returns true if field column is set (has been assigned a value) and false otherwise */
-  public boolean isSetColumn() {
-    return this.column != null;
-  }
-
-  public void setColumnIsSet(boolean value) {
-    if (!value) {
-      this.column = null;
-    }
-  }
-
   public void setFieldValue(_Fields field, Object value) {
     switch (field) {
     case OBSERVER:
@@ -362,14 +218,6 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
         unsetObserver();
       } else {
         setObserver((String)value);
-      }
-      break;
-
-    case TABLE:
-      if (value == null) {
-        unsetTable();
-      } else {
-        setTable((ByteBuffer)value);
       }
       break;
 
@@ -381,22 +229,6 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
       }
       break;
 
-    case COLUMN_FAMILY:
-      if (value == null) {
-        unsetColumnFamily();
-      } else {
-        setColumnFamily((ByteBuffer)value);
-      }
-      break;
-
-    case COLUMN:
-      if (value == null) {
-        unsetColumn();
-      } else {
-        setColumn((ByteBuffer)value);
-      }
-      break;
-
     }
   }
 
@@ -405,17 +237,8 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
     case OBSERVER:
       return getObserver();
 
-    case TABLE:
-      return getTable();
-
     case ROW_KEY:
       return getRowKey();
-
-    case COLUMN_FAMILY:
-      return getColumnFamily();
-
-    case COLUMN:
-      return getColumn();
 
     }
     throw new IllegalStateException();
@@ -430,14 +253,8 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
     switch (field) {
     case OBSERVER:
       return isSetObserver();
-    case TABLE:
-      return isSetTable();
     case ROW_KEY:
       return isSetRowKey();
-    case COLUMN_FAMILY:
-      return isSetColumnFamily();
-    case COLUMN:
-      return isSetColumn();
     }
     throw new IllegalStateException();
   }
@@ -464,39 +281,12 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
         return false;
     }
 
-    boolean this_present_table = true && this.isSetTable();
-    boolean that_present_table = true && that.isSetTable();
-    if (this_present_table || that_present_table) {
-      if (!(this_present_table && that_present_table))
-        return false;
-      if (!this.table.equals(that.table))
-        return false;
-    }
-
     boolean this_present_rowKey = true && this.isSetRowKey();
     boolean that_present_rowKey = true && that.isSetRowKey();
     if (this_present_rowKey || that_present_rowKey) {
       if (!(this_present_rowKey && that_present_rowKey))
         return false;
       if (!this.rowKey.equals(that.rowKey))
-        return false;
-    }
-
-    boolean this_present_columnFamily = true && this.isSetColumnFamily();
-    boolean that_present_columnFamily = true && that.isSetColumnFamily();
-    if (this_present_columnFamily || that_present_columnFamily) {
-      if (!(this_present_columnFamily && that_present_columnFamily))
-        return false;
-      if (!this.columnFamily.equals(that.columnFamily))
-        return false;
-    }
-
-    boolean this_present_column = true && this.isSetColumn();
-    boolean that_present_column = true && that.isSetColumn();
-    if (this_present_column || that_present_column) {
-      if (!(this_present_column && that_present_column))
-        return false;
-      if (!this.column.equals(that.column))
         return false;
     }
 
@@ -526,42 +316,12 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
         return lastComparison;
       }
     }
-    lastComparison = Boolean.valueOf(isSetTable()).compareTo(typedOther.isSetTable());
-    if (lastComparison != 0) {
-      return lastComparison;
-    }
-    if (isSetTable()) {
-      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.table, typedOther.table);
-      if (lastComparison != 0) {
-        return lastComparison;
-      }
-    }
     lastComparison = Boolean.valueOf(isSetRowKey()).compareTo(typedOther.isSetRowKey());
     if (lastComparison != 0) {
       return lastComparison;
     }
     if (isSetRowKey()) {
       lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.rowKey, typedOther.rowKey);
-      if (lastComparison != 0) {
-        return lastComparison;
-      }
-    }
-    lastComparison = Boolean.valueOf(isSetColumnFamily()).compareTo(typedOther.isSetColumnFamily());
-    if (lastComparison != 0) {
-      return lastComparison;
-    }
-    if (isSetColumnFamily()) {
-      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.columnFamily, typedOther.columnFamily);
-      if (lastComparison != 0) {
-        return lastComparison;
-      }
-    }
-    lastComparison = Boolean.valueOf(isSetColumn()).compareTo(typedOther.isSetColumn());
-    if (lastComparison != 0) {
-      return lastComparison;
-    }
-    if (isSetColumn()) {
-      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.column, typedOther.column);
       if (lastComparison != 0) {
         return lastComparison;
       }
@@ -594,35 +354,11 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
     }
     first = false;
     if (!first) sb.append(", ");
-    sb.append("table:");
-    if (this.table == null) {
-      sb.append("null");
-    } else {
-      org.apache.thrift.TBaseHelper.toString(this.table, sb);
-    }
-    first = false;
-    if (!first) sb.append(", ");
     sb.append("rowKey:");
     if (this.rowKey == null) {
       sb.append("null");
     } else {
       org.apache.thrift.TBaseHelper.toString(this.rowKey, sb);
-    }
-    first = false;
-    if (!first) sb.append(", ");
-    sb.append("columnFamily:");
-    if (this.columnFamily == null) {
-      sb.append("null");
-    } else {
-      org.apache.thrift.TBaseHelper.toString(this.columnFamily, sb);
-    }
-    first = false;
-    if (!first) sb.append(", ");
-    sb.append("column:");
-    if (this.column == null) {
-      sb.append("null");
-    } else {
-      org.apache.thrift.TBaseHelper.toString(this.column, sb);
     }
     first = false;
     sb.append(")");
@@ -676,34 +412,10 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
               org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
             }
             break;
-          case 2: // TABLE
-            if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
-              struct.table = iprot.readBinary();
-              struct.setTableIsSet(true);
-            } else { 
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
-            }
-            break;
-          case 3: // ROW_KEY
+          case 2: // ROW_KEY
             if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
               struct.rowKey = iprot.readBinary();
               struct.setRowKeyIsSet(true);
-            } else { 
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
-            }
-            break;
-          case 4: // COLUMN_FAMILY
-            if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
-              struct.columnFamily = iprot.readBinary();
-              struct.setColumnFamilyIsSet(true);
-            } else { 
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
-            }
-            break;
-          case 5: // COLUMN
-            if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
-              struct.column = iprot.readBinary();
-              struct.setColumnIsSet(true);
             } else { 
               org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
             }
@@ -728,24 +440,9 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
         oprot.writeString(struct.observer);
         oprot.writeFieldEnd();
       }
-      if (struct.table != null) {
-        oprot.writeFieldBegin(TABLE_FIELD_DESC);
-        oprot.writeBinary(struct.table);
-        oprot.writeFieldEnd();
-      }
       if (struct.rowKey != null) {
         oprot.writeFieldBegin(ROW_KEY_FIELD_DESC);
         oprot.writeBinary(struct.rowKey);
-        oprot.writeFieldEnd();
-      }
-      if (struct.columnFamily != null) {
-        oprot.writeFieldBegin(COLUMN_FAMILY_FIELD_DESC);
-        oprot.writeBinary(struct.columnFamily);
-        oprot.writeFieldEnd();
-      }
-      if (struct.column != null) {
-        oprot.writeFieldBegin(COLUMN_FIELD_DESC);
-        oprot.writeBinary(struct.column);
         oprot.writeFieldEnd();
       }
       oprot.writeFieldStop();
@@ -769,59 +466,29 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
       if (struct.isSetObserver()) {
         optionals.set(0);
       }
-      if (struct.isSetTable()) {
+      if (struct.isSetRowKey()) {
         optionals.set(1);
       }
-      if (struct.isSetRowKey()) {
-        optionals.set(2);
-      }
-      if (struct.isSetColumnFamily()) {
-        optionals.set(3);
-      }
-      if (struct.isSetColumn()) {
-        optionals.set(4);
-      }
-      oprot.writeBitSet(optionals, 5);
+      oprot.writeBitSet(optionals, 2);
       if (struct.isSetObserver()) {
         oprot.writeString(struct.observer);
       }
-      if (struct.isSetTable()) {
-        oprot.writeBinary(struct.table);
-      }
       if (struct.isSetRowKey()) {
         oprot.writeBinary(struct.rowKey);
-      }
-      if (struct.isSetColumnFamily()) {
-        oprot.writeBinary(struct.columnFamily);
-      }
-      if (struct.isSetColumn()) {
-        oprot.writeBinary(struct.column);
       }
     }
 
     @Override
     public void read(org.apache.thrift.protocol.TProtocol prot, Notification struct) throws org.apache.thrift.TException {
       TTupleProtocol iprot = (TTupleProtocol) prot;
-      BitSet incoming = iprot.readBitSet(5);
+      BitSet incoming = iprot.readBitSet(2);
       if (incoming.get(0)) {
         struct.observer = iprot.readString();
         struct.setObserverIsSet(true);
       }
       if (incoming.get(1)) {
-        struct.table = iprot.readBinary();
-        struct.setTableIsSet(true);
-      }
-      if (incoming.get(2)) {
         struct.rowKey = iprot.readBinary();
         struct.setRowKeyIsSet(true);
-      }
-      if (incoming.get(3)) {
-        struct.columnFamily = iprot.readBinary();
-        struct.setColumnFamilyIsSet(true);
-      }
-      if (incoming.get(4)) {
-        struct.column = iprot.readBinary();
-        struct.setColumnIsSet(true);
       }
     }
   }

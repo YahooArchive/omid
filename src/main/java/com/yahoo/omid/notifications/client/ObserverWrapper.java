@@ -111,17 +111,15 @@ public class ObserverWrapper implements Runnable {
             }
             TimerContext timer = metrics.startObserverInvocation(observer.getName());
             try {
-                notify(notification.getTable(), notification.getRowKey(), notification.getColumnFamily(),
-                        notification.getColumn());
+                notify(observer.getInterest().getTableAsHBaseByteArray(), notification.getRowKey(), observer
+                        .getInterest().getColumnFamilyAsHBaseByteArray(), observer.getInterest()
+                        .getColumnAsHBaseByteArray());
                 timer.stop();
             } catch (RuntimeException e) {
                 // runtime exception in user code - capture and log
-                logger.error(
-                        "Runtime exception in {} while processing {}:{}:{}:{}",
-                        new String[] { observer.getName(), Bytes.toString(notification.getTable()),
-                                Bytes.toString(notification.getRowKey()),
-                                Bytes.toString(notification.getColumnFamily()),
-                                Bytes.toString(notification.getColumn()) }, e);
+                logger.error("Runtime exception in {} while processing notification for rowkey {} on {}", new String[] {
+                        notification.getObserver(), Bytes.toString(notification.getRowKey()),
+                        observer.getInterest().toString() }, e);
             } finally {
                 timer.stop();
             }

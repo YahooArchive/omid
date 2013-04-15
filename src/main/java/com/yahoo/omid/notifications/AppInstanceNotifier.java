@@ -65,11 +65,7 @@ public class AppInstanceNotifier extends Thread {
 
             if (observer != null) {
                 Interest interest = Interest.fromString(updatedInterest);
-                Notification notification = new Notification(observer, ByteBuffer.wrap(interest
-                        .getTableAsHBaseByteArray()), ByteBuffer.wrap(updatedRowKey), // This is the row that
-                                                                                      // has been modified
-                        ByteBuffer.wrap(interest.getColumnFamilyAsHBaseByteArray()), ByteBuffer.wrap(interest
-                                .getColumnAsHBaseByteArray()));
+                Notification notification = new Notification(observer, ByteBuffer.wrap(updatedRowKey));
                 TimerContext timer = app.metrics.startNotificationSendTimer(updatedInterest);
                 try {
                     appInstanceClient.notify(notification);
