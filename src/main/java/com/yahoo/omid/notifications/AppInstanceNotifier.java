@@ -74,6 +74,7 @@ public class AppInstanceNotifier extends Thread {
                 try {
                     appInstanceClient.notify(notification);
                     this.app.metrics.notificationSentEvent();
+                    timer.stop();
                     // logger.trace("App notifier sent notification " + notification + " to app running on " +
                     // host + ":" + port);
                 } catch (ObserverOverloaded oo) {
