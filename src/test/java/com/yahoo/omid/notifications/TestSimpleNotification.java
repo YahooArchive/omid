@@ -107,19 +107,23 @@ public class TestSimpleNotification extends TestInfrastructure {
         Observer observer = new Observer() {
             Interest interest = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
 
-            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey,
-                    TransactionState tx) {
+            public void onInterestChanged(Result rowData, TransactionState tx) {
                 st = tx.getStartTimestamp();
                 Configuration hbaseClientConf = HBaseConfiguration.create();
                 try {
-                    TransactionalTable tt = new TransactionalTable(hbaseClientConf, Bytes.toString(table));
-                    Get row = new Get(rowKey);
+                    TransactionalTable tt = new TransactionalTable(hbaseClientConf, interest.getTable());
+                    Get row = new Get(rowData.getRow());
                     Result result = tt.get(row);
                     byte[] val = result.getValue(
                             Bytes.toBytes(Constants.HBASE_META_CF),
                             Bytes.toBytes(TestConstants.COLUMN_FAMILY_1 + "/" + TestConstants.COLUMN_1
                                     + Constants.HBASE_NOTIFY_SUFFIX));
                     assertEquals("Values for this row are different", "true", Bytes.toString(val));
+                    byte[] rowDataVal = rowData.getValue(
+                            Bytes.toBytes(Constants.HBASE_META_CF),
+                            Bytes.toBytes(TestConstants.COLUMN_FAMILY_1 + "/" + TestConstants.COLUMN_1
+                                    + Constants.HBASE_NOTIFY_SUFFIX));
+                    assertEquals("Values for this row are different", "true", Bytes.toString(rowDataVal));
                     tt.close();
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -193,8 +197,7 @@ public class TestSimpleNotification extends TestInfrastructure {
         IncrementalApplication app = new DeltaOmid.AppBuilder("testTxWritesTheRightMetadataOnAbortApp", 6669)
                 .addObserver(new Observer() {
                     @Override
-                    public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey,
-                            TransactionState tx) {
+                    public void onInterestChanged(Result rowData, TransactionState tx) {
                     }
 
                     @Override
@@ -234,8 +237,7 @@ public class TestSimpleNotification extends TestInfrastructure {
         Observer observer = new Observer() {
             Interest interest = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
 
-            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey,
-                    TransactionState tx) {
+            public void onInterestChanged(Result rowData, TransactionState tx) {
                 st = tx.getStartTimestamp();
                 logger.info("Observer TS: " + KeyValue.humanReadableTimestamp(st));
             }
@@ -272,16 +274,8 @@ public class TestSimpleNotification extends TestInfrastructure {
             e.printStackTrace();
         } finally {
             assertNotNull("Result shouldn't be null", result);
-
-            // Check timestamps
             KeyValue[] kvs = result.raw();
-            assertEquals("Only one should be returned", 1, kvs.length); // 0 = *-notify meta-column
-
-            byte[] notifyVal = result.getValue(
-                    Bytes.toBytes(Constants.HBASE_META_CF),
-                    Bytes.toBytes(TestConstants.COLUMN_FAMILY_1 + "/" + TestConstants.COLUMN_1
-                            + Constants.HBASE_NOTIFY_SUFFIX));
-            assertEquals("Values for this column are different", "false", Bytes.toString(notifyVal));
+            assertEquals("Zero should be returned", 0, kvs.length); // 0 = *-notify meta-column
             if (ht != null) {
                 ht.close();
             }
@@ -344,18 +338,21 @@ public class TestSimpleNotification extends TestInfrastructure {
     private Observer buildPassiveTransactionalObserver(final String obsName, final Interest interest,
             final String expectedValue, final CountDownLatch cdl) throws Exception {
         return new Observer() {
-            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey,
-                    TransactionState tx) {
+            public void onInterestChanged(Result rowData, TransactionState tx) {
                 Configuration tsoClientConf = HBaseConfiguration.create();
                 tsoClientConf.set("tso.host", "localhost");
                 tsoClientConf.setInt("tso.port", 1234);
 
                 try {
-                    TransactionalTable tt = new TransactionalTable(tsoClientConf, Bytes.toString(table));
-                    Get row = new Get(rowKey);
+                    TransactionalTable tt = new TransactionalTable(tsoClientConf, interest.getTable());
+                    Get row = new Get(rowData.getRow());
                     Result result = tt.get(row);
-                    byte[] val = result.getValue(columnFamily, column);
+                    byte[] val = result.getValue(interest.getColumnFamilyAsHBaseByteArray(),
+                            interest.getColumnAsHBaseByteArray());
                     assertEquals("Values for this row are different", expectedValue, Bytes.toString(val));
+                    byte[] rowDataVal = rowData.getValue(interest.getColumnFamilyAsHBaseByteArray(),
+                            interest.getColumnAsHBaseByteArray());
+                    assertEquals("Values for this row are different", expectedValue, Bytes.toString(rowDataVal));
                     tt.close();
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -402,8 +399,7 @@ public class TestSimpleNotification extends TestInfrastructure {
             final String expectedValue, final int delay, final String r, final String cf, final String c,
             final String v, final CountDownLatch cdl) throws Exception {
         return new Observer() {
-            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey,
-                    TransactionState tx) {
+            public void onInterestChanged(Result rowData, TransactionState tx) {
                 if (delay != 0) {
                     try {
                         logger.info("Waitingggggggg");
@@ -418,11 +414,15 @@ public class TestSimpleNotification extends TestInfrastructure {
                 tsoClientConf.setInt("tso.port", 1234);
 
                 try {
-                    TransactionalTable tt = new TransactionalTable(tsoClientConf, Bytes.toString(table));
-                    Get row = new Get(rowKey);
+                    TransactionalTable tt = new TransactionalTable(tsoClientConf, interest.getTable());
+                    Get row = new Get(rowData.getRow());
                     Result result = tt.get(row);
-                    byte[] val = result.getValue(columnFamily, column);
+                    byte[] val = result.getValue(interest.getColumnFamilyAsHBaseByteArray(),
+                            interest.getColumnAsHBaseByteArray());
                     assertEquals("Values for this row are different", expectedValue, Bytes.toString(val));
+                    byte[] rowDataVal = rowData.getValue(interest.getColumnFamilyAsHBaseByteArray(),
+                            interest.getColumnAsHBaseByteArray());
+                    assertEquals("Values for this row are different", expectedValue, Bytes.toString(rowDataVal));
                     doTransactionalPut(tx, tt, Bytes.toBytes(r), Bytes.toBytes(cf), Bytes.toBytes(c), Bytes.toBytes(v));
                     tt.close();
                 } catch (IOException e) {

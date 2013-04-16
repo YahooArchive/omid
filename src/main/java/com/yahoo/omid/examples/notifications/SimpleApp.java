@@ -29,6 +29,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
@@ -122,14 +123,14 @@ public class SimpleApp {
 
             };
 
-            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey,
-                    TransactionState tx) {
+            public void onInterestChanged(Result rowData, TransactionState tx) {
                 // logger.info("o1 -> Update on " + Bytes.toString(table) + Bytes.toString(rowKey)
                 // + Bytes.toString(columnFamily) + Bytes.toString(column));
 
                 try {
-                    ExamplesUtils.doTransactionalPut(tx, txTable.get(), rowKey, Bytes.toBytes(COLUMN_FAMILY_1),
-                            Bytes.toBytes(COLUMN_2), Bytes.toBytes("data written by observer o1"));
+                    ExamplesUtils.doTransactionalPut(tx, txTable.get(), rowData.getRow(),
+                            Bytes.toBytes(COLUMN_FAMILY_1), Bytes.toBytes(COLUMN_2),
+                            Bytes.toBytes("data written by observer o1"));
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -150,8 +151,7 @@ public class SimpleApp {
 
             Interest interestObs2 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_2);
 
-            public void onColumnChanged(byte[] column, byte[] columnFamily, byte[] table, byte[] rowKey,
-                    TransactionState tx) {
+            public void onInterestChanged(Result rowData, TransactionState tx) {
                 // logger.info("o2 -> Update on " + Bytes.toString(table) + Bytes.toString(rowKey)
                 // + Bytes.toString(columnFamily) + Bytes.toString(column));
             }

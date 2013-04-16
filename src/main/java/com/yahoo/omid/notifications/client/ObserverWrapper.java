@@ -130,12 +130,19 @@ public class ObserverWrapper implements Runnable {
         TransactionState tx = null;
         try {
             // Start tx
-            // Transaction adding to rows to a table
             tx = tm.beginTransaction();
             metrics.observerInvocationEvent(observer.getName());
-            checkIfAlreadyExecuted(tx, txTable, rowKey, columnFamily, column);
+            String targetColumnFamily = Constants.HBASE_META_CF;
+            // Pattern for notify column in framework's metadata column family: <cf>/<c>-notify
+            String targetColumnNotify = Bytes.toString(columnFamily) + "/" + Bytes.toString(column)
+                    + Constants.HBASE_NOTIFY_SUFFIX;
+            Get get = new Get(rowKey);
+            Result result = txTable.get(tx, get); // Transactional get
+            KeyValue lastValueNotify = result.getColumnLatest(Bytes.toBytes(targetColumnFamily),
+                    Bytes.toBytes(targetColumnNotify));
+            checkIfAlreadyExecuted(lastValueNotify);
             // Perform the particular actions on the observer for this row
-            observer.onColumnChanged(column, columnFamily, table, rowKey, tx);
+            observer.onInterestChanged(result, tx);
             // Commit tx
             clearNotifyFlag(tx, txTable, rowKey, columnFamily, column);
             tm.tryCommit(tx);
@@ -163,35 +170,13 @@ public class ObserverWrapper implements Runnable {
         }
     }
 
-    /**
-     * @param tx
-     * @param tt
-     * @param column
-     * @param columnFamily
-     * @param rowKey
-     * @param table
-     */
-    private void checkIfAlreadyExecuted(TransactionState tx, TransactionalTable tt, byte[] rowKey, byte[] columnFamily,
-            byte[] column) throws Exception {
-        String targetColumnFamily = Constants.HBASE_META_CF;
-
-        // Pattern for notify column in framework's metadata column family: <cf>/<c>-notify
-        String targetColumnNotify = Bytes.toString(columnFamily) + "/" + Bytes.toString(column)
-                + Constants.HBASE_NOTIFY_SUFFIX;
-
-        // logger.trace("Checking if observer was already executed...");
-        Get get = new Get(rowKey);
-        Result result = tt.get(tx, get); // Transactional get
-
-        KeyValue lastValueNotify = result.getColumnLatest(Bytes.toBytes(targetColumnFamily),
-                Bytes.toBytes(targetColumnNotify));
+    private void checkIfAlreadyExecuted(KeyValue lastValueNotify) throws NotificationException {
 
         if (lastValueNotify == null) {
             throw new NotificationException("Notify flag not set");
         }
 
         byte[] valNotify = lastValueNotify.getValue();
-        long tsNotify = lastValueNotify.getTimestamp();
 
         if (valNotify == null || !Bytes.equals(valNotify, Bytes.toBytes("true"))) {
             throw new NotificationException("Notify is not true");
