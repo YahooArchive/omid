@@ -14,7 +14,7 @@
  * limitations under the License. See accompanying LICENSE file.
  */
 
-package com.yahoo.omid.client;
+package com.yahoo.omid.transaction;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -30,10 +30,20 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTable;
 
+import com.yahoo.omid.client.AbortCompleteCallback;
+import com.yahoo.omid.client.CommitUnsuccessfulException;
+import com.yahoo.omid.client.RowKeyFamily;
+import com.yahoo.omid.client.SyncAbortCompleteCallback;
+import com.yahoo.omid.client.SyncCommitCallback;
+import com.yahoo.omid.client.SyncCreateCallback;
+import com.yahoo.omid.client.TSOClient;
+import com.yahoo.omid.client.TransactionException;
+import com.yahoo.omid.client.TSOClient.Result;
+
 /**
  * Provides the methods necessary to create and commit transactions.
  *
- * @see TransactionalTable
+ * @see TTable
  *
  */
 public class TransactionManager {
@@ -57,7 +67,7 @@ public class TransactionManager {
    /**
     * Starts a new transaction.
     *
-    * This method returns an opaque {@link TransactionState} object, used by {@link TransactionalTable}'s methods
+    * This method returns an opaque {@link TransactionState} object, used by {@link TTable}'s methods
     * for performing operations on a given transaction.
     *
     * @return Opaque object which identifies one transaction.

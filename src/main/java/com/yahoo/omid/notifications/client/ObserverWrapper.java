@@ -32,13 +32,13 @@ import org.slf4j.LoggerFactory;
 import com.google.common.net.HostAndPort;
 import com.yahoo.omid.client.CommitUnsuccessfulException;
 import com.yahoo.omid.client.TransactionException;
-import com.yahoo.omid.client.TransactionManager;
-import com.yahoo.omid.client.TransactionState;
-import com.yahoo.omid.client.TransactionalTable;
 import com.yahoo.omid.notifications.Constants;
 import com.yahoo.omid.notifications.NotificationException;
 import com.yahoo.omid.notifications.metrics.ClientSideAppMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
+import com.yahoo.omid.transaction.TransactionManager;
+import com.yahoo.omid.transaction.TransactionState;
+import com.yahoo.omid.transaction.TTable;
 import com.yammer.metrics.core.TimerContext;
 
 public class ObserverWrapper implements Runnable {
@@ -55,7 +55,7 @@ public class ObserverWrapper implements Runnable {
 
     private BlockingQueue<Notification> notifQueue;
 
-    private TransactionalTable txTable;
+    private TTable txTable;
 
     public static final int PULL_TIMEOUT_MS = 100;
 
@@ -77,7 +77,7 @@ public class ObserverWrapper implements Runnable {
             logger.error("Cannot create transaction manager", e);
             return;
         }
-        txTable = new TransactionalTable(tsoClientHbaseConf, observer.getInterest().getTable());
+        txTable = new TTable(tsoClientHbaseConf, observer.getInterest().getTable());
 
         // logger.info("Instance created for observer " + observer.getName() + " using dispatcher "
         // + getContext().dispatcher() + " Context " + getContext().props());
@@ -191,7 +191,7 @@ public class ObserverWrapper implements Runnable {
      * @param columnFamily
      * @param column
      */
-    private void clearNotifyFlag(TransactionState tx, TransactionalTable tt, byte[] rowKey, byte[] columnFamily,
+    private void clearNotifyFlag(TransactionState tx, TTable tt, byte[] rowKey, byte[] columnFamily,
             byte[] column) {
         String targetColumnFamily = Constants.HBASE_META_CF;
         String targetColumn = Bytes.toString(columnFamily) + "/" + Bytes.toString(column)

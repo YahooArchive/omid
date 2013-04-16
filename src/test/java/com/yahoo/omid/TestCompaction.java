@@ -32,9 +32,9 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import com.yahoo.omid.client.TransactionManager;
-import com.yahoo.omid.client.TransactionState;
-import com.yahoo.omid.client.TransactionalTable;
+import com.yahoo.omid.transaction.TransactionManager;
+import com.yahoo.omid.transaction.TransactionState;
+import com.yahoo.omid.transaction.TTable;
 
 public class TestCompaction extends OmidTestBase {
    private static final Log LOG = LogFactory.getLog(TestCompaction.class);
@@ -42,7 +42,7 @@ public class TestCompaction extends OmidTestBase {
    @Test public void testDeleteOld() throws Exception {
       try {
          TransactionManager tm = new TransactionManager(hbaseConf);
-         TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
          TransactionState t1 = tm.beginTransaction();
          LOG.info("Transaction created " + t1);
@@ -116,7 +116,7 @@ public class TestCompaction extends OmidTestBase {
    @Test public void testLimitEqualToColumns() throws Exception {
       try {
          TransactionManager tm = new TransactionManager(hbaseConf);
-         TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
          TransactionState t1 = tm.beginTransaction();
 

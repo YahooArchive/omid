@@ -2,7 +2,7 @@ package com.yahoo.omid.notifications.client;
 
 import org.apache.hadoop.hbase.client.Result;
 
-import com.yahoo.omid.client.TransactionState;
+import com.yahoo.omid.transaction.TransactionState;
 
 public interface ObserverBehaviour {
     /**

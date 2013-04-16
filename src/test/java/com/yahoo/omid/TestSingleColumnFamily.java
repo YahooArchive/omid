@@ -27,16 +27,16 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import com.yahoo.omid.client.TransactionManager;
-import com.yahoo.omid.client.TransactionState;
-import com.yahoo.omid.client.TransactionalTable;
+import com.yahoo.omid.transaction.TransactionManager;
+import com.yahoo.omid.transaction.TransactionState;
+import com.yahoo.omid.transaction.TTable;
 
 public class TestSingleColumnFamily extends OmidTestBase {
    private static final Log LOG = LogFactory.getLog(TestSingleColumnFamily.class);
 
    @Test public void testSingleColumnFamily() throws Exception {
       TransactionManager tm = new TransactionManager(hbaseConf);
-      TransactionalTable table1 = new TransactionalTable(hbaseConf, TEST_TABLE);
+      TTable table1 = new TTable(hbaseConf, TEST_TABLE);
       int num=10;
       TransactionState t=tm.beginTransaction();
       for(int j=0;j<num;j++) {

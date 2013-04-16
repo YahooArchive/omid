@@ -26,9 +26,9 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import com.yahoo.omid.client.TransactionManager;
-import com.yahoo.omid.client.TransactionState;
-import com.yahoo.omid.client.TransactionalTable;
+import com.yahoo.omid.transaction.TransactionManager;
+import com.yahoo.omid.transaction.TransactionState;
+import com.yahoo.omid.transaction.TTable;
 
 public class TestNonexistentRow extends OmidTestBase {
    private static final Log LOG = LogFactory.getLog(TestNonexistentRow.class);
@@ -36,7 +36,7 @@ public class TestNonexistentRow extends OmidTestBase {
    @Test public void testMultiPutSameRow() throws Exception {
       try{
          TransactionManager tm = new TransactionManager(hbaseConf);
-         TransactionalTable table1 = new TransactionalTable(hbaseConf, TEST_TABLE);
+         TTable table1 = new TTable(hbaseConf, TEST_TABLE);
 
          int num=10;
          TransactionState t=tm.beginTransaction();

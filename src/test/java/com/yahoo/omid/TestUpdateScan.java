@@ -35,9 +35,9 @@ import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import com.yahoo.omid.client.TransactionManager;
-import com.yahoo.omid.client.TransactionState;
-import com.yahoo.omid.client.TransactionalTable;
+import com.yahoo.omid.transaction.TransactionManager;
+import com.yahoo.omid.transaction.TransactionState;
+import com.yahoo.omid.transaction.TTable;
 
 public class TestUpdateScan extends OmidTestBase {
    private static final Log LOG = LogFactory.getLog(TestUpdateScan.class);
@@ -46,7 +46,7 @@ public class TestUpdateScan extends OmidTestBase {
    @Test public void testGet() throws Exception {
       try{
          TransactionManager tm = new TransactionManager(hbaseConf);
-         TransactionalTable table = new TransactionalTable(hbaseConf, TEST_TABLE);
+         TTable table = new TTable(hbaseConf, TEST_TABLE);
          TransactionState t=tm.beginTransaction();
          int[] lInts=new int[]{100,243,2342,22,1,5,43,56};
          for (int i=0;i<lInts.length;i++) {
@@ -108,7 +108,7 @@ public class TestUpdateScan extends OmidTestBase {
    @Test public void testScan() throws Exception {
       try{
          TransactionManager tm = new TransactionManager(hbaseConf);
-         TransactionalTable table = new TransactionalTable(hbaseConf, TEST_TABLE);
+         TTable table = new TTable(hbaseConf, TEST_TABLE);
          TransactionState t=tm.beginTransaction();
          int[] lInts=new int[]{100,243,2342,22,1,5,43,56};
          for (int i=0;i<lInts.length;i++) {
@@ -157,7 +157,7 @@ public class TestUpdateScan extends OmidTestBase {
    @Test public void testScanUncommitted() throws Exception {
       try{
          TransactionManager tm = new TransactionManager(hbaseConf);
-         TransactionalTable table = new TransactionalTable(hbaseConf, TEST_TABLE);
+         TTable table = new TTable(hbaseConf, TEST_TABLE);
          TransactionState t=tm.beginTransaction();
          int[] lIntsA=new int[]{100,243,2342,22,1,5,43,56};
          for (int i=0;i<lIntsA.length;i++) {

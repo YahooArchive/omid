@@ -24,9 +24,9 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import com.yahoo.omid.client.TransactionManager;
-import com.yahoo.omid.client.TransactionState;
-import com.yahoo.omid.client.TransactionalTable;
+import com.yahoo.omid.transaction.TransactionManager;
+import com.yahoo.omid.transaction.TransactionState;
+import com.yahoo.omid.transaction.TTable;
 
 public class TestMultiplePut extends OmidTestBase {
    private static final Log LOG = LogFactory.getLog(TestMultiplePut.class);
@@ -37,7 +37,7 @@ public class TestMultiplePut extends OmidTestBase {
          byte[] col1 = Bytes.toBytes("value1");
          byte[] col2 = Bytes.toBytes("value2");
          TransactionManager tm = new TransactionManager(hbaseConf);
-         TransactionalTable table1 = new TransactionalTable(hbaseConf, TEST_TABLE);
+         TTable table1 = new TTable(hbaseConf, TEST_TABLE);
          TransactionState t=tm.beginTransaction();
          int val=1000;
          byte[]data=Bytes.toBytes(val);
@@ -66,7 +66,7 @@ public class TestMultiplePut extends OmidTestBase {
          byte[] col = Bytes.toBytes("value");
 
          TransactionManager tm = new TransactionManager(hbaseConf);
-         TransactionalTable table1 = new TransactionalTable(hbaseConf, TEST_TABLE);
+         TTable table1 = new TTable(hbaseConf, TEST_TABLE);
          TransactionState t=tm.beginTransaction();
          int num=50;
          for(int j=0;j<=num;j++) {

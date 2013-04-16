@@ -14,7 +14,7 @@
  * limitations under the License. See accompanying LICENSE file.
  */
 
-package com.yahoo.omid.client;
+package com.yahoo.omid.transaction;
 
 import java.util.HashSet;
 import java.util.List;
@@ -24,6 +24,9 @@ import java.util.Set;
 
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.util.Bytes;
+
+import com.yahoo.omid.client.RowKeyFamily;
+import com.yahoo.omid.client.TSOClient;
 
 /**
  *

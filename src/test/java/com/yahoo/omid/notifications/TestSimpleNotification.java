@@ -38,12 +38,12 @@ import org.junit.Test;
 
 import com.yahoo.omid.client.CommitUnsuccessfulException;
 import com.yahoo.omid.client.TransactionException;
-import com.yahoo.omid.client.TransactionManager;
-import com.yahoo.omid.client.TransactionState;
-import com.yahoo.omid.client.TransactionalTable;
 import com.yahoo.omid.notifications.client.DeltaOmid;
 import com.yahoo.omid.notifications.client.IncrementalApplication;
 import com.yahoo.omid.notifications.client.Observer;
+import com.yahoo.omid.transaction.TransactionManager;
+import com.yahoo.omid.transaction.TransactionState;
+import com.yahoo.omid.transaction.TTable;
 
 public class TestSimpleNotification extends TestInfrastructure {
 
@@ -111,7 +111,7 @@ public class TestSimpleNotification extends TestInfrastructure {
                 st = tx.getStartTimestamp();
                 Configuration hbaseClientConf = HBaseConfiguration.create();
                 try {
-                    TransactionalTable tt = new TransactionalTable(hbaseClientConf, interest.getTable());
+                    TTable tt = new TTable(hbaseClientConf, interest.getTable());
                     Get row = new Get(rowData.getRow());
                     Result result = tt.get(row);
                     byte[] val = result.getValue(
@@ -302,7 +302,7 @@ public class TestSimpleNotification extends TestInfrastructure {
     private long startTriggerTransaction(boolean commit, String r, String cf, String c, String v)
             throws TransactionException, IOException, CommitUnsuccessfulException {
         TransactionManager tm = new TransactionManager(hbaseConf);
-        TransactionalTable tt = new TransactionalTable(hbaseConf, TestConstants.TABLE);
+        TTable tt = new TTable(hbaseConf, TestConstants.TABLE);
 
         TransactionState tx = tm.beginTransaction();
         long st = tx.getStartTimestamp();
@@ -344,7 +344,7 @@ public class TestSimpleNotification extends TestInfrastructure {
                 tsoClientConf.setInt("tso.port", 1234);
 
                 try {
-                    TransactionalTable tt = new TransactionalTable(tsoClientConf, interest.getTable());
+                    TTable tt = new TTable(tsoClientConf, interest.getTable());
                     Get row = new Get(rowData.getRow());
                     Result result = tt.get(row);
                     byte[] val = result.getValue(interest.getColumnFamilyAsHBaseByteArray(),
@@ -414,7 +414,7 @@ public class TestSimpleNotification extends TestInfrastructure {
                 tsoClientConf.setInt("tso.port", 1234);
 
                 try {
-                    TransactionalTable tt = new TransactionalTable(tsoClientConf, interest.getTable());
+                    TTable tt = new TTable(tsoClientConf, interest.getTable());
                     Get row = new Get(rowData.getRow());
                     Result result = tt.get(row);
                     byte[] val = result.getValue(interest.getColumnFamilyAsHBaseByteArray(),
@@ -444,7 +444,7 @@ public class TestSimpleNotification extends TestInfrastructure {
         };
     }
 
-    private static void doTransactionalPut(TransactionState tx, TransactionalTable tt, byte[] rowKey,
+    private static void doTransactionalPut(TransactionState tx, TTable tt, byte[] rowKey,
             byte[] colFamName, byte[] colName, byte[] dataValue) throws IOException {
         Put row = new Put(rowKey);
         row.add(colFamName, colName, dataValue);

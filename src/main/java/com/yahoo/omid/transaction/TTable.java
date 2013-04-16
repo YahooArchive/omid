@@ -14,7 +14,7 @@
  * limitations under the License. See accompanying LICENSE file.
  */
 
-package com.yahoo.omid.client;
+package com.yahoo.omid.transaction;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -39,12 +39,15 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.yahoo.omid.client.ColumnWrapper;
+import com.yahoo.omid.client.RowKeyFamily;
+
 /**
  * Provides transactional methods for accessing and modifying a given snapshot of data identified by an opaque
  * {@link TransactionState} object.
  *
  */
-public class TransactionalTable extends HTable {
+public class TTable extends HTable {
 
    public static long getsPerformed = 0;
    public static long elementsGotten = 0;
@@ -59,11 +62,11 @@ public class TransactionalTable extends HTable {
    /** How fast do we adapt the average */
    private static final double alpha = 0.975;
 
-   public TransactionalTable(Configuration conf, byte[] tableName) throws IOException {
+   public TTable(Configuration conf, byte[] tableName) throws IOException {
       super(conf, tableName);
    }
 
-   public TransactionalTable(Configuration conf, String tableName) throws IOException {
+   public TTable(Configuration conf, String tableName) throws IOException {
       this(conf, Bytes.toBytes(tableName));
    }
 

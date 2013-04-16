@@ -34,9 +34,9 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
 import com.yahoo.omid.client.CommitUnsuccessfulException;
-import com.yahoo.omid.client.TransactionManager;
-import com.yahoo.omid.client.TransactionState;
-import com.yahoo.omid.client.TransactionalTable;
+import com.yahoo.omid.transaction.TransactionManager;
+import com.yahoo.omid.transaction.TransactionState;
+import com.yahoo.omid.transaction.TTable;
 
 public class TestTransactionConflict extends OmidTestBase {
    private static final Log LOG = LogFactory.getLog(TestTransactionConflict.class);
@@ -44,7 +44,7 @@ public class TestTransactionConflict extends OmidTestBase {
    @Test
    public void runTestWriteWriteConflict() throws Exception {
       TransactionManager tm = new TransactionManager(hbaseConf);
-      TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+      TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
       TransactionState t1 = tm.beginTransaction();
       LOG.info("Transaction created " + t1);
@@ -81,7 +81,7 @@ public class TestTransactionConflict extends OmidTestBase {
    @Test
    public void runTestMultiTableConflict() throws Exception {
       TransactionManager tm = new TransactionManager(hbaseConf);
-      TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+      TTable tt = new TTable(hbaseConf, TEST_TABLE);
       String table2 = TEST_TABLE + 2;
 
       HBaseAdmin admin = new HBaseAdmin(hbaseConf);
@@ -99,7 +99,7 @@ public class TestTransactionConflict extends OmidTestBase {
          admin.enableTable(table2);
       }
 
-      TransactionalTable tt2 = new TransactionalTable(hbaseConf, table2);
+      TTable tt2 = new TTable(hbaseConf, table2);
 
       TransactionState t1 = tm.beginTransaction();
       LOG.info("Transaction created " + t1);
@@ -149,7 +149,7 @@ public class TestTransactionConflict extends OmidTestBase {
    @Test
    public void runTestCleanupAfterConflict() throws Exception {
       TransactionManager tm = new TransactionManager(hbaseConf);
-      TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+      TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
       TransactionState t1 = tm.beginTransaction();
       LOG.info("Transaction created " + t1);
@@ -205,7 +205,7 @@ public class TestTransactionConflict extends OmidTestBase {
    public void testCleanupWithDeleteRow() throws Exception {
       try {
          TransactionManager tm = new TransactionManager(hbaseConf);
-         TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
          TransactionState t1 = tm.beginTransaction();
          LOG.info("Transaction created " + t1);

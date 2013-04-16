@@ -30,9 +30,9 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import com.yahoo.omid.client.TransactionManager;
-import com.yahoo.omid.client.TransactionState;
-import com.yahoo.omid.client.TransactionalTable;
+import com.yahoo.omid.transaction.TransactionManager;
+import com.yahoo.omid.transaction.TransactionState;
+import com.yahoo.omid.transaction.TTable;
 
 public class TestBasicTransaction extends OmidTestBase {
    private static final Log LOG = LogFactory.getLog(TestBasicTransaction.class);
@@ -43,7 +43,7 @@ public class TestBasicTransaction extends OmidTestBase {
             throws Exception {
 
         TransactionManager tm = new TransactionManager(hbaseConf);
-        TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+        TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
         byte[] rowName1 = Bytes.toBytes("row1");
         byte[] rowName2 = Bytes.toBytes("row2");
@@ -92,7 +92,7 @@ public class TestBasicTransaction extends OmidTestBase {
             throws Exception {
 
         TransactionManager tm = new TransactionManager(hbaseConf);
-        TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+        TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
         byte[] rowName1 = Bytes.toBytes("row1");
         byte[] rowName2 = Bytes.toBytes("row2");
@@ -167,7 +167,7 @@ public class TestBasicTransaction extends OmidTestBase {
    @Test public void runTestSimple() throws Exception {
       try {
          TransactionManager tm = new TransactionManager(hbaseConf);
-         TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+         TTable tt = new TTable(hbaseConf, TEST_TABLE);
          
          TransactionState t1 = tm.beginTransaction();
          LOG.info("Transaction created " + t1);
@@ -207,7 +207,7 @@ public class TestBasicTransaction extends OmidTestBase {
    @Test public void runTestManyVersions() throws Exception {
       try {
          TransactionManager tm = new TransactionManager(hbaseConf);
-         TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
          TransactionState t1 = tm.beginTransaction();
          LOG.info("Transaction created " + t1);
@@ -248,7 +248,7 @@ public class TestBasicTransaction extends OmidTestBase {
    @Test public void runTestInterleave() throws Exception {
       try {
          TransactionManager tm = new TransactionManager(hbaseConf);
-         TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+         TTable tt = new TTable(hbaseConf, TEST_TABLE);
         
          TransactionState t1 = tm.beginTransaction();
          LOG.info("Transaction created " + t1);
@@ -289,7 +289,7 @@ public class TestBasicTransaction extends OmidTestBase {
    @Test public void runTestInterleaveScan() throws Exception {
       try {
          TransactionManager tm = new TransactionManager(hbaseConf);
-         TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+         TTable tt = new TTable(hbaseConf, TEST_TABLE);
          
          TransactionState t1 = tm.beginTransaction();
          LOG.info("Transaction created " + t1);
@@ -359,7 +359,7 @@ public class TestBasicTransaction extends OmidTestBase {
    @Test public void runTestDeleteCol() throws Exception {
       try {
          TransactionManager tm = new TransactionManager(hbaseConf);
-         TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+         TTable tt = new TTable(hbaseConf, TEST_TABLE);
          
          TransactionState t1 = tm.beginTransaction();
          LOG.info("Transaction created " + t1);
@@ -443,7 +443,7 @@ public class TestBasicTransaction extends OmidTestBase {
    @Test public void runTestDeleteRow() throws Exception {
       try {
          TransactionManager tm = new TransactionManager(hbaseConf);
-         TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+         TTable tt = new TTable(hbaseConf, TEST_TABLE);
          
          TransactionState t1 = tm.beginTransaction();
          LOG.info("Transaction created " + t1);

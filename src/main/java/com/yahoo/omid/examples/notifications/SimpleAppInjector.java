@@ -48,13 +48,13 @@ import com.google.common.util.concurrent.RateLimiter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.client.CommitUnsuccessfulException;
 import com.yahoo.omid.client.TransactionException;
-import com.yahoo.omid.client.TransactionManager;
-import com.yahoo.omid.client.TransactionState;
-import com.yahoo.omid.client.TransactionalTable;
 import com.yahoo.omid.examples.Constants;
 import com.yahoo.omid.examples.notifications.ExamplesUtils.ExtendedPosixParser;
 import com.yahoo.omid.notifications.TransactionCommittedRegionCoprocessor;
 import com.yahoo.omid.notifications.metrics.MetricsUtils;
+import com.yahoo.omid.transaction.TransactionManager;
+import com.yahoo.omid.transaction.TransactionState;
+import com.yahoo.omid.transaction.TTable;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
 
@@ -184,14 +184,14 @@ public class SimpleAppInjector {
 
         private CountDownLatch startCdl;
         private TransactionManager tm;
-        private TransactionalTable tt;
+        private TTable tt;
         private int txRate;
         private Meter invocations;
 
         public EventInjectorTask(Configuration conf, CountDownLatch startCdl, int txRate, Meter invocations) {
             try {
                 this.tm = new TransactionManager(conf);
-                this.tt = new TransactionalTable(conf, TABLE_1);
+                this.tt = new TTable(conf, TABLE_1);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -235,7 +235,7 @@ public class SimpleAppInjector {
             }
         }
 
-        private void doTransactionalPut(TransactionState tx, TransactionalTable tt, byte[] rowName, byte[] colFamName,
+        private void doTransactionalPut(TransactionState tx, TTable tt, byte[] rowName, byte[] colFamName,
                 byte[] colName, byte[] dataValue) throws IOException {
             Put row = new Put(rowName);
             row.add(colFamName, colName, dataValue);
