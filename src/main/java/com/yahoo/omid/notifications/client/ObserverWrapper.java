@@ -154,12 +154,9 @@ public class ObserverWrapper implements Runnable {
             // datastore have been added to the transaction. So instead of aborting the transaction, we just clear the
             // flag and commit in order to avoid the scanners re-sending rows with the notify flag
             try {
-                clearNotifyFlag(tx, txTable, rowKey, columnFamily, column);
-                tm.tryCommit(tx);
+                tm.abort(tx);
             } catch (TransactionException e1) {
                 logger.error("Problem when clearing tx flag in transaction [{}]", tx, e);
-            } catch (CommitUnsuccessfulException e1) {
-                logger.error("Cannot commit transaction [{}] for clearing tx flag", tx, e);
             }
             metrics.observerAbortEvent(observer.getName());
         } catch (CommitUnsuccessfulException e) {
