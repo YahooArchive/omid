@@ -22,41 +22,23 @@ The core architecture of the software is described in more detail in the [Techni
 Compilation
 -----------
 
-Omid uses Maven for its build system. We are using a temporary repository for Zookeeper and Bookkeeper packages to ease the installation procedure.
+Omid uses Maven for its build system.
 
 To compile Omid:
 
-    $ tar jxvf omid-1.0-SNAPSHOT.tar.bz2
-    $ cd omid-1.0-SNAPSHOT
-    $ mvn install
+	$ git clone https://github.com/yahoo/omid.git omid
+	$ cd omid
+    $ mvn install -DskipTests
 
-Tests should run cleanly.
+Tests should run cleanly if you want to run them.
 
 Set-Up
 ------
 
-You need to run four components before running the transactional client in your applications: Bookkeeper, Zookeeper, Omid TSO and HBase. These are their dependencies:
+To test Omid you might want to run a benchmark.
 
-1. Bookkeeper is needed by the TSO
-2. Zookeeper is needed by Bookkeeper and HBase. 
-3. The TSO is needed by HBase. 
-
-Hence, the order of starting should be:
-
-1. Zookeeper
-2. Bookkeeper
-3. TSO
-4. Hbase
-
-### Zookeeper & Bookkeepergit
-Omid doesn't use anything special in Zookeeper or Bookkeeper, so you can use any install for these. However, if you are running this anywhere but localhost, you need to update the setting for HBase and TSO. See the HBase docs for changing the Zookeeper quorum. For TSO, you need to modify bin/omid.sh.
-
-For simplicity we've included a utility script which starts Zookeeper and Bookkeeper. Run:
-
-    $ bin/omid.sh bktest
-
-### TSO
-To start the TSO, run:
+### Status Oracle
+To start the SO, run:
    
     $ bin/omid.sh tso
 
@@ -65,21 +47,14 @@ To benchmark the TSO alone, run:
 
     $ bin/omid.sh tsobench
 
-### HBase
-We've included a utility script to start a HBase cluster on your local machine. Run:
-
-    $ bin/omid.sh tran-hbase
-
-For running in a cluster
-
 API Description
 ---------------
 
 The public API is in these classes:
 
-    src/main/java/com/yahoo/omid/client/TransactionalTable.java
-    src/main/java/com/yahoo/omid/client/TransactionState.java
-    src/main/java/com/yahoo/omid/client/TransactionManager.java
+    src/main/java/com/yahoo/omid/transaction/TTable.java
+    src/main/java/com/yahoo/omid/transaction/Transaction.java
+    src/main/java/com/yahoo/omid/transaction/TransactionManager.java
 
 For an example of usage, take a look to this class:
 

@@ -40,8 +40,8 @@ import com.yahoo.omid.notifications.client.DeltaOmid;
 import com.yahoo.omid.notifications.client.IncrementalApplication;
 import com.yahoo.omid.notifications.client.Observer;
 import com.yahoo.omid.notifications.conf.ClientConfiguration;
-import com.yahoo.omid.transaction.TransactionState;
 import com.yahoo.omid.transaction.TTable;
+import com.yahoo.omid.transaction.Transaction;
 
 /**
  * This applications shows the basic usage of the Omid's notification framework
@@ -123,7 +123,7 @@ public class SimpleApp {
 
             };
 
-            public void onInterestChanged(Result rowData, TransactionState tx) {
+            public void onInterestChanged(Result rowData, Transaction tx) {
                 // logger.info("o1 -> Update on " + Bytes.toString(table) + Bytes.toString(rowKey)
                 // + Bytes.toString(columnFamily) + Bytes.toString(column));
 
@@ -151,7 +151,7 @@ public class SimpleApp {
 
             Interest interestObs2 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_2);
 
-            public void onInterestChanged(Result rowData, TransactionState tx) {
+            public void onInterestChanged(Result rowData, Transaction tx) {
                 // logger.info("o2 -> Update on " + Bytes.toString(table) + Bytes.toString(rowKey)
                 // + Bytes.toString(columnFamily) + Bytes.toString(column));
             }

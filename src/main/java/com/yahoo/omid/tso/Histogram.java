@@ -18,7 +18,7 @@ public class Histogram {
     }
 
     public void add(int i) {
-        if (i > size) {
+        if (i >= size) {
             LOG.error("Tried to add " + i + " which is bigger than size " + size);
             return;
         }

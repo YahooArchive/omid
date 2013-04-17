@@ -35,7 +35,7 @@ import com.yahoo.omid.notifications.client.Observer;
 import com.yahoo.omid.notifications.comm.ZNRecord;
 import com.yahoo.omid.notifications.comm.ZNRecordSerializer;
 import com.yahoo.omid.notifications.conf.ClientConfiguration;
-import com.yahoo.omid.transaction.TransactionState;
+import com.yahoo.omid.transaction.Transaction;
 
 public class TestDeltaOmid extends TestInfrastructure {
 
@@ -119,7 +119,7 @@ public class TestDeltaOmid extends TestInfrastructure {
 
         Observer obs = new Observer() {
 
-            public void onInterestChanged(Result rowData, TransactionState tx) {
+            public void onInterestChanged(Result rowData, Transaction tx) {
                 logger.info("I'm observer " + getName());
             }
 

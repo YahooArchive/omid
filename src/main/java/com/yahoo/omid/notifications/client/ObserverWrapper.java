@@ -30,15 +30,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.net.HostAndPort;
-import com.yahoo.omid.client.CommitUnsuccessfulException;
-import com.yahoo.omid.client.TransactionException;
 import com.yahoo.omid.notifications.Constants;
 import com.yahoo.omid.notifications.NotificationException;
 import com.yahoo.omid.notifications.metrics.ClientSideAppMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
-import com.yahoo.omid.transaction.TransactionManager;
-import com.yahoo.omid.transaction.TransactionState;
+import com.yahoo.omid.transaction.RollbackException;
 import com.yahoo.omid.transaction.TTable;
+import com.yahoo.omid.transaction.Transaction;
+import com.yahoo.omid.transaction.TransactionException;
+import com.yahoo.omid.transaction.TransactionManager;
 import com.yammer.metrics.core.TimerContext;
 
 public class ObserverWrapper implements Runnable {
@@ -127,10 +127,10 @@ public class ObserverWrapper implements Runnable {
     }
 
     private void notify(byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {
-        TransactionState tx = null;
+        Transaction tx = null;
         try {
             // Start tx
-            tx = tm.beginTransaction();
+            tx = tm.begin();
             metrics.observerInvocationEvent(observer.getName());
             String targetColumnFamily = Constants.HBASE_META_CF;
             // Pattern for notify column in framework's metadata column family: <cf>/<c>-notify
@@ -145,7 +145,7 @@ public class ObserverWrapper implements Runnable {
             observer.onInterestChanged(result, tx);
             // Commit tx
             clearNotifyFlag(tx, txTable, rowKey, columnFamily, column);
-            tm.tryCommit(tx);
+            tm.commit(tx);
             metrics.observerCompletionEvent(observer.getName());
             // logger.trace("TRANSACTION " + tx + " COMMITTED");
         } catch (NotificationException e) {
@@ -155,14 +155,14 @@ public class ObserverWrapper implements Runnable {
             // flag and commit in order to avoid the scanners re-sending rows with the notify flag
             try {
                 clearNotifyFlag(tx, txTable, rowKey, columnFamily, column);
-                tm.tryCommit(tx);
+                tm.commit(tx);
             } catch (TransactionException e1) {
                 logger.error("Problem when clearing tx flag in transaction [{}]", tx, e);
-            } catch (CommitUnsuccessfulException e1) {
+            } catch (RollbackException e1) {
                 logger.error("Cannot commit transaction [{}] for clearing tx flag", tx, e);
             }
             metrics.observerAbortEvent(observer.getName());
-        } catch (CommitUnsuccessfulException e) {
+        } catch (RollbackException e) {
             metrics.omidAbortEvent(observer.getName());
         } catch (Exception e) {
             metrics.unknownAbortEvent(observer.getName());
@@ -191,7 +191,7 @@ public class ObserverWrapper implements Runnable {
      * @param columnFamily
      * @param column
      */
-    private void clearNotifyFlag(TransactionState tx, TTable tt, byte[] rowKey, byte[] columnFamily,
+    private void clearNotifyFlag(Transaction tx, TTable tt, byte[] rowKey, byte[] columnFamily,
             byte[] column) {
         String targetColumnFamily = Constants.HBASE_META_CF;
         String targetColumn = Bytes.toString(columnFamily) + "/" + Bytes.toString(column)

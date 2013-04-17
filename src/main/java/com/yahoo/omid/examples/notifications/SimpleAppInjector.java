@@ -46,15 +46,15 @@ import org.apache.log4j.Logger;
 import com.google.common.net.HostAndPort;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.client.CommitUnsuccessfulException;
-import com.yahoo.omid.client.TransactionException;
 import com.yahoo.omid.examples.Constants;
 import com.yahoo.omid.examples.notifications.ExamplesUtils.ExtendedPosixParser;
 import com.yahoo.omid.notifications.TransactionCommittedRegionCoprocessor;
 import com.yahoo.omid.notifications.metrics.MetricsUtils;
-import com.yahoo.omid.transaction.TransactionManager;
-import com.yahoo.omid.transaction.TransactionState;
+import com.yahoo.omid.transaction.RollbackException;
 import com.yahoo.omid.transaction.TTable;
+import com.yahoo.omid.transaction.TransactionException;
+import com.yahoo.omid.transaction.TransactionManager;
+import com.yahoo.omid.transaction.Transaction;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
 
@@ -207,15 +207,15 @@ public class SimpleAppInjector {
                 startCdl.await();
                 while (true) {
                     rateLimiter.acquire();
-                    TransactionState tx = null;
+                    Transaction tx = null;
                     try {
                         // Transaction adding to rows to a table
-                        tx = tm.beginTransaction();
+                        tx = tm.begin();
                         String rowId = Long.toString(randGen.nextLong());
                         doTransactionalPut(tx, tt, Bytes.toBytes("row-" + rowId), Bytes.toBytes(COLUMN_FAMILY_1),
                                 Bytes.toBytes(COLUMN_1), Bytes.toBytes("injector wrote on row-" + rowId));
-                        tm.tryCommit(tx);
-                    } catch (CommitUnsuccessfulException e) {
+                        tm.commit(tx);
+                    } catch (RollbackException e) {
                         logger.warn("Could not commit Tx " + tx, e);
                     } catch (IOException e) {
                         logger.warn("Error during transactional put ", e);
@@ -235,7 +235,7 @@ public class SimpleAppInjector {
             }
         }
 
-        private void doTransactionalPut(TransactionState tx, TTable tt, byte[] rowName, byte[] colFamName,
+        private void doTransactionalPut(Transaction tx, TTable tt, byte[] rowName, byte[] colFamName,
                 byte[] colName, byte[] dataValue) throws IOException {
             Put row = new Put(rowName);
             row.add(colFamName, colName, dataValue);

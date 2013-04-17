@@ -36,14 +36,14 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import com.yahoo.omid.client.CommitUnsuccessfulException;
-import com.yahoo.omid.client.TransactionException;
 import com.yahoo.omid.notifications.client.DeltaOmid;
 import com.yahoo.omid.notifications.client.IncrementalApplication;
 import com.yahoo.omid.notifications.client.Observer;
-import com.yahoo.omid.transaction.TransactionManager;
-import com.yahoo.omid.transaction.TransactionState;
+import com.yahoo.omid.transaction.RollbackException;
 import com.yahoo.omid.transaction.TTable;
+import com.yahoo.omid.transaction.Transaction;
+import com.yahoo.omid.transaction.TransactionException;
+import com.yahoo.omid.transaction.TransactionManager;
 
 public class TestSimpleNotification extends TestInfrastructure {
 
@@ -107,13 +107,13 @@ public class TestSimpleNotification extends TestInfrastructure {
         Observer observer = new Observer() {
             Interest interest = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
 
-            public void onInterestChanged(Result rowData, TransactionState tx) {
+            public void onInterestChanged(Result rowData, Transaction tx) {
                 st = tx.getStartTimestamp();
                 Configuration hbaseClientConf = HBaseConfiguration.create();
                 try {
                     TTable tt = new TTable(hbaseClientConf, interest.getTable());
                     Get row = new Get(rowData.getRow());
-                    Result result = tt.get(row);
+                    Result result = tt.getHTable().get(row);
                     byte[] val = result.getValue(
                             Bytes.toBytes(Constants.HBASE_META_CF),
                             Bytes.toBytes(TestConstants.COLUMN_FAMILY_1 + "/" + TestConstants.COLUMN_1
@@ -197,7 +197,7 @@ public class TestSimpleNotification extends TestInfrastructure {
         IncrementalApplication app = new DeltaOmid.AppBuilder("testTxWritesTheRightMetadataOnAbortApp", 6669)
                 .addObserver(new Observer() {
                     @Override
-                    public void onInterestChanged(Result rowData, TransactionState tx) {
+                    public void onInterestChanged(Result rowData, Transaction tx) {
                     }
 
                     @Override
@@ -237,7 +237,7 @@ public class TestSimpleNotification extends TestInfrastructure {
         Observer observer = new Observer() {
             Interest interest = new Interest(TestConstants.TABLE, TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1);
 
-            public void onInterestChanged(Result rowData, TransactionState tx) {
+            public void onInterestChanged(Result rowData, Transaction tx) {
                 st = tx.getStartTimestamp();
                 logger.info("Observer TS: " + KeyValue.humanReadableTimestamp(st));
             }
@@ -300,11 +300,11 @@ public class TestSimpleNotification extends TestInfrastructure {
      * @throws CommitUnsuccessfulException
      */
     private long startTriggerTransaction(boolean commit, String r, String cf, String c, String v)
-            throws TransactionException, IOException, CommitUnsuccessfulException {
+            throws TransactionException, IOException, RollbackException {
         TransactionManager tm = new TransactionManager(hbaseConf);
         TTable tt = new TTable(hbaseConf, TestConstants.TABLE);
 
-        TransactionState tx = tm.beginTransaction();
+        Transaction tx = tm.begin();
         long st = tx.getStartTimestamp();
 
         Put row = new Put(Bytes.toBytes(r));
@@ -312,9 +312,9 @@ public class TestSimpleNotification extends TestInfrastructure {
         tt.put(tx, row);
 
         if (commit) {
-            tm.tryCommit(tx);
+            tm.commit(tx);
         } else {
-            tm.abort(tx);
+            tm.rollback(tx);
         }
 
         tt.close();
@@ -338,7 +338,7 @@ public class TestSimpleNotification extends TestInfrastructure {
     private Observer buildPassiveTransactionalObserver(final String obsName, final Interest interest,
             final String expectedValue, final CountDownLatch cdl) throws Exception {
         return new Observer() {
-            public void onInterestChanged(Result rowData, TransactionState tx) {
+            public void onInterestChanged(Result rowData, Transaction tx) {
                 Configuration tsoClientConf = HBaseConfiguration.create();
                 tsoClientConf.set("tso.host", "localhost");
                 tsoClientConf.setInt("tso.port", 1234);
@@ -346,7 +346,7 @@ public class TestSimpleNotification extends TestInfrastructure {
                 try {
                     TTable tt = new TTable(tsoClientConf, interest.getTable());
                     Get row = new Get(rowData.getRow());
-                    Result result = tt.get(row);
+                    Result result = tt.getHTable().get(row);
                     byte[] val = result.getValue(interest.getColumnFamilyAsHBaseByteArray(),
                             interest.getColumnAsHBaseByteArray());
                     assertEquals("Values for this row are different", expectedValue, Bytes.toString(val));
@@ -399,7 +399,7 @@ public class TestSimpleNotification extends TestInfrastructure {
             final String expectedValue, final int delay, final String r, final String cf, final String c,
             final String v, final CountDownLatch cdl) throws Exception {
         return new Observer() {
-            public void onInterestChanged(Result rowData, TransactionState tx) {
+            public void onInterestChanged(Result rowData, Transaction tx) {
                 if (delay != 0) {
                     try {
                         logger.info("Waitingggggggg");
@@ -416,7 +416,7 @@ public class TestSimpleNotification extends TestInfrastructure {
                 try {
                     TTable tt = new TTable(tsoClientConf, interest.getTable());
                     Get row = new Get(rowData.getRow());
-                    Result result = tt.get(row);
+                    Result result = tt.getHTable().get(row);
                     byte[] val = result.getValue(interest.getColumnFamilyAsHBaseByteArray(),
                             interest.getColumnAsHBaseByteArray());
                     assertEquals("Values for this row are different", expectedValue, Bytes.toString(val));
@@ -444,7 +444,7 @@ public class TestSimpleNotification extends TestInfrastructure {
         };
     }
 
-    private static void doTransactionalPut(TransactionState tx, TTable tt, byte[] rowKey,
+    private static void doTransactionalPut(Transaction tx, TTable tt, byte[] rowKey,
             byte[] colFamName, byte[] colName, byte[] dataValue) throws IOException {
         Put row = new Put(rowKey);
         row.add(colFamName, colName, dataValue);

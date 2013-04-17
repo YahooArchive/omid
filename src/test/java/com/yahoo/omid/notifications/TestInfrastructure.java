@@ -150,7 +150,7 @@ public class TestInfrastructure {
 
     private static void setupHBase() throws Exception {
         hbaseConf = HBaseConfiguration.create();
-        hbaseConf.set("hbase.coprocessor.region.classes", "com.yahoo.omid.client.regionserver.Compacter");
+        hbaseConf.set("hbase.coprocessor.region.classes", "com.yahoo.omid.regionserver.Compacter");
         hbaseConf.setInt("hbase.hregion.memstore.flush.size", 100 * 1024);
         hbaseConf.setInt("hbase.regionserver.nbreservationblocks", 1);
         hbaseConf.set("tso.host", "localhost");

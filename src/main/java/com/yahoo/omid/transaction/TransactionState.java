@@ -17,74 +17,63 @@
 package com.yahoo.omid.transaction;
 
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
-
-import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.util.Bytes;
 
 import com.yahoo.omid.client.RowKeyFamily;
 import com.yahoo.omid.client.TSOClient;
 
 /**
- *
- * This class contains the required information to represent an Omid's transaction, including the set of rows modified.
+ * 
+ * This class contains the required information to represent an Omid's
+ * transaction, including the set of rows modified.
  * 
  */
-public class TransactionState {
-   private long startTimestamp;
-   private long commitTimestamp;
-   private Set<RowKeyFamily> rows;
-   
-   public TSOClient tsoclient;
+class TransactionState implements Transaction {
+    private boolean rollbackOnly;
+    private long startTimestamp;
+    private long commitTimestamp;
+    private Set<RowKeyFamily> rows;
 
-   TransactionState(long startTimestamp, TSOClient client) {
-	  this.rows = new HashSet<RowKeyFamily>();
-      this.startTimestamp = startTimestamp;;
-      this.commitTimestamp = 0;
-      this.tsoclient = client;
-   }
+    public TSOClient tsoclient;
 
-   public long getStartTimestamp() {
-      return startTimestamp;
-   }
-   
-   public long getCommitTimestamp() {
-      return commitTimestamp;
-   }
+    TransactionState(long startTimestamp, TSOClient client) {
+        this.rows = new HashSet<RowKeyFamily>();
+        this.startTimestamp = startTimestamp;
+        this.commitTimestamp = 0;
+        this.tsoclient = client;
+    }
 
-   public void setCommitTimestamp(long commitTimestamp) {
-      this.commitTimestamp = commitTimestamp;
-   }
+    @Override
+    public long getStartTimestamp() {
+        return startTimestamp;
+    }
 
-   public RowKeyFamily[] getRows() {
-      return rows.toArray(new RowKeyFamily[0]);
-   }
+    public long getCommitTimestamp() {
+        return commitTimestamp;
+    }
 
-   public void addRow(RowKeyFamily row) {
-      rows.add(row);
-   }
+    public void setCommitTimestamp(long commitTimestamp) {
+        this.commitTimestamp = commitTimestamp;
+    }
 
-   public String toString() {
-      return "Transaction-" + Long.toHexString(startTimestamp);
-   }
-   
-   public String toDescriptiveString() {
-	   StringBuilder sb = new StringBuilder();
-	   for (RowKeyFamily row: getRows()) {
+    public RowKeyFamily[] getRows() {
+        return rows.toArray(new RowKeyFamily[0]);
+    }
 
-		   Map<byte[], List<KeyValue>> families = row.getFamilies();
-		   for (Entry<byte[], List<KeyValue>> entry: families.entrySet() ) {
-			   String family = Bytes.toString(entry.getKey());
-			   List<KeyValue> columns = entry.getValue();
-			   for(KeyValue column:columns) {
-				   sb.append(Bytes.toString(row.getTable()) + ":" + family + ":" + column.toString() + " ; ");
-			   }
-		   }
+    public void addRow(RowKeyFamily row) {
+        rows.add(row);
+    }
 
-	   }
-	   return sb.toString();
-   }
+    public String toString() {
+        return "Transaction-" + Long.toHexString(startTimestamp);
+    }
+
+    @Override
+    public void setRollbackOnly() {
+        rollbackOnly = true;
+    }
+    
+    public boolean isRollbackOnly() {
+        return rollbackOnly;
+    }
 }
