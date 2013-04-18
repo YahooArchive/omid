@@ -34,14 +34,14 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
 import com.google.common.net.HostAndPort;
-import com.yahoo.omid.client.TransactionState;
-import com.yahoo.omid.client.TransactionalTable;
 import com.yahoo.omid.examples.notifications.ExamplesUtils.ExtendedPosixParser;
 import com.yahoo.omid.notifications.Interest;
 import com.yahoo.omid.notifications.client.DeltaOmid;
 import com.yahoo.omid.notifications.client.IncrementalApplication;
 import com.yahoo.omid.notifications.client.Observer;
 import com.yahoo.omid.notifications.conf.ClientConfiguration;
+import com.yahoo.omid.transaction.TTable;
+import com.yahoo.omid.transaction.Transaction;
 
 /**
  * This applications shows the basic usage of the Omid's notification framework
@@ -105,17 +105,17 @@ public class SimpleApp {
 
             Interest interestObs1 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_1);
 
-            private ThreadLocal<TransactionalTable> txTable = new ThreadLocal<TransactionalTable>() {
+            private ThreadLocal<TTable> txTable = new ThreadLocal<TTable>() {
 
                 @Override
-                protected TransactionalTable initialValue() {
+                protected TTable initialValue() {
                     // TSO Client setup
                     Configuration tsoClientHbaseConfObs = HBaseConfiguration.create();
                     tsoClientHbaseConfObs.set("tso.host", omidHp.getHostText());
                     tsoClientHbaseConfObs.setInt("tso.port", omidHp.getPortOrDefault(1234));
                     try {
                         logger.info("Returning new " + TABLE_1 + " txtable");
-                        return new TransactionalTable(tsoClientHbaseConfObs, TABLE_1);
+                        return new TTable(tsoClientHbaseConfObs, TABLE_1);
                     } catch (IOException e) {
                         throw new RuntimeException("Cannot create transactional table on content table", e);
                     }
@@ -123,7 +123,7 @@ public class SimpleApp {
 
             };
 
-            public void onInterestChanged(Result rowData, TransactionState tx) {
+            public void onInterestChanged(Result rowData, Transaction tx) {
                 // logger.info("o1 -> Update on " + Bytes.toString(table) + Bytes.toString(rowKey)
                 // + Bytes.toString(columnFamily) + Bytes.toString(column));
 
@@ -151,7 +151,7 @@ public class SimpleApp {
 
             Interest interestObs2 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_2);
 
-            public void onInterestChanged(Result rowData, TransactionState tx) {
+            public void onInterestChanged(Result rowData, Transaction tx) {
                 // logger.info("o2 -> Update on " + Bytes.toString(table) + Bytes.toString(rowKey)
                 // + Bytes.toString(columnFamily) + Bytes.toString(column));
             }

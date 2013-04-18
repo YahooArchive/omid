@@ -89,7 +89,6 @@
                 </executions>
             </plugin>            
         </plugins>
-        
         <pluginManagement>
             <plugins>
                 <!--This plugin's configuration is used to store Eclipse 

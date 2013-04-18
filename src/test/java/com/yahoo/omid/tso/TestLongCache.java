@@ -14,14 +14,14 @@ public class TestLongCache {
 
     private static final Log LOG = LogFactory.getLog(TestLongCache.class);
 
+    final int entries = 1000;
+    Histogram hist = new Histogram(entries * 10);
+
     @Test
     public void testEntriesAge() {
-        final int entries = 10;
-
-        Histogram hist = new Histogram(entries * 10);
+        
 
         Cache cache = new LongCache(entries, 16);
-
         Random random = new Random();
 
         long seed = random.nextLong();
@@ -34,26 +34,34 @@ public class TestLongCache {
         double tempAvg = 0;
 
         int i = 0;
+        int largestDeletedTimestamp = 0;
         for (; i < entries * 10; ++i) {
-            cache.set(random.nextLong(), i);
+            long removed = cache.set(random.nextLong(), i);
+            if (removed > largestDeletedTimestamp) {
+                largestDeletedTimestamp = (int) removed;
+            }
         }
 
+        long time = System.nanoTime();
         for (; i < entries * 100; ++i) {
             long removed = cache.set(random.nextLong(), i);
-            int age = i - ((int) removed);
+            if (removed > largestDeletedTimestamp) {
+                largestDeletedTimestamp = (int) removed;
+            }
+            int gap = i - ((int) largestDeletedTimestamp);
             removals++;
-            totalAge += age;
+            totalAge += gap;
             double oldAvg = tempAvg;
-            tempAvg += (age - tempAvg) / removals;
-            tempStdDev += (age - oldAvg) * (age - tempAvg);
-            hist.add(age);
+            tempAvg += (gap - tempAvg) / removals;
+            tempStdDev += (gap - oldAvg) * (gap - tempAvg);
+            hist.add(gap);
         }
+        long elapsed = System.nanoTime() - time;
+        LOG.info("Elapsed (ms): " + (elapsed / (double)1000));
 
-        double avgAge = totalAge / (double) removals;
-        LOG.info("Avg age: " + (avgAge));
-        LOG.info("Avg age: " + (tempAvg));
-        LOG.info("Std dev age: " + Math.sqrt((tempStdDev / entries)));
-        System.out.println(hist.toString());
-        assertThat(avgAge, is(greaterThan(entries * .9)));
+        double avgGap = totalAge / (double) removals;
+        LOG.info("Avg gap: " + (tempAvg ));
+        LOG.info("Std dev gap: " + Math.sqrt((tempStdDev / entries)));
+        assertThat(avgGap, is(greaterThan(entries * .6 )));
     }
 }

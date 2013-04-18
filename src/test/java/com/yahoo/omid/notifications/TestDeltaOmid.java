@@ -28,7 +28,6 @@ import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.netflix.curator.retry.ExponentialBackoffRetry;
 import com.netflix.curator.test.TestingServer;
 import com.netflix.curator.utils.ZKPaths;
-import com.yahoo.omid.client.TransactionState;
 import com.yahoo.omid.examples.Constants;
 import com.yahoo.omid.notifications.client.DeltaOmid;
 import com.yahoo.omid.notifications.client.IncrementalApplication;
@@ -36,6 +35,7 @@ import com.yahoo.omid.notifications.client.Observer;
 import com.yahoo.omid.notifications.comm.ZNRecord;
 import com.yahoo.omid.notifications.comm.ZNRecordSerializer;
 import com.yahoo.omid.notifications.conf.ClientConfiguration;
+import com.yahoo.omid.transaction.Transaction;
 
 public class TestDeltaOmid extends TestInfrastructure {
 
@@ -119,7 +119,7 @@ public class TestDeltaOmid extends TestInfrastructure {
 
         Observer obs = new Observer() {
 
-            public void onInterestChanged(Result rowData, TransactionState tx) {
+            public void onInterestChanged(Result rowData, Transaction tx) {
                 logger.info("I'm observer " + getName());
             }
 

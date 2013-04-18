@@ -22,8 +22,8 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 import org.apache.hadoop.hbase.client.Put;
 
-import com.yahoo.omid.client.TransactionState;
-import com.yahoo.omid.client.TransactionalTable;
+import com.yahoo.omid.transaction.TTable;
+import com.yahoo.omid.transaction.Transaction;
 
 public class ExamplesUtils {
 
@@ -46,7 +46,7 @@ public class ExamplesUtils {
 
     }
 
-    public static void doTransactionalPut(TransactionState tx, TransactionalTable tt, byte[] rowName,
+    public static void doTransactionalPut(Transaction tx, TTable tt, byte[] rowName,
             byte[] colFamName, byte[] colName, byte[] dataValue) throws IOException {
         Put row = new Put(rowName);
         row.add(colFamName, colName, dataValue);

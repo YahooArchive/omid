@@ -48,7 +48,7 @@ public class RowKey {
     }
 
     public String toString() {
-        return new String(tableId) + ":" + new String(rowId);
+        return Bytes.toString(tableId) + ":" + Bytes.toString(rowId);
     }
 
     public static RowKey readObject(ChannelBuffer aInputStream) {

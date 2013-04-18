@@ -30,15 +30,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.net.HostAndPort;
-import com.yahoo.omid.client.CommitUnsuccessfulException;
-import com.yahoo.omid.client.TransactionException;
-import com.yahoo.omid.client.TransactionManager;
-import com.yahoo.omid.client.TransactionState;
-import com.yahoo.omid.client.TransactionalTable;
 import com.yahoo.omid.notifications.Constants;
 import com.yahoo.omid.notifications.NotificationException;
 import com.yahoo.omid.notifications.metrics.ClientSideAppMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
+import com.yahoo.omid.transaction.RollbackException;
+import com.yahoo.omid.transaction.TTable;
+import com.yahoo.omid.transaction.Transaction;
+import com.yahoo.omid.transaction.TransactionException;
+import com.yahoo.omid.transaction.TransactionManager;
 import com.yammer.metrics.core.TimerContext;
 
 public class ObserverWrapper implements Runnable {
@@ -55,7 +55,7 @@ public class ObserverWrapper implements Runnable {
 
     private BlockingQueue<Notification> notifQueue;
 
-    private TransactionalTable txTable;
+    private TTable txTable;
 
     public static final int PULL_TIMEOUT_MS = 100;
 
@@ -77,7 +77,7 @@ public class ObserverWrapper implements Runnable {
             logger.error("Cannot create transaction manager", e);
             return;
         }
-        txTable = new TransactionalTable(tsoClientHbaseConf, observer.getInterest().getTable());
+        txTable = new TTable(tsoClientHbaseConf, observer.getInterest().getTable());
 
         // logger.info("Instance created for observer " + observer.getName() + " using dispatcher "
         // + getContext().dispatcher() + " Context " + getContext().props());
@@ -110,74 +110,65 @@ public class ObserverWrapper implements Runnable {
                 continue;
             }
             TimerContext timer = metrics.startObserverInvocation(observer.getName());
-            try {
-                notify(observer.getInterest().getTableAsHBaseByteArray(), notification.getRowKey(), observer
-                        .getInterest().getColumnFamilyAsHBaseByteArray(), observer.getInterest()
-                        .getColumnAsHBaseByteArray());
-                timer.stop();
-            } catch (RuntimeException e) {
-                // runtime exception in user code - capture and log
-                logger.error("Runtime exception in {} while processing notification for rowkey {} on {}", new String[] {
-                        notification.getObserver(), Bytes.toString(notification.getRowKey()),
-                        observer.getInterest().toString() }, e);
-            } finally {
-                timer.stop();
-            }
+            notify(observer.getInterest().getTableAsHBaseByteArray(), notification.getRowKey(), observer
+                    .getInterest().getColumnFamilyAsHBaseByteArray(), observer.getInterest()
+                    .getColumnAsHBaseByteArray());
+            timer.stop();
         }
     }
 
     private void notify(byte[] table, byte[] rowKey, byte[] columnFamily, byte[] column) {
-        TransactionState tx = null;
+        Transaction tx = null;
         try {
             // Start tx
-            tx = tm.beginTransaction();
+            tx = tm.begin();
             metrics.observerInvocationEvent(observer.getName());
             String targetColumnFamily = Constants.HBASE_META_CF;
             // Pattern for notify column in framework's metadata column family: <cf>/<c>-notify
-            String targetColumnNotify = Bytes.toString(columnFamily) + "/" + Bytes.toString(column)
+            String notifyColumn = Bytes.toString(columnFamily) + "/" + Bytes.toString(column)
                     + Constants.HBASE_NOTIFY_SUFFIX;
             Get get = new Get(rowKey);
             Result result = txTable.get(tx, get); // Transactional get
-            KeyValue lastValueNotify = result.getColumnLatest(Bytes.toBytes(targetColumnFamily),
-                    Bytes.toBytes(targetColumnNotify));
-            checkIfAlreadyExecuted(lastValueNotify);
-            // Perform the particular actions on the observer for this row
-            observer.onInterestChanged(result, tx);
-            // Commit tx
-            clearNotifyFlag(tx, txTable, rowKey, columnFamily, column);
-            tm.tryCommit(tx);
-            metrics.observerCompletionEvent(observer.getName());
-            // logger.trace("TRANSACTION " + tx + " COMMITTED");
-        } catch (NotificationException e) {
-            // logger.trace("Aborting tx " + tx);
-            // This exception is only raised in checkIfAlreadyExecuted(), what means that no observer ops in the
-            // datastore have been added to the transaction. So instead of aborting the transaction, we just clear the
-            // flag and commit in order to avoid the scanners re-sending rows with the notify flag
-            try {
-                tm.abort(tx);
-            } catch (TransactionException e1) {
-                logger.error("Problem when clearing tx flag in transaction [{}]", tx, e);
+            KeyValue notifyValue = result.getColumnLatest(Bytes.toBytes(targetColumnFamily),
+                    Bytes.toBytes(notifyColumn));
+
+            if (isNotifyFlagSet(notifyValue)) {
+                // Run observer
+                observer.onInterestChanged(result, tx);
+
+                // Clear flag and commit transaction
+                clearNotifyFlag(tx, txTable, rowKey, columnFamily, column);
+                tm.commit(tx);
+                metrics.observerCompletionEvent(observer.getName());
+            } else {
+                // Abort transaction
+                tm.rollback(tx);
+                metrics.observerAbortEvent(observer.getName());
             }
-            metrics.observerAbortEvent(observer.getName());
-        } catch (CommitUnsuccessfulException e) {
+        } catch (RollbackException e) {
             metrics.omidAbortEvent(observer.getName());
+        } catch (IOException e) {
+            tm.rollback(tx);
+            metrics.hbaseAbortEvent(observer.getName());
+            logger.error("Received HBase exception", e);
         } catch (Exception e) {
             metrics.unknownAbortEvent(observer.getName());
+            if (tx != null) tm.rollback(tx);
             logger.error("Unhandled exception", e);
         }
     }
 
-    private void checkIfAlreadyExecuted(KeyValue lastValueNotify) throws NotificationException {
-
+    private boolean isNotifyFlagSet(KeyValue lastValueNotify) {
         if (lastValueNotify == null) {
-            throw new NotificationException("Notify flag not set");
+            return false;
         }
 
         byte[] valNotify = lastValueNotify.getValue();
 
         if (valNotify == null || !Bytes.equals(valNotify, Bytes.toBytes("true"))) {
-            throw new NotificationException("Notify is not true");
+            return false;
         }
+        return true;
     }
 
     /**
@@ -187,21 +178,17 @@ public class ObserverWrapper implements Runnable {
      * @param rowKey
      * @param columnFamily
      * @param column
+     * @throws IOException 
      */
-    private void clearNotifyFlag(TransactionState tx, TransactionalTable tt, byte[] rowKey, byte[] columnFamily,
-            byte[] column) {
+    private void clearNotifyFlag(Transaction tx, TTable tt, byte[] rowKey, byte[] columnFamily,
+            byte[] column) throws IOException {
         String targetColumnFamily = Constants.HBASE_META_CF;
         String targetColumn = Bytes.toString(columnFamily) + "/" + Bytes.toString(column)
                 + Constants.HBASE_NOTIFY_SUFFIX;
 
         Put put = new Put(rowKey);
         put.add(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumn), Bytes.toBytes("false"));
-        try {
-            tt.put(tx, put); // Transactional put
-        } catch (Exception e) {
-            logger.error("Error clearing Notify Flag for: " + put);
-            e.printStackTrace();
-        }
+        tt.put(tx, put); // Transactional put
     }
 
 }
