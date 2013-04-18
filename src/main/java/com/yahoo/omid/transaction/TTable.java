@@ -88,13 +88,8 @@ public class TTable {
      *             if a remote or network exception occurs.
      */
     public Result get(Transaction transaction, final Get get) throws IOException {
-        if (!(transaction instanceof TransactionState)) {
-            throw new IllegalArgumentException("transaction should be an instance of " + TransactionState.class);
-        }
-        TransactionState transactionState = (TransactionState) transaction;
-
         final int requestedVersions = (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD);
-        final long readTimestamp = transactionState.getStartTimestamp();
+        final long readTimestamp = transaction.getStartTimestamp();
         final Get tsget = new Get(get.getRow());
         TimeRange timeRange = get.getTimeRange();
         long startTime = timeRange.getMin();
@@ -115,7 +110,7 @@ public class TTable {
         getsPerformed++;
         // Return the KVs that belong to the transaction snapshot, ask for more
         // versions if needed
-        return new Result(filter(transactionState, table.get(tsget).list(), requestedVersions));
+        return new Result(filter(transaction, table.get(tsget).list(), requestedVersions));
     }
 
     /**
@@ -127,12 +122,7 @@ public class TTable {
      *             if a remote or network exception occurs.
      */
     public void delete(Transaction transaction, Delete delete) throws IOException {
-        if (!(transaction instanceof TransactionState)) {
-            throw new IllegalArgumentException("transaction should be an instance of " + TransactionState.class);
-        }
-        TransactionState transactionState = (TransactionState) transaction;
-
-        final long startTimestamp = transactionState.getStartTimestamp();
+        final long startTimestamp = transaction.getStartTimestamp();
         boolean issueGet = false;
 
         final Put deleteP = new Put(delete.getRow(), startTimestamp);
@@ -165,7 +155,7 @@ public class TTable {
         if (issueGet) {
             // It's better to perform a transactional get to avoid deleting more
             // than necessary
-            Result result = this.get(transactionState, deleteG);
+            Result result = this.get(transaction, deleteG);
             for (Entry<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> entryF : result.getMap().entrySet()) {
                 byte[] family = entryF.getKey();
                 for (Entry<byte[], NavigableMap<Long, byte[]>> entryQ : entryF.getValue().entrySet()) {
@@ -175,7 +165,7 @@ public class TTable {
             }
         }
 
-        transactionState.addRow(new RowKeyFamily(delete.getRow(), getTableName(), deleteP.getFamilyMap()));
+        transaction.addRow(new RowKeyFamily(delete.getRow(), getTableName(), deleteP.getFamilyMap()));
 
         table.put(deleteP);
     }
@@ -192,13 +182,8 @@ public class TTable {
      *             if a remote or network exception occurs.
      * @since 0.20.0
      */
-    public void put(Transaction transaction, Put put) throws IOException, IllegalArgumentException {
-        if (!(transaction instanceof TransactionState)) {
-            throw new IllegalArgumentException("transaction should be an instance of " + TransactionState.class);
-        }
-        TransactionState transactionState = (TransactionState) transaction;
-
-        final long startTimestamp = transactionState.getStartTimestamp();
+    public void put(Transaction transaction, Put put) throws IOException {
+        final long startTimestamp = transaction.getStartTimestamp();
         // create put with correct ts
         final Put tsput = new Put(put.getRow(), startTimestamp);
         Map<byte[], List<KeyValue>> kvs = put.getFamilyMap();
@@ -209,7 +194,7 @@ public class TTable {
         }
 
         // should add the table as well
-        transactionState.addRow(new RowKeyFamily(tsput.getRow(), getTableName(), tsput.getFamilyMap()));
+        transaction.addRow(new RowKeyFamily(tsput.getRow(), getTableName(), tsput.getFamilyMap()));
 
         table.put(tsput);
     }
@@ -226,26 +211,21 @@ public class TTable {
      *             if a remote or network exception occurs.
      */
     public ResultScanner getScanner(Transaction transaction, Scan scan) throws IOException {
-        if (!(transaction instanceof TransactionState)) {
-            throw new IllegalArgumentException("transaction should be an instance of " + TransactionState.class);
-        }
-        TransactionState transactionState = (TransactionState) transaction;
-
         Scan tsscan = new Scan(scan);
         tsscan.setMaxVersions((int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
-        tsscan.setTimeRange(0, transactionState.getStartTimestamp() + 1);
-        TransactionalClientScanner scanner = new TransactionalClientScanner(transactionState, getConfiguration(),
+        tsscan.setTimeRange(0, transaction.getStartTimestamp() + 1);
+        TransactionalClientScanner scanner = new TransactionalClientScanner(transaction, getConfiguration(),
                 tsscan, getTableName(), (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
         return scanner;
     }
 
     /**
      * Filters the raw results returned from HBase and returns only those
-     * belonging to the current snapshot, as defined by the transactionState
+     * belonging to the current snapshot, as defined by the transaction
      * object. If the raw results don't contain enough information for a
      * particular qualifier, it will request more versions from HBase.
      * 
-     * @param transactionState
+     * @param transaction
      *            Defines the current snapshot
      * @param kvs
      *            Raw KVs that we are going to filter
@@ -254,14 +234,14 @@ public class TTable {
      * @return Filtered KVs belonging to the transaction snapshot
      * @throws IOException
      */
-    private List<KeyValue> filter(TransactionState transactionState, List<KeyValue> kvs, int localVersions)
+    private List<KeyValue> filter(Transaction transaction, List<KeyValue> kvs, int localVersions)
             throws IOException {
         final int requestVersions = localVersions * 2 + CACHE_VERSIONS_OVERHEAD;
         if (kvs == null) {
             return Collections.emptyList();
         }
 
-        long startTimestamp = transactionState.getStartTimestamp();
+        long startTimestamp = transaction.getStartTimestamp();
         // Filtered kvs
         List<KeyValue> filtered = new ArrayList<KeyValue>();
         // Map from column to older uncommitted timestamp
@@ -295,7 +275,7 @@ public class TTable {
                 continue;
             }
             versionsProcessed++;
-            if (transactionState.tsoclient.validRead(kv.getTimestamp(), startTimestamp)) {
+            if (transaction.tsoclient.validRead(kv.getTimestamp(), startTimestamp)) {
                 // Valid read, add it to result unless it's a delete
                 if (kv.getValueLength() > 0) {
                     filtered.add(kv);
@@ -314,7 +294,7 @@ public class TTable {
         if (!pendingGets.isEmpty()) {
             Result[] results = table.get(pendingGets);
             for (Result r : results) {
-                filtered.addAll(filter(transactionState, r.list(), requestVersions));
+                filtered.addAll(filter(transaction, r.list(), requestVersions));
             }
         }
         Collections.sort(filtered, KeyValue.COMPARATOR);
@@ -322,10 +302,10 @@ public class TTable {
     }
 
     protected class TransactionalClientScanner extends ClientScanner {
-        private TransactionState state;
+        private Transaction state;
         private int maxVersions;
 
-        TransactionalClientScanner(TransactionState state, Configuration conf, Scan scan, byte[] table, int maxVersions)
+        TransactionalClientScanner(Transaction state, Configuration conf, Scan scan, byte[] table, int maxVersions)
                 throws IOException {
             super(conf, scan, table);
             this.state = state;

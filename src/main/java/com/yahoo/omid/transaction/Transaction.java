@@ -16,20 +16,61 @@
 
 package com.yahoo.omid.transaction;
 
+import java.util.HashSet;
+import java.util.Set;
+
+import com.yahoo.omid.client.RowKeyFamily;
+import com.yahoo.omid.client.TSOClient;
+
 /**
  * 
- * This class contains the required information to represent an Omid's
- * transaction, including the set of rows modified.
+ * This class contains the required information to represent an Omid's transaction, including the set of rows modified.
  * 
  */
-public interface Transaction {
-    /**
-     * Modify the transaction associated with the current thread such that the
-     * only possible outcome of the transaction is to roll back the transaction.
-     */
-    public void setRollbackOnly();
-    /**
-     * @return the start timestamp of this transaction
-     */
-    public long getStartTimestamp();
+public class Transaction {
+    private boolean rollbackOnly;
+    private long startTimestamp;
+    private long commitTimestamp;
+    private Set<RowKeyFamily> rows;
+
+    TSOClient tsoclient;
+
+    Transaction(long startTimestamp, TSOClient client) {
+        this.rows = new HashSet<RowKeyFamily>();
+        this.startTimestamp = startTimestamp;
+        this.commitTimestamp = 0;
+        this.tsoclient = client;
+    }
+
+    public long getStartTimestamp() {
+        return startTimestamp;
+    }
+
+    public String toString() {
+        return "Transaction-" + Long.toHexString(startTimestamp);
+    }
+
+    public void setRollbackOnly() {
+        rollbackOnly = true;
+    }
+
+    public boolean isRollbackOnly() {
+        return rollbackOnly;
+    }
+
+    long getCommitTimestamp() {
+        return commitTimestamp;
+    }
+
+    void setCommitTimestamp(long commitTimestamp) {
+        this.commitTimestamp = commitTimestamp;
+    }
+
+    RowKeyFamily[] getRows() {
+        return rows.toArray(new RowKeyFamily[0]);
+    }
+
+    void addRow(RowKeyFamily row) {
+        rows.add(row);
+    }
 }

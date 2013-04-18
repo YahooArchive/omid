@@ -29,6 +29,7 @@ public class ClientSideAppMetrics {
     private Map<String, Meter> observerCompletionMeters = new HashMap<String, Meter>();
     private Map<String, Meter> observerAbortMeters = new HashMap<String, Meter>();
     private Map<String, Meter> omidAbortMeters = new HashMap<String, Meter>();
+    private Map<String, Meter> hbaseAbortMeters = new HashMap<String, Meter>();
     private Map<String, Meter> unknownAbortMeters = new HashMap<String, Meter>();
     private Map<String, Timer> observerExecutionTimers = new HashMap<String, Timer>();
     private Map<String, Meter> observerStarvationMeters = new HashMap<String, Meter>();
@@ -51,6 +52,8 @@ public class ClientSideAppMetrics {
                 + "@aborts", "aborts", TimeUnit.SECONDS));
         omidAbortMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "_" + obsName
                 + "@omid-aborts", "omid-aborts", TimeUnit.SECONDS));
+        hbaseAbortMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "_" + obsName
+                + "@hbase-aborts", "hbase-aborts", TimeUnit.SECONDS));
         unknownAbortMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "_" + obsName
                 + "@unknown-aborts", "unknown-aborts", TimeUnit.SECONDS));
         observerExecutionTimers.put(obsName,
@@ -77,6 +80,10 @@ public class ClientSideAppMetrics {
 
     public void omidAbortEvent(String obsName) {
         omidAbortMeters.get(obsName).mark();
+    }
+
+    public void hbaseAbortEvent(String obsName) {
+        hbaseAbortMeters.get(obsName).mark();
     }
 
     public void unknownAbortEvent(String obsName) {
