@@ -56,7 +56,7 @@ public class DeltaOmidServer {
 
             @Override
             public void uncaughtException(Thread t, Throwable e) {
-                logger.error("Uncaught exception in thread {}", t.getName(), e);
+                logger.error("Uncaught exception in thread [" + t.getName() + "]", e);
 
             }
         });
