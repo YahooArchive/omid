@@ -58,5 +58,6 @@ public class ReadersAwareBuffer {
    public synchronized void reset() {
        pendingReaders = 0;
        scheduledForPool = false;
+       buffer.clear();
    }
 }

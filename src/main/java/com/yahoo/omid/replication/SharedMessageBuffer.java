@@ -44,6 +44,8 @@ public class SharedMessageBuffer {
     Zipper zipper = new Zipper();
     Set<ReadingBuffer> readingBuffers = new TreeSet<SharedMessageBuffer.ReadingBuffer>();
 
+    int buffersCreated = 2; // past & current
+
     public class ReadingBuffer implements Comparable<ReadingBuffer> {
         private ChannelBuffer readBuffer;
         private int readerIndex = 0;
@@ -103,6 +105,7 @@ public class SharedMessageBuffer {
                 public void operationComplete(ChannelFuture future) throws Exception {
                     buffer.decreaseReaders();
                     if (buffer.isReadyForPool()) {
+                        buffer.reset();
                         bufferPool.add(buffer);
                     }
                 }
@@ -170,18 +173,25 @@ public class SharedMessageBuffer {
         // mark past buffer as scheduled for pool when all pending operations finish
         pastBuffer.scheduleForPool();
 
+        boolean readingFromPast = false;
         for (final ReadingBuffer rb : readingBuffers) {
             if (rb.readingBuffer == pastBuffer) {
                 ChannelFuture future = Channels.future(rb.channel);
                 ChannelBuffer cb = rb.flush(future);
                 Channels.write(rb.ctx, future, cb);
+                readingFromPast = true;
             }
+        }
+        if (!readingFromPast && pastBuffer.isReadyForPool()) {
+            pastBuffer.reset();
+            bufferPool.add(pastBuffer);
         }
 
         pastBuffer = currentBuffer;
         currentBuffer = bufferPool.poll();
         if (currentBuffer == null) {
             currentBuffer = new ReadersAwareBuffer();
+            buffersCreated++;
         }
         writeBuffer = currentBuffer.buffer;
     }

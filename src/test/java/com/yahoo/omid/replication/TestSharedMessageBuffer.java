@@ -43,22 +43,26 @@ public class TestSharedMessageBuffer {
 
         Deque<TSOMessage> expectedMessages = new ArrayDeque<TSOMessage>();
         int checked = 0;
+        int intialBufferNumber = smb.buffersCreated;
 
         // Write one message to the shared buffer and read it as a client
         for (int i = 0; i < ITERATIONS; ++i) {
             writeRandomMessage(smb, rand, expectedMessages);
 
-            ChannelFuture future = Channels.succeededFuture(channel);
+            ChannelFuture future = Channels.future(channel);
             ChannelBuffer buffer = rb.flush(future);
             Channels.write(ctx, future, buffer);
 
             forwardMessages(encoder, decoder);
+
+            future.setSuccess();
 
             checked += checkExpectedMessage(decoder, expectedMessages);
         }
 
         assertTrue("Some messages weren't consumed", expectedMessages.isEmpty());
         assertEquals("Didn't check the generated number of messages", ITERATIONS, checked);
+        assertEquals("Created more buffers than needed", intialBufferNumber, smb.buffersCreated);
     }
 
     @Test
