@@ -115,12 +115,12 @@ public class TestSimpleNotification extends TestInfrastructure {
                     Get row = new Get(rowData.getRow());
                     Result result = tt.getHTable().get(row);
                     byte[] val = result.getValue(
-                            Bytes.toBytes(Constants.HBASE_META_CF),
+                            Constants.HBASE_META_CF,
                             Bytes.toBytes(TestConstants.COLUMN_FAMILY_1 + "/" + TestConstants.COLUMN_1
                                     + Constants.HBASE_NOTIFY_SUFFIX));
                     assertEquals("Values for this row are different", "true", Bytes.toString(val));
                     byte[] rowDataVal = rowData.getValue(
-                            Bytes.toBytes(Constants.HBASE_META_CF),
+                            Constants.HBASE_META_CF,
                             Bytes.toBytes(TestConstants.COLUMN_FAMILY_1 + "/" + TestConstants.COLUMN_1
                                     + Constants.HBASE_NOTIFY_SUFFIX));
                     assertEquals("Values for this row are different", "true", Bytes.toString(rowDataVal));
@@ -178,7 +178,7 @@ public class TestSimpleNotification extends TestInfrastructure {
             byte[] notifyVal = null;
             val = result.getValue(Bytes.toBytes(TestConstants.COLUMN_FAMILY_1), Bytes.toBytes(TestConstants.COLUMN_1));
             notifyVal = result.getValue(
-                    Bytes.toBytes(Constants.HBASE_META_CF),
+                    Constants.HBASE_META_CF,
                     Bytes.toBytes(TestConstants.COLUMN_FAMILY_1 + "/" + TestConstants.COLUMN_1
                             + Constants.HBASE_NOTIFY_SUFFIX));
             assertEquals("Values for this column are different", VAL_1, Bytes.toString(val));

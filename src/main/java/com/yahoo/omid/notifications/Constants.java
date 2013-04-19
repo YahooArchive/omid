@@ -15,9 +15,11 @@
  */
 package com.yahoo.omid.notifications;
 
+import org.apache.hadoop.hbase.util.Bytes;
+
 public class Constants {
-    
-    public static final String HBASE_META_CF = "onf-meta";
+
+    public static final byte[] HBASE_META_CF = Bytes.toBytes("onf-meta");
     public static final String HBASE_NOTIFY_SUFFIX = "-notify";
-    
+
 }

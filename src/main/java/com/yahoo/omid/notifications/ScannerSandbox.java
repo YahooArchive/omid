@@ -159,7 +159,7 @@ public class ScannerSandbox {
             try { // TODO: This code should not be here in a production system
                   // because it disables the table to add a CF
                 HTableDescriptor tableDesc = admin.getTableDescriptor(this.interest.getTableAsHBaseByteArray());
-                if (!tableDesc.hasFamily(Bytes.toBytes(Constants.HBASE_META_CF))) {
+                if (!tableDesc.hasFamily(Constants.HBASE_META_CF)) {
                     String tableName = this.interest.getTable();
 
                     if (admin.isTableEnabled(tableName)) {
@@ -300,7 +300,7 @@ public class ScannerSandbox {
             }
 
             private void configureBasicScanProperties() {
-                byte[] cf = Bytes.toBytes(Constants.HBASE_META_CF);
+                byte[] cf = Constants.HBASE_META_CF;
                 // Pattern for observer column in framework's metadata column
                 // family: <cf>/<c>-notify
                 String column = interest.getColumnFamily() + "/" + interest.getColumn() + Constants.HBASE_NOTIFY_SUFFIX;

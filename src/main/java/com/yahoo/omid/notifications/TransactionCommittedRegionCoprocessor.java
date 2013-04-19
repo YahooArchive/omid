@@ -73,8 +73,8 @@ public class TransactionCommittedRegionCoprocessor extends BaseRegionObserver {
                 if (!cf.equals(HBASE_META_CF)) {
                     String q = Bytes.toString(kv.getQualifier());
                     // Pattern for notify qualifier in framework's metadata column family: <cf>/<c>-notify
-                    put.add(Bytes.toBytes(HBASE_META_CF), Bytes.toBytes(cf + "/" + q + HBASE_NOTIFY_SUFFIX),
-                            kv.getTimestamp(), Bytes.toBytes("true"));
+                    put.add(HBASE_META_CF, Bytes.toBytes(cf + "/" + q + HBASE_NOTIFY_SUFFIX), kv.getTimestamp(),
+                            Bytes.toBytes("true"));
                 }
             }
         }
@@ -107,8 +107,8 @@ public class TransactionCommittedRegionCoprocessor extends BaseRegionObserver {
                 if (!cf.equals(HBASE_META_CF)) {
                     String q = Bytes.toString(kv.getQualifier());
                     // Pattern for notify qualifier in framework's metadata column family: <cf>/<c>-notify
-                    delete.deleteColumn(Bytes.toBytes(HBASE_META_CF),
-                            Bytes.toBytes(cf + "/" + q + HBASE_NOTIFY_SUFFIX), kv.getTimestamp());
+                    delete.deleteColumn(HBASE_META_CF, Bytes.toBytes(cf + "/" + q + HBASE_NOTIFY_SUFFIX),
+                            kv.getTimestamp());
                 }
             }
         }

@@ -31,13 +31,11 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.net.HostAndPort;
 import com.yahoo.omid.notifications.Constants;
-import com.yahoo.omid.notifications.NotificationException;
 import com.yahoo.omid.notifications.metrics.ClientSideAppMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
 import com.yahoo.omid.transaction.RollbackException;
 import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
-import com.yahoo.omid.transaction.TransactionException;
 import com.yahoo.omid.transaction.TransactionManager;
 import com.yammer.metrics.core.TimerContext;
 
@@ -110,9 +108,8 @@ public class ObserverWrapper implements Runnable {
                 continue;
             }
             TimerContext timer = metrics.startObserverInvocation(observer.getName());
-            notify(observer.getInterest().getTableAsHBaseByteArray(), notification.getRowKey(), observer
-                    .getInterest().getColumnFamilyAsHBaseByteArray(), observer.getInterest()
-                    .getColumnAsHBaseByteArray());
+            notify(observer.getInterest().getTableAsHBaseByteArray(), notification.getRowKey(), observer.getInterest()
+                    .getColumnFamilyAsHBaseByteArray(), observer.getInterest().getColumnAsHBaseByteArray());
             timer.stop();
         }
     }
@@ -123,14 +120,12 @@ public class ObserverWrapper implements Runnable {
             // Start tx
             tx = tm.begin();
             metrics.observerInvocationEvent(observer.getName());
-            String targetColumnFamily = Constants.HBASE_META_CF;
             // Pattern for notify column in framework's metadata column family: <cf>/<c>-notify
             String notifyColumn = Bytes.toString(columnFamily) + "/" + Bytes.toString(column)
                     + Constants.HBASE_NOTIFY_SUFFIX;
             Get get = new Get(rowKey);
             Result result = txTable.get(tx, get); // Transactional get
-            KeyValue notifyValue = result.getColumnLatest(Bytes.toBytes(targetColumnFamily),
-                    Bytes.toBytes(notifyColumn));
+            KeyValue notifyValue = result.getColumnLatest(Constants.HBASE_META_CF, Bytes.toBytes(notifyColumn));
 
             if (isNotifyFlagSet(notifyValue)) {
                 // Run observer
@@ -153,7 +148,8 @@ public class ObserverWrapper implements Runnable {
             logger.error("Received HBase exception", e);
         } catch (Exception e) {
             metrics.unknownAbortEvent(observer.getName());
-            if (tx != null) tm.rollback(tx);
+            if (tx != null)
+                tm.rollback(tx);
             logger.error("Unhandled exception", e);
         }
     }
@@ -178,16 +174,15 @@ public class ObserverWrapper implements Runnable {
      * @param rowKey
      * @param columnFamily
      * @param column
-     * @throws IOException 
+     * @throws IOException
      */
-    private void clearNotifyFlag(Transaction tx, TTable tt, byte[] rowKey, byte[] columnFamily,
-            byte[] column) throws IOException {
-        String targetColumnFamily = Constants.HBASE_META_CF;
+    private void clearNotifyFlag(Transaction tx, TTable tt, byte[] rowKey, byte[] columnFamily, byte[] column)
+            throws IOException {
         String targetColumn = Bytes.toString(columnFamily) + "/" + Bytes.toString(column)
                 + Constants.HBASE_NOTIFY_SUFFIX;
 
         Put put = new Put(rowKey);
-        put.add(Bytes.toBytes(targetColumnFamily), Bytes.toBytes(targetColumn), Bytes.toBytes("false"));
+        put.add(Constants.HBASE_META_CF, Bytes.toBytes(targetColumn), Bytes.toBytes("false"));
         tt.put(tx, put); // Transactional put
     }
 
