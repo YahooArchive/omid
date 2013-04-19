@@ -17,6 +17,7 @@ package com.yahoo.omid.notifications;
 
 import static com.yahoo.omid.notifications.Constants.HBASE_META_CF;
 import static com.yahoo.omid.notifications.Constants.HBASE_NOTIFY_SUFFIX;
+import static com.yahoo.omid.notifications.Constants.NOTIFY_TRUE;
 
 import java.io.IOException;
 import java.util.List;
@@ -74,7 +75,7 @@ public class TransactionCommittedRegionCoprocessor extends BaseRegionObserver {
                     String q = Bytes.toString(kv.getQualifier());
                     // Pattern for notify qualifier in framework's metadata column family: <cf>/<c>-notify
                     put.add(HBASE_META_CF, Bytes.toBytes(cf + "/" + q + HBASE_NOTIFY_SUFFIX), kv.getTimestamp(),
-                            Bytes.toBytes("true"));
+                            NOTIFY_TRUE);
                 }
             }
         }

@@ -17,6 +17,8 @@ package com.yahoo.omid.notifications.client;
 
 import static com.yahoo.omid.notifications.Constants.HBASE_META_CF;
 import static com.yahoo.omid.notifications.Constants.HBASE_NOTIFY_SUFFIX;
+import static com.yahoo.omid.notifications.Constants.NOTIFY_FALSE;
+import static com.yahoo.omid.notifications.Constants.NOTIFY_TRUE;
 
 import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
@@ -153,7 +155,7 @@ public class ObserverWrapper implements Runnable {
             return false;
         }
         byte[] valNotify = lastValueNotify.getValue();
-        if (valNotify == null || !Bytes.equals(valNotify, Bytes.toBytes("true"))) {
+        if (valNotify == null || !Bytes.equals(valNotify, NOTIFY_TRUE)) {
             return false;
         }
         return true;
@@ -172,7 +174,7 @@ public class ObserverWrapper implements Runnable {
      */
     private void clearNotifyFlag(Transaction tx, TTable tt, byte[] rowKey, byte[] notifyColumn) throws IOException {
         Put put = new Put(rowKey);
-        put.add(HBASE_META_CF, notifyColumn, Bytes.toBytes("false"));
+        put.add(HBASE_META_CF, notifyColumn, NOTIFY_FALSE);
         tt.put(tx, put);
     }
 

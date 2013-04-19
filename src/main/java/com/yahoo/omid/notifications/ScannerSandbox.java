@@ -15,6 +15,8 @@
  */
 package com.yahoo.omid.notifications;
 
+import static com.yahoo.omid.notifications.Constants.NOTIFY_TRUE;
+
 import java.io.IOException;
 import java.util.Map;
 import java.util.Random;
@@ -305,7 +307,7 @@ public class ScannerSandbox {
                 // family: <cf>/<c>-notify
                 String column = interest.getColumnFamily() + "/" + interest.getColumn() + Constants.HBASE_NOTIFY_SUFFIX;
                 byte[] c = Bytes.toBytes(column);
-                byte[] v = Bytes.toBytes("true");
+                byte[] v = NOTIFY_TRUE;
 
                 // Filter by value of the notify column
                 SingleColumnValueFilter valueFilter = new SingleColumnValueFilter(cf, c, CompareFilter.CompareOp.EQUAL,

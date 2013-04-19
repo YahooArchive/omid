@@ -21,5 +21,7 @@ public class Constants {
 
     public static final byte[] HBASE_META_CF = Bytes.toBytes("onf-meta");
     public static final String HBASE_NOTIFY_SUFFIX = "-notify";
+    public static final byte[] NOTIFY_TRUE = Bytes.toBytes("true");
+    public static final byte[] NOTIFY_FALSE = Bytes.toBytes("false");
 
 }
