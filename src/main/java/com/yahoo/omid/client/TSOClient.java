@@ -473,11 +473,19 @@ public class TSOClient extends SimpleChannelHandler {
    }
 
    public boolean validRead(long transaction, long startTimestamp) throws IOException {
+      LOG.trace("Checking if {} is inside {} snapshot", transaction, startTimestamp);
       if (transaction == startTimestamp)
          return true;
-      if (aborted.contains(transaction)) 
+      if (aborted.contains(transaction)) {
+         LOG.trace("{} is aborted", transaction);
          return false;
+      }
       long commitTimestamp = committed.getCommit(transaction);
+      if (LOG.isTraceEnabled()) {
+         LOG.trace("Commit timestamp for {} is {}", transaction, commitTimestamp);
+         LOG.trace("hasConnectionTS {} connectionTimestamp {} largestDeletedTimestamp",
+                  new Object[] {hasConnectionTimestamp, connectionTimestamp, largestDeletedTimestamp});
+      }
       if (commitTimestamp != -1)
          return commitTimestamp <= startTimestamp;
       if (hasConnectionTimestamp && transaction > connectionTimestamp)
@@ -485,6 +493,7 @@ public class TSOClient extends SimpleChannelHandler {
       if (transaction <= largestDeletedTimestamp)
          return true;
       askedTSO++;
+      LOG.trace("Asking TSO...");
       SyncCommitQueryCallback cb = new SyncCommitQueryCallback();
       isCommitted(startTimestamp, transaction, cb);
       try {
@@ -492,6 +501,7 @@ public class TSOClient extends SimpleChannelHandler {
       } catch (InterruptedException e) {
          throw new IOException("Commit query didn't complete", e);
       }
+      LOG.trace("Transaction is committed: {}", cb.isCommitted());
       return cb.isCommitted();
    }
    

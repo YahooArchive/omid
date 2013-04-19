@@ -1,4 +1,5 @@
 /**
+
  * Copyright (c) 2011 Yahoo! Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +41,8 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.client.ColumnWrapper;
 import com.yahoo.omid.client.RowKeyFamily;
@@ -50,6 +53,7 @@ import com.yahoo.omid.client.RowKeyFamily;
  * 
  */
 public class TTable {
+    private static Logger LOG = LoggerFactory.getLogger(TTable.class);
 
     public static long getsPerformed = 0;
     public static long elementsGotten = 0;
@@ -107,6 +111,7 @@ public class TTable {
                 }
             }
         }
+        LOG.trace("Initial Get = {}", tsget);
         getsPerformed++;
         // Return the KVs that belong to the transaction snapshot, ask for more
         // versions if needed
@@ -240,6 +245,7 @@ public class TTable {
         if (kvs == null) {
             return Collections.emptyList();
         }
+        LOG.trace("Filtering kvs={} for transaction={}", kvs, transaction);
 
         long startTimestamp = transaction.getStartTimestamp();
         // Filtered kvs
@@ -253,8 +259,14 @@ public class TTable {
         int versionsProcessed = 0;
 
         for (KeyValue kv : kvs) {
+            LOG.trace("Processing kv {}", kv);
             ColumnWrapper currentColumn = new ColumnWrapper(kv.getFamily(), kv.getQualifier());
             if (!currentColumn.equals(lastColumn)) {
+                if (LOG.isTraceEnabled()) {
+                    LOG.trace("We got a new column, reset stuff", kv);
+                    LOG.trace("valid {} versionsProcessed {} localversions {}", 
+                            new Object[] { validRead, versionsProcessed, localVersions });
+                }
                 // New column, if we didn't read a committed value for last one,
                 // add it to pending
                 if (!validRead && versionsProcessed == localVersions) {
@@ -264,6 +276,7 @@ public class TTable {
                                                          // wisely
                     get.setTimeRange(0, oldestUncommittedTS - 1);
                     pendingGets.add(get);
+                    LOG.trace("Adding pending get {}", get);
                 }
                 validRead = false;
                 versionsProcessed = 0;
@@ -271,25 +284,31 @@ public class TTable {
                 lastColumn = currentColumn;
             }
             if (validRead) {
+                LOG.trace("We alred have a valid read, ignore {}", kv);
                 // If we already have a committed value for this column, skip kv
                 continue;
             }
             versionsProcessed++;
             if (transaction.tsoclient.validRead(kv.getTimestamp(), startTimestamp)) {
+                LOG.trace("Kv {} is valid", kv);
                 // Valid read, add it to result unless it's a delete
                 if (kv.getValueLength() > 0) {
+                    LOG.trace("Kv is a delete");
                     filtered.add(kv);
                 }
                 validRead = true;
                 // Update versionsAvg: increase it quickly, decrease it slowly
                 versionsAvg = versionsProcessed > versionsAvg ? versionsProcessed : alpha * versionsAvg + (1 - alpha)
                         * versionsProcessed;
+                LOG.trace("Updateded versionsAvg to {}", versionsAvg);
             } else {
                 // Uncomitted, keep track of oldest uncommitted timestamp
                 oldestUncommittedTS = Math.min(oldestUncommittedTS, kv.getTimestamp());
+                LOG.trace("KV {} is not valid, oldestUncommittedTS = {}", oldestUncommittedTS);
             }
         }
 
+        LOG.trace("Pending gets: {}", pendingGets);
         // If we have pending columns, request (and filter recursively) them
         if (!pendingGets.isEmpty()) {
             Result[] results = table.get(pendingGets);
@@ -298,6 +317,7 @@ public class TTable {
             }
         }
         Collections.sort(filtered, KeyValue.COMPARATOR);
+        LOG.trace("Result: {}", filtered);
         return filtered;
     }
 
