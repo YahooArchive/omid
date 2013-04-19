@@ -15,6 +15,9 @@
  */
 package com.yahoo.omid.notifications.client;
 
+import static com.yahoo.omid.notifications.Constants.HBASE_META_CF;
+import static com.yahoo.omid.notifications.Constants.HBASE_NOTIFY_SUFFIX;
+
 import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -30,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.net.HostAndPort;
-import com.yahoo.omid.notifications.Constants;
 import com.yahoo.omid.notifications.metrics.ClientSideAppMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
 import com.yahoo.omid.transaction.RollbackException;
@@ -76,13 +78,10 @@ public class ObserverWrapper implements Runnable {
             return;
         }
         txTable = new TTable(tsoClientHbaseConf, observer.getInterest().getTable());
-
-        // logger.info("Instance created for observer " + observer.getName() + " using dispatcher "
-        // + getContext().dispatcher() + " Context " + getContext().props());
     }
 
     /**
-     * @return the transactional observer's name
+     * @return the observer's name
      */
     public String getName() {
         return observer.getName();
@@ -120,23 +119,18 @@ public class ObserverWrapper implements Runnable {
             // Start tx
             tx = tm.begin();
             metrics.observerInvocationEvent(observer.getName());
-            // Pattern for notify column in framework's metadata column family: <cf>/<c>-notify
-            String notifyColumn = Bytes.toString(columnFamily) + "/" + Bytes.toString(column)
-                    + Constants.HBASE_NOTIFY_SUFFIX;
             Get get = new Get(rowKey);
-            Result result = txTable.get(tx, get); // Transactional get
-            KeyValue notifyValue = result.getColumnLatest(Constants.HBASE_META_CF, Bytes.toBytes(notifyColumn));
-
-            if (isNotifyFlagSet(notifyValue)) {
-                // Run observer
+            Result result = txTable.get(tx, get);
+            // Pattern for notify column in framework's metadata column family: <cf>/<c>-notify
+            byte[] notifyColumn = Bytes.toBytes(Bytes.toString(columnFamily) + "/" + Bytes.toString(column)
+                    + HBASE_NOTIFY_SUFFIX);
+            KeyValue notifyValue = result.getColumnLatest(HBASE_META_CF, notifyColumn);
+            if (isNotifyFlagSet(notifyValue)) { // Run observer, clear flag and commit transaction
                 observer.onInterestChanged(result, tx);
-
-                // Clear flag and commit transaction
-                clearNotifyFlag(tx, txTable, rowKey, columnFamily, column);
+                clearNotifyFlag(tx, txTable, rowKey, notifyColumn);
                 tm.commit(tx);
                 metrics.observerCompletionEvent(observer.getName());
-            } else {
-                // Abort transaction
+            } else { // Abort transaction
                 tm.rollback(tx);
                 metrics.observerAbortEvent(observer.getName());
             }
@@ -158,9 +152,7 @@ public class ObserverWrapper implements Runnable {
         if (lastValueNotify == null) {
             return false;
         }
-
         byte[] valNotify = lastValueNotify.getValue();
-
         if (valNotify == null || !Bytes.equals(valNotify, Bytes.toBytes("true"))) {
             return false;
         }
@@ -170,20 +162,18 @@ public class ObserverWrapper implements Runnable {
     /**
      * Clears the notify flag on the corresponding RowKey/Column inside the Omid's transactional context
      * 
-     * @param table
+     * @param tx
+     *            transaction
+     * @param tt
+     *            transactional table
      * @param rowKey
-     * @param columnFamily
-     * @param column
+     * @param notifyColumn
      * @throws IOException
      */
-    private void clearNotifyFlag(Transaction tx, TTable tt, byte[] rowKey, byte[] columnFamily, byte[] column)
-            throws IOException {
-        String targetColumn = Bytes.toString(columnFamily) + "/" + Bytes.toString(column)
-                + Constants.HBASE_NOTIFY_SUFFIX;
-
+    private void clearNotifyFlag(Transaction tx, TTable tt, byte[] rowKey, byte[] notifyColumn) throws IOException {
         Put put = new Put(rowKey);
-        put.add(Constants.HBASE_META_CF, Bytes.toBytes(targetColumn), Bytes.toBytes("false"));
-        tt.put(tx, put); // Transactional put
+        put.add(HBASE_META_CF, notifyColumn, Bytes.toBytes("false"));
+        tt.put(tx, put);
     }
 
 }
