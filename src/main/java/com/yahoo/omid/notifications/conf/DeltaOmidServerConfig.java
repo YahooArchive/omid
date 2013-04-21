@@ -28,7 +28,7 @@ public class DeltaOmidServerConfig extends Options {
 
     public DeltaOmidServerConfig() {
         this.zkServers = System.getProperty("ZK_SERVERS", "localhost:2181");
-        this.scanIntervalMs = Long.parseLong(System.getProperty("SCAN_INTERVAL_MS", "5000"));
+        this.scanIntervalMs = Long.parseLong(System.getProperty("SCAN_INTERVAL_MS", "500"));
     }
 
     @Parameter(names = "-zk", description = "ZooKeeper ensemble -> host1:port1,host2:port2...")

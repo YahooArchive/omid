@@ -339,11 +339,13 @@ public class TestSimpleNotification extends TestInfrastructure {
      */
     private Observer buildPassiveTransactionalObserver(final String obsName, final Interest interest,
             final String expectedValue, final CountDownLatch cdl) throws Exception {
+        final Configuration tsoClientConf = HBaseConfiguration.create();
+        tsoClientConf.set("tso.host", "localhost");
+        tsoClientConf.setInt("tso.port", 1234);
+
         return new Observer() {
+
             public void onInterestChanged(Result rowData, Transaction tx) {
-                Configuration tsoClientConf = HBaseConfiguration.create();
-                tsoClientConf.set("tso.host", "localhost");
-                tsoClientConf.setInt("tso.port", 1234);
 
                 try {
                     TTable tt = new TTable(tsoClientConf, interest.getTable());
@@ -446,8 +448,8 @@ public class TestSimpleNotification extends TestInfrastructure {
         };
     }
 
-    private static void doTransactionalPut(Transaction tx, TTable tt, byte[] rowKey,
-            byte[] colFamName, byte[] colName, byte[] dataValue) throws IOException {
+    private static void doTransactionalPut(Transaction tx, TTable tt, byte[] rowKey, byte[] colFamName, byte[] colName,
+            byte[] dataValue) throws IOException {
         Put row = new Put(rowKey);
         row.add(colFamName, colName, dataValue);
         tt.put(tx, row);

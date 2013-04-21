@@ -2,6 +2,7 @@ package com.yahoo.omid.notifications.metrics;
 
 import java.util.concurrent.TimeUnit;
 
+import com.yahoo.omid.notifications.Interest;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.Timer;
@@ -11,13 +12,13 @@ public class ServerSideInterestMetrics {
 
     Meter matchingRowsPerScanMeter;
     Timer scanTimer;
-    private String interestName;
+    private Interest interest;
 
-    public ServerSideInterestMetrics(String interestName) {
-        this.interestName = interestName;
-        this.matchingRowsPerScanMeter = Metrics.newMeter(ServerSideInterestMetrics.class, interestName
-                + "-matchingRowsPerScan", interestName + "-matchingRowsPerScan", TimeUnit.SECONDS);
-        this.scanTimer = Metrics.newTimer(ServerSideInterestMetrics.class, interestName + "-scanTimer",
+    public ServerSideInterestMetrics(Interest interest) {
+        this.interest = interest;
+        this.matchingRowsPerScanMeter = Metrics.newMeter(ServerSideInterestMetrics.class, interest
+                + "-matchingRowsPerScan", interest + "-matchingRowsPerScan", TimeUnit.SECONDS);
+        this.scanTimer = Metrics.newTimer(ServerSideInterestMetrics.class, interest + "-scanTimer",
                 TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
     }
 

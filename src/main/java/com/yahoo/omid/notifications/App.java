@@ -5,13 +5,15 @@ import static com.yahoo.omid.notifications.ZkTreeUtils.ZK_APP_DATA_NODE;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.SynchronousQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.beust.jcommander.internal.Maps;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.google.common.net.HostAndPort;
@@ -44,7 +46,7 @@ class App implements PathChildrenCacheListener {
     private PathChildrenCache appsInstanceCache;
 
     // TODO configurable nb threads
-    private ConcurrentHashMap<HostAndPort, AppInstanceNotifier> notifiers = new ConcurrentHashMap<HostAndPort, AppInstanceNotifier>();
+    private ConcurrentHashMap<HostAndPort, Map<Interest, AppInstanceNotifier>> notifiers = new ConcurrentHashMap<HostAndPort, Map<Interest, AppInstanceNotifier>>();
     // private List<ActorRef> instances = new ArrayList<ActorRef>();
     // A mapping between an interest and the observer wanting notifications for changes in that interest
     // Key: The interest as String
@@ -52,7 +54,7 @@ class App implements PathChildrenCacheListener {
     // TODO now we are considering that only one observer is registered per app
     // Otherwise a List of Observers would be required as a second paramter of the list
     // The Thrift class would need also to be modified
-    ConcurrentHashMap<String, String> interestObserverMap = new ConcurrentHashMap<String, String>();
+    ConcurrentHashMap<Interest, String> interestObserverMap = new ConcurrentHashMap<Interest, String>();
 
     public App(AppSandbox appSandbox, String appName, ZNRecord appData) throws Exception {
         this.appSandbox = appSandbox;
@@ -67,8 +69,9 @@ class App implements PathChildrenCacheListener {
                 throw new RuntimeException("Error extracting data from app node: " + appName);
             }
             String obsName = tokenList.get(0);
-            String interest = tokenList.get(1);
-            logger.trace("Adding interest {} to observer {}", interest, obsName);
+            String interestName = tokenList.get(1);
+            Interest interest = Interest.fromString(interestName);
+            logger.info("Adding interest {} to observer {}", interest, obsName);
             addInterestToObserver(interest, obsName);
         }
         this.metrics = new ServerSideAppMetrics(appName, interestObserverMap.keySet());
@@ -78,11 +81,11 @@ class App implements PathChildrenCacheListener {
         appsInstanceCache.start();
     }
 
-    public Set<String> getInterests() {
+    public Set<Interest> getInterests() {
         return interestObserverMap.keySet();
     }
 
-    private void addInterestToObserver(String interest, String observer) {
+    private void addInterestToObserver(Interest interest, String observer) {
         String result = interestObserverMap.putIfAbsent(interest, observer);
         if (result != null) {
             logger.warn("Other observer than " + observer + " manifested already interest in " + interest);
@@ -128,21 +131,29 @@ class App implements PathChildrenCacheListener {
 
     public void addInstance(String hostnameAndPort) {
         final HostAndPort hp = HostAndPort.fromString(hostnameAndPort);
-        AppInstanceNotifier notifier = new AppInstanceNotifier(this, hp);
+        Map<Interest, AppInstanceNotifier> interestToNotifier = Maps.newHashMap();
+        if (notifiers.putIfAbsent(hp, interestToNotifier) == null) {
+            Map<Interest, AppInstanceNotifier> tmp = Maps.newHashMap();
+            for (Interest interest : interestObserverMap.keySet()) {
+                AppInstanceNotifier notifier = new AppInstanceNotifier(this, interest, hp);
+                tmp.put(interest, notifier);
+                notifier.start();
+            }
+            interestToNotifier.putAll(tmp);
+            logger.info("Added notifiers to {} for application {}", hp.toString(), name);
 
-        if (notifiers.putIfAbsent(hp, notifier) != null) {
-            notifier.cancel();
-        } else {
-            logger.info("Adding notifier to {} for application {}", hp.toString(), name);
-            notifier.start();
         }
 
     }
 
     public void removeInstance(String hostnameAndPort) {
-        AppInstanceNotifier notifier = notifiers.remove(hostnameAndPort);
-        if (notifier != null) {
-            notifier.cancel();
+        Map<Interest, AppInstanceNotifier> removed = notifiers.remove(hostnameAndPort);
+        if (removed != null) {
+            for (Map.Entry<Interest, AppInstanceNotifier> entry : removed.entrySet()) {
+                entry.getValue().cancel();
+                logger.info("Cancelled notifier for app {} to {} for interest {}", new String[] { name,
+                        hostnameAndPort, entry.getKey().toString() });
+            }
         }
     }
 
@@ -152,8 +163,8 @@ class App implements PathChildrenCacheListener {
                 + ", interestObserverMap=" + interestObserverMap + "]";
     }
 
-    public SynchronousQueue<UpdatedInterestMsg> getHandoffQueue() {
-        return appSandbox.getHandoffQueue();
+    public BlockingQueue<UpdatedInterestMsg> getHandoffQueue(Interest interest) {
+        return appSandbox.getHandoffQueue(interest);
     }
 
 }

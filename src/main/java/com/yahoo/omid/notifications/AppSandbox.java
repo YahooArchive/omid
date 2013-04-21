@@ -15,8 +15,9 @@
  */
 package com.yahoo.omid.notifications;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.SynchronousQueue;
+import java.util.Hashtable;
+import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +40,7 @@ public class AppSandbox implements PathChildrenCacheListener {
 
     private PathChildrenCache appsCache;
 
-    private ConcurrentHashMap<String, App> registeredApps = new ConcurrentHashMap<String, App>();
+    private Map<String, App> registeredApps = new Hashtable<String, App>();
 
     public AppSandbox(CuratorFramework zkClient, ScannerSandbox scannerSandbox) throws Exception {
         this.zkClient = zkClient;
@@ -90,7 +91,7 @@ public class AppSandbox implements PathChildrenCacheListener {
         }
     }
 
-    public void createApplication(String appName) throws Exception {
+    public synchronized void createApplication(String appName) throws Exception {
 
         String appNodePath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), appName);
         byte[] rawData = zkClient.getData().forPath(appNodePath);
@@ -99,16 +100,18 @@ public class AppSandbox implements PathChildrenCacheListener {
             throw new RuntimeException("App data retrieved doesn't corresponds to app: " + appName);
         }
         App app = new App(this, appName, appData);
-        if (null == registeredApps.putIfAbsent(appName, app)) {
-            scannerSandbox.registerInterestsFromApplication(app);
-            logger.info("Registered new application {}", appData);
+        if (registeredApps.containsKey(appName)) {
+            logger.error("Cannot add new application, there is already an application by the same name : {}", appName);
+            return;
         }
+        scannerSandbox.registerInterestsFromApplication(app);
+        logger.info("Registered new application {}", appData);
         // NOTE: It is not necessary to create the instances. It is triggered automatically by curator
         // through the App.childEvent() callback when constructing the App object (particularly, when
         // registering the interest in the Zk app node)
     }
 
-    private App removeApplication(String appName) throws Exception {
+    private synchronized App removeApplication(String appName) throws Exception {
         App removedApp = null;
         removedApp = registeredApps.remove(appName);
         if (removedApp != null) {
@@ -120,8 +123,8 @@ public class AppSandbox implements PathChildrenCacheListener {
         return removedApp;
     }
 
-    public SynchronousQueue<UpdatedInterestMsg> getHandoffQueue() {
-        return scannerSandbox.getHandoffQueue();
+    public BlockingQueue<UpdatedInterestMsg> getHandoffQueue(Interest interest) {
+        return scannerSandbox.getHandoffQueue(interest);
     }
 
 }

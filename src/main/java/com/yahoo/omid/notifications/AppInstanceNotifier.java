@@ -32,13 +32,15 @@ public class AppInstanceNotifier extends Thread {
     private HostAndPort hostAndPort;
     private TTransport transport;
     private NotificationReceiverService.Client appInstanceClient;
+    private Interest interest;
     public static final int HOLDOFF_TIME_MS = 100;
 
     private static final Logger logger = LoggerFactory.getLogger(AppInstanceNotifier.class);
 
-    public AppInstanceNotifier(App app, HostAndPort hostAndPort) {
+    public AppInstanceNotifier(App app, Interest interest, HostAndPort hostAndPort) {
         super("[" + app.name + "]/[" + hostAndPort.toString() + "]-notifier");
         this.app = app;
+        this.interest = interest;
         this.hostAndPort = hostAndPort;
     }
 
@@ -50,21 +52,20 @@ public class AppInstanceNotifier extends Thread {
         while (!Thread.interrupted()) {
             UpdatedInterestMsg msg = null;
             try {
-                msg = app.getHandoffQueue().poll(10, TimeUnit.SECONDS);
+                msg = app.getHandoffQueue(interest).poll(10, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
             if (msg == null) {
-                logger.warn("Could not get any notification after 10s");
+                logger.warn("Could not get any notification after 10s for interest {}", interest.toString());
                 continue;
             }
-            String updatedInterest = msg.interest;
+            Interest updatedInterest = Interest.fromString(msg.interest);
             byte[] updatedRowKey = msg.rowKey;
 
             String observer = this.app.interestObserverMap.get(updatedInterest);
 
             if (observer != null) {
-                Interest interest = Interest.fromString(updatedInterest);
                 Notification notification = new Notification(observer, ByteBuffer.wrap(updatedRowKey));
                 TimerContext timer = app.metrics.startNotificationSendTimer(updatedInterest);
                 try {
@@ -76,10 +77,10 @@ public class AppInstanceNotifier extends Thread {
                 } catch (ObserverOverloaded oo) {
                     timer.stop();
                     app.logger.warn(
-                            "App instance [{}]/[{}] saturated for observer [{}]. Pausing for {} ms",
+                            "App instance [{}]/[{}] saturated for observer/interest [{}]. Pausing for {} ms",
                             new String[] { app.name, hostAndPort.toString(),
                                     (oo.getObserver() != null ? oo.getObserver() : "Unknown observer"),
-                                    String.valueOf(HOLDOFF_TIME_MS) });
+                                    interest.toString(), String.valueOf(HOLDOFF_TIME_MS) });
                     try {
                         Thread.sleep(HOLDOFF_TIME_MS);
                     } catch (InterruptedException e) {

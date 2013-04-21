@@ -20,8 +20,8 @@ import static com.yahoo.omid.notifications.Constants.NOTIFY_TRUE;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -31,8 +31,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -47,8 +45,10 @@ import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.notifications.conf.DeltaOmidServerConfig;
 import com.yahoo.omid.notifications.metrics.ServerSideInterestMetrics;
@@ -56,7 +56,7 @@ import com.yammer.metrics.core.TimerContext;
 
 public class ScannerSandbox {
 
-    private static final Log logger = LogFactory.getLog(ScannerSandbox.class);
+    private static final Logger logger = LoggerFactory.getLogger(ScannerSandbox.class);
 
     // Lock used by ScannerContainers to protect concurrent accesses to HBaseAdmin when meta-data is created in HTables
     private static final Lock htableLock = new ReentrantLock();
@@ -65,41 +65,47 @@ public class ScannerSandbox {
 
     private Configuration config = HBaseConfiguration.create();
 
-    private static final SynchronousQueue<UpdatedInterestMsg> handOffQueue = new SynchronousQueue<UpdatedInterestMsg>(
-            true);
+    private Map<Interest, BlockingQueue<UpdatedInterestMsg>> handOffQueues = Maps.newHashMap();
+    // private static final SynchronousQueue<UpdatedInterestMsg> handOffQueue = new
+    // SynchronousQueue<UpdatedInterestMsg>(
+    // true);
 
     // Key: Interest where the scanners running on the ScannerContainer will do
     // their work
     // Value: The ScannerContainer that executes the scanner threads scanning
     // each particular interest
-    private ConcurrentHashMap<String, ScannerContainer> scanners = new ConcurrentHashMap<String, ScannerContainer>();
+    private Map<Interest, ScannerContainer> scanners = Maps.newHashMap();
 
     public ScannerSandbox(DeltaOmidServerConfig conf) {
         this.conf = conf;
     }
 
-    public void registerInterestsFromApplication(App app) throws Exception {
-        for (String appInterest : app.getInterests()) {
+    public synchronized void registerInterestsFromApplication(App app) throws Exception {
+
+        // first initialize handoff queues
+        for (Interest appInterest : app.getInterests()) {
+            logger.info("Adding handoff queue for {}/{}", app.name, appInterest.toString());
+            handOffQueues.put(appInterest, new SynchronousQueue<UpdatedInterestMsg>(true));
+        }
+
+        for (Interest appInterest : app.getInterests()) {
             ScannerContainer scannerContainer = scanners.get(appInterest);
             if (scannerContainer == null) {
                 scannerContainer = new ScannerContainer(appInterest);
-                ScannerContainer previousScannerContainer = scanners.putIfAbsent(appInterest, scannerContainer);
-                if (previousScannerContainer != null) {
-                    previousScannerContainer.addInterestedApplication(app);
-                    logger.info("Application added to ScannerContainer for interest " + appInterest);
-                    // System.out.println("Application added to ScannerContainer for interest " + appInterest);
-                    return;
-                } else {
-                    scannerContainer.start();
+                if (scanners.containsKey(appInterest)) {
+                    logger.error("Cannot add scanners for existing app interest {}", appInterest.toString());
+                    continue;
                 }
+                scannerContainer.start();
+                logger.info("ScannerContainer created for interest " + appInterest);
             }
             scannerContainer.addInterestedApplication(app);
-            logger.trace("ScannerContainer created for interest " + appInterest);
+            logger.info("Application interest {} registered in scanner container for app {}", appInterest, app.name);
         }
     }
 
     public void removeInterestsFromApplication(App app) throws InterruptedException {
-        for (String appInterest : app.getInterests()) {
+        for (Interest appInterest : app.getInterests()) {
             ScannerContainer scannerContainer = scanners.get(appInterest);
             if (scannerContainer != null) {
                 synchronized (scannerContainer) {
@@ -118,12 +124,12 @@ public class ScannerSandbox {
      * 
      * @return a map of scanner containers keyed by interest
      */
-    public Map<String, ScannerContainer> getScanners() {
+    public Map<Interest, ScannerContainer> getScanners() {
         return scanners;
     }
 
-    public SynchronousQueue<UpdatedInterestMsg> getHandoffQueue() {
-        return handOffQueue;
+    public BlockingQueue<UpdatedInterestMsg> getHandoffQueue(Interest interest) {
+        return handOffQueues.get(interest);
     }
 
     public class ScannerContainer {
@@ -148,8 +154,8 @@ public class ScannerSandbox {
          * @param appSandbox
          * @throws IOException
          */
-        public ScannerContainer(String interest) throws IOException {
-            this.interest = Interest.fromString(interest);
+        public ScannerContainer(Interest interest) throws IOException {
+            this.interest = interest;
             metrics = new ServerSideInterestMetrics(interest);
 
             this.exec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat(
@@ -204,7 +210,7 @@ public class ScannerSandbox {
         }
 
         public void start() throws Exception {
-            scannerRef = exec.submit(new Scanner());
+            scannerRef = exec.submit(new Scanner(interest));
             logger.info("{} scanner(s) on " + interest + " started", "" + 1);
         }
 
@@ -220,6 +226,11 @@ public class ScannerSandbox {
             private HTable table = null;
             private Random regionRoller = new Random();
             private Scan scan = new Scan();
+            private BlockingQueue<UpdatedInterestMsg> handOffQueue;
+
+            public Scanner(Interest interest) {
+                handOffQueue = getHandoffQueue(interest);
+            }
 
             @Override
             public Boolean call() { // Scan and notify
@@ -257,7 +268,7 @@ public class ScannerSandbox {
                                     }
 
                                     // TODO configurable timeout
-                                    if (!handOffQueue.offer(msg, 10, TimeUnit.SECONDS)) {
+                                    if (!getHandoffQueue(interest).offer(msg, 10, TimeUnit.SECONDS)) {
                                         logger.error("Cannot deliver message {} to any receiver application after 10s",
                                                 msg);
                                         break;

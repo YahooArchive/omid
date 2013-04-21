@@ -8,6 +8,7 @@ import org.apache.log4j.Logger;
 
 import com.beust.jcommander.internal.Maps;
 import com.yahoo.omid.notifications.AppInstanceNotifier;
+import com.yahoo.omid.notifications.Interest;
 import com.yahoo.omid.notifications.ScannerSandbox.ScannerContainer.Scanner;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
@@ -19,13 +20,13 @@ public class ServerSideAppMetrics {
     private static Logger logger = Logger.getLogger(ServerSideAppMetrics.class);
 
     private Meter notificationsMeter;
-    private Map<String, Timer> interestsTimers;
+    private Map<Interest, Timer> interestsTimers;
 
-    public ServerSideAppMetrics(String appName, Set<String> interests) {
+    public ServerSideAppMetrics(String appName, Set<Interest> interests) {
         notificationsMeter = Metrics.defaultRegistry().newMeter(Scanner.class, appName + "@notifications-sent",
                 "notifications", TimeUnit.SECONDS);
         interestsTimers = Maps.newHashMap();
-        for (String interest : interests) {
+        for (Interest interest : interests) {
             interestsTimers.put(interest,
                     Metrics.newTimer(AppInstanceNotifier.class, appName + "@" + interest + "-notification-send-time"));
         }
@@ -35,7 +36,7 @@ public class ServerSideAppMetrics {
         notificationsMeter.mark();
     }
 
-    public TimerContext startNotificationSendTimer(String interest) {
+    public TimerContext startNotificationSendTimer(Interest interest) {
         return interestsTimers.get(interest).time();
     }
 
