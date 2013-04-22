@@ -20,6 +20,7 @@ import static com.yahoo.omid.notifications.Constants.HBASE_NOTIFY_SUFFIX;
 import static com.yahoo.omid.notifications.Constants.NOTIFY_TRUE;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -67,11 +68,10 @@ public class TransactionCommittedRegionCoprocessor extends BaseRegionObserver {
 
         for (List<KeyValue> kvl : kvs.values()) {
             for (KeyValue kv : kvl) {
-                String cf = Bytes.toString(kv.getFamily());
-
                 // TODO Here we should filter the qualifiers that are not requested to be observed,
                 // but cannot access to the required structures from a BaseRegionObserver
-                if (!cf.equals(HBASE_META_CF)) {
+                if (!Arrays.equals(kv.getFamily(), HBASE_META_CF)) {
+                    String cf = Bytes.toString(kv.getFamily());
                     String q = Bytes.toString(kv.getQualifier());
                     // Pattern for notify qualifier in framework's metadata column family: <cf>/<c>-notify
                     put.add(HBASE_META_CF, Bytes.toBytes(cf + "/" + q + HBASE_NOTIFY_SUFFIX), kv.getTimestamp(),
@@ -101,11 +101,10 @@ public class TransactionCommittedRegionCoprocessor extends BaseRegionObserver {
 
         for (List<KeyValue> kvl : kvs.values()) {
             for (KeyValue kv : kvl) {
-                String cf = Bytes.toString(kv.getFamily());
-
                 // TODO Here we should filter the qualifiers that are not requested to be observed,
                 // but cannot access to the required structures from a BaseRegionObserver
-                if (!cf.equals(HBASE_META_CF)) {
+                if (!Arrays.equals(kv.getFamily(), HBASE_META_CF)) {
+                    String cf = Bytes.toString(kv.getFamily());
                     String q = Bytes.toString(kv.getQualifier());
                     // Pattern for notify qualifier in framework's metadata column family: <cf>/<c>-notify
                     delete.deleteColumn(HBASE_META_CF, Bytes.toBytes(cf + "/" + q + HBASE_NOTIFY_SUFFIX),
