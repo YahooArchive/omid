@@ -57,17 +57,14 @@ public class AppSandbox implements PathChildrenCacheListener {
 
         switch (event.getType()) {
         case CHILD_ADDED: {
-
             logger.trace("App Node added : {}", event.getData().getPath());
             createApplication(ZKPaths.getNodeFromPath(event.getData().getPath()));
             break;
         }
-
         case CHILD_UPDATED: {
             logger.trace("App Node changed: " + event.getData().getPath());
             break;
         }
-
         case CHILD_REMOVED: {
             logger.trace("App Node removed: " + event.getData().getPath());
             removeApplication(ZKPaths.getNodeFromPath(event.getData().getPath()));
@@ -91,7 +88,6 @@ public class AppSandbox implements PathChildrenCacheListener {
     }
 
     public void createApplication(String appName) throws Exception {
-
         String appNodePath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), appName);
         byte[] rawData = zkClient.getData().forPath(appNodePath);
         ZNRecord appData = (ZNRecord) new ZNRecordSerializer().deserialize(rawData);
@@ -109,8 +105,7 @@ public class AppSandbox implements PathChildrenCacheListener {
     }
 
     private App removeApplication(String appName) throws Exception {
-        App removedApp = null;
-        removedApp = registeredApps.remove(appName);
+        App removedApp = registeredApps.remove(appName);
         if (removedApp != null) {
             scannerSandbox.removeInterestsFromApplication(removedApp);
             logger.info("Removed application {}", appName);
@@ -122,6 +117,10 @@ public class AppSandbox implements PathChildrenCacheListener {
 
     public SynchronousQueue<UpdatedInterestMsg> getHandoffQueue() {
         return scannerSandbox.getHandoffQueue();
+    }
+
+    public CuratorFramework getZKClient() {
+        return zkClient;
     }
 
 }

@@ -20,6 +20,7 @@ import com.netflix.curator.framework.recipes.cache.PathChildrenCache;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheEvent;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheListener;
 import com.netflix.curator.utils.ZKPaths;
+import com.netflix.curator.utils.ZKPaths.PathAndNode;
 import com.yahoo.omid.notifications.comm.ZNRecord;
 import com.yahoo.omid.notifications.metrics.ServerSideAppMetrics;
 
@@ -43,14 +44,14 @@ class App implements PathChildrenCacheListener {
 
     private PathChildrenCache appsInstanceCache;
 
-    // TODO configurable nb threads
-    private ConcurrentHashMap<HostAndPort, AppInstanceNotifier> notifiers = new ConcurrentHashMap<HostAndPort, AppInstanceNotifier>();
-    // private List<ActorRef> instances = new ArrayList<ActorRef>();
+    // TODO configurable # of threads
+    // A mapping between the hostname:port string representing an app instance and its notifier in the server side
+    // Key: The hostname and port as String in the form hostname:port
+    // Value: The AppInstanceNotifer in charge of sending notifications to the corresponding app instance
+    private ConcurrentHashMap<String, AppInstanceNotifier> notifiers = new ConcurrentHashMap<String, AppInstanceNotifier>();
     // A mapping between an interest and the observer wanting notifications for changes in that interest
-    // Key: The interest as String
-    // Value: The AppInstanceNotifer actor in charge of sending notifications to the corresponding app instance
     // TODO now we are considering that only one observer is registered per app
-    // Otherwise a List of Observers would be required as a second paramter of the list
+    // Otherwise a List of Observers would be required as a second parameter of the list
     // The Thrift class would need also to be modified
     ConcurrentHashMap<String, String> interestObserverMap = new ConcurrentHashMap<String, String>();
 
@@ -105,7 +106,7 @@ class App implements PathChildrenCacheListener {
 
         case CHILD_REMOVED: {
             logger.trace("Removing node: " + event.getData().getPath() + " Instances left: " + notifiers.size());
-            removeInstance(ZKPaths.getNodeFromPath(event.getData().getPath()));
+            removeInstance(ZKPaths.getPathAndNode(event.getData().getPath()));
         }
             break;
         case CONNECTION_LOST:
@@ -130,7 +131,7 @@ class App implements PathChildrenCacheListener {
         final HostAndPort hp = HostAndPort.fromString(hostnameAndPort);
         AppInstanceNotifier notifier = new AppInstanceNotifier(this, hp);
 
-        if (notifiers.putIfAbsent(hp, notifier) != null) {
+        if (notifiers.putIfAbsent(hostnameAndPort, notifier) != null) {
             notifier.cancel();
         } else {
             logger.info("Adding notifier to {} for application {}", hp.toString(), name);
@@ -139,10 +140,19 @@ class App implements PathChildrenCacheListener {
 
     }
 
-    public void removeInstance(String hostnameAndPort) {
+    public void removeInstance(PathAndNode pathAndNode) {
+        String hostnameAndPort = pathAndNode.getNode();
         AppInstanceNotifier notifier = notifiers.remove(hostnameAndPort);
         if (notifier != null) {
             notifier.cancel();
+        }
+        if (notifiers.size() == 0) { // Remove app node on ZK to trigger app cleaning TODO sync with the remove before?
+            try {
+                String appPath = pathAndNode.getPath();
+                appSandbox.zkClient.delete().forPath(appPath);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
