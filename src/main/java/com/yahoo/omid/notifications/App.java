@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.google.common.net.HostAndPort;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCache;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheEvent;
@@ -74,7 +75,8 @@ class App implements PathChildrenCacheListener {
         }
         this.metrics = new ServerSideAppMetrics(appName, interestObserverMap.keySet());
         String appPath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), this.name);
-        appsInstanceCache = new PathChildrenCache(this.appSandbox.zkClient, appPath, false);
+        appsInstanceCache = new PathChildrenCache(this.appSandbox.zkClient, appPath, false, new ThreadFactoryBuilder()
+                .setNameFormat("ZK App Instance Listener [" + this.name + "]").build());
         appsInstanceCache.getListenable().addListener(this);
         appsInstanceCache.start();
     }

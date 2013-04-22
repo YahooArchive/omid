@@ -21,6 +21,7 @@ import java.util.concurrent.SynchronousQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCache;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheEvent;
@@ -44,7 +45,9 @@ public class AppSandbox implements PathChildrenCacheListener {
     public AppSandbox(CuratorFramework zkClient, ScannerSandbox scannerSandbox) throws Exception {
         this.zkClient = zkClient;
         this.scannerSandbox = scannerSandbox;
-        appsCache = new PathChildrenCache(this.zkClient, ZkTreeUtils.getAppsNodePath(), false);
+        appsCache = new PathChildrenCache(this.zkClient, ZkTreeUtils.getAppsNodePath(), false,
+                new ThreadFactoryBuilder().setNameFormat("ZK App Listener [" + ZkTreeUtils.getAppsNodePath() + "]")
+                        .build());
         appsCache.getListenable().addListener(this);
     }
 
