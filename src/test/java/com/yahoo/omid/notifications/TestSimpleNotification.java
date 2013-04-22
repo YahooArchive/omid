@@ -69,7 +69,7 @@ public class TestSimpleNotification extends TestInfrastructure {
 
         startTriggerTransaction(true, "row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
 
-        Assert.assertTrue(cdl.await(10, TimeUnit.SECONDS));
+        Assert.assertTrue("Countdown latch timed out", cdl.await(10, TimeUnit.SECONDS));
         app.close();
     }
 
@@ -153,7 +153,7 @@ public class TestSimpleNotification extends TestInfrastructure {
 
         long tst = startTriggerTransaction(true, "row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
 
-        cdl.await();
+        Assert.assertTrue("Countdown latch timed out", cdl.await(10, TimeUnit.SECONDS));
 
         Thread.currentThread().sleep(10000); // Let's the observer transaction to commit
 
@@ -446,8 +446,8 @@ public class TestSimpleNotification extends TestInfrastructure {
         };
     }
 
-    private static void doTransactionalPut(Transaction tx, TTable tt, byte[] rowKey,
-            byte[] colFamName, byte[] colName, byte[] dataValue) throws IOException {
+    private static void doTransactionalPut(Transaction tx, TTable tt, byte[] rowKey, byte[] colFamName, byte[] colName,
+            byte[] dataValue) throws IOException {
         Put row = new Put(rowKey);
         row.add(colFamName, colName, dataValue);
         tt.put(tx, row);
