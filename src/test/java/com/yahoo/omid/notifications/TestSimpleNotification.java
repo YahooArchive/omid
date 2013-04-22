@@ -17,6 +17,7 @@ package com.yahoo.omid.notifications;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
@@ -95,7 +96,8 @@ public class TestSimpleNotification extends TestInfrastructure {
 
         startTriggerTransaction(true, "row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
 
-        cdl.await();
+        boolean completed = cdl.await(30, TimeUnit.SECONDS);
+        assertTrue("Countdown latch timed out", completed);
         app.close();
     }
 
