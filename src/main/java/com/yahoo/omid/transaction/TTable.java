@@ -257,6 +257,7 @@ public class TTable {
         boolean validRead = true;
         // Number of versions needed to reach a committed value
         int versionsProcessed = 0;
+        Get pendingGet = null;
 
         for (KeyValue kv : kvs) {
             LOG.trace("Processing kv {}", kv);
@@ -269,16 +270,15 @@ public class TTable {
                 }
                 // New column, if we didn't read a committed value for last one,
                 // add it to pending
-                if (!validRead && versionsProcessed == localVersions) {
-                    Get get = new Get(kv.getRow());
-                    get.addColumn(kv.getFamily(), kv.getQualifier());
-                    get.setMaxVersions(requestVersions); // TODO set maxVersions
-                                                         // wisely
-                    get.setTimeRange(0, oldestUncommittedTS - 1);
-                    pendingGets.add(get);
-                    LOG.trace("Adding pending get {}", get);
+                if (!validRead) {
+                    pendingGet.setTimeRange(0, oldestUncommittedTS - 1);
+                    pendingGets.add(pendingGet);
+                    LOG.trace("Adding pending get {}", pendingGet);
                 }
                 validRead = false;
+                pendingGet = new Get(kv.getRow());
+                pendingGet.addColumn(kv.getFamily(), kv.getQualifier());
+                pendingGet.setMaxVersions(requestVersions);
                 versionsProcessed = 0;
                 oldestUncommittedTS = Long.MAX_VALUE;
                 lastColumn = currentColumn;
@@ -288,6 +288,7 @@ public class TTable {
                 // If we already have a committed value for this column, skip kv
                 continue;
             }
+
             versionsProcessed++;
             if (transaction.tsoclient.validRead(kv.getTimestamp(), startTimestamp)) {
                 LOG.trace("Kv {} is valid", kv);
@@ -304,10 +305,14 @@ public class TTable {
             } else {
                 // Uncomitted, keep track of oldest uncommitted timestamp
                 oldestUncommittedTS = Math.min(oldestUncommittedTS, kv.getTimestamp());
-                LOG.trace("KV {} is not valid, oldestUncommittedTS = {}", oldestUncommittedTS);
+                LOG.trace("KV {} is not valid, oldestUncommittedTS = {}", kv, oldestUncommittedTS);
             }
         }
-
+        if (!validRead) {
+            pendingGet.setTimeRange(0, oldestUncommittedTS - 1);
+            pendingGets.add(pendingGet);
+            LOG.trace("Adding pending get {}", pendingGet);
+        }
         LOG.trace("Pending gets: {}", pendingGets);
         // If we have pending columns, request (and filter recursively) them
         if (!pendingGets.isEmpty()) {
