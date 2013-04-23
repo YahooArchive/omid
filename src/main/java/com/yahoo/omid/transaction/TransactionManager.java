@@ -36,6 +36,10 @@ import com.yahoo.omid.client.SyncAbortCompleteCallback;
 import com.yahoo.omid.client.SyncCommitCallback;
 import com.yahoo.omid.client.SyncCreateCallback;
 import com.yahoo.omid.client.TSOClient;
+import com.yahoo.omid.client.metrics.OmidClientMetrics;
+import com.yahoo.omid.client.metrics.OmidClientMetrics.Meters;
+import com.yahoo.omid.client.metrics.OmidClientMetrics.Timers;
+import com.yammer.metrics.core.TimerContext;
 
 /**
  * Provides the methods necessary to create and commit transactions.
@@ -73,11 +77,16 @@ public class TransactionManager {
      */
     public Transaction begin() throws TransactionException {
         SyncCreateCallback cb = new SyncCreateCallback();
+        TimerContext timer = null;
         try {
+            tsoclient.getMetrics().count(Meters.BEGIN);
+            timer = tsoclient.getMetrics().startTimer(Timers.BEGIN);
             tsoclient.getNewTimestamp(cb);
             cb.await();
         } catch (Exception e) {
             throw new TransactionException("Could not get new timestamp", e);
+        } finally {
+            timer.stop();
         }
         if (cb.getException() != null) {
             throw new TransactionException("Error retrieving timestamp", cb.getException());
@@ -107,11 +116,16 @@ public class TransactionManager {
         }
 
         SyncCommitCallback cb = new SyncCommitCallback();
+        TimerContext timer = null;
         try {
+            tsoclient.getMetrics().count(Meters.COMMIT);
+            timer = tsoclient.getMetrics().startTimer(Timers.COMMIT);
             tsoclient.commit(transaction.getStartTimestamp(), transaction.getRows(), cb);
             cb.await();
         } catch (Exception e) {
             throw new TransactionException("Could not commit", e);
+        } finally {
+            timer.stop();
         }
         if (cb.getException() != null) {
             throw new TransactionException("Error committing", cb.getException());
@@ -139,10 +153,15 @@ public class TransactionManager {
         if (LOG.isTraceEnabled()) {
             LOG.trace("abort " + transaction);
         }
+        TimerContext timer = null;
         try {
+            tsoclient.getMetrics().count(Meters.ABORT);
+            timer = tsoclient.getMetrics().startTimer(Timers.ABORT);
             tsoclient.abort(transaction.getStartTimestamp());
         } catch (Exception e) {
             LOG.warn("Couldn't notify TSO about the abort", e);
+        } finally {
+            timer.stop();
         }
 
         if (LOG.isTraceEnabled()) {
@@ -155,6 +174,7 @@ public class TransactionManager {
     }
 
     private void cleanup(final Transaction transaction) {
+        TimerContext timer = tsoclient.getMetrics().startTimer(Timers.CLEANUP);
         Map<byte[], List<Delete>> deleteBatches = new HashMap<byte[], List<Delete>>();
         for (final RowKeyFamily rowkey : transaction.getRows()) {
             List<Delete> batch = deleteBatches.get(rowkey.getTable());
@@ -197,6 +217,7 @@ public class TransactionManager {
         
         if (cleanupFailed) {
             LOG.warn("Cleanup failed, some values not deleted");
+            timer.stop();
             // we can't notify the TSO of completion
             return;
         }
@@ -206,5 +227,6 @@ public class TransactionManager {
         } catch (IOException ioe) {
             LOG.warn("Coudldn't notify the TSO of rollback completion", ioe);
         }
+        timer.stop();
     }
 }
