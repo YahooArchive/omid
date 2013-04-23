@@ -112,12 +112,7 @@ public class Interest {
      * @return the internal representation of the interest as string
      */
     public String toStringRepresentation() {
-        StringBuilder sb = new StringBuilder(table);
-        sb.append(":");
-        sb.append(columnFamily);
-        sb.append(":");
-        sb.append(column);
-        return sb.toString();
+        return toString();
     }
 
     /**
@@ -136,7 +131,7 @@ public class Interest {
      */
     @Override
     public String toString() {
-        return "Interest [table=" + table + ", columnFamily=" + columnFamily + ", column=" + column + "]";
+        return table + ':' + columnFamily + ':' + column;
     }
 
     @Override

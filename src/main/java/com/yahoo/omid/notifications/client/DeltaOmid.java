@@ -109,10 +109,10 @@ public class DeltaOmid implements IncrementalApplication {
             @Override
             public void uncaughtException(Thread t, Throwable e) {
                 logger.error("Uncaught exception in thread {}", t.getName(), e);
-
             }
         });
 
+        logger.info("Creating instance for DeltaOmid App {}", this.name);
         List<String> observersInterests = new ArrayList<String>();
         for (final Observer observer : builder.observers) {
             String obsName = observer.getName();
@@ -154,7 +154,7 @@ public class DeltaOmid implements IncrementalApplication {
         } catch (Exception e) {
             throw new NotificationException(e);
         }
-        logger.trace("App instance created: " + this);
+        logger.info("{} created", this.toString());
     }
 
     @Override
@@ -174,9 +174,9 @@ public class DeltaOmid implements IncrementalApplication {
 
     @Override
     public void close() throws IOException {
+        logger.info("Stopping {}", this.toString());
         try {
             zkClient.delete().forPath(zkAppInstancePath);
-
         } catch (Exception e) {
             logger.error("Cannot clean ZooKeeper node {}", zkAppInstancePath, e);
         } finally {
@@ -190,7 +190,7 @@ public class DeltaOmid implements IncrementalApplication {
             }
         }
 
-        logger.trace(getName() + " instance running in " + InetAddress.getLocalHost() + ":" + getPort() + " finished");
+        logger.info("{} stopped", this.toString());
     }
 
     private String createZkSubBranch(String mainBranchPath, String subBranchPath, byte[] data, boolean ephemeral)
@@ -214,7 +214,7 @@ public class DeltaOmid implements IncrementalApplication {
 
     @Override
     public String toString() {
-        return "DeltaOmid [name=" + name + ", zkAppInstancePath=" + zkAppInstancePath + ", registeredObservers="
-                + observerBuffers + "]";
+        return "DeltaOmidAppInstance [name=" + name + ", zkAppInstancePath=" + zkAppInstancePath
+                + ", registeredObservers=" + observerBuffers + "]";
     }
 }

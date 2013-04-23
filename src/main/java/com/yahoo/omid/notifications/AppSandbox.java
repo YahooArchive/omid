@@ -22,6 +22,7 @@ import java.util.concurrent.BlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCache;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheEvent;
@@ -45,7 +46,9 @@ public class AppSandbox implements PathChildrenCacheListener {
     public AppSandbox(CuratorFramework zkClient, ScannerSandbox scannerSandbox) throws Exception {
         this.zkClient = zkClient;
         this.scannerSandbox = scannerSandbox;
-        appsCache = new PathChildrenCache(this.zkClient, ZkTreeUtils.getAppsNodePath(), false);
+        appsCache = new PathChildrenCache(this.zkClient, ZkTreeUtils.getAppsNodePath(), false,
+                new ThreadFactoryBuilder().setNameFormat("ZK App Listener [" + ZkTreeUtils.getAppsNodePath() + "]")
+                        .build());
         appsCache.getListenable().addListener(this);
     }
 
@@ -58,17 +61,14 @@ public class AppSandbox implements PathChildrenCacheListener {
 
         switch (event.getType()) {
         case CHILD_ADDED: {
-
             logger.trace("App Node added : {}", event.getData().getPath());
             createApplication(ZKPaths.getNodeFromPath(event.getData().getPath()));
             break;
         }
-
         case CHILD_UPDATED: {
             logger.trace("App Node changed: " + event.getData().getPath());
             break;
         }
-
         case CHILD_REMOVED: {
             logger.trace("App Node removed: " + event.getData().getPath());
             removeApplication(ZKPaths.getNodeFromPath(event.getData().getPath()));
@@ -125,6 +125,10 @@ public class AppSandbox implements PathChildrenCacheListener {
 
     public BlockingQueue<UpdatedInterestMsg> getHandoffQueue(Interest interest) {
         return scannerSandbox.getHandoffQueue(interest);
+    }
+
+    public CuratorFramework getZKClient() {
+        return zkClient;
     }
 
 }
