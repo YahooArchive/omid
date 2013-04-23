@@ -20,8 +20,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
- * This class represents the interest of a component in a particular column of a
- * particular column family of a table
+ * This class represents the interest of a component in a particular column of a particular column family of a table
  * 
  */
 public class Interest {
@@ -33,12 +32,13 @@ public class Interest {
     private String column;
 
     /**
-     * Constructs an interest object from a string with the following format
-     * tableName:columnFamily:column
+     * Constructs an interest object from a string with the following format tableName:columnFamily:column
      * 
-     * @param interest The particular string codifying the interest
+     * @param interest
+     *            The particular string codifying the interest
      * @return the Interest object built
-     * @throws IllegalArgumentException Thrown when the interest parameter does not follow the right format
+     * @throws IllegalArgumentException
+     *             Thrown when the interest parameter does not follow the right format
      */
     public static Interest fromString(String interest) throws IllegalArgumentException {
         String delims = "[:]";
@@ -57,7 +57,7 @@ public class Interest {
         this.columnFamily = columnFamily;
         this.column = column;
     }
-    
+
     public Interest(byte[] table, byte[] columnFamily, byte[] column) {
         this.table = Bytes.toString(table);
         this.columnFamily = Bytes.toString(columnFamily);
@@ -105,36 +105,33 @@ public class Interest {
     public byte[] getColumnAsHBaseByteArray() {
         return Bytes.toBytes(column);
     }
-    
+
     /**
-     * Used when a string representation of the interest is required
-     * internally in the framework
+     * Used when a string representation of the interest is required internally in the framework
+     * 
      * @return the internal representation of the interest as string
      */
     public String toStringRepresentation() {
-        StringBuilder sb = new StringBuilder(table);
-        sb.append(":");
-        sb.append(columnFamily);
-        sb.append(":");
-        sb.append(column);
-        return sb.toString();
+        return toString();
     }
-    
+
     /**
      * Used when an interest is registered in a particular column
+     * 
      * @return the Zk node representation
      */
     public String toZkNodeRepresentation() {
         return this.toStringRepresentation();
     }
 
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see java.lang.Object#toString()
      */
     @Override
     public String toString() {
-        return "Interest [table=" + table + ", columnFamily=" + columnFamily + ", column=" + column + "]";
+        return table + ':' + columnFamily + ':' + column;
     }
-    
-    
+
 }
