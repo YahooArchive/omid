@@ -49,6 +49,7 @@ import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.yahoo.omid.client.metrics.OmidClientMetrics;
 import com.yahoo.omid.replication.Zipper;
 import com.yahoo.omid.replication.ZipperState;
 import com.yahoo.omid.tso.Committed;
@@ -96,6 +97,7 @@ public class TSOClient extends SimpleChannelHandler {
    private int retries;
    private int retry_delay_ms;
    private Timer retryTimer;
+   private static OmidClientMetrics metrics = new OmidClientMetrics();
 
    private enum State {
       DISCONNECTED, CONNECTING, CONNECTED, RETRY_CONNECT_WAIT
@@ -345,6 +347,10 @@ public class TSOClient extends SimpleChannelHandler {
 
       addr = new InetSocketAddress(host, port);
       connectIfNeeded();
+   }
+
+   public OmidClientMetrics getMetrics() {
+      return metrics;
    }
 
    private State connectIfNeeded() throws IOException {

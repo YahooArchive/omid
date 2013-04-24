@@ -36,6 +36,9 @@ import com.yahoo.omid.client.SyncAbortCompleteCallback;
 import com.yahoo.omid.client.SyncCommitCallback;
 import com.yahoo.omid.client.SyncCreateCallback;
 import com.yahoo.omid.client.TSOClient;
+import com.yahoo.omid.client.metrics.OmidClientMetrics.Meters;
+import com.yahoo.omid.client.metrics.OmidClientMetrics.Timers;
+import com.yammer.metrics.core.TimerContext;
 
 /**
  * Provides the methods necessary to create and commit transactions.
@@ -73,11 +76,16 @@ public class TransactionManager {
      */
     public Transaction begin() throws TransactionException {
         SyncCreateCallback cb = new SyncCreateCallback();
+        TimerContext timer = null;
         try {
+            tsoclient.getMetrics().count(Meters.BEGIN);
+            timer = tsoclient.getMetrics().startTimer(Timers.BEGIN);
             tsoclient.getNewTimestamp(cb);
             cb.await();
         } catch (Exception e) {
             throw new TransactionException("Could not get new timestamp", e);
+        } finally {
+            timer.stop();
         }
         if (cb.getException() != null) {
             throw new TransactionException("Error retrieving timestamp", cb.getException());
@@ -106,12 +114,22 @@ public class TransactionManager {
             throw new RollbackException();
         }
 
+        // Flush all pending writes
+        if (!flushTables(transaction)) {
+            cleanup(transaction);
+            throw new RollbackException();
+        }
+
         SyncCommitCallback cb = new SyncCommitCallback();
+        tsoclient.getMetrics().count(Meters.COMMIT);
+        TimerContext commitTimer = tsoclient.getMetrics().startTimer(Timers.COMMIT);
         try {
             tsoclient.commit(transaction.getStartTimestamp(), transaction.getRows(), cb);
             cb.await();
         } catch (Exception e) {
             throw new TransactionException("Could not commit", e);
+        } finally {
+            commitTimer.stop();
         }
         if (cb.getException() != null) {
             throw new TransactionException("Error committing", cb.getException());
@@ -130,6 +148,26 @@ public class TransactionManager {
     }
 
     /**
+     * Flushes pending operations for tables touched by transaction 
+     * @param transaction
+     * @return true if the flush operations succeeded, false otherwise
+     */
+    private boolean flushTables(Transaction transaction) {
+        TimerContext flushTimer = tsoclient.getMetrics().startTimer(Timers.FLUSH);
+        boolean result = true;
+        for (HTable writtenTable : transaction.getWrittenTables()) {
+            try {
+                writtenTable.flushCommits();
+            } catch (IOException e) {
+                LOG.error("Exception while flushing writes", e);
+                result = false;
+            }
+        }
+        flushTimer.stop();
+        return result;
+    }
+
+    /**
      * Aborts a transaction and automatically rollbacks the changes.
      * 
      * @param transaction
@@ -139,10 +177,18 @@ public class TransactionManager {
         if (LOG.isTraceEnabled()) {
             LOG.trace("abort " + transaction);
         }
+
+        flushTables(transaction);
+
+        TimerContext timer = null;
         try {
+            tsoclient.getMetrics().count(Meters.ABORT);
+            timer = tsoclient.getMetrics().startTimer(Timers.ABORT);
             tsoclient.abort(transaction.getStartTimestamp());
         } catch (Exception e) {
             LOG.warn("Couldn't notify TSO about the abort", e);
+        } finally {
+            timer.stop();
         }
 
         if (LOG.isTraceEnabled()) {
@@ -155,6 +201,7 @@ public class TransactionManager {
     }
 
     private void cleanup(final Transaction transaction) {
+        TimerContext timer = tsoclient.getMetrics().startTimer(Timers.CLEANUP);
         Map<byte[], List<Delete>> deleteBatches = new HashMap<byte[], List<Delete>>();
         for (final RowKeyFamily rowkey : transaction.getRows()) {
             List<Delete> batch = deleteBatches.get(rowkey.getTable());
@@ -197,6 +244,7 @@ public class TransactionManager {
         
         if (cleanupFailed) {
             LOG.warn("Cleanup failed, some values not deleted");
+            timer.stop();
             // we can't notify the TSO of completion
             return;
         }
@@ -206,5 +254,6 @@ public class TransactionManager {
         } catch (IOException ioe) {
             LOG.warn("Coudldn't notify the TSO of rollback completion", ioe);
         }
+        timer.stop();
     }
 }

@@ -46,6 +46,9 @@ import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.client.ColumnWrapper;
 import com.yahoo.omid.client.RowKeyFamily;
+import com.yahoo.omid.client.metrics.OmidClientMetrics.Meters;
+import com.yahoo.omid.client.metrics.OmidClientMetrics.Timers;
+import com.yammer.metrics.core.TimerContext;
 
 /**
  * Provides transactional methods for accessing and modifying a given snapshot
@@ -92,6 +95,9 @@ public class TTable {
      *             if a remote or network exception occurs.
      */
     public Result get(Transaction transaction, final Get get) throws IOException {
+        transaction.tsoclient.getMetrics().count(Meters.GET);
+        TimerContext timer = transaction.tsoclient.getMetrics().startTimer(Timers.GET);
+        
         final int requestedVersions = (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD);
         final long readTimestamp = transaction.getStartTimestamp();
         final Get tsget = new Get(get.getRow());
@@ -113,9 +119,14 @@ public class TTable {
         }
         LOG.trace("Initial Get = {}", tsget);
         getsPerformed++;
-        // Return the KVs that belong to the transaction snapshot, ask for more
-        // versions if needed
-        return new Result(filter(transaction, table.get(tsget).list(), requestedVersions));
+
+        try {
+            // Return the KVs that belong to the transaction snapshot, ask for more
+            // versions if needed
+            return new Result(filter(transaction, table.get(tsget).list(), requestedVersions));
+        } finally {
+            timer.stop();
+        }
     }
 
     /**
@@ -127,6 +138,9 @@ public class TTable {
      *             if a remote or network exception occurs.
      */
     public void delete(Transaction transaction, Delete delete) throws IOException {
+        transaction.tsoclient.getMetrics().count(Meters.DELETE);
+        TimerContext timer = transaction.tsoclient.getMetrics().startTimer(Timers.DELETE);
+        
         final long startTimestamp = transaction.getStartTimestamp();
         boolean issueGet = false;
 
@@ -171,8 +185,13 @@ public class TTable {
         }
 
         transaction.addRow(new RowKeyFamily(delete.getRow(), getTableName(), deleteP.getFamilyMap()));
+        transaction.addWrittenTable(table);
 
-        table.put(deleteP);
+        try {
+            table.put(deleteP);
+        } finally {
+            timer.stop();
+        }
     }
 
     /**
@@ -188,6 +207,9 @@ public class TTable {
      * @since 0.20.0
      */
     public void put(Transaction transaction, Put put) throws IOException {
+        transaction.tsoclient.getMetrics().count(Meters.PUT);
+        TimerContext timer = transaction.tsoclient.getMetrics().startTimer(Timers.PUT);
+
         final long startTimestamp = transaction.getStartTimestamp();
         // create put with correct ts
         final Put tsput = new Put(put.getRow(), startTimestamp);
@@ -198,10 +220,14 @@ public class TTable {
             }
         }
 
-        // should add the table as well
         transaction.addRow(new RowKeyFamily(tsput.getRow(), getTableName(), tsput.getFamilyMap()));
+        transaction.addWrittenTable(table);
 
-        table.put(tsput);
+        try {
+            table.put(tsput);
+        } finally {
+            timer.stop();
+        }
     }
 
     /**
@@ -216,11 +242,15 @@ public class TTable {
      *             if a remote or network exception occurs.
      */
     public ResultScanner getScanner(Transaction transaction, Scan scan) throws IOException {
+        transaction.tsoclient.getMetrics().count(Meters.SCANNER);
+        TimerContext timer = transaction.tsoclient.getMetrics().startTimer(Timers.SCANNER);
+
         Scan tsscan = new Scan(scan);
         tsscan.setMaxVersions((int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
         tsscan.setTimeRange(0, transaction.getStartTimestamp() + 1);
         TransactionalClientScanner scanner = new TransactionalClientScanner(transaction, getConfiguration(),
                 tsscan, getTableName(), (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
+        timer.stop();
         return scanner;
     }
 
@@ -339,6 +369,8 @@ public class TTable {
 
         @Override
         public Result next() throws IOException {
+            state.tsoclient.getMetrics().count(Meters.NEXT);
+            TimerContext timer = state.tsoclient.getMetrics().startTimer(Timers.NEXT);
             List<KeyValue> filteredResult = Collections.emptyList();
             while (filteredResult.isEmpty()) {
                 Result result = super.next();
@@ -347,7 +379,11 @@ public class TTable {
                 }
                 filteredResult = filter(state, result.list(), maxVersions);
             }
-            return new Result(filteredResult);
+            try {
+                return new Result(filteredResult);
+            } finally {
+                timer.stop();
+            }
         }
 
         // In principle no need to override, copied from super.next(int) to make
@@ -564,4 +600,42 @@ public class TTable {
         table.close();
     }
 
+    /**
+     * Turns 'auto-flush' on or off.
+     * 
+     * When enabled (default), Put operations don't get buffered/delayed and are immediately executed.
+     * 
+     * Turning off autoFlush means that multiple Puts will be accepted before any RPC is actually sent to do the write
+     * operations. Writes will still be automatically flushed at commit time, so no data will be lost.
+     * 
+     * @param autoFlush
+     *            Whether or not to enable 'auto-flush'.
+     */
+    public void setAutoFlush(boolean autoFlush) {
+        table.setAutoFlush(autoFlush, true);
+    }
+
+    /**
+     * Tells whether or not 'auto-flush' is turned on.
+     * 
+     * @return true if 'auto-flush' is enabled (default), meaning Put operations don't get buffered/delayed and are
+     *         immediately executed.
+     */
+    public boolean isAutoFlush() {
+        return table.isAutoFlush();
+    }
+
+    /**
+     * {@link HTable.getWriteBufferSize}
+     */
+    public long getWriteBufferSize() {
+        return table.getWriteBufferSize();
+    }
+
+    /**
+     * {@link HTable.setWriteBufferSize}
+     */
+    public void setWriteBufferSize(long writeBufferSize) throws IOException {
+        table.setWriteBufferSize(writeBufferSize);
+    }
 }
