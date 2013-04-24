@@ -32,12 +32,12 @@ public class OmidClientMetrics {
         timers = new EnumMap<OmidClientMetrics.Timers, Timer>(Timers.class);
         for (Timers t : Timers.values()) {
             timers.put(t, Metrics.defaultRegistry()
-                    .newTimer(TSOHandler.class, "omidClient@" + t, "omidClient"));
+                    .newTimer(TSOHandler.class, "omidClient@timer-" + t, "omidClient"));
         }
         meters = new EnumMap<OmidClientMetrics.Meters, Meter>(Meters.class);
         for (Meters m : Meters.values()) {
             meters.put(m, Metrics.defaultRegistry()
-                    .newMeter(TSOHandler.class, "omidClient@" + m, "omidClient", TimeUnit.SECONDS));
+                    .newMeter(TSOHandler.class, "omidClient@meter-" + m, "omidClient", TimeUnit.SECONDS));
         }
     }
 

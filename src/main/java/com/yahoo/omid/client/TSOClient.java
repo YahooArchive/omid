@@ -97,7 +97,7 @@ public class TSOClient extends SimpleChannelHandler {
    private int retries;
    private int retry_delay_ms;
    private Timer retryTimer;
-   private OmidClientMetrics metrics;
+   private static OmidClientMetrics metrics = new OmidClientMetrics();
 
    private enum State {
       DISCONNECTED, CONNECTING, CONNECTED, RETRY_CONNECT_WAIT
@@ -309,7 +309,6 @@ public class TSOClient extends SimpleChannelHandler {
    private State state;
 
    public TSOClient(Configuration conf) throws IOException {
-      metrics = new OmidClientMetrics();
       state = State.DISCONNECTED;
       queuedOps = new ArrayBlockingQueue<Op>(200);
       retryTimer = new Timer(true);
