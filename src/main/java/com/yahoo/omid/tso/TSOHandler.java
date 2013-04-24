@@ -373,7 +373,7 @@ public class TSOHandler extends SimpleChannelHandler {
                             }
                             synchronized (sharedMsgBufLock) {
                                 for (Long id : toAbort) {
-                                    sharedState.hashmap.setHalfAborted(id);
+                                    sharedState.processAbort(id);
                                     queueHalfAbort(id);
                                 }
                                 queueLargestIncrease(sharedState.largestDeletedTimestamp);
