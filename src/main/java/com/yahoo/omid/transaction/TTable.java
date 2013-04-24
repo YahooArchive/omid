@@ -600,4 +600,42 @@ public class TTable {
         table.close();
     }
 
+    /**
+     * Turns 'auto-flush' on or off.
+     * 
+     * When enabled (default), Put operations don't get buffered/delayed and are immediately executed.
+     * 
+     * Turning off autoFlush means that multiple Puts will be accepted before any RPC is actually sent to do the write
+     * operations. Writes will still be automatically flushed at commit time, so no data will be lost.
+     * 
+     * @param autoFlush
+     *            Whether or not to enable 'auto-flush'.
+     */
+    public void setAutoFlush(boolean autoFlush) {
+        table.setAutoFlush(autoFlush, true);
+    }
+
+    /**
+     * Tells whether or not 'auto-flush' is turned on.
+     * 
+     * @return true if 'auto-flush' is enabled (default), meaning Put operations don't get buffered/delayed and are
+     *         immediately executed.
+     */
+    public boolean isAutoFlush() {
+        return table.isAutoFlush();
+    }
+
+    /**
+     * {@link HTable.getWriteBufferSize}
+     */
+    public long getWriteBufferSize() {
+        return table.getWriteBufferSize();
+    }
+
+    /**
+     * {@link HTable.setWriteBufferSize}
+     */
+    public void setWriteBufferSize(long writeBufferSize) throws IOException {
+        table.setWriteBufferSize(writeBufferSize);
+    }
 }

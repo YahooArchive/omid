@@ -40,7 +40,7 @@ public class TestAutoFlush extends OmidTestBase {
         TTable table = new TTable(hbaseConf, TEST_TABLE);
 
         // Turn off autoflush
-        table.getHTable().setAutoFlush(false);
+        table.setAutoFlush(false);
 
         Transaction t = tm.begin();
         Put put = new Put(row);
