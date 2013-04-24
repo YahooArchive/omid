@@ -315,11 +315,18 @@ public class TSOHandler extends SimpleChannelHandler {
             if (msg.startTimestamp < timestampOracle.first()) {
                 reply.committed = false;
                 LOG.warn("Aborting transaction after restarting TSO");
-            } else if (msg.rows.length > 0 && msg.startTimestamp < sharedState.largestDeletedTimestamp) {
-                // Too old and not read only
-                reply.committed = false;// set as abort
-                LOG.warn("Too old starttimestamp: ST " + msg.startTimestamp + " MAX "
-                        + sharedState.largestDeletedTimestamp);
+            } if (msg.startTimestamp < sharedState.largestDeletedTimestamp) {
+                if (msg.rows.length == 0) {
+                    // read only, it has already been put in half aborted list
+                    // we let it commit, but we mark it as fully aborted
+                    // since it is read only, it doesn't matter
+                    processFullAbort(msg.startTimestamp);
+                } else {
+                    // Too old
+                    reply.committed = false;// set as abort
+                    LOG.warn("Too old starttimestamp: ST " + msg.startTimestamp + " MAX "
+                            + sharedState.largestDeletedTimestamp);
+                }
             } else {
                 // 1. check the write-write conflicts
                 for (RowKey r : msg.rows) {
@@ -553,18 +560,22 @@ public class TSOHandler extends SimpleChannelHandler {
      * Handle the FullAbortReport message
      */
     public void handle(FullAbortRequest msg, ChannelHandlerContext ctx) {
+        processFullAbort(msg.startTimestamp);
+    }
+
+    private void processFullAbort(long timestamp) {
         synchronized (sharedState) {
             DataOutputStream toWAL = sharedState.toWAL;
             try {
                 toWAL.writeByte(LoggerProtocol.FULLABORT);
-                toWAL.writeLong(msg.startTimestamp);
+                toWAL.writeLong(timestamp);
             } catch (IOException e) {
-                e.printStackTrace();
+                LOG.error("Unexpected exception while writing to WAL", e);
             }
-            sharedState.processFullAbort(msg.startTimestamp);
+            sharedState.processFullAbort(timestamp);
         }
         synchronized (sharedMsgBufLock) {
-            queueFullAbort(msg.startTimestamp);
+            queueFullAbort(timestamp);
         }
     }
 
