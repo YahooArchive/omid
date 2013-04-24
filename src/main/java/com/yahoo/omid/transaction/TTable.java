@@ -185,6 +185,7 @@ public class TTable {
         }
 
         transaction.addRow(new RowKeyFamily(delete.getRow(), getTableName(), deleteP.getFamilyMap()));
+        transaction.addWrittenTable(table);
 
         try {
             table.put(deleteP);
@@ -219,8 +220,8 @@ public class TTable {
             }
         }
 
-        // should add the table as well
         transaction.addRow(new RowKeyFamily(tsput.getRow(), getTableName(), tsput.getFamilyMap()));
+        transaction.addWrittenTable(table);
 
         try {
             table.put(tsput);

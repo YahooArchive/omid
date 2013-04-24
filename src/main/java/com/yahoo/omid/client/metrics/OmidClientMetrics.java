@@ -18,7 +18,7 @@ public class OmidClientMetrics {
     private static Logger logger = LoggerFactory.getLogger(OmidClientMetrics.class);
 
     public enum Timers {
-        COMMIT, ABORT, QUERY, BEGIN, GET, PUT, DELETE, SCANNER, NEXT, CLEANUP
+        COMMIT, ABORT, QUERY, BEGIN, GET, PUT, DELETE, SCANNER, NEXT, CLEANUP, FLUSH
     };
 
     public enum Meters {

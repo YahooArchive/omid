@@ -36,7 +36,6 @@ import com.yahoo.omid.client.SyncAbortCompleteCallback;
 import com.yahoo.omid.client.SyncCommitCallback;
 import com.yahoo.omid.client.SyncCreateCallback;
 import com.yahoo.omid.client.TSOClient;
-import com.yahoo.omid.client.metrics.OmidClientMetrics;
 import com.yahoo.omid.client.metrics.OmidClientMetrics.Meters;
 import com.yahoo.omid.client.metrics.OmidClientMetrics.Timers;
 import com.yammer.metrics.core.TimerContext;
@@ -115,17 +114,22 @@ public class TransactionManager {
             throw new RollbackException();
         }
 
+        // Flush all pending writes
+        if (!flushTables(transaction)) {
+            cleanup(transaction);
+            throw new RollbackException();
+        }
+
         SyncCommitCallback cb = new SyncCommitCallback();
-        TimerContext timer = null;
+        tsoclient.getMetrics().count(Meters.COMMIT);
+        TimerContext commitTimer = tsoclient.getMetrics().startTimer(Timers.COMMIT);
         try {
-            tsoclient.getMetrics().count(Meters.COMMIT);
-            timer = tsoclient.getMetrics().startTimer(Timers.COMMIT);
             tsoclient.commit(transaction.getStartTimestamp(), transaction.getRows(), cb);
             cb.await();
         } catch (Exception e) {
             throw new TransactionException("Could not commit", e);
         } finally {
-            timer.stop();
+            commitTimer.stop();
         }
         if (cb.getException() != null) {
             throw new TransactionException("Error committing", cb.getException());
@@ -144,6 +148,26 @@ public class TransactionManager {
     }
 
     /**
+     * Flushes pending operations for tables touched by transaction 
+     * @param transaction
+     * @return true if the flush operations succeeded, false otherwise
+     */
+    private boolean flushTables(Transaction transaction) {
+        TimerContext flushTimer = tsoclient.getMetrics().startTimer(Timers.FLUSH);
+        boolean result = true;
+        for (HTable writtenTable : transaction.getWrittenTables()) {
+            try {
+                writtenTable.flushCommits();
+            } catch (IOException e) {
+                LOG.error("Exception while flushing writes", e);
+                result = false;
+            }
+        }
+        flushTimer.stop();
+        return result;
+    }
+
+    /**
      * Aborts a transaction and automatically rollbacks the changes.
      * 
      * @param transaction
@@ -153,6 +177,9 @@ public class TransactionManager {
         if (LOG.isTraceEnabled()) {
             LOG.trace("abort " + transaction);
         }
+
+        flushTables(transaction);
+
         TimerContext timer = null;
         try {
             tsoclient.getMetrics().count(Meters.ABORT);

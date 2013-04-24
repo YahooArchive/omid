@@ -19,6 +19,8 @@ package com.yahoo.omid.transaction;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.hadoop.hbase.client.HTable;
+
 import com.yahoo.omid.client.RowKeyFamily;
 import com.yahoo.omid.client.TSOClient;
 
@@ -32,6 +34,7 @@ public class Transaction {
     private long startTimestamp;
     private long commitTimestamp;
     private Set<RowKeyFamily> rows;
+    private Set<HTable> writtenTables;
 
     TSOClient tsoclient;
 
@@ -40,6 +43,7 @@ public class Transaction {
         this.startTimestamp = startTimestamp;
         this.commitTimestamp = 0;
         this.tsoclient = client;
+        this.writtenTables = new HashSet<HTable>();
     }
 
     public long getStartTimestamp() {
@@ -72,5 +76,13 @@ public class Transaction {
 
     void addRow(RowKeyFamily row) {
         rows.add(row);
+    }
+
+    void addWrittenTable(HTable table) {
+        writtenTables.add(table);
+    }
+
+    Set<HTable> getWrittenTables() {
+        return writtenTables;
     }
 }
