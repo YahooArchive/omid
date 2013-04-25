@@ -188,17 +188,17 @@ public class TSOState {
    
    public TSOState(StateLogger logger, TimestampOracle timestampOracle) {
        this.timestampOracle = timestampOracle;
-       this.previousLargestDeletedTimestamp = this.timestampOracle.get();
-       this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp;
-       this.uncommited = new Uncommited(timestampOracle.first());
        this.logger = logger;
    }
    
    public TSOState(TimestampOracle timestampOracle) {
        this(null, timestampOracle);
+       initialize();
    }
 
    public void initialize() {
+      this.previousLargestDeletedTimestamp = this.timestampOracle.get();
+      this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp;
       this.uncommited = new Uncommited(timestampOracle.first());
    }
 }

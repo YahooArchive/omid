@@ -79,7 +79,7 @@ public class FileSystemTimestampOnlyStateBuilder extends StateBuilder {
         long startTimestamp = getTimestamp(directory);
 
         timestampOracle.initialize(startTimestamp);
-        state.largestDeletedTimestamp = timestampOracle.first();
+        state.initialize();
 
         state.setLogger(new FileSystemTimestampOnlyLogger(directory));
         state.getLogger().initialize(null, config);
