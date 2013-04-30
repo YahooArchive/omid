@@ -30,22 +30,28 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ObserverOverloaded extends TException implements org.apache.thrift.TBase<ObserverOverloaded, ObserverOverloaded._Fields>, java.io.Serializable, Cloneable {
-  private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("ObserverOverloaded");
+public class Started implements org.apache.thrift.TBase<Started, Started._Fields>, java.io.Serializable, Cloneable {
+  private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("Started");
 
-  private static final org.apache.thrift.protocol.TField OBSERVER_FIELD_DESC = new org.apache.thrift.protocol.TField("observer", org.apache.thrift.protocol.TType.STRING, (short)1);
+  private static final org.apache.thrift.protocol.TField HOST_FIELD_DESC = new org.apache.thrift.protocol.TField("host", org.apache.thrift.protocol.TType.STRING, (short)1);
+  private static final org.apache.thrift.protocol.TField PORT_FIELD_DESC = new org.apache.thrift.protocol.TField("port", org.apache.thrift.protocol.TType.I32, (short)2);
+  private static final org.apache.thrift.protocol.TField OBSERVER_FIELD_DESC = new org.apache.thrift.protocol.TField("observer", org.apache.thrift.protocol.TType.STRING, (short)3);
 
   private static final Map<Class<? extends IScheme>, SchemeFactory> schemes = new HashMap<Class<? extends IScheme>, SchemeFactory>();
   static {
-    schemes.put(StandardScheme.class, new ObserverOverloadedStandardSchemeFactory());
-    schemes.put(TupleScheme.class, new ObserverOverloadedTupleSchemeFactory());
+    schemes.put(StandardScheme.class, new StartedStandardSchemeFactory());
+    schemes.put(TupleScheme.class, new StartedTupleSchemeFactory());
   }
 
+  public String host; // required
+  public int port; // required
   public String observer; // required
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
-    OBSERVER((short)1, "observer");
+    HOST((short)1, "host"),
+    PORT((short)2, "port"),
+    OBSERVER((short)3, "observer");
 
     private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
 
@@ -60,7 +66,11 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
      */
     public static _Fields findByThriftId(int fieldId) {
       switch(fieldId) {
-        case 1: // OBSERVER
+        case 1: // HOST
+          return HOST;
+        case 2: // PORT
+          return PORT;
+        case 3: // OBSERVER
           return OBSERVER;
         default:
           return null;
@@ -102,48 +112,114 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
   }
 
   // isset id assignments
+  private static final int __PORT_ISSET_ID = 0;
+  private byte __isset_bitfield = 0;
   public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
   static {
     Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+    tmpMap.put(_Fields.HOST, new org.apache.thrift.meta_data.FieldMetaData("host", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+        new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
+    tmpMap.put(_Fields.PORT, new org.apache.thrift.meta_data.FieldMetaData("port", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+        new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.I32)));
     tmpMap.put(_Fields.OBSERVER, new org.apache.thrift.meta_data.FieldMetaData("observer", org.apache.thrift.TFieldRequirementType.DEFAULT, 
         new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
     metaDataMap = Collections.unmodifiableMap(tmpMap);
-    org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(ObserverOverloaded.class, metaDataMap);
+    org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(Started.class, metaDataMap);
   }
 
-  public ObserverOverloaded() {
+  public Started() {
   }
 
-  public ObserverOverloaded(
+  public Started(
+    String host,
+    int port,
     String observer)
   {
     this();
+    this.host = host;
+    this.port = port;
+    setPortIsSet(true);
     this.observer = observer;
   }
 
   /**
    * Performs a deep copy on <i>other</i>.
    */
-  public ObserverOverloaded(ObserverOverloaded other) {
+  public Started(Started other) {
+    __isset_bitfield = other.__isset_bitfield;
+    if (other.isSetHost()) {
+      this.host = other.host;
+    }
+    this.port = other.port;
     if (other.isSetObserver()) {
       this.observer = other.observer;
     }
   }
 
-  public ObserverOverloaded deepCopy() {
-    return new ObserverOverloaded(this);
+  public Started deepCopy() {
+    return new Started(this);
   }
 
   @Override
   public void clear() {
+    this.host = null;
+    setPortIsSet(false);
+    this.port = 0;
     this.observer = null;
+  }
+
+  public String getHost() {
+    return this.host;
+  }
+
+  public Started setHost(String host) {
+    this.host = host;
+    return this;
+  }
+
+  public void unsetHost() {
+    this.host = null;
+  }
+
+  /** Returns true if field host is set (has been assigned a value) and false otherwise */
+  public boolean isSetHost() {
+    return this.host != null;
+  }
+
+  public void setHostIsSet(boolean value) {
+    if (!value) {
+      this.host = null;
+    }
+  }
+
+  public int getPort() {
+    return this.port;
+  }
+
+  public Started setPort(int port) {
+    this.port = port;
+    setPortIsSet(true);
+    return this;
+  }
+
+  public void unsetPort() {
+    __isset_bitfield = EncodingUtils.clearBit(__isset_bitfield, __PORT_ISSET_ID);
+  }
+
+  /** Returns true if field port is set (has been assigned a value) and false otherwise */
+  public boolean isSetPort() {
+    return EncodingUtils.testBit(__isset_bitfield, __PORT_ISSET_ID);
+  }
+
+  public void setPortIsSet(boolean value) {
+    __isset_bitfield = EncodingUtils.setBit(__isset_bitfield, __PORT_ISSET_ID, value);
   }
 
   public String getObserver() {
     return this.observer;
   }
 
-  public ObserverOverloaded setObserver(String observer) {
+  public Started setObserver(String observer) {
     this.observer = observer;
     return this;
   }
@@ -165,6 +241,22 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
 
   public void setFieldValue(_Fields field, Object value) {
     switch (field) {
+    case HOST:
+      if (value == null) {
+        unsetHost();
+      } else {
+        setHost((String)value);
+      }
+      break;
+
+    case PORT:
+      if (value == null) {
+        unsetPort();
+      } else {
+        setPort((Integer)value);
+      }
+      break;
+
     case OBSERVER:
       if (value == null) {
         unsetObserver();
@@ -178,6 +270,12 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
 
   public Object getFieldValue(_Fields field) {
     switch (field) {
+    case HOST:
+      return getHost();
+
+    case PORT:
+      return Integer.valueOf(getPort());
+
     case OBSERVER:
       return getObserver();
 
@@ -192,6 +290,10 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
     }
 
     switch (field) {
+    case HOST:
+      return isSetHost();
+    case PORT:
+      return isSetPort();
     case OBSERVER:
       return isSetObserver();
     }
@@ -202,14 +304,32 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
   public boolean equals(Object that) {
     if (that == null)
       return false;
-    if (that instanceof ObserverOverloaded)
-      return this.equals((ObserverOverloaded)that);
+    if (that instanceof Started)
+      return this.equals((Started)that);
     return false;
   }
 
-  public boolean equals(ObserverOverloaded that) {
+  public boolean equals(Started that) {
     if (that == null)
       return false;
+
+    boolean this_present_host = true && this.isSetHost();
+    boolean that_present_host = true && that.isSetHost();
+    if (this_present_host || that_present_host) {
+      if (!(this_present_host && that_present_host))
+        return false;
+      if (!this.host.equals(that.host))
+        return false;
+    }
+
+    boolean this_present_port = true;
+    boolean that_present_port = true;
+    if (this_present_port || that_present_port) {
+      if (!(this_present_port && that_present_port))
+        return false;
+      if (this.port != that.port)
+        return false;
+    }
 
     boolean this_present_observer = true && this.isSetObserver();
     boolean that_present_observer = true && that.isSetObserver();
@@ -228,14 +348,34 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
     return 0;
   }
 
-  public int compareTo(ObserverOverloaded other) {
+  public int compareTo(Started other) {
     if (!getClass().equals(other.getClass())) {
       return getClass().getName().compareTo(other.getClass().getName());
     }
 
     int lastComparison = 0;
-    ObserverOverloaded typedOther = (ObserverOverloaded)other;
+    Started typedOther = (Started)other;
 
+    lastComparison = Boolean.valueOf(isSetHost()).compareTo(typedOther.isSetHost());
+    if (lastComparison != 0) {
+      return lastComparison;
+    }
+    if (isSetHost()) {
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.host, typedOther.host);
+      if (lastComparison != 0) {
+        return lastComparison;
+      }
+    }
+    lastComparison = Boolean.valueOf(isSetPort()).compareTo(typedOther.isSetPort());
+    if (lastComparison != 0) {
+      return lastComparison;
+    }
+    if (isSetPort()) {
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.port, typedOther.port);
+      if (lastComparison != 0) {
+        return lastComparison;
+      }
+    }
     lastComparison = Boolean.valueOf(isSetObserver()).compareTo(typedOther.isSetObserver());
     if (lastComparison != 0) {
       return lastComparison;
@@ -263,9 +403,21 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder("ObserverOverloaded(");
+    StringBuilder sb = new StringBuilder("Started(");
     boolean first = true;
 
+    sb.append("host:");
+    if (this.host == null) {
+      sb.append("null");
+    } else {
+      sb.append(this.host);
+    }
+    first = false;
+    if (!first) sb.append(", ");
+    sb.append("port:");
+    sb.append(this.port);
+    first = false;
+    if (!first) sb.append(", ");
     sb.append("observer:");
     if (this.observer == null) {
       sb.append("null");
@@ -292,21 +444,23 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
 
   private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, ClassNotFoundException {
     try {
+      // it doesn't seem like you should have to do this, but java serialization is wacky, and doesn't call the default constructor.
+      __isset_bitfield = 0;
       read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
     } catch (org.apache.thrift.TException te) {
       throw new java.io.IOException(te);
     }
   }
 
-  private static class ObserverOverloadedStandardSchemeFactory implements SchemeFactory {
-    public ObserverOverloadedStandardScheme getScheme() {
-      return new ObserverOverloadedStandardScheme();
+  private static class StartedStandardSchemeFactory implements SchemeFactory {
+    public StartedStandardScheme getScheme() {
+      return new StartedStandardScheme();
     }
   }
 
-  private static class ObserverOverloadedStandardScheme extends StandardScheme<ObserverOverloaded> {
+  private static class StartedStandardScheme extends StandardScheme<Started> {
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot, ObserverOverloaded struct) throws org.apache.thrift.TException {
+    public void read(org.apache.thrift.protocol.TProtocol iprot, Started struct) throws org.apache.thrift.TException {
       org.apache.thrift.protocol.TField schemeField;
       iprot.readStructBegin();
       while (true)
@@ -316,7 +470,23 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
           break;
         }
         switch (schemeField.id) {
-          case 1: // OBSERVER
+          case 1: // HOST
+            if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              struct.host = iprot.readString();
+              struct.setHostIsSet(true);
+            } else { 
+              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+            }
+            break;
+          case 2: // PORT
+            if (schemeField.type == org.apache.thrift.protocol.TType.I32) {
+              struct.port = iprot.readI32();
+              struct.setPortIsSet(true);
+            } else { 
+              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+            }
+            break;
+          case 3: // OBSERVER
             if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
               struct.observer = iprot.readString();
               struct.setObserverIsSet(true);
@@ -335,10 +505,18 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
       struct.validate();
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot, ObserverOverloaded struct) throws org.apache.thrift.TException {
+    public void write(org.apache.thrift.protocol.TProtocol oprot, Started struct) throws org.apache.thrift.TException {
       struct.validate();
 
       oprot.writeStructBegin(STRUCT_DESC);
+      if (struct.host != null) {
+        oprot.writeFieldBegin(HOST_FIELD_DESC);
+        oprot.writeString(struct.host);
+        oprot.writeFieldEnd();
+      }
+      oprot.writeFieldBegin(PORT_FIELD_DESC);
+      oprot.writeI32(struct.port);
+      oprot.writeFieldEnd();
       if (struct.observer != null) {
         oprot.writeFieldBegin(OBSERVER_FIELD_DESC);
         oprot.writeString(struct.observer);
@@ -350,32 +528,52 @@ public class ObserverOverloaded extends TException implements org.apache.thrift.
 
   }
 
-  private static class ObserverOverloadedTupleSchemeFactory implements SchemeFactory {
-    public ObserverOverloadedTupleScheme getScheme() {
-      return new ObserverOverloadedTupleScheme();
+  private static class StartedTupleSchemeFactory implements SchemeFactory {
+    public StartedTupleScheme getScheme() {
+      return new StartedTupleScheme();
     }
   }
 
-  private static class ObserverOverloadedTupleScheme extends TupleScheme<ObserverOverloaded> {
+  private static class StartedTupleScheme extends TupleScheme<Started> {
 
     @Override
-    public void write(org.apache.thrift.protocol.TProtocol prot, ObserverOverloaded struct) throws org.apache.thrift.TException {
+    public void write(org.apache.thrift.protocol.TProtocol prot, Started struct) throws org.apache.thrift.TException {
       TTupleProtocol oprot = (TTupleProtocol) prot;
       BitSet optionals = new BitSet();
-      if (struct.isSetObserver()) {
+      if (struct.isSetHost()) {
         optionals.set(0);
       }
-      oprot.writeBitSet(optionals, 1);
+      if (struct.isSetPort()) {
+        optionals.set(1);
+      }
+      if (struct.isSetObserver()) {
+        optionals.set(2);
+      }
+      oprot.writeBitSet(optionals, 3);
+      if (struct.isSetHost()) {
+        oprot.writeString(struct.host);
+      }
+      if (struct.isSetPort()) {
+        oprot.writeI32(struct.port);
+      }
       if (struct.isSetObserver()) {
         oprot.writeString(struct.observer);
       }
     }
 
     @Override
-    public void read(org.apache.thrift.protocol.TProtocol prot, ObserverOverloaded struct) throws org.apache.thrift.TException {
+    public void read(org.apache.thrift.protocol.TProtocol prot, Started struct) throws org.apache.thrift.TException {
       TTupleProtocol iprot = (TTupleProtocol) prot;
-      BitSet incoming = iprot.readBitSet(1);
+      BitSet incoming = iprot.readBitSet(3);
       if (incoming.get(0)) {
+        struct.host = iprot.readString();
+        struct.setHostIsSet(true);
+      }
+      if (incoming.get(1)) {
+        struct.port = iprot.readI32();
+        struct.setPortIsSet(true);
+      }
+      if (incoming.get(2)) {
         struct.observer = iprot.readString();
         struct.setObserverIsSet(true);
       }

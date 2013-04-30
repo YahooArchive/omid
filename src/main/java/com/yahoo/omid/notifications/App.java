@@ -26,6 +26,7 @@ import com.netflix.curator.utils.ZKPaths;
 import com.netflix.curator.utils.ZKPaths.PathAndNode;
 import com.yahoo.omid.notifications.comm.ZNRecord;
 import com.yahoo.omid.notifications.metrics.ServerSideAppMetrics;
+import com.yahoo.omid.notifications.thrift.generated.Notification;
 
 /**
  * Represents an Application on the server side part of the notification framework. It contains the required meta-data
@@ -173,7 +174,7 @@ class App implements PathChildrenCacheListener {
                 + ", interestObserverMap=" + interestObserverMap + "]";
     }
 
-    public BlockingQueue<UpdatedInterestMsg> getHandoffQueue(Interest interest) {
+    public BlockingQueue<Notification> getHandoffQueue(Interest interest) {
         return appSandbox.getHandoffQueue(interest);
     }
 

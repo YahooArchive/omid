@@ -1,14 +1,19 @@
 namespace java com.yahoo.omid.notifications.thrift.generated
 
 struct Notification {
-	1: string observer,
-	2: binary rowKey
+	1: binary rowKey
 }
 
-exception ObserverOverloaded {
-	1: string observer
+struct Started {
+	1: string host,
+	2: i32 port,
+	3: string observer
 }
 
 service NotificationReceiverService {
-	void notify(1: Notification notif) throws (1:ObserverOverloaded e)
+	void serverStarted(1: Started started)
+}
+
+service NotificationService {
+	list<Notification> getNotifications()
 }

@@ -30,6 +30,7 @@ import com.netflix.curator.framework.recipes.cache.PathChildrenCacheListener;
 import com.netflix.curator.utils.ZKPaths;
 import com.yahoo.omid.notifications.comm.ZNRecord;
 import com.yahoo.omid.notifications.comm.ZNRecordSerializer;
+import com.yahoo.omid.notifications.thrift.generated.Notification;
 
 public class AppSandbox implements PathChildrenCacheListener {
 
@@ -123,7 +124,7 @@ public class AppSandbox implements PathChildrenCacheListener {
         return removedApp;
     }
 
-    public BlockingQueue<UpdatedInterestMsg> getHandoffQueue(Interest interest) {
+    public BlockingQueue<Notification> getHandoffQueue(Interest interest) {
         return scannerSandbox.getHandoffQueue(interest);
     }
 

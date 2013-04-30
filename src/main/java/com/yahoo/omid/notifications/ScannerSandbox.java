@@ -18,8 +18,10 @@ package com.yahoo.omid.notifications;
 import static com.yahoo.omid.notifications.Constants.NOTIFY_TRUE;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -52,6 +54,7 @@ import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.notifications.conf.DeltaOmidServerConfig;
 import com.yahoo.omid.notifications.metrics.ServerSideInterestMetrics;
+import com.yahoo.omid.notifications.thrift.generated.Notification;
 import com.yammer.metrics.core.TimerContext;
 
 public class ScannerSandbox {
@@ -65,7 +68,10 @@ public class ScannerSandbox {
 
     private Configuration config = HBaseConfiguration.create();
 
-    private Map<Interest, BlockingQueue<UpdatedInterestMsg>> handOffQueues = Maps.newHashMap();
+    // TODO make batch_size configurable
+    private static final int BATCH_SIZE = 500;
+
+    private Map<Interest, BlockingQueue<Notification>> handOffQueues = Maps.newHashMap();
     // private static final SynchronousQueue<UpdatedInterestMsg> handOffQueue = new
     // SynchronousQueue<UpdatedInterestMsg>(
     // true);
@@ -85,7 +91,8 @@ public class ScannerSandbox {
         // first initialize handoff queues
         for (Interest appInterest : app.getInterests()) {
             logger.info("Adding handoff queue for {}/{}", app.name, appInterest.toString());
-            handOffQueues.put(appInterest, new SynchronousQueue<UpdatedInterestMsg>(true));
+            // XXX use a different size for the queues?
+            handOffQueues.put(appInterest, new ArrayBlockingQueue<Notification>(BATCH_SIZE));
         }
 
         for (Interest appInterest : app.getInterests()) {
@@ -128,7 +135,7 @@ public class ScannerSandbox {
         return scanners;
     }
 
-    public BlockingQueue<UpdatedInterestMsg> getHandoffQueue(Interest interest) {
+    public BlockingQueue<Notification> getHandoffQueue(Interest interest) {
         return handOffQueues.get(interest);
     }
 
@@ -226,7 +233,7 @@ public class ScannerSandbox {
             private HTable table = null;
             private Random regionRoller = new Random();
             private Scan scan = new Scan();
-            private BlockingQueue<UpdatedInterestMsg> handOffQueue;
+            private BlockingQueue<Notification> handOffQueue;
 
             public Scanner(Interest interest) {
                 handOffQueue = getHandoffQueue(interest);
@@ -258,8 +265,7 @@ public class ScannerSandbox {
                                 int count = 0;
                                 for (Result result : scanner) { // TODO Maybe paginate the result traversal
                                     // TODO check consistent when loading only scanned families?
-                                    UpdatedInterestMsg msg = new UpdatedInterestMsg(interest.toStringRepresentation(),
-                                            result.getRow());
+                                    Notification msg = new Notification(ByteBuffer.wrap(result.getRow()));
                                     // logger.trace("Found update for {} in row {}", interest.toStringRepresentation(),
                                     // Bytes.toString(result.getRow()));
 
@@ -329,7 +335,7 @@ public class ScannerSandbox {
                 // scan.setLoadColumnFamiliesOnDemand(true);
                 // TODO configurable
                 // NOTE: apparently that does not get set from hbase.client.scanner.caching , so we set it manually here
-                scan.setCaching(500);
+                scan.setCaching(BATCH_SIZE);
             }
 
             private void chooseRandomRegionToScan() {

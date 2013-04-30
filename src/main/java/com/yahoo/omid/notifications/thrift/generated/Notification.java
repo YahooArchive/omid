@@ -33,8 +33,7 @@ import org.slf4j.LoggerFactory;
 public class Notification implements org.apache.thrift.TBase<Notification, Notification._Fields>, java.io.Serializable, Cloneable {
   private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("Notification");
 
-  private static final org.apache.thrift.protocol.TField OBSERVER_FIELD_DESC = new org.apache.thrift.protocol.TField("observer", org.apache.thrift.protocol.TType.STRING, (short)1);
-  private static final org.apache.thrift.protocol.TField ROW_KEY_FIELD_DESC = new org.apache.thrift.protocol.TField("rowKey", org.apache.thrift.protocol.TType.STRING, (short)2);
+  private static final org.apache.thrift.protocol.TField ROW_KEY_FIELD_DESC = new org.apache.thrift.protocol.TField("rowKey", org.apache.thrift.protocol.TType.STRING, (short)1);
 
   private static final Map<Class<? extends IScheme>, SchemeFactory> schemes = new HashMap<Class<? extends IScheme>, SchemeFactory>();
   static {
@@ -42,13 +41,11 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
     schemes.put(TupleScheme.class, new NotificationTupleSchemeFactory());
   }
 
-  public String observer; // required
   public ByteBuffer rowKey; // required
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
-    OBSERVER((short)1, "observer"),
-    ROW_KEY((short)2, "rowKey");
+    ROW_KEY((short)1, "rowKey");
 
     private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
 
@@ -63,9 +60,7 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
      */
     public static _Fields findByThriftId(int fieldId) {
       switch(fieldId) {
-        case 1: // OBSERVER
-          return OBSERVER;
-        case 2: // ROW_KEY
+        case 1: // ROW_KEY
           return ROW_KEY;
         default:
           return null;
@@ -110,8 +105,6 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
   public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
   static {
     Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-    tmpMap.put(_Fields.OBSERVER, new org.apache.thrift.meta_data.FieldMetaData("observer", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-        new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
     tmpMap.put(_Fields.ROW_KEY, new org.apache.thrift.meta_data.FieldMetaData("rowKey", org.apache.thrift.TFieldRequirementType.DEFAULT, 
         new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING        , true)));
     metaDataMap = Collections.unmodifiableMap(tmpMap);
@@ -122,11 +115,9 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
   }
 
   public Notification(
-    String observer,
     ByteBuffer rowKey)
   {
     this();
-    this.observer = observer;
     this.rowKey = rowKey;
   }
 
@@ -134,9 +125,6 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
    * Performs a deep copy on <i>other</i>.
    */
   public Notification(Notification other) {
-    if (other.isSetObserver()) {
-      this.observer = other.observer;
-    }
     if (other.isSetRowKey()) {
       this.rowKey = org.apache.thrift.TBaseHelper.copyBinary(other.rowKey);
 ;
@@ -149,32 +137,7 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
 
   @Override
   public void clear() {
-    this.observer = null;
     this.rowKey = null;
-  }
-
-  public String getObserver() {
-    return this.observer;
-  }
-
-  public Notification setObserver(String observer) {
-    this.observer = observer;
-    return this;
-  }
-
-  public void unsetObserver() {
-    this.observer = null;
-  }
-
-  /** Returns true if field observer is set (has been assigned a value) and false otherwise */
-  public boolean isSetObserver() {
-    return this.observer != null;
-  }
-
-  public void setObserverIsSet(boolean value) {
-    if (!value) {
-      this.observer = null;
-    }
   }
 
   public byte[] getRowKey() {
@@ -213,14 +176,6 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
 
   public void setFieldValue(_Fields field, Object value) {
     switch (field) {
-    case OBSERVER:
-      if (value == null) {
-        unsetObserver();
-      } else {
-        setObserver((String)value);
-      }
-      break;
-
     case ROW_KEY:
       if (value == null) {
         unsetRowKey();
@@ -234,9 +189,6 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
 
   public Object getFieldValue(_Fields field) {
     switch (field) {
-    case OBSERVER:
-      return getObserver();
-
     case ROW_KEY:
       return getRowKey();
 
@@ -251,8 +203,6 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
     }
 
     switch (field) {
-    case OBSERVER:
-      return isSetObserver();
     case ROW_KEY:
       return isSetRowKey();
     }
@@ -271,15 +221,6 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
   public boolean equals(Notification that) {
     if (that == null)
       return false;
-
-    boolean this_present_observer = true && this.isSetObserver();
-    boolean that_present_observer = true && that.isSetObserver();
-    if (this_present_observer || that_present_observer) {
-      if (!(this_present_observer && that_present_observer))
-        return false;
-      if (!this.observer.equals(that.observer))
-        return false;
-    }
 
     boolean this_present_rowKey = true && this.isSetRowKey();
     boolean that_present_rowKey = true && that.isSetRowKey();
@@ -306,16 +247,6 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
     int lastComparison = 0;
     Notification typedOther = (Notification)other;
 
-    lastComparison = Boolean.valueOf(isSetObserver()).compareTo(typedOther.isSetObserver());
-    if (lastComparison != 0) {
-      return lastComparison;
-    }
-    if (isSetObserver()) {
-      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.observer, typedOther.observer);
-      if (lastComparison != 0) {
-        return lastComparison;
-      }
-    }
     lastComparison = Boolean.valueOf(isSetRowKey()).compareTo(typedOther.isSetRowKey());
     if (lastComparison != 0) {
       return lastComparison;
@@ -346,14 +277,6 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
     StringBuilder sb = new StringBuilder("Notification(");
     boolean first = true;
 
-    sb.append("observer:");
-    if (this.observer == null) {
-      sb.append("null");
-    } else {
-      sb.append(this.observer);
-    }
-    first = false;
-    if (!first) sb.append(", ");
     sb.append("rowKey:");
     if (this.rowKey == null) {
       sb.append("null");
@@ -404,15 +327,7 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
           break;
         }
         switch (schemeField.id) {
-          case 1: // OBSERVER
-            if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
-              struct.observer = iprot.readString();
-              struct.setObserverIsSet(true);
-            } else { 
-              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
-            }
-            break;
-          case 2: // ROW_KEY
+          case 1: // ROW_KEY
             if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
               struct.rowKey = iprot.readBinary();
               struct.setRowKeyIsSet(true);
@@ -435,11 +350,6 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
       struct.validate();
 
       oprot.writeStructBegin(STRUCT_DESC);
-      if (struct.observer != null) {
-        oprot.writeFieldBegin(OBSERVER_FIELD_DESC);
-        oprot.writeString(struct.observer);
-        oprot.writeFieldEnd();
-      }
       if (struct.rowKey != null) {
         oprot.writeFieldBegin(ROW_KEY_FIELD_DESC);
         oprot.writeBinary(struct.rowKey);
@@ -463,16 +373,10 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
     public void write(org.apache.thrift.protocol.TProtocol prot, Notification struct) throws org.apache.thrift.TException {
       TTupleProtocol oprot = (TTupleProtocol) prot;
       BitSet optionals = new BitSet();
-      if (struct.isSetObserver()) {
+      if (struct.isSetRowKey()) {
         optionals.set(0);
       }
-      if (struct.isSetRowKey()) {
-        optionals.set(1);
-      }
-      oprot.writeBitSet(optionals, 2);
-      if (struct.isSetObserver()) {
-        oprot.writeString(struct.observer);
-      }
+      oprot.writeBitSet(optionals, 1);
       if (struct.isSetRowKey()) {
         oprot.writeBinary(struct.rowKey);
       }
@@ -481,12 +385,8 @@ public class Notification implements org.apache.thrift.TBase<Notification, Notif
     @Override
     public void read(org.apache.thrift.protocol.TProtocol prot, Notification struct) throws org.apache.thrift.TException {
       TTupleProtocol iprot = (TTupleProtocol) prot;
-      BitSet incoming = iprot.readBitSet(2);
+      BitSet incoming = iprot.readBitSet(1);
       if (incoming.get(0)) {
-        struct.observer = iprot.readString();
-        struct.setObserverIsSet(true);
-      }
-      if (incoming.get(1)) {
         struct.rowKey = iprot.readBinary();
         struct.setRowKeyIsSet(true);
       }
