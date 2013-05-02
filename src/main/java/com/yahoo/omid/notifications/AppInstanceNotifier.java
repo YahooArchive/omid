@@ -4,6 +4,7 @@ import java.lang.reflect.Field;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -71,7 +72,13 @@ public class AppInstanceNotifier extends Thread {
             this.app.logger.error("Server didn't start, aborting", e);
             return;
         }
-        HostAndPort hostAndPort = server.getHostAndPort();
+        HostAndPort hostAndPort;
+        try {
+            hostAndPort = server.getHostAndPort();
+        } catch (UnknownHostException e) {
+            this.app.logger.error("Could not get server host and port, aborting", e);
+            return;
+        }
 
         String host = hostAndPort.getHostText();
         int port = hostAndPort.getPort();
@@ -119,7 +126,7 @@ public class AppInstanceNotifier extends Thread {
     }
 
     /**
-     * Implements the NotificationService, clients pull notifications from here 
+     * Implements the NotificationService, clients pull notifications from here
      */
     private static class NotificationServer implements Runnable, NotificationService.Iface {
 
@@ -178,9 +185,9 @@ public class AppInstanceNotifier extends Thread {
             latch.await();
         }
 
-        public HostAndPort getHostAndPort() {
+        public HostAndPort getHostAndPort() throws UnknownHostException {
             InetSocketAddress isa = (InetSocketAddress) socket.getLocalSocketAddress();
-            return HostAndPort.fromParts(isa.getHostName(), isa.getPort());
+            return HostAndPort.fromParts(InetAddress.getLocalHost().getHostAddress(), isa.getPort());
         }
     }
 }
