@@ -18,11 +18,11 @@ public class OmidClientMetrics {
     private static Logger logger = LoggerFactory.getLogger(OmidClientMetrics.class);
 
     public enum Timers {
-        COMMIT, ABORT, QUERY, BEGIN, GET, PUT, DELETE, SCANNER, NEXT, CLEANUP, FLUSH
+        COMMIT, ABORT, QUERY, BEGIN, GET, PUT, DELETE, SCANNER, NEXT, CLEANUP, FLUSH_COMMITS, FILTER_READS
     };
 
     public enum Meters {
-        COMMIT, ABORT, QUERY, BEGIN, GET, PUT, DELETE, SCANNER, NEXT
+        EXTRA_VERSIONS
     };
 
     private Map<Timers, Timer> timers;
@@ -47,5 +47,9 @@ public class OmidClientMetrics {
 
     public void count(Meters m) {
         meters.get(m).mark();
+    }
+
+    public void count(long count, Meters m) {
+        meters.get(m).mark(count);
     }
 }

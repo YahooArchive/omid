@@ -9,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.yammer.metrics.reporting.ConsoleReporter;
-import com.yammer.metrics.reporting.CsvReporter;
 
 public class MetricsUtils {
 
@@ -43,7 +42,7 @@ public class MetricsUtils {
                 }
                 logger.info("Reporting metrics through csv files in directory [{}] with frequency of [{}] [{}]",
                         new String[] { outputDir, String.valueOf(period), timeUnit.name() });
-                CsvReporter.enable(new File(outputDir), period, timeUnit);
+                CsvExtendedReporter.enable(new File(outputDir), period, timeUnit);
             } else {
                 long period = Long.valueOf(matcher.group(2));
                 TimeUnit timeUnit = TimeUnit.valueOf(matcher.group(3));

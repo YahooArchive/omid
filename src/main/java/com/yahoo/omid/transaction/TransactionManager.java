@@ -36,7 +36,6 @@ import com.yahoo.omid.client.SyncAbortCompleteCallback;
 import com.yahoo.omid.client.SyncCommitCallback;
 import com.yahoo.omid.client.SyncCreateCallback;
 import com.yahoo.omid.client.TSOClient;
-import com.yahoo.omid.client.metrics.OmidClientMetrics.Meters;
 import com.yahoo.omid.client.metrics.OmidClientMetrics.Timers;
 import com.yammer.metrics.core.TimerContext;
 
@@ -78,7 +77,6 @@ public class TransactionManager {
         SyncCreateCallback cb = new SyncCreateCallback();
         TimerContext timer = null;
         try {
-            tsoclient.getMetrics().count(Meters.BEGIN);
             timer = tsoclient.getMetrics().startTimer(Timers.BEGIN);
             tsoclient.getNewTimestamp(cb);
             cb.await();
@@ -121,7 +119,6 @@ public class TransactionManager {
         }
 
         SyncCommitCallback cb = new SyncCommitCallback();
-        tsoclient.getMetrics().count(Meters.COMMIT);
         TimerContext commitTimer = tsoclient.getMetrics().startTimer(Timers.COMMIT);
         try {
             tsoclient.commit(transaction.getStartTimestamp(), transaction.getRows(), cb);
@@ -153,7 +150,7 @@ public class TransactionManager {
      * @return true if the flush operations succeeded, false otherwise
      */
     private boolean flushTables(Transaction transaction) {
-        TimerContext flushTimer = tsoclient.getMetrics().startTimer(Timers.FLUSH);
+        TimerContext flushTimer = tsoclient.getMetrics().startTimer(Timers.FLUSH_COMMITS);
         boolean result = true;
         for (HTable writtenTable : transaction.getWrittenTables()) {
             try {
@@ -182,7 +179,6 @@ public class TransactionManager {
 
         TimerContext timer = null;
         try {
-            tsoclient.getMetrics().count(Meters.ABORT);
             timer = tsoclient.getMetrics().startTimer(Timers.ABORT);
             tsoclient.abort(transaction.getStartTimestamp());
         } catch (Exception e) {

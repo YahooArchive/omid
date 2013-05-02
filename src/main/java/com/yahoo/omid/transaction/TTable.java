@@ -95,8 +95,7 @@ public class TTable {
      *             if a remote or network exception occurs.
      */
     public Result get(Transaction transaction, final Get get) throws IOException {
-        transaction.tsoclient.getMetrics().count(Meters.GET);
-        TimerContext timer = transaction.tsoclient.getMetrics().startTimer(Timers.GET);
+        TimerContext getTimer = transaction.tsoclient.getMetrics().startTimer(Timers.GET);
         
         final int requestedVersions = (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD);
         final long readTimestamp = transaction.getStartTimestamp();
@@ -120,12 +119,19 @@ public class TTable {
         LOG.trace("Initial Get = {}", tsget);
         getsPerformed++;
 
+        TimerContext filterTimer = null;
         try {
             // Return the KVs that belong to the transaction snapshot, ask for more
             // versions if needed
-            return new Result(filter(transaction, table.get(tsget).list(), requestedVersions));
+            List<KeyValue> rawResult = table.get(tsget).list();
+
+            filterTimer = transaction.tsoclient.getMetrics().startTimer(Timers.FILTER_READS);
+            List<KeyValue> filtered = filter(transaction, rawResult, requestedVersions);
+
+            return new Result(filtered);
         } finally {
-            timer.stop();
+            getTimer.stop();
+            if (filterTimer != null) filterTimer.stop();
         }
     }
 
@@ -138,7 +144,6 @@ public class TTable {
      *             if a remote or network exception occurs.
      */
     public void delete(Transaction transaction, Delete delete) throws IOException {
-        transaction.tsoclient.getMetrics().count(Meters.DELETE);
         TimerContext timer = transaction.tsoclient.getMetrics().startTimer(Timers.DELETE);
         
         final long startTimestamp = transaction.getStartTimestamp();
@@ -207,7 +212,6 @@ public class TTable {
      * @since 0.20.0
      */
     public void put(Transaction transaction, Put put) throws IOException {
-        transaction.tsoclient.getMetrics().count(Meters.PUT);
         TimerContext timer = transaction.tsoclient.getMetrics().startTimer(Timers.PUT);
 
         final long startTimestamp = transaction.getStartTimestamp();
@@ -242,7 +246,6 @@ public class TTable {
      *             if a remote or network exception occurs.
      */
     public ResultScanner getScanner(Transaction transaction, Scan scan) throws IOException {
-        transaction.tsoclient.getMetrics().count(Meters.SCANNER);
         TimerContext timer = transaction.tsoclient.getMetrics().startTimer(Timers.SCANNER);
 
         Scan tsscan = new Scan(scan);
@@ -348,6 +351,7 @@ public class TTable {
         if (!pendingGets.isEmpty()) {
             Result[] results = table.get(pendingGets);
             for (Result r : results) {
+                transaction.tsoclient.getMetrics().count(r.size(), Meters.EXTRA_VERSIONS);
                 filtered.addAll(filter(transaction, r.list(), requestVersions));
             }
         }
@@ -369,20 +373,21 @@ public class TTable {
 
         @Override
         public Result next() throws IOException {
-            state.tsoclient.getMetrics().count(Meters.NEXT);
-            TimerContext timer = state.tsoclient.getMetrics().startTimer(Timers.NEXT);
+            TimerContext nextTimer = state.tsoclient.getMetrics().startTimer(Timers.NEXT);
             List<KeyValue> filteredResult = Collections.emptyList();
             while (filteredResult.isEmpty()) {
                 Result result = super.next();
                 if (result == null) {
                     return null;
                 }
+                TimerContext filterTimer = state.tsoclient.getMetrics().startTimer(Timers.FILTER_READS);
                 filteredResult = filter(state, result.list(), maxVersions);
+                filterTimer.stop();
             }
             try {
                 return new Result(filteredResult);
             } finally {
-                timer.stop();
+                nextTimer.stop();
             }
         }
 
