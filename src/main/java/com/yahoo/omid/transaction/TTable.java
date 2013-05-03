@@ -304,7 +304,7 @@ public class TTable {
                 // New column, if we didn't read a committed value for last one,
                 // add it to pending
                 if (!validRead) {
-                    pendingGet.setTimeRange(0, oldestUncommittedTS - 1);
+                    pendingGet.setTimeRange(0, oldestUncommittedTS);
                     pendingGets.add(pendingGet);
                     LOG.trace("Adding pending get {}", pendingGet);
                 }
@@ -342,7 +342,7 @@ public class TTable {
             }
         }
         if (!validRead) {
-            pendingGet.setTimeRange(0, oldestUncommittedTS - 1);
+            pendingGet.setTimeRange(0, oldestUncommittedTS);
             pendingGets.add(pendingGet);
             LOG.trace("Adding pending get {}", pendingGet);
         }
