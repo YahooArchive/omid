@@ -25,7 +25,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
@@ -34,7 +33,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.net.HostAndPort;
 import com.yahoo.omid.notifications.metrics.ClientSideAppMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
 import com.yahoo.omid.transaction.RollbackException;
@@ -59,19 +57,19 @@ public class ObserverWrapper implements Runnable {
 
     private TTable txTable;
 
+    private int id;
+
     public static final int PULL_TIMEOUT_MS = 100;
 
-    public ObserverWrapper(final Observer observer, String omidHostAndPort, ClientSideAppMetrics metrics,
-            BlockingQueue<Notification> notifQueue) throws IOException {
+    public ObserverWrapper(final Observer observer, ClientSideAppMetrics metrics,
+            BlockingQueue<Notification> notifQueue, Configuration configuration, int id) throws IOException {
         this.observer = observer;
-        final HostAndPort hp = HostAndPort.fromString(omidHostAndPort);
         this.metrics = metrics;
         this.notifQueue = notifQueue;
+        this.id = id;
 
         // Configure connection with TSO
-        tsoClientHbaseConf = HBaseConfiguration.create();
-        tsoClientHbaseConf.set("tso.host", hp.getHostText());
-        tsoClientHbaseConf.setInt("tso.port", hp.getPort());
+        this.tsoClientHbaseConf = configuration;
 
         try {
             tm = new TransactionManager(tsoClientHbaseConf);
@@ -79,7 +77,6 @@ public class ObserverWrapper implements Runnable {
             logger.error("Cannot create transaction manager", e);
             return;
         }
-        txTable = new TTable(tsoClientHbaseConf, observer.getInterest().getTable());
     }
 
     /**
@@ -91,6 +88,13 @@ public class ObserverWrapper implements Runnable {
 
     @Override
     public void run() {
+
+        try {
+            txTable = new TTable(tsoClientHbaseConf, observer.getInterest().getTable());
+        } catch (IOException e1) {
+            logger.error("cannot connect to table", e1);
+            return;
+        }
 
         logger.info("Starting observer wrapper for observer {} for interest {}", observer.getName(), observer
                 .getInterest().toStringRepresentation());

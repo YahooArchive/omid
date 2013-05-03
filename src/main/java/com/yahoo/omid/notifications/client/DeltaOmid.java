@@ -29,12 +29,15 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.io.Closeables;
+import com.google.common.net.HostAndPort;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
@@ -114,6 +117,11 @@ public class DeltaOmid implements IncrementalApplication {
 
         logger.info("Creating instance for DeltaOmid App {}", this.name);
         List<String> observersInterests = new ArrayList<String>();
+
+        Configuration hbaseConfig = HBaseConfiguration.create();
+        hbaseConfig.set("tso.host", HostAndPort.fromString(conf.getOmidServer()).getHostText());
+        hbaseConfig.setInt("tso.port", HostAndPort.fromString(conf.getOmidServer()).getPort());
+
         for (final Observer observer : builder.observers) {
             String obsName = observer.getName();
             BlockingQueue<Notification> observerQueue = new ArrayBlockingQueue<Notification>(
@@ -126,7 +134,7 @@ public class DeltaOmid implements IncrementalApplication {
             ExecutorService observersExecutor = Executors.newFixedThreadPool(parallelism, new ThreadFactoryBuilder()
                     .setNameFormat("Observer-[" + obsName + "]-processor-%d").build());
             for (int i = 0; i < parallelism; i++) {
-                observersExecutor.submit(new ObserverWrapper(observer, conf.getOmidServer(), metrics, observerQueue));
+                observersExecutor.submit(new ObserverWrapper(observer, metrics, observerQueue, hbaseConfig, i));
             }
             Interest interest = observer.getInterest();
             if (interest == null) {

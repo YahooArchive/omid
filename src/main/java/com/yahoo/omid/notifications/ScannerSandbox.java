@@ -27,7 +27,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
@@ -241,22 +240,14 @@ public class ScannerSandbox {
 
             @Override
             public Boolean call() { // Scan and notify
-                long scanIntervalMs = conf.getScanIntervalMs();
                 ResultScanner scanner = null;
                 try {
                     table = new HTable(config, interest.getTable());
-                    long initTimeMillis = System.currentTimeMillis();
                     while (!Thread.currentThread().isInterrupted()) {
                         scan = new Scan();
                         configureBasicScanProperties();
 
                         try {
-                            if (System.currentTimeMillis() < (initTimeMillis + scanIntervalMs)) {
-                                long waitTime = scanIntervalMs - (System.currentTimeMillis() - initTimeMillis);
-                                logger.trace(interest + " scanner waiting " + waitTime + " millis");
-                                Thread.sleep(waitTime);
-                            }
-                            initTimeMillis = System.currentTimeMillis();
                             chooseRandomRegionToScan();
                             scanner = table.getScanner(scan);
 
