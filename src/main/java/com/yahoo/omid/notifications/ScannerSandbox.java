@@ -27,7 +27,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
@@ -95,6 +94,7 @@ public class ScannerSandbox {
             handOffQueues.put(appInterest, new ArrayBlockingQueue<Notification>(BATCH_SIZE));
         }
 
+        logger.info("app interests: " + app.getInterests());
         for (Interest appInterest : app.getInterests()) {
             ScannerContainer scannerContainer = scanners.get(appInterest);
             if (scannerContainer == null) {
@@ -169,8 +169,9 @@ public class ScannerSandbox {
                     "Scanner container [" + interest + "]").build());
             // Generate scaffolding on HBase to maintain the information required to
             // perform notifications
-            htableLock.lock();
             HBaseAdmin admin = new HBaseAdmin(config);
+            logger.info("Starting scanner container");
+            htableLock.lock();
             try { // TODO: This code should not be here in a production system
                   // because it disables the table to add a CF
                 HTableDescriptor tableDesc = admin.getTableDescriptor(this.interest.getTableAsHBaseByteArray());
@@ -186,15 +187,10 @@ public class ScannerSandbox {
                                                         // related to the notif.
                                                         // framework
 
-                    // TODO I think that coprocessors can not be added dynamically.
-                    // It has been moved to OmidInfrastructure
-                    // Map<String, String> params = new HashMap<String, String>();
-                    // tableDesc.addCoprocessor(TransactionCommittedRegionObserver.class.getName(),
-                    // null, Coprocessor.PRIORITY_USER, params);
                     admin.enableTable(tableName);
-                    logger.trace("Column family metadata added!!!");
+                    logger.info("Column family metadata added");
                 } else {
-                    logger.trace("Column family metadata was already added!!! Skipping...");
+                    logger.info("Column family metadata was already added, skipping...");
                 }
             } catch (Exception e) {
                 e.printStackTrace();

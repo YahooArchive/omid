@@ -17,12 +17,20 @@
 package com.yahoo.omid;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
+
+import java.io.IOException;
+
+import junit.framework.Assert;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -36,8 +44,68 @@ import com.yahoo.omid.transaction.TransactionManager;
 
 public class TestBasicTransaction extends OmidTestBase {
    private static final Log LOG = LogFactory.getLog(TestBasicTransaction.class);
+
+   @Test
+   public void testDifferentConnections() throws Exception {
+       Thread[] threads = new Thread[2];
+
+       Configuration conf = hbaseConf;
+       
+       for (int i = 0; i < threads.length; ++i) {
+           conf = getConf(conf);
+           HTable table = new HTable(conf, TEST_TABLE);
+           threads[i] = new Thread(new Pounder(table, 10000));
+       }
+
+//       assertNotSame(table1.getConnection(), table2.getConnection());
+
+       LOG.info("Threads created");
+       for (int i = 0; i < threads.length; ++i) {
+           threads[i].start();
+       }
+       LOG.info("Threads started");
+       for (int i = 0; i < threads.length; ++i) {
+           threads[i].join();
+       }
+   }
    
+   Configuration getConf(Configuration conf) {
+       Configuration newConf = new Configuration(conf);
+//       newConf.set(HConstants.ZOOKEEPER_RECOVERABLE_WAITTIME, 
+//               Integer.toString(conf.getInt(HConstants.ZOOKEEPER_RECOVERABLE_WAITTIME, 0) + 1));
+       return newConf;
+   }
    
+    private class Pounder implements Runnable {
+        private HTable table;
+        private int iterations;
+
+        Pounder(HTable table, int iterations) {
+            this.table = table;
+            this.iterations = iterations;
+        }
+
+        @Override
+        public void run() {
+            StringBuilder sb = new StringBuilder();
+            while (sb.length() < 1000) {
+                sb.append("sdfjslkdfjaksjadkvjnwoienvalsnvlwaknvilsndvlaisjvlawnleivanwoeiafnowijfoaiwjnfoaiwjnafoirej");
+            }
+            byte[] bytes = Bytes.toBytes(sb.toString());
+            Put put = new Put(bytes);
+            put.add(Bytes.toBytes(TEST_FAMILY), Bytes.toBytes("col"), bytes);
+            Get get = new Get(bytes); 
+            for (int i = 0; i < iterations; ++i) {
+                try {
+                    table.put(put);
+                    table.get(get);
+                } catch (IOException e) {
+                    LOG.error("Something wrong", e);
+                    Assert.fail(e.toString());
+                }
+            }
+        }
+    }
     @Test
     public void testTimestampsOfTwoRowsInstertedAfterCommitOfSingleTransactionAreEquals()
             throws Exception {

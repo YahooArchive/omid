@@ -32,8 +32,8 @@ public class ServerSideAppMetrics {
         }
     }
 
-    public void notificationSentEvent() {
-        notificationsMeter.mark();
+    public void notificationSentEvent(long count) {
+        notificationsMeter.mark(count);
     }
 
     public TimerContext startNotificationSendTimer(Interest interest) {

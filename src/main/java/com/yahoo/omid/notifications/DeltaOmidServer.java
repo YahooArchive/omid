@@ -31,6 +31,8 @@ import org.slf4j.LoggerFactory;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.netflix.curator.retry.ExponentialBackoffRetry;
+import com.yahoo.omid.notifications.comm.ZNRecord;
+import com.yahoo.omid.notifications.comm.ZNRecordSerializer;
 import com.yahoo.omid.notifications.conf.DeltaOmidServerConfig;
 import com.yahoo.omid.notifications.conf.ServerConfiguration;
 import com.yahoo.omid.notifications.metrics.MetricsUtils;
@@ -44,6 +46,10 @@ public class DeltaOmidServer {
     private static ScannerSandbox scannerSandbox;
 
     private static AppSandbox appSandbox;
+
+    private static Coordinator coordinator;
+
+    private static ZNRecordSerializer serializer;
 
     /**
      * This is where all starts...
@@ -74,46 +80,23 @@ public class DeltaOmidServer {
         zkClient.start();
         logger.info("ZK client started");
 
+        serializer = new ZNRecordSerializer();
+
         scannerSandbox = new ScannerSandbox(conf);
         logger.info("Scanner Sandbox started");
 
-        appSandbox = new AppSandbox(zkClient, scannerSandbox);
+        coordinator = new ZkCoordinator(zkClient);
+
+        appSandbox = new AppSandbox(zkClient, scannerSandbox, coordinator);
         logger.info("App Sandbox started");
 
-        createOrRecoverServerConfigFromZkTree();
+        coordinator.registerAppSandbox(appSandbox);
 
         logger.info("ooo Omid ooo - Delta Omid Notification Server started - ooo Omid ooo");
 
         CountDownLatch countDownLatch = new CountDownLatch(1);
         countDownLatch.await();
 
-    }
-
-    private static void createOrRecoverServerConfigFromZkTree() throws Exception {
-        logger.info("Configuring server based on current ZK structure");
-        Stat s = zkClient.checkExists().forPath(ZkTreeUtils.getRootNodePath());
-        if (s == null) {
-            createZkTree();
-        } else {
-            recoverCurrentZkAppBranch();
-        }
-        appSandbox.startWatchingAppsNode();
-        logger.info("Server configuration finished");
-    }
-
-    private static void createZkTree() throws Exception {
-        logger.info("Creating a new ZK Tree");
-        zkClient.create().creatingParentsIfNeeded().forPath(ZkTreeUtils.getAppsNodePath());
-        zkClient.create().creatingParentsIfNeeded().forPath(ZkTreeUtils.getServersNodePath());
-    }
-
-    private static void recoverCurrentZkAppBranch() throws Exception {
-        logger.info("Recovering existing ZK Tree");
-        String appsNodePath = ZkTreeUtils.getAppsNodePath();
-        List<String> appNames = zkClient.getChildren().forPath(appsNodePath);
-        for (String appName : appNames) {
-            appSandbox.createApplication(appName);
-        }
     }
 
     public static boolean waitForServerUp(String targetHostPort, long timeout) {

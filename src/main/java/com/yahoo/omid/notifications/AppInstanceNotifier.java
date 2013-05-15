@@ -11,23 +11,17 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.TNonblockingServer;
 import org.apache.thrift.server.TServer;
-import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TNonblockingServerSocket;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.net.HostAndPort;
+import com.yahoo.omid.notifications.metrics.ServerSideAppMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
-import com.yahoo.omid.notifications.thrift.generated.NotificationReceiverService;
 import com.yahoo.omid.notifications.thrift.generated.NotificationService;
-import com.yahoo.omid.notifications.thrift.generated.Started;
 
 /**
  * There's one actor per application instance deployed
@@ -39,31 +33,28 @@ public class AppInstanceNotifier extends Thread {
      * 
      */
     private final App app;
-    private HostAndPort hostAndPort;
-    private TTransport transport;
-    private NotificationReceiverService.Client appInstanceClient;
     private Interest interest;
     public static final int HOLDOFF_TIME_MS = 100;
     private Thread serverThread;
+    private Coordinator coordinator;
 
     private static final Logger logger = LoggerFactory.getLogger(AppInstanceNotifier.class);
 
-    public AppInstanceNotifier(App app, Interest interest, HostAndPort hostAndPort) {
-        super("[" + app.name + "]/[" + hostAndPort.toString() + "]-notifier");
+    public AppInstanceNotifier(App app, Interest interest, Coordinator coordinator) {
+        super("[" + app.name + "]/-notifier");
         this.app = app;
         this.interest = interest;
-        this.hostAndPort = hostAndPort;
+        this.coordinator = coordinator;
     }
 
     @Override
     public void run() {
-        if (!preStart()) {
-            return;
-        }
 
         // Start NotificationService
 
-        NotificationServer server = new NotificationServer(app.getHandoffQueue(interest));
+        NotificationServer server = new NotificationServer(app.getHandoffQueue(interest), app.metrics);
+
+        // TODO use executor
         serverThread = new Thread(server, "NotificationServer-" + interest);
         serverThread.start();
         try {
@@ -80,45 +71,15 @@ public class AppInstanceNotifier extends Thread {
             return;
         }
 
-        String host = hostAndPort.getHostText();
-        int port = hostAndPort.getPort();
         String observer = this.app.interestObserverMap.get(interest);
 
         if (observer == null) {
             this.app.logger.warn(this.app.name + " app notifier could not send notification to instance on "
                     + hostAndPort.toString() + " because target observer has been removed.");
         }
+        coordinator.registerInstanceNotifier(hostAndPort, app.name, observer);
 
-        // Notify interested clients that the server is running on the given host and port
-        // TODO handle new clients
-        try {
-            Started started = new Started(host, port, observer);
-            appInstanceClient.serverStarted(started);
-        } catch (TException te) {
-            this.app.logger.warn(
-                    "Communication with app instance [{}]/[{}] is broken. Will try to reconnect after {} ms.",
-                    new String[] { app.name, hostAndPort.toString(), String.valueOf(HOLDOFF_TIME_MS) }, te);
-        }
-
-        if (transport != null) {
-            transport.close();
-        }
         this.app.logger.trace("App Notifier stopped");
-    }
-
-    public boolean preStart() {
-        // Start Thrift communication
-        transport = new TFramedTransport(new TSocket(hostAndPort.getHostText(), hostAndPort.getPort()));
-        TProtocol protocol = new TBinaryProtocol(transport);
-        appInstanceClient = new NotificationReceiverService.Client(protocol);
-        try {
-            transport.open();
-        } catch (TTransportException e) {
-            logger.error("Cannot initialize communication with {}", hostAndPort.toString(), e);
-            return false;
-        }
-        this.app.logger.trace("App Notifier started");
-        return true;
     }
 
     public void cancel() {
@@ -136,9 +97,11 @@ public class AppInstanceNotifier extends Thread {
         private TServer server;
         private CountDownLatch latch = new CountDownLatch(1);
         private BlockingQueue<Notification> handoffQueue;
+        private ServerSideAppMetrics metrics;
 
-        public NotificationServer(BlockingQueue<Notification> handoffQueue) {
+        public NotificationServer(BlockingQueue<Notification> handoffQueue, ServerSideAppMetrics metrics) {
             this.handoffQueue = handoffQueue;
+            this.metrics = metrics;
         }
 
         @Override
@@ -177,7 +140,8 @@ public class AppInstanceNotifier extends Thread {
         public List<Notification> getNotifications() throws TException {
             List<Notification> notifications = new ArrayList<Notification>();
             // TODO use drainTo(notification, maxBatchSize)
-            handoffQueue.drainTo(notifications);
+            int count = handoffQueue.drainTo(notifications);
+            metrics.notificationSentEvent(count);
             return notifications;
         }
 
