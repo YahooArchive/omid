@@ -28,6 +28,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.recipes.cache.ChildData;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCache;
+import com.netflix.curator.framework.recipes.cache.PathChildrenCache.StartMode;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheEvent;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheListener;
 import com.netflix.curator.utils.ZKPaths;
@@ -70,10 +71,7 @@ public class NotificationManager {
                     .setNameFormat("ZK App Listener [" + path + "]").build());
             pcc.getListenable().addListener(listener);
             serverCaches.add(pcc);
-            pcc.start(true);
-            for (ChildData cd : pcc.getCurrentData()) {
-                addServer(cd.getPath());
-            }
+            pcc.start(StartMode.POST_INITIALIZED_EVENT);
         }
     }
 
@@ -90,6 +88,12 @@ public class NotificationManager {
         @Override
         public void childEvent(CuratorFramework client, PathChildrenCacheEvent event) throws Exception {
             switch (event.getType()) {
+                case INITIALIZED: {
+                    logger.trace("Cache initialized: {}", event.getData().getPath());
+                    for (ChildData cd : event.getInitialData()) {
+                        addServer(cd.getPath());
+                    }
+                }
                 case CHILD_ADDED: {
                     logger.trace("Server Node added : {}", event.getData().getPath());
 
@@ -98,12 +102,13 @@ public class NotificationManager {
                 }
                 case CHILD_UPDATED: {
                     logger.trace("Server Node changed: " + event.getData().getPath());
-                    // TODO remove and add
+                    removeServer(event.getData().getPath());
+                    addServer(event.getData().getPath());
                     break;
                 }
                 case CHILD_REMOVED:
                     logger.trace("Server Node removed: " + event.getData().getPath());
-                    // TODO remove
+                    removeServer(event.getData().getPath());
                     break;
                 case CONNECTION_LOST:
                     logger.error("Lost connection with ZooKeeper ");
@@ -120,13 +125,27 @@ public class NotificationManager {
             }
         }
     }
+    
+    private HostAndPort getServerFromPath(String path) {
+        String server = ZKPaths.getNodeFromPath(path);
+        return HostAndPort.fromString(server);
+    }
+
+    private String getObserverFromPath(String path) {
+        String parent = ZKPaths.getPathAndNode(path).getPath();
+        String observer = ZKPaths.getNodeFromPath(parent);
+        return observer;
+    }
 
     public void addServer(String path) throws TException {
-        PathAndNode serverAndPath = ZKPaths.getPathAndNode(path);
-        String server = serverAndPath.getNode();
-        String observer = ZKPaths.getNodeFromPath(serverAndPath.getPath());
-
-        HostAndPort hostAndPort = HostAndPort.fromString(server);
+        String observer = getObserverFromPath(path);
+        HostAndPort hostAndPort = getServerFromPath(path);
         dispatcher.serverStarted(hostAndPort, observer);
+    }
+
+    public void removeServer(String path) throws TException {
+        String observer = getObserverFromPath(path);
+        HostAndPort hostAndPort = getServerFromPath(path);
+        dispatcher.serverStoped(hostAndPort, observer);
     }
 }

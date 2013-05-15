@@ -1,5 +1,7 @@
 package com.yahoo.omid.notifications.client;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 
 import org.apache.thrift.TException;
@@ -40,32 +42,34 @@ class NotificationDispatcher {
             clientThread.interrupt();
         }
     }
+    
+    private Map<HostAndPort, NotificationClient> clients = new HashMap<HostAndPort, NotificationClient>();
 
     /**
      * Server connection information, start the NotificationClient
      */
-    // TODO call this when a new server starts
-    public void serverStarted(HostAndPort hostAndPort, String observer) throws TException {
+    public synchronized void serverStarted(HostAndPort hostAndPort, String observer) throws TException {
 
-        String host = hostAndPort.getHostText();
-        int port = hostAndPort.getPort();
-        BlockingQueue<Notification> observerQueue = this.notificationManager.app.getRegisteredObservers().get(observer);
-        TTransport transport = new TFramedTransport(new TSocket(host, port));
-        TProtocol protocol = new TBinaryProtocol(transport);
-        Client appInstanceClient = new NotificationService.Client(protocol);
-        try {
-            transport.open();
-        } catch (TTransportException e) {
-            logger.error("Cannot initialize communication with {}:{}", new Object[] { host, port, e });
-            throw new TException(e);
+        if (clients.containsKey(hostAndPort)) {
+            // stop it first
+            serverStoped(hostAndPort, observer);
         }
-        logger.trace("Notifier client started");
 
-        String server = host + ":" + port;
+        BlockingQueue<Notification> observerQueue = this.notificationManager.app.getRegisteredObservers().get(observer);
+
+        String server = hostAndPort.toString();
         // TODO use executor
-        clientThread = new Thread(new NotificationClient(observerQueue, appInstanceClient), "NotificationClient-"
-                + observer + "-" + server);
+        NotificationClient notificationClient = new NotificationClient(observerQueue, hostAndPort);
+        clientThread = new Thread(notificationClient, "NotificationClient-" + observer + "-" + server);
         clientThread.start();
+        clients.put(hostAndPort, notificationClient);
+    }
+
+    public synchronized void serverStoped(HostAndPort hostAndPort, String observer) {
+        NotificationClient client = clients.remove(hostAndPort);
+        if (client != null) {
+            client.stop();
+        }
     }
 
     /**
@@ -73,18 +77,39 @@ class NotificationDispatcher {
      */
     private static class NotificationClient implements Runnable {
         BlockingQueue<Notification> observerQueue;
-        Client notificationClient;
+        HostAndPort hostAndPort;
+        volatile boolean running;
 
-        public NotificationClient(BlockingQueue<Notification> observerQueue, Client notificationClient) {
+        public NotificationClient(BlockingQueue<Notification> observerQueue, HostAndPort hostAndPort) {
             super();
             this.observerQueue = observerQueue;
-            this.notificationClient = notificationClient;
+            this.hostAndPort = hostAndPort;
+            this.running = true;
+        }
+        
+        private Client initializeConnection() throws TException {
+            String host = hostAndPort.getHostText();
+            int port = hostAndPort.getPort();
+            TTransport transport = new TFramedTransport(new TSocket(host, port));
+            TProtocol protocol = new TBinaryProtocol(transport);
+            Client notificationClient = new NotificationService.Client(protocol);
+            try {
+                transport.open();
+            } catch (TTransportException e) {
+                logger.error("Cannot initialize communication with {}:{}", new Object[] { host, port, e });
+                throw new TException(e);
+            }
+            logger.trace("Notifier client started");
+
+            return notificationClient;
         }
 
         @Override
         public void run() {
             try {
-                while (!Thread.interrupted()) {
+                Client notificationClient = initializeConnection();
+
+                while (running) {
                     for (Notification notification : notificationClient.getNotifications()) {
                         observerQueue.put(notification);
                     }
@@ -94,6 +119,10 @@ class NotificationDispatcher {
             } catch (TException e) {
                 logger.error("Unexpected exception, shutting down", e);
             }
+        }
+        
+        public void stop() {
+            running = false;
         }
 
     }

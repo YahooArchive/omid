@@ -1,9 +1,9 @@
 package com.yahoo.omid.notifications;
 
-import java.util.Arrays;
 import java.util.List;
 
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,9 +11,11 @@ import org.slf4j.LoggerFactory;
 import com.google.common.net.HostAndPort;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.netflix.curator.framework.CuratorFramework;
+import com.netflix.curator.framework.recipes.cache.ChildData;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCache;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheEvent;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheListener;
+import com.netflix.curator.framework.recipes.cache.PathChildrenCache.StartMode;
 import com.netflix.curator.utils.ZKPaths;
 import com.yahoo.omid.notifications.comm.ZNRecord;
 import com.yahoo.omid.notifications.comm.ZNRecordSerializer;
@@ -54,40 +56,20 @@ public class ZkCoordinator implements Coordinator {
                 new ThreadFactoryBuilder().setNameFormat("ZK App Listener [" + ZkTreeUtils.getAppsNodePath() + "]")
                         .build());
         appsCache.getListenable().addListener(new AppChangesListener());
-        appsCache.start();
+        appsCache.start(StartMode.POST_INITIALIZED_EVENT);
 
-        createOrRecoverServerConfigFromZkTree();
-    }
-
-    private void createOrRecoverServerConfigFromZkTree() throws Exception {
-        logger.info("Configuring server based on current ZK structure");
-        Stat s = zkClient.checkExists().forPath(ZkTreeUtils.getRootNodePath());
-        if (s == null) {
-            createZkTree();
-        } else {
-            recoverCurrentZkAppBranch();
-        }
-        logger.info("Server configuration finished");
+        createZkTree();
     }
 
     private void createZkTree() {
         logger.info("Creating a new ZK Tree");
         try {
-            zkClient.create().creatingParentsIfNeeded().forPath(ZkTreeUtils.getAppsNodePath());
             zkClient.create().creatingParentsIfNeeded().forPath(ZkTreeUtils.getServersNodePath());
+            zkClient.create().creatingParentsIfNeeded().forPath(ZkTreeUtils.getAppsNodePath());
+        } catch (KeeperException.NodeExistsException e) {
+            logger.info("Tree already exists");
         } catch (Exception e) {
-            logger.warn("Got unexpected exception, concurrent creation of the tree?");
-        }
-    }
-
-    private void recoverCurrentZkAppBranch() throws Exception {
-        logger.info("Recovering existing ZK Tree");
-        String appsNodePath = ZkTreeUtils.getAppsNodePath();
-        List<String> appNames = zkClient.getChildren().forPath(appsNodePath);
-        for (String appName : appNames) {
-            byte[] rawData = zkClient.getData().forPath(appsNodePath + "/" + appName);
-            ZNRecord appData = (ZNRecord) serializer.deserialize(rawData);
-            appSandbox.createApplication(appName, appData);
+            logger.error("Unexpected exception", e);
         }
     }
 
@@ -95,13 +77,16 @@ public class ZkCoordinator implements Coordinator {
         @Override
         public void childEvent(CuratorFramework client, PathChildrenCacheEvent event) throws Exception {
             switch (event.getType()) {
+                case INITIALIZED: {
+                    logger.info("Cache initialized : {}", event.getData().getPath());
+                    for (ChildData cd : event.getInitialData()) {
+                        ZNRecord appData = (ZNRecord) serializer.deserialize(cd.getData());
+                        appSandbox.createApplication(ZKPaths.getNodeFromPath(cd.getPath()), appData);
+                    }
+                }
                 case CHILD_ADDED: {
                     logger.info("App Node added : {}", event.getData().getPath());
-                    logger.info("Deserializing : {}", event.getData().getData());
-                    if (event.getData().getData() == null)
-                        break;
                     ZNRecord appData = (ZNRecord) serializer.deserialize(event.getData().getData());
-                    logger.info("App data : {}", appData);
                     appSandbox.createApplication(ZKPaths.getNodeFromPath(event.getData().getPath()), appData);
                     break;
                 }

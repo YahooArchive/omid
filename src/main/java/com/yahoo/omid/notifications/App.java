@@ -46,8 +46,6 @@ class App {
 
     ServerSideAppMetrics metrics;
 
-    private PathChildrenCache appsInstanceCache;
-
     // TODO configurable nb threads
     private ConcurrentHashMap<HostAndPort, Map<Interest, AppInstanceNotifier>> notifiers = new ConcurrentHashMap<HostAndPort, Map<Interest, AppInstanceNotifier>>();
 
