@@ -31,6 +31,7 @@ import java.util.TimerTask;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
 import org.jboss.netty.bootstrap.ClientBootstrap;
@@ -49,6 +50,7 @@ import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.client.metrics.OmidClientMetrics;
 import com.yahoo.omid.replication.Zipper;
 import com.yahoo.omid.replication.ZipperState;
@@ -321,15 +323,17 @@ public class TSOClient extends SimpleChannelHandler {
       System.out.println("Starting TSOClient");
 
       // Start client with Nb of active threads = 3 as maximum.
-      factory = new NioClientSocketChannelFactory(Executors
-                                                  .newCachedThreadPool(), Executors.newCachedThreadPool(), 3);
+      factory = new NioClientSocketChannelFactory(
+              Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("tsoclient-boss-%d").build()),
+              Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("tsoclient-worker-%d").build()), 3);
       // Create the bootstrap
       bootstrap = new ClientBootstrap(factory);
       
       int executorThreads = conf.getInt("tso.executor.threads", 3);
 
       bootstrap.getPipeline().addLast("executor", new ExecutionHandler(
-            new OrderedMemoryAwareThreadPoolExecutor(executorThreads, 1024*1024, 4*1024*1024)));
+            new OrderedMemoryAwareThreadPoolExecutor(executorThreads, 1024*1024, 4*1024*1024, 60, TimeUnit.SECONDS, 
+                    new ThreadFactoryBuilder().setNameFormat("tsoclient-executor-%d").build())));
       bootstrap.getPipeline().addLast("handler", this);
       bootstrap.setOption("tcpNoDelay", false);
       bootstrap.setOption("keepAlive", true);

@@ -45,6 +45,7 @@ import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.group.ChannelGroup;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.replication.SharedMessageBuffer.ReadingBuffer;
 import com.yahoo.omid.tso.messages.AbortRequest;
 import com.yahoo.omid.tso.messages.AbortedTransactionReport;
@@ -123,12 +124,13 @@ public class TSOHandler extends SimpleChannelHandler {
             public Thread newThread(Runnable r) {
                 Thread t = new Thread(Thread.currentThread().getThreadGroup(), r);
                 t.setDaemon(true);
-                t.setName("Flush Thread");
+                t.setName("flusher");
                 return t;
             }
         });
         this.flushFuture = scheduledExecutor.schedule(flushThread, TSOState.FLUSH_TIMEOUT, TimeUnit.MILLISECONDS);
-        this.executor = Executors.newSingleThreadExecutor();
+        this.executor = Executors.newSingleThreadExecutor(
+                new ThreadFactoryBuilder().setDaemon(true).setNameFormat("aborts-snapshotter").build());
     }
 
     /**

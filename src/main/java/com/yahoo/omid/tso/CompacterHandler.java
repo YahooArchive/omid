@@ -25,6 +25,7 @@ import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.group.ChannelGroup;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.tso.messages.MinimumTimestamp;
 
 /**
@@ -38,7 +39,8 @@ public class CompacterHandler extends SimpleChannelHandler {
 
    public CompacterHandler(ChannelGroup channelGroup, TSOState state) {
       this.channelGroup = channelGroup;
-      this.executor = Executors.newScheduledThreadPool(4);
+      this.executor = Executors.newScheduledThreadPool(4, 
+              new ThreadFactoryBuilder().setNameFormat("compacter-executor-%d").build());
       this.executor.scheduleWithFixedDelay(new Notifier(channelGroup, state), 1, 1, TimeUnit.SECONDS);
    }
 

@@ -39,9 +39,9 @@ public class Compacter extends BaseRegionObserver {
     private static final Log LOG = LogFactory.getLog(Compacter.class);
 
     private static ExecutorService bossExecutor = Executors.newCachedThreadPool(new ThreadFactoryBuilder()
-            .setNameFormat("Compacter-Boss-%d").build());
+            .setNameFormat("compacter-boss-%d").build());
     private static ExecutorService workerExecutor = Executors.newCachedThreadPool(new ThreadFactoryBuilder()
-            .setNameFormat("Compacter-Worker-%d").build());
+            .setNameFormat("compacter-worker-%d").build());
     private volatile long minTimestamp;
     private ClientBootstrap bootstrap;
     private ChannelFactory factory;

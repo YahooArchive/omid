@@ -38,6 +38,7 @@ import org.jboss.netty.handler.codec.serialization.ObjectEncoder;
 import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
 import org.jboss.netty.util.ObjectSizeEstimator;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.notifications.metrics.MetricsUtils;
 import com.yahoo.omid.tso.persistence.BookKeeperStateBuilder;
 import com.yahoo.omid.tso.persistence.FileSystemTimestampOnlyStateBuilder;
@@ -94,8 +95,10 @@ public class TSOServer implements Runnable {
     public void run() {
         // *** Start the Netty configuration ***
         // Start server with Nb of active threads = 2*NB CPU + 1 as maximum.
-        ChannelFactory factory = new NioServerSocketChannelFactory(Executors.newCachedThreadPool(),
-                Executors.newCachedThreadPool(), (Runtime.getRuntime().availableProcessors() * 2 + 1) * 2);
+        ChannelFactory factory = new NioServerSocketChannelFactory(
+                Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("boss-%d").build()),
+                Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("worker-%d").build()),
+                (Runtime.getRuntime().availableProcessors() * 2 + 1) * 2);
 
         ServerBootstrap bootstrap = new ServerBootstrap(factory);
         // Create the global ChannelGroup
@@ -110,7 +113,7 @@ public class TSOServer implements Runnable {
                   public int estimateSize(Object o) {
                      return 1000;
                   }
-               }, Executors.defaultThreadFactory());
+               }, new ThreadFactoryBuilder().setNameFormat("executor-%d").build());
 
         // TODO use dependency injection
         if (config.getFsLog() != null) {
@@ -164,15 +167,15 @@ public class TSOServer implements Runnable {
 
         // *** Start the Netty running ***
 
-        // Create the monitor
-        ThroughputMonitor monitor = new ThroughputMonitor(state);
         // Add the parent channel to the group
         Channel channel = bootstrap.bind(new InetSocketAddress(config.getPort()));
         channelGroup.add(channel);
         
         // Compacter handler
-        ChannelFactory comFactory = new NioServerSocketChannelFactory(Executors.newCachedThreadPool(),
-              Executors.newCachedThreadPool(), (Runtime.getRuntime().availableProcessors() * 2 + 1) * 2);
+        ChannelFactory comFactory = new NioServerSocketChannelFactory(
+                Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("compacter-boss-%d").build()),
+                Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("compacter-worker-%d").build()),
+                (Runtime.getRuntime().availableProcessors() * 2 + 1) * 2);
         ServerBootstrap comBootstrap = new ServerBootstrap(comFactory);
         ChannelGroup comGroup = new DefaultChannelGroup("compacter");
         final CompacterHandler comHandler = new CompacterHandler(comGroup, state);
@@ -195,8 +198,6 @@ public class TSOServer implements Runnable {
         comBootstrap.setOption("readWriteFair", true);
         channel = comBootstrap.bind(new InetSocketAddress(config.getPort() + 1));
 
-        // Starts the monitor
-        monitor.start();
         synchronized (lock) {
             while (!finish) {
                 try {
@@ -214,9 +215,6 @@ public class TSOServer implements Runnable {
 
         // *** Start the Netty shutdown ***
 
-        // End the monitor
-        System.out.println("End of monitor");
-        monitor.interrupt();
         // Now close all channels
         System.out.println("End of channel group");
         channelGroup.close().awaitUninterruptibly();
