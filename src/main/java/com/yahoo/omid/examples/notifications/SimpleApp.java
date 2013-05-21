@@ -27,10 +27,7 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
 import com.google.common.net.HostAndPort;
@@ -40,7 +37,6 @@ import com.yahoo.omid.notifications.client.DeltaOmid;
 import com.yahoo.omid.notifications.client.IncrementalApplication;
 import com.yahoo.omid.notifications.client.Observer;
 import com.yahoo.omid.notifications.conf.ClientConfiguration;
-import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
 
 /**
@@ -105,35 +101,34 @@ public class SimpleApp {
 
             Interest interestObs1 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_1);
 
-            private ThreadLocal<TTable> txTable = new ThreadLocal<TTable>() {
-
-                @Override
-                protected TTable initialValue() {
-                    // TSO Client setup
-                    Configuration tsoClientHbaseConfObs = HBaseConfiguration.create();
-                    tsoClientHbaseConfObs.set("tso.host", omidHp.getHostText());
-                    tsoClientHbaseConfObs.setInt("tso.port", omidHp.getPortOrDefault(1234));
-                    try {
-                        logger.info("Returning new " + TABLE_1 + " txtable");
-                        return new TTable(tsoClientHbaseConfObs, TABLE_1);
-                    } catch (IOException e) {
-                        logger.error("Cannot create transactional table");
-                        throw new RuntimeException("Cannot create transactional table on content table", e);
-                    }
-                }
-
-            };
+            // private ThreadLocal<TTable> txTable = new ThreadLocal<TTable>() {
+            //
+            // @Override
+            // protected TTable initialValue() {
+            // // TSO Client setup
+            // Configuration tsoClientHbaseConfObs = HBaseConfiguration.create();
+            // tsoClientHbaseConfObs.set("tso.host", omidHp.getHostText());
+            // tsoClientHbaseConfObs.setInt("tso.port", omidHp.getPortOrDefault(1234));
+            // try {
+            // logger.info("Returning new " + TABLE_1 + " txtable");
+            // return new TTable(tsoClientHbaseConfObs, TABLE_1);
+            // } catch (IOException e) {
+            // throw new RuntimeException("Cannot create transactional table on content table", e);
+            // }
+            // }
+            //
+            // };
 
             public void onInterestChanged(Result rowData, Transaction tx) {
-                 logger.info("o1 -> Update on " + rowData.list());
+                logger.info("o1 -> Update on " + rowData.list());
 
-                try {
-                    ExamplesUtils.doTransactionalPut(tx, txTable.get(), rowData.getRow(),
-                            Bytes.toBytes(COLUMN_FAMILY_1), Bytes.toBytes(COLUMN_2),
-                            Bytes.toBytes("data written by observer o1"));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                // try {
+                // ExamplesUtils.doTransactionalPut(tx, txTable.get(), rowData.getRow(),
+                // Bytes.toBytes(COLUMN_FAMILY_1), Bytes.toBytes(COLUMN_2),
+                // Bytes.toBytes("data written by observer o1"));
+                // } catch (IOException e) {
+                // e.printStackTrace();
+                // }
             }
 
             @Override
@@ -152,7 +147,7 @@ public class SimpleApp {
             Interest interestObs2 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_2);
 
             public void onInterestChanged(Result rowData, Transaction tx) {
-                 logger.info("o2 -> Update on " + rowData.list());
+                logger.info("o2 -> Update on " + rowData.list());
             }
 
             @Override
@@ -171,7 +166,7 @@ public class SimpleApp {
         cf.setOmidServer(omid);
         cf.setZkServers(zk);
         final IncrementalApplication app = new DeltaOmid.AppBuilder("SimpleApp", appInstancePort).setConfiguration(cf)
-                .addObserver(obs1).addObserver(obs2).build();
+                .addObserver(obs1).build();
 
         logger.info("ooo SimpleApp ooo - APP INSTANCE CREATED - ooo SimpleApp ooo");
 

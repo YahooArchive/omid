@@ -21,31 +21,35 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 /**
- * This class stores the mapping between start a commit timestamps and between
- * modified row and commit timestamp.
+ * This class stores the mapping between start a commit timestamps and between modified row and commit timestamp.
  * 
- * Both mappings are respresented as a long->long mapping, each of them
- * implemented using a single long []
+ * Both mappings are respresented as a long->long mapping, each of them implemented using a single long []
  * 
- * For a map of size N we create an array of size 2*N and store the keys on even
- * indexes and values on odd indexes.
+ * For a map of size N we create an array of size 2*N and store the keys on even indexes and values on odd indexes.
  * 
- * Each time an entry is removed, we update the largestDeletedTimestamp if the
- * entry's commit timestamp is greater than this value.
+ * Each time an entry is removed, we update the largestDeletedTimestamp if the entry's commit timestamp is greater than
+ * this value.
  * 
- * Rationale: we want queries to be fast and touch as least memory regions as
- * possible
+ * Rationale: we want queries to be fast and touch as least memory regions as possible
  * 
- * TODO: improve garbage collection, right now an entry is picked at random (by
- * hash) which could cause the eviction of a very recent timestamp
+ * TODO: improve garbage collection, right now an entry is picked at random (by hash) which could cause the eviction of
+ * a very recent timestamp
  */
 
 class CommitHashMap {
 
+    private static final Log LOG = LogFactory.getLog(CommitHashMap.class);
+
     private long largestDeletedTimestamp;
     private final Cache startCommitMapping;
     private final Cache rowsCommitMapping;
+
+    private AtomicLong addHalfAbortedCount = new AtomicLong(0);
+    private AtomicLong removeHalfAbortedCount = new AtomicLong(0);
 
     /**
      * Constructs a new, empty hashtable with a default size of 1000
@@ -101,12 +105,22 @@ class CommitHashMap {
 
     // add a new half aborted transaction
     void setHalfAborted(long startTimestamp) {
+        long currentVal = addHalfAbortedCount.incrementAndGet();
+        if ((currentVal % 10000) == 0) {
+            LOG.debug("addHalfAbortedCount value" + currentVal);
+        }
         halfAborted.add(new AbortedTransaction(startTimestamp, abortedSnapshot.get()));
     }
 
     // call when a half aborted transaction is fully aborted
     void setFullAborted(long startTimestamp) {
-        halfAborted.remove(new AbortedTransaction(startTimestamp, 0));
+        long currentVal = removeHalfAbortedCount.incrementAndGet();
+        if ((currentVal % 10000) == 0) {
+            LOG.debug("removeHalfAbortedCount value" + currentVal);
+        }
+        if (!halfAborted.remove(new AbortedTransaction(startTimestamp, 0))) {
+            LOG.error("TX not found! Cannot clean stuff for transaction with ST: " + startTimestamp);
+        }
     }
 
     // query to see if a transaction is half aborted

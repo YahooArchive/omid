@@ -52,9 +52,9 @@ import com.yahoo.omid.notifications.TransactionCommittedRegionCoprocessor;
 import com.yahoo.omid.notifications.metrics.MetricsUtils;
 import com.yahoo.omid.transaction.RollbackException;
 import com.yahoo.omid.transaction.TTable;
+import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionException;
 import com.yahoo.omid.transaction.TransactionManager;
-import com.yahoo.omid.transaction.Transaction;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
 
@@ -171,7 +171,7 @@ public class SimpleAppInjector {
 
         CountDownLatch startCdl = new CountDownLatch(1);
         for (int i = 0; i < nOfInjectorTasks; i++) {
-            injectors.execute(new EventInjectorTask(tsoClientConf, startCdl, txRate, invocations));
+            injectors.execute(new EventInjectorTask(tsoClientConf, startCdl, txRate, invocations, (long) i));
         }
         logger.info("ooo Injectors ooo - STARTING " + nOfInjectorTasks + " LOOP TASKS INJECTING AT " + txRate
                 + " TX/S IN COLUMN " + COLUMN_1 + " - ooo Injectors ooo");
@@ -187,8 +187,9 @@ public class SimpleAppInjector {
         private TTable tt;
         private int txRate;
         private Meter invocations;
+        private long id;
 
-        public EventInjectorTask(Configuration conf, CountDownLatch startCdl, int txRate, Meter invocations) {
+        public EventInjectorTask(Configuration conf, CountDownLatch startCdl, int txRate, Meter invocations, long id) {
             try {
                 this.tm = new TransactionManager(conf);
                 this.tt = new TTable(conf, TABLE_1);
@@ -198,10 +199,12 @@ public class SimpleAppInjector {
             this.startCdl = startCdl;
             this.txRate = txRate;
             this.invocations = invocations;
+            this.id = id;
+            logger.info("Starting injector " + Thread.currentThread().getName() + " with id " + id);
         }
 
         public void run() {
-            final Random randGen = new Random();
+            final Random randGen = new Random(this.id);
             RateLimiter rateLimiter = RateLimiter.create(txRate, 10, TimeUnit.MINUTES);
             try {
                 startCdl.await();
@@ -235,8 +238,8 @@ public class SimpleAppInjector {
             }
         }
 
-        private void doTransactionalPut(Transaction tx, TTable tt, byte[] rowName, byte[] colFamName,
-                byte[] colName, byte[] dataValue) throws IOException {
+        private void doTransactionalPut(Transaction tx, TTable tt, byte[] rowName, byte[] colFamName, byte[] colName,
+                byte[] dataValue) throws IOException {
             Put row = new Put(rowName);
             row.add(colFamName, colName, dataValue);
             tt.put(tx, row);
