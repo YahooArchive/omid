@@ -23,17 +23,17 @@ import java.util.TreeSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Uncommited {
+public class Uncommitted {
    private static final Logger LOG = LoggerFactory.getLogger(TSOHandler.class);
    
-   private static final int BKT_NUMBER = 1 << 10; // 2 ^ 10
+   private static final long BKT_NUMBER = 1 << 10; // 2 ^ 10
 
-   private Bucket buckets[] = new Bucket[BKT_NUMBER];
+   private Bucket buckets[] = new Bucket[(int) BKT_NUMBER];
    private int firstUncommitedBucket = 0;
    private long firstUncommitedAbsolute = 0;
    private int lastOpenedBucket = 0;
 
-   public Uncommited(long startTimestamp) {
+   public Uncommitted(long startTimestamp) {
       lastOpenedBucket = firstUncommitedBucket = getRelativePosition(startTimestamp);
       firstUncommitedAbsolute = getAbsolutePosition(startTimestamp);
       long ts = startTimestamp & ~(Bucket.getBucketSize() - 1);
@@ -75,7 +75,7 @@ public class Uncommited {
          return Collections.emptySet();
       int maxBucket = getRelativePosition(id);
       Set<Long> aborted = new TreeSet<Long>();
-      for (int i = firstUncommitedBucket; i != maxBucket ; i = (i+1) % BKT_NUMBER) {
+      for (int i = firstUncommitedBucket; i != maxBucket ; i = (int)((i+1) % BKT_NUMBER)) {
          Bucket bucket = buckets[i];
          if (bucket != null) {
             aborted.addAll(bucket.abortAllUncommited());
@@ -100,16 +100,16 @@ public class Uncommited {
    private synchronized void increaseFirstUncommitedBucket() {
       while (firstUncommitedBucket != lastOpenedBucket &&
              buckets[firstUncommitedBucket] == null) {
-         firstUncommitedBucket = (firstUncommitedBucket + 1) % BKT_NUMBER;
+         firstUncommitedBucket = (int)((firstUncommitedBucket + 1) % BKT_NUMBER);
          firstUncommitedAbsolute++;
       }
    }
 
    private int getRelativePosition(long id) {
-      return ((int) (id / Bucket.getBucketSize())) % BKT_NUMBER;
+      return (int) ((id / Bucket.getBucketSize()) % BKT_NUMBER);
    }
 
-   private int getAbsolutePosition(long id) {
-      return (int) (id / Bucket.getBucketSize());
+   private long getAbsolutePosition(long id) {
+      return id / Bucket.getBucketSize();
    }
 }

@@ -114,7 +114,7 @@ public class TSOState {
     */
    public CommitHashMap hashmap = new CommitHashMap(MAX_ITEMS);
 
-   public Uncommited uncommited;
+   public Uncommitted uncommited;
 
    /**
     * Process commit request.
@@ -190,7 +190,7 @@ public class TSOState {
        this.timestampOracle = timestampOracle;
        this.previousLargestDeletedTimestamp = this.timestampOracle.get();
        this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp;
-       this.uncommited = new Uncommited(timestampOracle.first());
+       this.uncommited = new Uncommitted(timestampOracle.first());
        this.logger = logger;
    }
    
@@ -199,7 +199,7 @@ public class TSOState {
    }
 
    public void initialize() {
-      this.uncommited = new Uncommited(timestampOracle.first());
+      this.uncommited = new Uncommitted(timestampOracle.first());
    }
 }
 

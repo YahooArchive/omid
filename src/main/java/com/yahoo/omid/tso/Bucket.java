@@ -34,9 +34,9 @@ public class Bucket {
    private int transactionsCommited = 0;
    private int firstUncommited = 0;
    private boolean closed = false;
-   private int position;
+   private long position;
 
-   public Bucket(int position) {
+   public Bucket(long position) {
       this.position = position;
    }
 
@@ -63,7 +63,7 @@ public class Bucket {
       
       for (int i = transactions.nextClearBit(firstUncommited); i >= 0
             && i <= lastCommited; i = transactions.nextClearBit(i + 1)) {
-         aborted.add(((long)position) * BUCKET_SIZE + i);
+         aborted.add(position * BUCKET_SIZE + i);
          commit(i);
       }
       
