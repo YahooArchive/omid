@@ -39,7 +39,7 @@ createdb() {
 }
 
 app() {
-    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.examples.notifications.SimpleApp -zk localhost:2181 -omid localhost:1234 -port 6666
+    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.examples.notifications.SimpleApp -zk localhost:2181 -omid localhost:1234 -port 16666
 }
 
 inject() {

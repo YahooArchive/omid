@@ -66,7 +66,7 @@ public class SimpleApp {
         options.addOption(OptionBuilder.withArgName("omid_server").hasArg().withDescription("omid server: host1:port1")
                 .create("omid"));
 
-        int appInstancePort = 6666;
+        int appInstancePort = 16666;
         String zk = "localhost:2181";
         String omid = "localhost:1234";
 
