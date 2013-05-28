@@ -380,6 +380,7 @@ public class TSOHandler extends SimpleChannelHandler {
                             if (LOG.isWarnEnabled() && !toAbort.isEmpty()) {
                                 LOG.warn("Slow transactions after raising max: " + toAbort.size());
                             }
+                            metrics.oldAborted(toAbort.size());
                             synchronized (sharedMsgBufLock) {
                                 for (Long id : toAbort) {
                                     sharedState.processAbort(id);
@@ -574,6 +575,7 @@ public class TSOHandler extends SimpleChannelHandler {
             } catch (IOException e) {
                 LOG.error("Unexpected exception while writing to WAL", e);
             }
+            metrics.cleanedAbort();
             sharedState.processFullAbort(timestamp);
         }
         synchronized (sharedMsgBufLock) {

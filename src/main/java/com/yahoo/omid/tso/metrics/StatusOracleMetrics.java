@@ -2,9 +2,6 @@ package com.yahoo.omid.tso.metrics;
 
 import java.util.concurrent.TimeUnit;
 
-import org.apache.log4j.Logger;
-
-import com.yahoo.omid.notifications.ScannerSandbox.ScannerContainer.Scanner;
 import com.yahoo.omid.tso.TSOHandler;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
@@ -13,16 +10,16 @@ import com.yammer.metrics.core.TimerContext;
 
 public class StatusOracleMetrics {
 
-    private static Logger logger = Logger.getLogger(StatusOracleMetrics.class);
-
     private final Timer commitsTimer;
     private final Timer beginTimer;
     private final Timer commitsLatency;
     private final Meter committedMeter;
     private final Meter abortedMeter;
+    private final Meter oldAbortedMeter;
     private final Meter selfAbortedMeter;
     private final Meter queryMeter;
     private final Meter beginMeter;
+    private final Meter cleanedAbortMeter;
 
     public StatusOracleMetrics() {
         committedMeter = Metrics.defaultRegistry().newMeter(TSOHandler.class, "statusOracle@committed", "statusOracle",
@@ -31,9 +28,13 @@ public class StatusOracleMetrics {
                 TimeUnit.SECONDS);
         selfAbortedMeter = Metrics.defaultRegistry().newMeter(TSOHandler.class, "statusOracle@selfAborted",
                 "statusOracle", TimeUnit.SECONDS);
+        oldAbortedMeter = Metrics.defaultRegistry().newMeter(TSOHandler.class, "statusOracle@oldAborted",
+                "statusOracle", TimeUnit.SECONDS);
         queryMeter = Metrics.defaultRegistry().newMeter(TSOHandler.class, "statusOracle@query", "statusOracle",
                 TimeUnit.SECONDS);
         beginMeter = Metrics.defaultRegistry().newMeter(TSOHandler.class, "statusOracle@begin",
+                "statusOracle", TimeUnit.SECONDS);
+        cleanedAbortMeter = Metrics.defaultRegistry().newMeter(TSOHandler.class, "statusOracle@cleanedAbort",
                 "statusOracle", TimeUnit.SECONDS);
         commitsTimer = Metrics.defaultRegistry().newTimer(TSOHandler.class, "statusOracle@commit-processingTime",
                 "statusOracle");
@@ -51,8 +52,16 @@ public class StatusOracleMetrics {
         abortedMeter.mark();
     }
 
+    public void oldAborted(long n) {
+        oldAbortedMeter.mark(n);
+    }
+
     public void selfAborted() {
         selfAbortedMeter.mark();
+    }
+
+    public void cleanedAbort() {
+        cleanedAbortMeter.mark();
     }
 
     public void query() {
