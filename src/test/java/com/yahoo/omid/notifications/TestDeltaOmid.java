@@ -4,6 +4,8 @@ import static com.yahoo.omid.examples.Constants.COLUMN_1;
 import static com.yahoo.omid.examples.Constants.COLUMN_FAMILY_1;
 import static com.yahoo.omid.examples.Constants.TABLE_1;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -104,11 +106,11 @@ public class TestDeltaOmid extends TestInfrastructure {
         CuratorFramework zkClient = CuratorFrameworkFactory.newClient(server.getConnectString(),
                 new ExponentialBackoffRetry(1000, 3));
         zkClient.start();
-        String localhost = InetAddress.getLocalHost().getHostAddress();
-        String expectedPath = ZKPaths.makePath(ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), "TestApp"), localhost
-                + ":" + app.getPort());
-        Stat s = zkClient.checkExists().forPath(expectedPath);
-        assertTrue("The expected path for App Instance is not found in ZK", s != null);
+        String expectedPath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), "TestApp");
+        List<String> children = zkClient.getChildren().forPath(expectedPath);
+        assertNotNull("Returned children list is null", children);
+        assertFalse("No app instance registered for TestApp", children.isEmpty());
+        assertEquals("More than one instances registered for TestApp", 1, children.size());
         app.close();
     }
 

@@ -65,7 +65,7 @@ public class TestMultipleInstances extends TestInfrastructure {
         final IncrementalApplication app2 = new DeltaOmid.AppBuilder("TestApp", 6667)
                 .addObserver(new ObserverLatch(latch2)).build();
 
-        Thread.sleep(5000);
+        Thread.sleep(10000);
 
         TransactionManager tm = new TransactionManager(hbaseConf);
         TTable tt = new TTable(hbaseConf, TestConstants.TABLE);

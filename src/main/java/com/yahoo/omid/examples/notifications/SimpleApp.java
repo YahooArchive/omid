@@ -117,6 +117,7 @@ public class SimpleApp {
                         logger.info("Returning new " + TABLE_1 + " txtable");
                         return new TTable(tsoClientHbaseConfObs, TABLE_1);
                     } catch (IOException e) {
+                        logger.error("Cannot create transactional table");
                         throw new RuntimeException("Cannot create transactional table on content table", e);
                     }
                 }
@@ -124,8 +125,7 @@ public class SimpleApp {
             };
 
             public void onInterestChanged(Result rowData, Transaction tx) {
-                // logger.info("o1 -> Update on " + Bytes.toString(table) + Bytes.toString(rowKey)
-                // + Bytes.toString(columnFamily) + Bytes.toString(column));
+                 logger.info("o1 -> Update on " + rowData.list());
 
                 try {
                     ExamplesUtils.doTransactionalPut(tx, txTable.get(), rowData.getRow(),
@@ -152,8 +152,7 @@ public class SimpleApp {
             Interest interestObs2 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_2);
 
             public void onInterestChanged(Result rowData, Transaction tx) {
-                // logger.info("o2 -> Update on " + Bytes.toString(table) + Bytes.toString(rowKey)
-                // + Bytes.toString(columnFamily) + Bytes.toString(column));
+                 logger.info("o2 -> Update on " + rowData.list());
             }
 
             @Override

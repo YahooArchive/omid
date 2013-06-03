@@ -19,8 +19,8 @@ import static com.yahoo.omid.notifications.ZkTreeUtils.ZK_APP_DATA_NODE;
 
 import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
-import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,7 +61,6 @@ public class DeltaOmid implements IncrementalApplication {
     private final int port;
     private final ClientSideAppMetrics metrics;
     private final ClientConfiguration conf;
-    private final String zkAppInstancePath;
     private final NotificationManager notificationManager;
     public static final int DEFAULT_NOTIFICATION_BUFFER_CAPACITY = 100;
     public static final int DEFAULT_OBSERVER_PARALLELISM = 2;
@@ -96,12 +95,12 @@ public class DeltaOmid implements IncrementalApplication {
             return this;
         }
 
-        public IncrementalApplication build() throws NotificationException, IOException {
+        public IncrementalApplication build() throws Exception {
             return new DeltaOmid(this);
         }
     }
 
-    private DeltaOmid(AppBuilder builder) throws NotificationException, IOException {
+    private DeltaOmid(AppBuilder builder) throws Exception {
         this.name = builder.appName;
         this.port = builder.port;
         this.conf = builder.conf;
@@ -145,21 +144,24 @@ public class DeltaOmid implements IncrementalApplication {
             observersInterests.add(obsName + "/" + interest.toZkNodeRepresentation());
 
         }
-        // Create the notification manager for notifying the app observers
-        this.notificationManager = new NotificationManager(this, metrics);
-        this.notificationManager.start();
-        // Finally register the app in the ZK tree
         this.zkClient = CuratorFrameworkFactory.newClient(this.conf.getZkServers(),
                 new ExponentialBackoffRetry(3000, 3));
         this.zkClient.start();
+        // Create the notification manager for notifying the app observers
+        this.notificationManager = new NotificationManager(this, metrics, zkClient);
+        this.notificationManager.start();
+        // Finally register the app in the ZK tree
         ZNRecord zkData = new ZNRecord(name);
         zkData.putListField(ZK_APP_DATA_NODE, observersInterests);
+        byte[] appData = new ZNRecordSerializer().serialize(zkData);
+        logger.info("Registering app {} with data {}", name, Arrays.toString(appData));
         try {
             String zkAppPath = createZkSubBranch(ZkTreeUtils.getAppsNodePath(), name,
-                    new ZNRecordSerializer().serialize(zkData), false);
-            String instanceName = InetAddress.getLocalHost().getHostAddress() + ":" + this.port;
-            this.zkAppInstancePath = createZkSubBranch(zkAppPath, instanceName, new byte[0], true);
+                    appData, false);
+            zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL_SEQUENTIAL)
+                    .forPath(zkAppPath+"/");
         } catch (Exception e) {
+            logger.error("Couldn't register app", e);
             throw new NotificationException(e);
         }
         logger.info("{} created", this.toString());
@@ -183,15 +185,7 @@ public class DeltaOmid implements IncrementalApplication {
     @Override
     public void close() throws IOException {
         logger.info("Stopping {}", this.toString());
-        try {
-            zkClient.delete().forPath(zkAppInstancePath);
-        } catch (Exception e) {
-            logger.error("Cannot clean ZooKeeper node {}", zkAppInstancePath, e);
-        } finally {
-            // notificationManager.stop();
-            // appObserverSystem.shutdown();
-            Closeables.closeQuietly(zkClient);
-        }
+        Closeables.closeQuietly(zkClient);
         synchronized (observerExecutors) {
             for (ExecutorService executor : observerExecutors.values()) {
                 executor.shutdownNow();
@@ -222,7 +216,6 @@ public class DeltaOmid implements IncrementalApplication {
 
     @Override
     public String toString() {
-        return "DeltaOmidAppInstance [name=" + name + ", zkAppInstancePath=" + zkAppInstancePath
-                + ", registeredObservers=" + observerBuffers + "]";
+        return "DeltaOmidAppInstance [name=" + name + ", registeredObservers=" + observerBuffers + "]";
     }
 }

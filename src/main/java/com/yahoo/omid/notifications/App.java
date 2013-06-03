@@ -33,7 +33,7 @@ import com.yahoo.omid.notifications.thrift.generated.Notification;
  * to perform notification to the client side part of the framework
  * 
  */
-class App implements PathChildrenCacheListener {
+class App {
 
     /**
      * 
@@ -46,18 +46,16 @@ class App implements PathChildrenCacheListener {
 
     ServerSideAppMetrics metrics;
 
-    private PathChildrenCache appsInstanceCache;
-
     // TODO configurable nb threads
     private ConcurrentHashMap<HostAndPort, Map<Interest, AppInstanceNotifier>> notifiers = new ConcurrentHashMap<HostAndPort, Map<Interest, AppInstanceNotifier>>();
-    // private List<ActorRef> instances = new ArrayList<ActorRef>();
+
     // A mapping between an interest and the observer wanting notifications for changes in that interest
     // TODO now we are considering that only one observer is registered per app
     // Otherwise a List of Observers would be required as a second parameter of the list
     // The Thrift class would need also to be modified
     ConcurrentHashMap<Interest, String> interestObserverMap = new ConcurrentHashMap<Interest, String>();
 
-    public App(AppSandbox appSandbox, String appName, ZNRecord appData) throws Exception {
+    public App(AppSandbox appSandbox, String appName, ZNRecord appData, Coordinator coordinator) throws Exception {
         this.appSandbox = appSandbox;
         this.name = appName;
 
@@ -77,10 +75,10 @@ class App implements PathChildrenCacheListener {
         }
         this.metrics = new ServerSideAppMetrics(appName, interestObserverMap.keySet());
         String appPath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), this.name);
-        appsInstanceCache = new PathChildrenCache(this.appSandbox.zkClient, appPath, false, new ThreadFactoryBuilder()
-                .setNameFormat("ZK App Instance Listener [" + this.name + "]").build());
-        appsInstanceCache.getListenable().addListener(this);
-        appsInstanceCache.start();
+        for (Interest interest : interestObserverMap.keySet()) {
+            AppInstanceNotifier notifier = new AppInstanceNotifier(this, interest, coordinator);
+            notifier.start();
+        }
     }
 
     public Set<Interest> getInterests() {
@@ -91,80 +89,6 @@ class App implements PathChildrenCacheListener {
         String result = interestObserverMap.putIfAbsent(interest, observer);
         if (result != null) {
             logger.warn("Other observer than " + observer + " manifested already interest in " + interest);
-        }
-    }
-
-    @Override
-    public void childEvent(CuratorFramework client, PathChildrenCacheEvent event) throws Exception {
-        switch (event.getType()) {
-        case CHILD_ADDED: {
-            logger.trace("Instance node added: " + event.getData().getPath());
-            addInstance(ZKPaths.getNodeFromPath(event.getData().getPath()));
-            break;
-        }
-
-        case CHILD_UPDATED: {
-            logger.trace("Instance node changed: " + event.getData().getPath());
-            break;
-        }
-
-        case CHILD_REMOVED: {
-            logger.trace("Removing node: " + event.getData().getPath() + " Instances left: " + notifiers.size());
-            removeInstance(ZKPaths.getPathAndNode(event.getData().getPath()));
-        }
-            break;
-        case CONNECTION_LOST:
-            logger.error("Lost connection with ZooKeeper {}", this.appSandbox.zkClient.getZookeeperClient()
-                    .getCurrentConnectionString());
-            break;
-        case CONNECTION_RECONNECTED:
-            logger.warn("Reconnected to ZooKeeper {}", this.appSandbox.zkClient.getZookeeperClient()
-                    .getCurrentConnectionString());
-            break;
-        case CONNECTION_SUSPENDED:
-            logger.error("Connection suspended to ZooKeeper {}", this.appSandbox.zkClient.getZookeeperClient()
-                    .getCurrentConnectionString());
-            break;
-        default:
-            logger.error("Unknown event type {}", event.getType().toString());
-            break;
-        }
-    }
-
-    public void addInstance(String hostnameAndPort) {
-        final HostAndPort hp = HostAndPort.fromString(hostnameAndPort);
-        Map<Interest, AppInstanceNotifier> interestToNotifier = Maps.newHashMap();
-        if (notifiers.putIfAbsent(hp, interestToNotifier) == null) {
-            Map<Interest, AppInstanceNotifier> tmp = Maps.newHashMap();
-            for (Interest interest : interestObserverMap.keySet()) {
-                AppInstanceNotifier notifier = new AppInstanceNotifier(this, interest, hp);
-                tmp.put(interest, notifier);
-                notifier.start();
-            }
-            interestToNotifier.putAll(tmp);
-            logger.info("Added notifiers to {} for application {}", hp.toString(), name);
-
-        }
-
-    }
-
-    public void removeInstance(PathAndNode pathAndNode) {
-        String hostnameAndPort = pathAndNode.toString();
-        Map<Interest, AppInstanceNotifier> removed = notifiers.remove(hostnameAndPort);
-        if (removed != null) {
-            for (Map.Entry<Interest, AppInstanceNotifier> entry : removed.entrySet()) {
-                entry.getValue().cancel();
-                logger.info("Cancelled notifier for app {} to {} for interest {}", new String[] { name,
-                        hostnameAndPort, entry.getKey().toString() });
-            }
-        }
-        if (notifiers.size() == 0) { // Remove app node on ZK to trigger app cleaning TODO sync with the remove before?
-            try {
-                String appPath = pathAndNode.getPath();
-                appSandbox.zkClient.delete().forPath(appPath);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
         }
     }
 

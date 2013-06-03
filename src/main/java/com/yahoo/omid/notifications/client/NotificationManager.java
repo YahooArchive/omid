@@ -16,39 +16,63 @@
 package com.yahoo.omid.notifications.client;
 
 import java.io.IOException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.HashSet;
+import java.util.Set;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.net.HostAndPort;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.notifications.NotificationException;
+import com.netflix.curator.framework.CuratorFramework;
+import com.netflix.curator.framework.recipes.cache.ChildData;
+import com.netflix.curator.framework.recipes.cache.PathChildrenCache;
+import com.netflix.curator.framework.recipes.cache.PathChildrenCache.StartMode;
+import com.netflix.curator.framework.recipes.cache.PathChildrenCacheEvent;
+import com.netflix.curator.framework.recipes.cache.PathChildrenCacheListener;
+import com.netflix.curator.utils.ZKPaths;
+import com.netflix.curator.utils.ZKPaths.PathAndNode;
+import com.yahoo.omid.notifications.ZkTreeUtils;
+import com.yahoo.omid.notifications.comm.ZNRecordSerializer;
 import com.yahoo.omid.notifications.metrics.ClientSideAppMetrics;
 
 public class NotificationManager {
 
     static final Logger logger = LoggerFactory.getLogger(NotificationManager.class);
 
-    private static final long TIMEOUT = 3;
-
     final IncrementalApplication app;
 
     final ClientSideAppMetrics metrics;
+    
+    final ZNRecordSerializer serializer = new ZNRecordSerializer();
 
-    private final ExecutorService notificatorAcceptorExecutor;
     private NotificationDispatcher dispatcher;
 
-    public NotificationManager(IncrementalApplication app, ClientSideAppMetrics metrics) {
+    private CuratorFramework zkClient;
+
+    private final Set<PathChildrenCache> serverCaches;
+
+    public NotificationManager(IncrementalApplication app, ClientSideAppMetrics metrics, CuratorFramework zkClient) {
         this.app = app;
         this.metrics = metrics;
-        this.notificatorAcceptorExecutor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat(
-                app.getName() + "-Notificator-%d").build());
+        this.zkClient = zkClient;
+        this.serverCaches = new HashSet<PathChildrenCache>();
     }
 
-    public void start() throws NotificationException {
+    public void start() throws Exception {
         dispatcher = new NotificationDispatcher(this);
-        notificatorAcceptorExecutor.execute(dispatcher);
+        ServerChangesListener listener = new ServerChangesListener();
+        
+        for (String observer : app.getRegisteredObservers().keySet()) {
+            String path = ZkTreeUtils.getServersNodePath() + "/" + app.getName() + "/"
+                    + observer;
+            PathChildrenCache pcc = new PathChildrenCache(this.zkClient, path, false, new ThreadFactoryBuilder()
+                    .setNameFormat("ZK App Listener [" + path + "]").build());
+            pcc.getListenable().addListener(listener);
+            serverCaches.add(pcc);
+            pcc.start(StartMode.POST_INITIALIZED_EVENT);
+        }
     }
 
     public void stop() {
@@ -58,8 +82,70 @@ public class NotificationManager {
             logger.error("Cannot correctly close application {}", app.getName(), e);
         }
         dispatcher.stop();
-        notificatorAcceptorExecutor.shutdownNow();
-
     }
 
+    private class ServerChangesListener implements PathChildrenCacheListener {
+        @Override
+        public void childEvent(CuratorFramework client, PathChildrenCacheEvent event) throws Exception {
+            switch (event.getType()) {
+                case INITIALIZED: {
+                    logger.trace("Cache initialized: {}", event.getData().getPath());
+                    for (ChildData cd : event.getInitialData()) {
+                        addServer(cd.getPath());
+                    }
+                }
+                case CHILD_ADDED: {
+                    logger.trace("Server Node added : {}", event.getData().getPath());
+
+                    addServer(event.getData().getPath());
+                    break;
+                }
+                case CHILD_UPDATED: {
+                    logger.trace("Server Node changed: " + event.getData().getPath());
+                    removeServer(event.getData().getPath());
+                    addServer(event.getData().getPath());
+                    break;
+                }
+                case CHILD_REMOVED:
+                    logger.trace("Server Node removed: " + event.getData().getPath());
+                    removeServer(event.getData().getPath());
+                    break;
+                case CONNECTION_LOST:
+                    logger.error("Lost connection with ZooKeeper ");
+                    break;
+                case CONNECTION_RECONNECTED:
+                    logger.warn("Reconnected to ZooKeeper");
+                    break;
+                case CONNECTION_SUSPENDED:
+                    logger.error("Connection suspended to ZooKeeper");
+                    break;
+                default:
+                    logger.error("Unknown event type {}", event.getType().toString());
+                    break;
+            }
+        }
+    }
+    
+    private HostAndPort getServerFromPath(String path) {
+        String server = ZKPaths.getNodeFromPath(path);
+        return HostAndPort.fromString(server);
+    }
+
+    private String getObserverFromPath(String path) {
+        String parent = ZKPaths.getPathAndNode(path).getPath();
+        String observer = ZKPaths.getNodeFromPath(parent);
+        return observer;
+    }
+
+    public void addServer(String path) throws TException {
+        String observer = getObserverFromPath(path);
+        HostAndPort hostAndPort = getServerFromPath(path);
+        dispatcher.serverStarted(hostAndPort, observer);
+    }
+
+    public void removeServer(String path) throws TException {
+        String observer = getObserverFromPath(path);
+        HostAndPort hostAndPort = getServerFromPath(path);
+        dispatcher.serverStoped(hostAndPort, observer);
+    }
 }

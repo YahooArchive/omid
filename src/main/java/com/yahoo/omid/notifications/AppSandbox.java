@@ -22,85 +22,33 @@ import java.util.concurrent.BlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.netflix.curator.framework.CuratorFramework;
-import com.netflix.curator.framework.recipes.cache.PathChildrenCache;
-import com.netflix.curator.framework.recipes.cache.PathChildrenCacheEvent;
-import com.netflix.curator.framework.recipes.cache.PathChildrenCacheListener;
-import com.netflix.curator.utils.ZKPaths;
 import com.yahoo.omid.notifications.comm.ZNRecord;
-import com.yahoo.omid.notifications.comm.ZNRecordSerializer;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
 
-public class AppSandbox implements PathChildrenCacheListener {
+public class AppSandbox {
 
     private static final Logger logger = LoggerFactory.getLogger(AppSandbox.class);
 
-    CuratorFramework zkClient;
-
     private ScannerSandbox scannerSandbox;
-
-    private PathChildrenCache appsCache;
 
     private Map<String, App> registeredApps = new Hashtable<String, App>();
 
-    public AppSandbox(CuratorFramework zkClient, ScannerSandbox scannerSandbox) throws Exception {
-        this.zkClient = zkClient;
+    private Coordinator coordinator;
+
+    public AppSandbox(CuratorFramework zkClient, ScannerSandbox scannerSandbox, Coordinator coordinator) throws Exception {
         this.scannerSandbox = scannerSandbox;
-        appsCache = new PathChildrenCache(this.zkClient, ZkTreeUtils.getAppsNodePath(), false,
-                new ThreadFactoryBuilder().setNameFormat("ZK App Listener [" + ZkTreeUtils.getAppsNodePath() + "]")
-                        .build());
-        appsCache.getListenable().addListener(this);
+        this.coordinator = coordinator;
     }
 
-    public void startWatchingAppsNode() throws Exception {
-        appsCache.start(true);
-    }
-
-    @Override
-    public void childEvent(CuratorFramework client, PathChildrenCacheEvent event) throws Exception {
-
-        switch (event.getType()) {
-        case CHILD_ADDED: {
-            logger.trace("App Node added : {}", event.getData().getPath());
-            createApplication(ZKPaths.getNodeFromPath(event.getData().getPath()));
-            break;
-        }
-        case CHILD_UPDATED: {
-            logger.trace("App Node changed: " + event.getData().getPath());
-            break;
-        }
-        case CHILD_REMOVED: {
-            logger.trace("App Node removed: " + event.getData().getPath());
-            removeApplication(ZKPaths.getNodeFromPath(event.getData().getPath()));
-            break;
-        }
-        case CONNECTION_LOST:
-            logger.error("Lost connection with ZooKeeper {}", zkClient.getZookeeperClient()
-                    .getCurrentConnectionString());
-            break;
-        case CONNECTION_RECONNECTED:
-            logger.warn("Reconnected to ZooKeeper {}", zkClient.getZookeeperClient().getCurrentConnectionString());
-            break;
-        case CONNECTION_SUSPENDED:
-            logger.error("Connection suspended to ZooKeeper {}", zkClient.getZookeeperClient()
-                    .getCurrentConnectionString());
-            break;
-        default:
-            logger.error("Unknown event type {}", event.getType().toString());
-            break;
-        }
-    }
-
-    public synchronized void createApplication(String appName) throws Exception {
-
-        String appNodePath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), appName);
-        byte[] rawData = zkClient.getData().forPath(appNodePath);
-        ZNRecord appData = (ZNRecord) new ZNRecordSerializer().deserialize(rawData);
+    public synchronized void createApplication(String appName, ZNRecord appData) throws Exception {
+        logger.info("app name: " + appName);
+        logger.info("app data: " + appData);
         if (!appName.equals(appData.getId())) {
+            logger.error("App data doesn't correspond to app");
             throw new RuntimeException("App data retrieved doesn't corresponds to app: " + appName);
         }
-        App app = new App(this, appName, appData);
+        App app = new App(this, appName, appData, coordinator);
         if (registeredApps.containsKey(appName)) {
             logger.error("Cannot add new application, there is already an application by the same name : {}", appName);
             return;
@@ -112,7 +60,7 @@ public class AppSandbox implements PathChildrenCacheListener {
         // registering the interest in the Zk app node)
     }
 
-    private synchronized App removeApplication(String appName) throws Exception {
+    public synchronized App removeApplication(String appName) throws Exception {
         App removedApp = null;
         removedApp = registeredApps.remove(appName);
         if (removedApp != null) {
@@ -126,10 +74,6 @@ public class AppSandbox implements PathChildrenCacheListener {
 
     public BlockingQueue<Notification> getHandoffQueue(Interest interest) {
         return scannerSandbox.getHandoffQueue(interest);
-    }
-
-    public CuratorFramework getZKClient() {
-        return zkClient;
     }
 
 }
