@@ -32,7 +32,6 @@ import com.netflix.curator.framework.recipes.cache.PathChildrenCache.StartMode;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheEvent;
 import com.netflix.curator.framework.recipes.cache.PathChildrenCacheListener;
 import com.netflix.curator.utils.ZKPaths;
-import com.netflix.curator.utils.ZKPaths.PathAndNode;
 import com.yahoo.omid.notifications.ZkTreeUtils;
 import com.yahoo.omid.notifications.comm.ZNRecordSerializer;
 import com.yahoo.omid.notifications.metrics.ClientSideAppMetrics;
@@ -44,7 +43,7 @@ public class NotificationManager {
     final IncrementalApplication app;
 
     final ClientSideAppMetrics metrics;
-    
+
     final ZNRecordSerializer serializer = new ZNRecordSerializer();
 
     private NotificationDispatcher dispatcher;
@@ -63,10 +62,9 @@ public class NotificationManager {
     public void start() throws Exception {
         dispatcher = new NotificationDispatcher(this);
         ServerChangesListener listener = new ServerChangesListener();
-        
+
         for (String observer : app.getRegisteredObservers().keySet()) {
-            String path = ZkTreeUtils.getServersNodePath() + "/" + app.getName() + "/"
-                    + observer;
+            String path = ZkTreeUtils.getServersNodePath() + "/" + app.getName() + "/" + observer;
             PathChildrenCache pcc = new PathChildrenCache(this.zkClient, path, false, new ThreadFactoryBuilder()
                     .setNameFormat("ZK App Listener [" + path + "]").build());
             pcc.getListenable().addListener(listener);
@@ -88,44 +86,45 @@ public class NotificationManager {
         @Override
         public void childEvent(CuratorFramework client, PathChildrenCacheEvent event) throws Exception {
             switch (event.getType()) {
-                case INITIALIZED: {
-                    logger.trace("Cache initialized: {}", event.getData().getPath());
-                    for (ChildData cd : event.getInitialData()) {
-                        addServer(cd.getPath());
-                    }
+            case INITIALIZED: {
+                logger.trace("Cache initialized");
+                for (ChildData cd : event.getInitialData()) {
+                    addServer(cd.getPath());
                 }
-                case CHILD_ADDED: {
-                    logger.trace("Server Node added : {}", event.getData().getPath());
+                break;
+            }
+            case CHILD_ADDED: {
+                logger.trace("Server Node added : {}", event.getData().getPath());
 
-                    addServer(event.getData().getPath());
-                    break;
-                }
-                case CHILD_UPDATED: {
-                    logger.trace("Server Node changed: " + event.getData().getPath());
-                    removeServer(event.getData().getPath());
-                    addServer(event.getData().getPath());
-                    break;
-                }
-                case CHILD_REMOVED:
-                    logger.trace("Server Node removed: " + event.getData().getPath());
-                    removeServer(event.getData().getPath());
-                    break;
-                case CONNECTION_LOST:
-                    logger.error("Lost connection with ZooKeeper ");
-                    break;
-                case CONNECTION_RECONNECTED:
-                    logger.warn("Reconnected to ZooKeeper");
-                    break;
-                case CONNECTION_SUSPENDED:
-                    logger.error("Connection suspended to ZooKeeper");
-                    break;
-                default:
-                    logger.error("Unknown event type {}", event.getType().toString());
-                    break;
+                addServer(event.getData().getPath());
+                break;
+            }
+            case CHILD_UPDATED: {
+                logger.trace("Server Node changed: " + event.getData().getPath());
+                removeServer(event.getData().getPath());
+                addServer(event.getData().getPath());
+                break;
+            }
+            case CHILD_REMOVED:
+                logger.trace("Server Node removed: " + event.getData().getPath());
+                removeServer(event.getData().getPath());
+                break;
+            case CONNECTION_LOST:
+                logger.error("Lost connection with ZooKeeper ");
+                break;
+            case CONNECTION_RECONNECTED:
+                logger.warn("Reconnected to ZooKeeper");
+                break;
+            case CONNECTION_SUSPENDED:
+                logger.error("Connection suspended to ZooKeeper");
+                break;
+            default:
+                logger.error("Unknown event type {}", event.getType().toString());
+                break;
             }
         }
     }
-    
+
     private HostAndPort getServerFromPath(String path) {
         String server = ZKPaths.getNodeFromPath(path);
         return HostAndPort.fromString(server);
