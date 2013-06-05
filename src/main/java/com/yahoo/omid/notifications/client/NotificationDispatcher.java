@@ -38,8 +38,8 @@ class NotificationDispatcher {
     }
 
     public void stop() {
-        if (clientThread != null) {
-            clientThread.interrupt();
+        for (NotificationClient client : clients.values()) {
+            client.stop();
         }
     }
     

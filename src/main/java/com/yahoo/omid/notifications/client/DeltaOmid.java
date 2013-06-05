@@ -191,6 +191,7 @@ public class DeltaOmid implements IncrementalApplication {
                 executor.shutdownNow();
             }
         }
+        notificationManager.stop();
 
         logger.info("{} stopped", this.toString());
     }

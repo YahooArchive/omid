@@ -48,11 +48,12 @@ public class AppSandbox {
             logger.error("App data doesn't correspond to app");
             throw new RuntimeException("App data retrieved doesn't corresponds to app: " + appName);
         }
-        App app = new App(this, appName, appData, coordinator);
         if (registeredApps.containsKey(appName)) {
             logger.error("Cannot add new application, there is already an application by the same name : {}", appName);
             return;
         }
+        App app = new App(this, appName, appData, coordinator);
+        registeredApps.put(appName, app);
         scannerSandbox.registerInterestsFromApplication(app);
         logger.info("Registered new application {}", appData);
         // NOTE: It is not necessary to create the instances. It is triggered automatically by curator

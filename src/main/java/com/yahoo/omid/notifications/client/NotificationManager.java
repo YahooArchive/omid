@@ -74,10 +74,12 @@ public class NotificationManager {
     }
 
     public void stop() {
-        try {
-            app.close();
-        } catch (IOException e) {
-            logger.error("Cannot correctly close application {}", app.getName(), e);
+        for (PathChildrenCache cache : serverCaches) {
+            try {
+                cache.close();
+            } catch (IOException e) {
+                logger.error("Error while shutting down the notification manager", e);
+            }
         }
         dispatcher.stop();
     }
