@@ -44,7 +44,6 @@ public class TestDeltaOmid extends TestInfrastructure {
     private static Logger logger = LoggerFactory.getLogger(TestDeltaOmid.class);
 
     private TestingServer server;
-    private static final ExecutorService tsoExecutor = Executors.newSingleThreadExecutor();
 
     @Before
     public void setup() throws Exception {
@@ -53,6 +52,11 @@ public class TestDeltaOmid extends TestInfrastructure {
 
     @After
     public void teardown() throws Exception {
+        CuratorFramework zkClient = CuratorFrameworkFactory.newClient(server.getConnectString(),
+                new ExponentialBackoffRetry(1000, 3));
+        zkClient.start();
+        zkClient.delete().forPath(ZkTreeUtils.getAppsNodePath());
+
         server.stop();
         server.close();
     }
@@ -86,7 +90,7 @@ public class TestDeltaOmid extends TestInfrastructure {
         CuratorFramework zkClient = CuratorFrameworkFactory.newClient(server.getConnectString(),
                 new ExponentialBackoffRetry(1000, 3));
         zkClient.start();
-        String expectedPath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), "TestApp");
+        String expectedPath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), "TestApp0000000000");
         Stat s = zkClient.checkExists().forPath(expectedPath);
         assertTrue("The expected path for App is not found in ZK", s != null);
         app.close();
@@ -106,7 +110,7 @@ public class TestDeltaOmid extends TestInfrastructure {
         CuratorFramework zkClient = CuratorFrameworkFactory.newClient(server.getConnectString(),
                 new ExponentialBackoffRetry(1000, 3));
         zkClient.start();
-        String expectedPath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), "TestApp");
+        String expectedPath = ZkTreeUtils.getAppsNodePath();
         List<String> children = zkClient.getChildren().forPath(expectedPath);
         assertNotNull("Returned children list is null", children);
         assertFalse("No app instance registered for TestApp", children.isEmpty());
@@ -144,7 +148,7 @@ public class TestDeltaOmid extends TestInfrastructure {
         CuratorFramework zkClient = CuratorFrameworkFactory.newClient(server.getConnectString(),
                 new ExponentialBackoffRetry(1000, 3));
         zkClient.start();
-        String expectedPath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), "TestApp");
+        String expectedPath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), "TestApp0000000000");
         byte[] data = zkClient.getData().forPath(expectedPath);
         ZNRecord zkRecord = (ZNRecord) new ZNRecordSerializer().deserialize(data);
         ZNRecord expectedRecord = new ZNRecord("TestApp");
@@ -176,7 +180,7 @@ public class TestDeltaOmid extends TestInfrastructure {
         CuratorFramework zkClient = CuratorFrameworkFactory.newClient(server.getConnectString(),
                 new ExponentialBackoffRetry(1000, 3));
         zkClient.start();
-        String expectedPath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), "TestApp");
+        String expectedPath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), "TestApp0000000000");
         byte[] data = zkClient.getData().forPath(expectedPath);
         ZNRecord zkRecord = (ZNRecord) new ZNRecordSerializer().deserialize(data);
         ZNRecord expectedRecord = new ZNRecord("TestApp");

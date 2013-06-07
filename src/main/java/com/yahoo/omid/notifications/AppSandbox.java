@@ -41,36 +41,41 @@ public class AppSandbox {
         this.coordinator = coordinator;
     }
 
-    public synchronized void createApplication(String appName, ZNRecord appData) throws Exception {
+    public synchronized void addApplicationInstance(String appName, ZNRecord appData) throws Exception {
         logger.info("app name: " + appName);
         logger.info("app data: " + appData);
         if (!appName.equals(appData.getId())) {
             logger.error("App data doesn't correspond to app");
             throw new RuntimeException("App data retrieved doesn't corresponds to app: " + appName);
         }
-        if (registeredApps.containsKey(appName)) {
-            logger.error("Cannot add new application, there is already an application by the same name : {}", appName);
+        App app = registeredApps.get(appName);
+        if (app != null) {
+            logger.info("App already configured, incrementing live instances : {}", appName);
+            app.addLiveInstance();
             return;
         }
-        App app = new App(this, appName, appData, coordinator);
-        registeredApps.put(appName, app);
+        app = new App(this, appName, appData, coordinator);
         scannerSandbox.registerInterestsFromApplication(app);
+        registeredApps.put(appName, app);
+        app.start();
         logger.info("Registered new application {}", appData);
         // NOTE: It is not necessary to create the instances. It is triggered automatically by curator
         // through the App.childEvent() callback when constructing the App object (particularly, when
         // registering the interest in the Zk app node)
     }
 
-    public synchronized App removeApplication(String appName) throws Exception {
-        App removedApp = null;
-        removedApp = registeredApps.remove(appName);
-        if (removedApp != null) {
-            scannerSandbox.removeInterestsFromApplication(removedApp);
-            logger.info("Removed application {}", appName);
-        } else {
-            throw new Exception("App " + appName + " was not registered in AppSanbox");
+    public synchronized App removeApplicationInstance(String appName) throws Exception {
+        App app = registeredApps.remove(appName);
+        if (app == null) {
+            throw new NullPointerException("App " + appName + " was not registered in AppSanbox");
         }
-        return removedApp;
+        app.removeLiveInstance();
+        if (app.getLiveInstances() == 0) {
+            registeredApps.remove(appName);
+            scannerSandbox.removeInterestsFromApplication(app);
+            logger.info("Removed application {}", appName);
+        }
+        return app;
     }
 
     public BlockingQueue<Notification> getHandoffQueue(Interest interest) {

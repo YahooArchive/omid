@@ -6,4 +6,6 @@ public interface Coordinator {
     public void registerInstanceNotifier(HostAndPort hostAndPort, String app, String observer);
 
     public void registerAppSandbox(AppSandbox appSandbox) throws Exception;
+
+    public void removeInstanceNotifier(HostAndPort hostAndPort, String name, String observer);
 }

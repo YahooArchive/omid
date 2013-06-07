@@ -182,6 +182,8 @@ public class TSOTestBase {
       if (tsoExecutor != null) {
     	  tsoExecutor.shutdownNow();
       }
+      state = null;
+      tso = null;
       teardownClient();
 
       TestUtils.waitForSocketNotListening("localhost", 1234, 1000);

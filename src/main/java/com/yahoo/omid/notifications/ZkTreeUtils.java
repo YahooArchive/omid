@@ -16,6 +16,27 @@
 package com.yahoo.omid.notifications;
 
 
+/**
+ * ZK Utilities
+ * 
+ * Schema: 
+ * 
+ * /deltaomid
+ *     |- applications
+ *     |    |- app1|instance1
+ *     |    |- app1|instance2
+ *     |    \- app2|instance1
+ *     \- servers
+ *          |- app1
+ *          |   |- obs1
+ *          |   |   |- host1:port1
+ *          |   |   \- host2:port1
+ *          |   \- obs2
+ *          |       \- host1:port2
+ *          \- app2
+ *              \- obs1
+ *                  \- host1:port3
+ */
 public class ZkTreeUtils {
 
     public static final String ROOT_NODE = "deltaomid";

@@ -257,7 +257,7 @@ public class TSOHandler extends SimpleChannelHandler {
 
     ChannelBuffer cb = ChannelBuffers.buffer(10);
 
-    private boolean finish;
+    private volatile boolean finish;
 
     public static long waitTime = 0;
     public static long commitTime = 0;
@@ -606,6 +606,8 @@ public class TSOHandler extends SimpleChannelHandler {
 
     public void stop() {
         finish = true;
+        scheduledExecutor.shutdown();
+        executor.shutdown();
     }
 
 }

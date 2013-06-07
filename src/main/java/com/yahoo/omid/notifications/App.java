@@ -4,6 +4,7 @@ import static com.yahoo.omid.notifications.ZkTreeUtils.ZK_APP_DATA_NODE;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,38 +47,37 @@ class App {
 
     ServerSideAppMetrics metrics;
 
-    // TODO configurable nb threads
-    private ConcurrentHashMap<HostAndPort, Map<Interest, AppInstanceNotifier>> notifiers = new ConcurrentHashMap<HostAndPort, Map<Interest, AppInstanceNotifier>>();
-
     // A mapping between an interest and the observer wanting notifications for changes in that interest
     // TODO now we are considering that only one observer is registered per app
     // Otherwise a List of Observers would be required as a second parameter of the list
     // The Thrift class would need also to be modified
     ConcurrentHashMap<Interest, String> interestObserverMap = new ConcurrentHashMap<Interest, String>();
+    
+    // Started notifiers
+    Set<AppInstanceNotifier> notifiers = new HashSet<AppInstanceNotifier>();
+
+    private int liveInstances;
+
+    private Coordinator coordinator;
 
     public App(AppSandbox appSandbox, String appName, ZNRecord appData, Coordinator coordinator) throws Exception {
         this.appSandbox = appSandbox;
         this.name = appName;
-
+        this.liveInstances = 1;
+        this.coordinator = coordinator;
         // Retrieve the obs/interest data from each app data node
         List<String> observersInterests = appData.getListField(ZK_APP_DATA_NODE);
         for (String observerInterest : observersInterests) {
             Iterable<String> tokens = Splitter.on("/").split(observerInterest);
             ArrayList<String> tokenList = Lists.newArrayList(tokens);
             if (tokenList.size() != 2) {
-                throw new RuntimeException("Error extracting data from app node: " + appName);
+                throw new RuntimeException("Error extracting data from app node: " + name);
             }
             String obsName = tokenList.get(0);
             String interestName = tokenList.get(1);
             Interest interest = Interest.fromString(interestName);
             logger.info("Adding interest {} to observer {}", interest, obsName);
             addInterestToObserver(interest, obsName);
-        }
-        this.metrics = new ServerSideAppMetrics(appName, interestObserverMap.keySet());
-        String appPath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), this.name);
-        for (Interest interest : interestObserverMap.keySet()) {
-            AppInstanceNotifier notifier = new AppInstanceNotifier(this, interest, coordinator);
-            notifier.start();
         }
     }
 
@@ -94,7 +94,7 @@ class App {
 
     @Override
     public String toString() {
-        return "App [name=" + name + ", notifiers=" + Arrays.toString(notifiers.keySet().toArray(new String[] {}))
+        return "App [name=" + name + ", notifiers=" + notifiers
                 + ", interestObserverMap=" + interestObserverMap + "]";
     }
 
@@ -102,4 +102,31 @@ class App {
         return appSandbox.getHandoffQueue(interest);
     }
 
+    public void addLiveInstance() {
+        liveInstances++;
+    }
+
+    public void removeLiveInstance() {
+        liveInstances--;
+    }
+
+    public int getLiveInstances() {
+        return liveInstances;
+    }
+    
+    public void start() {
+        this.metrics = new ServerSideAppMetrics(name, interestObserverMap.keySet());
+        String appPath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), this.name);
+        for (Interest interest : interestObserverMap.keySet()) {
+            AppInstanceNotifier notifier = new AppInstanceNotifier(this, interest, coordinator);
+            notifier.start();
+            notifiers.add(notifier);
+        }
+    }
+    
+    public void stop() {
+        for (AppInstanceNotifier notifier : notifiers) {
+            notifier.stop();
+        }
+    }
 }

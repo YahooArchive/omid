@@ -105,6 +105,7 @@ public class ScannerSandbox {
                 }
                 scannerContainer.start();
                 logger.info("ScannerContainer created for interest " + appInterest);
+                scanners.put(appInterest, scannerContainer);
             }
             scannerContainer.addInterestedApplication(app);
             logger.info("Application interest {} registered in scanner container for app {}", appInterest, app.name);
@@ -331,6 +332,12 @@ public class ScannerSandbox {
                     Pair<byte[][], byte[][]> startEndKeys = table.getStartEndKeys();
                     byte[][] startKeys = startEndKeys.getFirst();
                     byte[][] endKeys = startEndKeys.getSecond();
+                    if (startKeys.length <= 0) {
+                        scan.setStartRow(new byte[0]);
+                        scan.setStopRow(new byte[0]);
+                        logger.warn("Empty table {} ", table);
+                        return;
+                    }
                     int regionIdx = regionRoller.nextInt(startKeys.length);
 
                     scan.setStartRow(startKeys[regionIdx]);

@@ -63,7 +63,7 @@ public class DeltaOmid implements IncrementalApplication {
     private final ClientConfiguration conf;
     private final NotificationManager notificationManager;
     public static final int DEFAULT_NOTIFICATION_BUFFER_CAPACITY = 100;
-    public static final int DEFAULT_OBSERVER_PARALLELISM = 2;
+    public static final int DEFAULT_OBSERVER_PARALLELISM = 1;
 
     // The main structure shared by the InterestRecorder and NotificiationListener services in order to register and
     // notify observers
@@ -156,10 +156,9 @@ public class DeltaOmid implements IncrementalApplication {
         byte[] appData = new ZNRecordSerializer().serialize(zkData);
         logger.info("Registering app {} with data {}", name, Arrays.toString(appData));
         try {
-            String zkAppPath = createZkSubBranch(ZkTreeUtils.getAppsNodePath(), name,
-                    appData, false);
+            String zkAppPath = ZkTreeUtils.getAppsNodePath() + "/" + name;
             zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL_SEQUENTIAL)
-                    .forPath(zkAppPath+"/");
+                    .forPath(zkAppPath, appData);
         } catch (Exception e) {
             logger.error("Couldn't register app", e);
             throw new NotificationException(e);

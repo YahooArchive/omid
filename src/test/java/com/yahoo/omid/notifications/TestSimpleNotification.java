@@ -20,6 +20,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -111,6 +112,7 @@ public class TestSimpleNotification extends TestInfrastructure {
 
             public void onInterestChanged(Result rowData, Transaction tx) {
                 st = tx.getStartTimestamp();
+                logger.info("Start timestamp: " + st);
                 Configuration hbaseClientConf = HBaseConfiguration.create();
                 try {
                     TTable tt = new TTable(hbaseClientConf, interest.getTable());
@@ -149,13 +151,13 @@ public class TestSimpleNotification extends TestInfrastructure {
         IncrementalApplication app = new DeltaOmid.AppBuilder("testTxWritesTheRightMetadataOnCommitApp", 6668)
                 .addObserver(observer).build();
 
-        Thread.currentThread().sleep(10000); // Let's the application to register itself
+        Thread.sleep(10000); // Allow the application to register itself
 
         long tst = startTriggerTransaction(true, "row-1", TestConstants.COLUMN_FAMILY_1, TestConstants.COLUMN_1, VAL_1);
 
         Assert.assertTrue("Countdown latch timed out", cdl.await(10, TimeUnit.SECONDS));
 
-        Thread.currentThread().sleep(10000); // Let's the observer transaction to commit
+        Thread.sleep(10000); // Allow the observer transaction to commit
 
         // Check all the metadata values
         Configuration hbaseConfig = HBaseConfiguration.create();
@@ -172,6 +174,7 @@ public class TestSimpleNotification extends TestInfrastructure {
 
             // Check timestamps
             KeyValue[] kvs = result.raw();
+            logger.info(Arrays.toString(kvs));
             assertEquals("Only 2 KV should be returned", 2, kvs.length);
             assertEquals("Incorrect timestamp", tst, kvs[0].getTimestamp()); // 0 = Value written
             assertEquals("Incorrect timestamp", st, kvs[1].getTimestamp()); // 1 = *-notify meta-column

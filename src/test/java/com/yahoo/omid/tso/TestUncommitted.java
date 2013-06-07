@@ -14,7 +14,7 @@ import com.yahoo.omid.notifications.client.ObserverWrapper;
 
 public class TestUncommitted {
 
-    private static final Logger logger = LoggerFactory.getLogger(ObserverWrapper.class);
+    private static final Logger logger = LoggerFactory.getLogger(TestUncommitted.class);
 
     @Test
     public void testRandomOperations() {
@@ -25,7 +25,7 @@ public class TestUncommitted {
         for (int i = 0; i < iterations; ++i) {
             long seed = System.nanoTime();
             Random rand = new Random(seed);
-            logger.info("Random seed: {}", seed);
+            logger.trace("Random seed: {}", seed);
             
             final long startTimestamp = Math.abs(rand.nextLong()) % (Long.MAX_VALUE >> 1);
             long currentTimestamp = startTimestamp;
@@ -45,7 +45,7 @@ public class TestUncommitted {
                     largestDeleted += rand.nextInt((int) diff);
                     Set<Long> aborted = uncommitted.raiseLargestDeletedTransaction(largestDeleted);
                     
-                    assertTrue("Aborted transactions that weren't uncommited", toAbort.containsAll(aborted));
+                    assertTrue("Aborted transactions that weren't uncommited, seed " + seed, toAbort.containsAll(aborted));
                     toAbort.removeAll(aborted);
                 } else if (op < commit) {
                     // commit
@@ -58,9 +58,9 @@ public class TestUncommitted {
                 }
             }
             Set<Long> aborted = uncommitted.raiseLargestDeletedTransaction(currentTimestamp);
-            assertTrue("Aborted transactions that weren't uncommited", toAbort.containsAll(aborted));
+            assertTrue("Aborted transactions that weren't uncommited, seed " + seed, toAbort.containsAll(aborted));
             toAbort.removeAll(aborted);
-            assertTrue("toAbort is not empty", toAbort.isEmpty());
+            assertTrue("toAbort is not empty, seed " + seed, toAbort.isEmpty());
         }
     }
     

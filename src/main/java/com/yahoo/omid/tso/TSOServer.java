@@ -212,6 +212,7 @@ public class TSOServer implements Runnable {
         handler.stop();
         comHandler.stop();
         state.stop();
+        state = null;
 
         // *** Start the Netty shutdown ***
 
@@ -226,9 +227,13 @@ public class TSOServer implements Runnable {
         System.out.println("End of resources");
         factory.releaseExternalResources();
         comFactory.releaseExternalResources();
+        comBootstrap.releaseExternalResources();
     }
 
     public void stop() {
         finish = true;
+        synchronized (lock) {            
+            lock.notifyAll();
+        }
     }
 }

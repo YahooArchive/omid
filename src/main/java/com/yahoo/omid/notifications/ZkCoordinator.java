@@ -1,5 +1,6 @@
 package com.yahoo.omid.notifications;
 
+import org.I0Itec.zkclient.util.ZkPathUtil;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
@@ -17,6 +18,11 @@ import com.netflix.curator.utils.ZKPaths;
 import com.yahoo.omid.notifications.comm.ZNRecord;
 import com.yahoo.omid.notifications.comm.ZNRecordSerializer;
 
+/**
+ * Handles server-side ZK coordination
+ * 
+ * @see ZkTreeUtils
+ */
 public class ZkCoordinator implements Coordinator {
     private static final Logger logger = LoggerFactory.getLogger(ZkCoordinator.class);
 
@@ -32,17 +38,32 @@ public class ZkCoordinator implements Coordinator {
     }
 
     @Override
-    public void registerInstanceNotifier(HostAndPort hostAndport, String app, String observer) {
+    public void registerInstanceNotifier(HostAndPort hostAndPort, String app, String observer) {
         StringBuilder path = new StringBuilder();
         path.append(ZkTreeUtils.getServersNodePath()) // root
                 .append('/').append(app) // interest
                 .append('/').append(observer) // observer
-                .append('/').append(hostAndport); // server
+                .append('/').append(hostAndPort); // server
         try {
             zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL).forPath(path.toString());
         } catch (Exception e) {
             logger.error("Couldn't register instance notifier for app {} observer {} listening at {}", new Object[] {
-                    app, observer, hostAndport, e });
+                    app, observer, hostAndPort, e });
+        }
+    }
+
+    @Override
+    public void removeInstanceNotifier(HostAndPort hostAndPort, String app, String observer) {
+        StringBuilder path = new StringBuilder();
+        path.append(ZkTreeUtils.getServersNodePath()) // root
+                .append('/').append(app) // interest
+                .append('/').append(observer) // observer
+                .append('/').append(hostAndPort); // server
+        try {
+            zkClient.delete().forPath(path.toString());
+        } catch (Exception e) {
+            logger.error("Couldn't deregister instance notifier for app {} observer {} listening at {}", new Object[] {
+                    app, observer, hostAndPort, e });
         }
     }
 
@@ -78,26 +99,26 @@ public class ZkCoordinator implements Coordinator {
                 logger.info("Cache initialized");
                 for (ChildData cd : event.getInitialData()) {
                     ZNRecord appData = (ZNRecord) serializer.deserialize(cd.getData());
-                    appSandbox.createApplication(ZKPaths.getNodeFromPath(cd.getPath()), appData);
+                    String appName = getAppNameFromPath(event.getData().getPath());
+                    appSandbox.addApplicationInstance(appName, appData);
                 }
                 break;
             }
             case CHILD_ADDED: {
                 logger.info("App Node added : {}", event.getData().getPath());
                 ZNRecord appData = (ZNRecord) serializer.deserialize(event.getData().getData());
-                appSandbox.createApplication(ZKPaths.getNodeFromPath(event.getData().getPath()), appData);
+                String appName = getAppNameFromPath(event.getData().getPath());
+                appSandbox.addApplicationInstance(appName, appData);
                 break;
             }
             case CHILD_UPDATED: {
-                logger.info("App Node changed: " + event.getData().getPath());
-                appSandbox.removeApplication(ZKPaths.getNodeFromPath(event.getData().getPath()));
-                ZNRecord appData = (ZNRecord) serializer.deserialize(event.getData().getData());
-                appSandbox.createApplication(ZKPaths.getNodeFromPath(event.getData().getPath()), appData);
+                logger.info("App Node changed, ignoring: " + event.getData().getPath());
                 break;
             }
             case CHILD_REMOVED:
                 logger.info("App Node removed: " + event.getData().getPath());
-                appSandbox.removeApplication(ZKPaths.getNodeFromPath(event.getData().getPath()));
+                String appName = getAppNameFromPath(event.getData().getPath());
+                appSandbox.removeApplicationInstance(appName);
                 break;
             case CONNECTION_LOST:
                 logger.error("Lost connection with ZooKeeper ");
@@ -113,5 +134,10 @@ public class ZkCoordinator implements Coordinator {
                 break;
             }
         }
+    }
+
+    public String getAppNameFromPath(String path) {
+        String node = ZKPaths.getNodeFromPath(path);
+        return node.substring(0, node.length() - 10);
     }
 }

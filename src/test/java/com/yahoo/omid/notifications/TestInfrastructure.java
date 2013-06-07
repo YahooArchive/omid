@@ -35,14 +35,16 @@ import org.junit.BeforeClass;
 
 import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.tso.TSOServer;
+import com.yahoo.omid.tso.TSOServerConfig;
 
 public class TestInfrastructure {
 
     private static final Logger logger = Logger.getLogger(TestInfrastructure.class);
     
-    private static final ExecutorService bkExecutor = Executors.newSingleThreadExecutor();
-    private static final ExecutorService tsoExecutor = Executors.newSingleThreadExecutor();
-    private static final ExecutorService nsExecutor = Executors.newSingleThreadExecutor();
+    private static ExecutorService bkExecutor;
+    private static ExecutorService tsoExecutor;
+    private static ExecutorService nsExecutor;
+    private static TSOServer tsoServer;
     private static LocalHBaseCluster hbasecluster;
     protected static Configuration hbaseConf;
     private static HBaseAdmin admin;
@@ -50,6 +52,9 @@ public class TestInfrastructure {
     @BeforeClass 
     public static void startServices() throws Exception {
         logger.info("Starting up Notification Infrastructure...");
+        bkExecutor = Executors.newSingleThreadExecutor();
+        tsoExecutor = Executors.newSingleThreadExecutor();
+        nsExecutor = Executors.newSingleThreadExecutor();
         setupBK();
         setupTSO();
         setupHBase();
@@ -62,6 +67,9 @@ public class TestInfrastructure {
         logger.info("Tearing down Notification Infrastructure...");
         if (hbasecluster != null) {
            hbasecluster.shutdown();
+        }
+        if (tsoServer != null) {
+            tsoServer.stop();
         }
 
         nsExecutor.shutdownNow();
@@ -134,9 +142,10 @@ public class TestInfrastructure {
                     logger.info("Starting TSO");
                     String[] args = new String[] { "-port", "1234", "-batch", "100", "-ensemble", "4", "-quorum", "2",
                             "-zk", "localhost:2181" };
-                    TSOServer.main(args);
-                } catch (InterruptedException e) {
-                    // go away quietly
+                    TSOServerConfig config = TSOServerConfig.parseConfig(args);
+
+                    tsoServer = new TSOServer(config);
+                    tsoServer.run();
                 } catch (Exception e) {
                     logger.error("Error starting TSO", e);
                 }

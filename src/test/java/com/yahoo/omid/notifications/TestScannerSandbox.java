@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
 import org.junit.Before;
@@ -42,56 +43,22 @@ public class TestScannerSandbox extends TestInfrastructure {
         App app = mock(App.class);
         when(app.getInterests()).thenReturn(interests);
         scannerSandbox.registerInterestsFromApplication(app);
-        Map<Interest, ScannerContainer> scanners = scannerSandbox.getScanners();
-        assertTrue(scanners.get(Interest.fromString("t1:cf1:c1")).countInterestedApplications() == 1);
-        assertTrue(scanners.get(Interest.fromString("t1:cf2:c2")).countInterestedApplications() == 1);
-    }
-
-    @Test
-    public void testRegisterInterestsOf2ApplicationsSequentiallyWithACommonInterest() throws Exception {
-        Set<Interest> interestsApp1 = ImmutableSet.of(Interest.fromString("t1:cf1:c1"),
-                Interest.fromString("t1:cf2:c2"));
-        Set<Interest> interestsApp2 = ImmutableSet.of(Interest.fromString("t1:cf1:c1"),
-                Interest.fromString("t1:cf1:c2"));
-        App app1 = mock(App.class);
-        App app2 = mock(App.class);
-        when(app1.getInterests()).thenReturn(interestsApp1);
-        when(app2.getInterests()).thenReturn(interestsApp2);
-        scannerSandbox.registerInterestsFromApplication(app1);
-        scannerSandbox.registerInterestsFromApplication(app2);
-        Map<Interest, ScannerContainer> scanners = scannerSandbox.getScanners();
-        assertTrue(scanners.get(Interest.fromString("t1:cf1:c1")).countInterestedApplications() == 2);
-        assertTrue(scanners.get(Interest.fromString("t1:cf2:c2")).countInterestedApplications() == 1);
-        assertTrue(scanners.get(Interest.fromString("t1:cf1:c2")).countInterestedApplications() == 1);
-    }
-
-    @Test
-    public void testRegisterInterestsOf2ApplicationsSequentiallyWithACommonInterestAndThenDeregisterTheInterestsOfOneOfThem()
-            throws Exception {
-        Set<Interest> interestsApp1 = ImmutableSet.of(Interest.fromString("t1:cf1:c1"),
-                Interest.fromString("t1:cf2:c2"));
-        Set<Interest> interestsApp2 = ImmutableSet.of(Interest.fromString("t1:cf1:c1"),
-                Interest.fromString("t1:cf1:c2"));
-        App app1 = mock(App.class);
-        App app2 = mock(App.class);
-        when(app1.getInterests()).thenReturn(interestsApp1);
-        when(app2.getInterests()).thenReturn(interestsApp2);
-        scannerSandbox.registerInterestsFromApplication(app1);
-        scannerSandbox.registerInterestsFromApplication(app2);
-        scannerSandbox.removeInterestsFromApplication(app1);
-        Map<Interest, ScannerContainer> scanners = scannerSandbox.getScanners();
-        assertTrue(scanners.get(Interest.fromString("t1:cf1:c1")).countInterestedApplications() == 1);
-        assertTrue(scanners.get(Interest.fromString("t1:cf2:c2")) == null);
-        assertTrue(scanners.get("t1:cf1:c2").countInterestedApplications() == 1);
+        try {
+            Map<Interest, ScannerContainer> scanners = scannerSandbox.getScanners();
+            assertTrue(scanners.get(Interest.fromString("t1:cf1:c1")).countInterestedApplications() == 1);
+            assertTrue(scanners.get(Interest.fromString("t1:cf2:c2")).countInterestedApplications() == 1);
+        } finally {
+            scannerSandbox.removeInterestsFromApplication(app);
+        }
     }
 
     @Test
     public void testRegisterInterestsOf3ApplicationsConcurrently() throws Exception {
         Set<Interest> interestsApp1 = ImmutableSet.of(Interest.fromString("t1:cf1:c1"),
                 Interest.fromString("t1:cf2:c2"));
-        Set<Interest> interestsApp2 = ImmutableSet.of(Interest.fromString("t1:cf1:c1"),
+        Set<Interest> interestsApp2 = ImmutableSet.of(
                 Interest.fromString("t1:cf1:c2"));
-        Set<Interest> interestsApp3 = ImmutableSet.of(Interest.fromString("t1:cf1:c1"),
+        Set<Interest> interestsApp3 = ImmutableSet.of(
                 Interest.fromString("t1:cf1:c3"));
         final App app1 = mock(App.class);
         final App app2 = mock(App.class);
@@ -111,7 +78,7 @@ public class TestScannerSandbox extends TestInfrastructure {
                     startCdl.await();
                     for (int i = 0; i < 50; i++) {
                         scannerSandbox.registerInterestsFromApplication(app1);
-                        Thread.currentThread().sleep((long) randGen.nextInt(3) * 1000);
+                        Thread.sleep(randGen.nextInt(3) * 1000);
                         scannerSandbox.removeInterestsFromApplication(app1);
                     }
                     scannerSandbox.registerInterestsFromApplication(app1);
@@ -129,7 +96,7 @@ public class TestScannerSandbox extends TestInfrastructure {
                     startCdl.await();
                     for (int i = 0; i < 50; i++) {
                         scannerSandbox.registerInterestsFromApplication(app2);
-                        Thread.currentThread().sleep((long) randGen.nextInt(3) * 1000);
+                        Thread.sleep(randGen.nextInt(3) * 1000);
                         scannerSandbox.removeInterestsFromApplication(app2);
                     }
                     scannerSandbox.registerInterestsFromApplication(app2);
@@ -147,7 +114,7 @@ public class TestScannerSandbox extends TestInfrastructure {
                     startCdl.await();
                     for (int i = 0; i < 50; i++) {
                         scannerSandbox.registerInterestsFromApplication(app3);
-                        Thread.currentThread().sleep((long) randGen.nextInt(3) * 1000);
+                        Thread.sleep(randGen.nextInt(3) * 1000);
                         scannerSandbox.removeInterestsFromApplication(app3);
                     }
                     scannerSandbox.registerInterestsFromApplication(app3);
@@ -163,13 +130,19 @@ public class TestScannerSandbox extends TestInfrastructure {
         t2.start();
         t3.start();
         startCdl.countDown();
-        endCdl.await();
+        assertTrue("Timed out", endCdl.await(140, TimeUnit.SECONDS));
 
-        Map<Interest, ScannerContainer> scanners = scannerSandbox.getScanners();
-        assertTrue(scanners.get(Interest.fromString("t1:cf1:c1")).countInterestedApplications() == 3);
-        assertTrue(scanners.get(Interest.fromString("t1:cf2:c2")).countInterestedApplications() == 1);
-        assertTrue(scanners.get(Interest.fromString("t1:cf1:c2")).countInterestedApplications() == 1);
-        assertTrue(scanners.get(Interest.fromString("t1:cf1:c3")).countInterestedApplications() == 1);
+        try {
+            Map<Interest, ScannerContainer> scanners = scannerSandbox.getScanners();
+            assertTrue(scanners.get(Interest.fromString("t1:cf1:c1")).countInterestedApplications() == 1);
+            assertTrue(scanners.get(Interest.fromString("t1:cf2:c2")).countInterestedApplications() == 1);
+            assertTrue(scanners.get(Interest.fromString("t1:cf1:c2")).countInterestedApplications() == 1);
+            assertTrue(scanners.get(Interest.fromString("t1:cf1:c3")).countInterestedApplications() == 1);   
+        } finally {
+            scannerSandbox.removeInterestsFromApplication(app1);
+            scannerSandbox.removeInterestsFromApplication(app2);
+            scannerSandbox.removeInterestsFromApplication(app3);
+        }
     }
 
 }

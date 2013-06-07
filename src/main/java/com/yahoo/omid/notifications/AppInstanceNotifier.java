@@ -27,7 +27,7 @@ import com.yahoo.omid.notifications.thrift.generated.NotificationService;
  * There's one actor per application instance deployed
  * 
  */
-public class AppInstanceNotifier extends Thread {
+public class AppInstanceNotifier {
 
     /**
      * 
@@ -37,22 +37,23 @@ public class AppInstanceNotifier extends Thread {
     public static final int HOLDOFF_TIME_MS = 100;
     private Thread serverThread;
     private Coordinator coordinator;
+    private NotificationServer server;
+    private HostAndPort hostAndPort;
+    private String observer;
 
     private static final Logger logger = LoggerFactory.getLogger(AppInstanceNotifier.class);
 
     public AppInstanceNotifier(App app, Interest interest, Coordinator coordinator) {
-        super("[" + app.name + "]/-notifier");
         this.app = app;
         this.interest = interest;
         this.coordinator = coordinator;
     }
 
-    @Override
-    public void run() {
+    public void start() {
 
         // Start NotificationService
 
-        NotificationServer server = new NotificationServer(app.getHandoffQueue(interest), app.metrics);
+        server = new NotificationServer(app.getHandoffQueue(interest), app.metrics);
 
         // TODO use executor
         serverThread = new Thread(server, "NotificationServer-" + interest);
@@ -63,7 +64,6 @@ public class AppInstanceNotifier extends Thread {
             this.app.logger.error("Server didn't start, aborting", e);
             return;
         }
-        HostAndPort hostAndPort;
         try {
             hostAndPort = server.getHostAndPort();
         } catch (UnknownHostException e) {
@@ -71,7 +71,7 @@ public class AppInstanceNotifier extends Thread {
             return;
         }
 
-        String observer = this.app.interestObserverMap.get(interest);
+        observer = this.app.interestObserverMap.get(interest);
 
         if (observer == null) {
             this.app.logger.warn(this.app.name + " app notifier could not send notification to instance on "
@@ -82,8 +82,9 @@ public class AppInstanceNotifier extends Thread {
         this.app.logger.trace("App Notifier stopped");
     }
 
-    public void cancel() {
-        interrupt();
+    public void stop() {
+        server.stop();
+        coordinator.removeInstanceNotifier(hostAndPort, app.name, observer);
     }
 
     /**

@@ -98,8 +98,10 @@ public class OmidInfrastructure {
             public void run() {
                 try {
                     logger.info("Starting TSO");
+                    String metrics = System.getProperty("omid.metrics", "console:10:SECONDS");
+                    System.out.println("Metrics  = " + metrics);
                     String[] args = new String[] { "-port", "1234", "-batch", "100", "-ensemble", "4", "-quorum", "2",
-                            "-zk", "localhost:2181" };
+                            "-zk", "localhost:2181", "-metrics", metrics };
                     TSOServer.main(args);
                 } catch (InterruptedException e) {
                     // go away quietly
