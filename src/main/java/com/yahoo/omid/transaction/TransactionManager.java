@@ -37,6 +37,7 @@ import com.yahoo.omid.client.SyncCommitCallback;
 import com.yahoo.omid.client.SyncCreateCallback;
 import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.client.metrics.OmidClientMetrics.Timers;
+import com.yahoo.omid.transaction.Transaction.Status;
 import com.yammer.metrics.core.TimerContext;
 
 /**
@@ -105,6 +106,9 @@ public class TransactionManager {
         if (LOG.isTraceEnabled()) {
             LOG.trace("commit " + transaction);
         }
+        if (transaction.getStatus() != Status.RUNNING) {
+            throw new IllegalArgumentException("Transaction has already been " + transaction.getStatus());
+        }
 
         // Check rollbackOnly status
         if (transaction.isRollbackOnly()) {
@@ -141,6 +145,7 @@ public class TransactionManager {
             cleanup(transaction);
             throw new RollbackException();
         }
+        transaction.setStatus(Status.COMMITTED);
         transaction.setCommitTimestamp(cb.getCommitTimestamp());
     }
 
@@ -174,6 +179,9 @@ public class TransactionManager {
         if (LOG.isTraceEnabled()) {
             LOG.trace("abort " + transaction);
         }
+        if (transaction.getStatus() != Status.RUNNING) {
+            throw new IllegalArgumentException("Transaction has already been " + transaction.getStatus());
+        }
 
         flushTables(transaction);
 
@@ -197,6 +205,7 @@ public class TransactionManager {
     }
 
     private void cleanup(final Transaction transaction) {
+        transaction.setStatus(Status.ABORTED);
         TimerContext timer = tsoclient.getMetrics().startTimer(Timers.CLEANUP);
         Map<byte[], List<Delete>> deleteBatches = new HashMap<byte[], List<Delete>>();
         for (final RowKeyFamily rowkey : transaction.getRows()) {

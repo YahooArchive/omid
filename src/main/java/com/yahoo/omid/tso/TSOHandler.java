@@ -186,6 +186,15 @@ public class TSOHandler extends SimpleChannelHandler {
 
     public void handle(AbortRequest msg, ChannelHandlerContext ctx) {
         synchronized (sharedState) {
+            if (!sharedState.uncommited.isUncommited(msg.startTimestamp)) {
+                long commitTS = sharedState.hashmap.getCommittedTimestamp(msg.startTimestamp);
+                if (commitTS == 0) {
+                    LOG.error("Transaction " + msg.startTimestamp + " has already been aborted");
+                } else {
+                    LOG.error("Transaction " + msg.startTimestamp + " has already been committed with ts " + commitTS);
+                }
+                return; // TODO something better to do?
+            }
             DataOutputStream toWAL = sharedState.toWAL;
             try {
                 toWAL.writeByte(LoggerProtocol.ABORT);
@@ -317,7 +326,7 @@ public class TSOHandler extends SimpleChannelHandler {
             if (msg.startTimestamp < timestampOracle.first()) {
                 reply.committed = false;
                 LOG.warn("Aborting transaction after restarting TSO");
-            } if (msg.startTimestamp < sharedState.largestDeletedTimestamp) {
+            } else if (msg.startTimestamp < sharedState.largestDeletedTimestamp) {
                 if (msg.rows.length == 0) {
                     // read only, it has already been put in half aborted list
                     // we let it commit, but we mark it as fully aborted
@@ -329,6 +338,14 @@ public class TSOHandler extends SimpleChannelHandler {
                     LOG.warn("Too old starttimestamp: ST " + msg.startTimestamp + " MAX "
                             + sharedState.largestDeletedTimestamp);
                 }
+            } else if (!sharedState.uncommited.isUncommited(msg.startTimestamp)) {
+                long commitTS = sharedState.hashmap.getCommittedTimestamp(msg.startTimestamp);
+                if (commitTS == 0) {
+                    LOG.error("Transaction " + msg.startTimestamp + " has already been aborted");
+                } else {
+                    LOG.error("Transaction " + msg.startTimestamp + " has already been committed with ts " + commitTS);
+                }
+                return; // TODO something better to do?
             } else {
                 // 1. check the write-write conflicts
                 for (RowKey r : msg.rows) {

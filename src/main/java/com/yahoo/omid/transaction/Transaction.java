@@ -30,11 +30,17 @@ import com.yahoo.omid.client.TSOClient;
  * 
  */
 public class Transaction {
+
+    public enum Status {
+        RUNNING, COMMITTED, ABORTED
+    }
+
     private boolean rollbackOnly;
     private long startTimestamp;
     private long commitTimestamp;
     private Set<RowKeyFamily> rows;
     private Set<HTable> writtenTables;
+    private Status status = Status.RUNNING;
 
     TSOClient tsoclient;
 
@@ -84,5 +90,13 @@ public class Transaction {
 
     Set<HTable> getWrittenTables() {
         return writtenTables;
+    }
+
+    public Status getStatus() {
+        return status;
+    }
+
+    void setStatus(Status status) {
+        this.status = status;
     }
 }

@@ -38,8 +38,10 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
+import com.yahoo.omid.transaction.RollbackException;
 import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
+import com.yahoo.omid.transaction.TransactionException;
 import com.yahoo.omid.transaction.TransactionManager;
 
 public class TestBasicTransaction extends OmidTestBase {
@@ -291,6 +293,15 @@ public class TestBasicTransaction extends OmidTestBase {
          LOG.error("Exception occurred", e);
          throw e;
       }
+   }
+
+   @Test(expected=IllegalArgumentException.class)
+   public void testSameCommitRaisesException() throws Exception  {
+      TransactionManager tm = new TransactionManager(hbaseConf);
+
+      Transaction t1 = tm.begin();
+      tm.commit(t1);
+      tm.commit(t1);
    }
 
    @Test public void runTestInterleaveScan() throws Exception {
