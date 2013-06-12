@@ -10,7 +10,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.yahoo.omid.notifications.client.ObserverWrapper;
+import com.google.common.collect.Sets;
 
 public class TestUncommitted {
 
@@ -24,42 +24,58 @@ public class TestUncommitted {
         final double commit = 0.9; 
         for (int i = 0; i < iterations; ++i) {
             long seed = System.nanoTime();
+//            seed = 1371038396995781000L;
             Random rand = new Random(seed);
             logger.trace("Random seed: {}", seed);
             
-            final long startTimestamp = Math.abs(rand.nextLong()) % (Long.MAX_VALUE >> 1);
+            long startTimestamp = Math.abs(rand.nextLong()) % (Long.MAX_VALUE >> 1);
+//            startTimestamp %= 4*32;
             long currentTimestamp = startTimestamp;
             long largestDeleted = startTimestamp;
             
-            Uncommitted uncommitted = new Uncommitted(startTimestamp);
+            Uncommitted uncommitted = new Uncommitted(startTimestamp, 4, 32);
             Set<Long> toAbort = new HashSet<Long>();
+            // The latest uncommitted have to be ignored at the end
+            Set<Long> latestUncommitted = new HashSet<Long>();
             
             for (int j = 0; j < operations; ++j) {
+                long diff = currentTimestamp - largestDeleted;
                 double op = rand.nextDouble();
+                if (diff > 90) {
+                    op = 0; // raise largest
+                }
+
                 if (op < raiseLargest) {
                     // raise
-                    long diff = currentTimestamp - largestDeleted;
                     if (diff == 0) {
                         continue;
                     }
                     largestDeleted += rand.nextInt((int) diff);
                     Set<Long> aborted = uncommitted.raiseLargestDeletedTransaction(largestDeleted);
                     
-                    assertTrue("Aborted transactions that weren't uncommited, seed " + seed, toAbort.containsAll(aborted));
+                    Set<Long> abortDiff = Sets.difference(aborted, toAbort);
+                    
+                    assertTrue("Aborted transactions that weren't uncommited, seed " + seed + " j " + j + " diff "
+                            + abortDiff, toAbort.containsAll(aborted));
                     toAbort.removeAll(aborted);
                 } else if (op < commit) {
                     // commit
                     currentTimestamp++;
                     uncommitted.commit(currentTimestamp);
+                    latestUncommitted.clear();
                 } else {
                     // uncommitted
                     currentTimestamp++;
                     toAbort.add(currentTimestamp);
+                    latestUncommitted.add(currentTimestamp);
                 }
             }
             Set<Long> aborted = uncommitted.raiseLargestDeletedTransaction(currentTimestamp);
-            assertTrue("Aborted transactions that weren't uncommited, seed " + seed, toAbort.containsAll(aborted));
+            Set<Long> abortDiff = Sets.difference(aborted, toAbort);
+            assertTrue("Aborted transactions that weren't uncommited, seed " + seed + " diff " + abortDiff,
+                    toAbort.containsAll(aborted));
             toAbort.removeAll(aborted);
+            toAbort.removeAll(latestUncommitted);
             assertTrue("toAbort is not empty, seed " + seed, toAbort.isEmpty());
         }
     }

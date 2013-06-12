@@ -26,19 +26,23 @@ import org.slf4j.LoggerFactory;
 public class Uncommitted {
    private static final Logger LOG = LoggerFactory.getLogger(TSOHandler.class);
    
-   private static final long BKT_NUMBER = 1 << 10; // 2 ^ 10
+   private final long bucketNumber;
+   private final long bucketSize;
 
-   private Bucket buckets[] = new Bucket[(int) BKT_NUMBER];
+   private Bucket buckets[];
    private int firstUncommitedBucket = 0;
    private long firstUncommitedAbsolute = 0;
    private int lastOpenedBucket = 0;
 
-   public Uncommitted(long startTimestamp) {
+   public Uncommitted(long startTimestamp, int bucketNumber, int bucketSize) {
+      this.bucketSize = bucketSize;
+      this.bucketNumber = bucketNumber;
+      this.buckets = new Bucket[(int) bucketNumber];
       lastOpenedBucket = firstUncommitedBucket = getRelativePosition(startTimestamp);
       firstUncommitedAbsolute = getAbsolutePosition(startTimestamp);
-      long ts = startTimestamp & ~(Bucket.getBucketSize() - 1);
-      LOG.debug("Start TS : " + startTimestamp + " firstUncom: " + firstUncommitedBucket + " Mask:" + ts );
-      LOG.debug("BKT_NUMBER : " + BKT_NUMBER + " BKT_SIZE: " + Bucket.getBucketSize());
+      long ts = startTimestamp & ~(bucketSize - 1);
+      LOG.info("Start TS : " + startTimestamp + " firstUncom: " + firstUncommitedBucket + " Mask:" + ts );
+      LOG.info("BKT_NUMBER : " + bucketNumber + " BKT_SIZE: " + bucketSize);
       for (; ts <= startTimestamp; ++ts)
          commit(ts);
    }
@@ -47,7 +51,7 @@ public class Uncommitted {
       int position = getRelativePosition(id);
       Bucket bucket = buckets[position];
       if (bucket == null) {
-         bucket = new Bucket(getAbsolutePosition(id));
+         bucket = new Bucket(getAbsolutePosition(id), (int) bucketSize);
          buckets[position] = bucket;
          lastOpenedBucket = position;
       }
@@ -75,7 +79,7 @@ public class Uncommitted {
          return Collections.emptySet();
       int maxBucket = getRelativePosition(id);
       Set<Long> aborted = new TreeSet<Long>();
-      for (int i = firstUncommitedBucket; i != maxBucket ; i = (int)((i+1) % BKT_NUMBER)) {
+      for (int i = firstUncommitedBucket; i != maxBucket ; i = (int)((i+1) % bucketNumber)) {
          Bucket bucket = buckets[i];
          if (bucket != null) {
             aborted.addAll(bucket.abortAllUncommited());
@@ -100,16 +104,16 @@ public class Uncommitted {
    private synchronized void increaseFirstUncommitedBucket() {
       while (firstUncommitedBucket != lastOpenedBucket &&
              buckets[firstUncommitedBucket] == null) {
-         firstUncommitedBucket = (int)((firstUncommitedBucket + 1) % BKT_NUMBER);
+         firstUncommitedBucket = (int)((firstUncommitedBucket + 1) % bucketNumber);
          firstUncommitedAbsolute++;
       }
    }
 
    private int getRelativePosition(long id) {
-      return (int) ((id / Bucket.getBucketSize()) % BKT_NUMBER);
+      return (int) ((id / bucketSize) % bucketNumber);
    }
 
    private long getAbsolutePosition(long id) {
-      return id / Bucket.getBucketSize();
+      return id / bucketSize;
    }
 }

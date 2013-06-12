@@ -27,32 +27,33 @@ public class Bucket {
    
    private static final Log LOG = LogFactory.getLog(Bucket.class);
      
-   private static final long BUCKET_SIZE = 32768; // 2 ^ 15
-
-   private BitSet transactions = new BitSet((int) BUCKET_SIZE);
+   private final long bucketSize;
+   private final BitSet transactions;
    
    private int transactionsCommited = 0;
    private int firstUncommited = 0;
    private boolean closed = false;
-   private long position;
+   private final long position;
 
-   public Bucket(long position) {
+   public Bucket(long position, int bucketSize) {
       this.position = position;
+      this.bucketSize = bucketSize;
+      this.transactions = new BitSet(bucketSize);
    }
 
    public boolean isUncommited(long id) {
-      return !transactions.get((int) (id % BUCKET_SIZE));
+      return !transactions.get((int) (id % bucketSize));
    }
 
 
    public Set<Long> abortAllUncommited() {
-      Set<Long> result = abortUncommited(BUCKET_SIZE - 1);
+      Set<Long> result = abortUncommited(bucketSize - 1);
       closed = true;
       return result;
    }
 
    public synchronized Set<Long> abortUncommited(long id) {
-      int lastCommited = (int) (id % BUCKET_SIZE);
+      int lastCommited = (int) (id % bucketSize);
       
       Set<Long> aborted = new TreeSet<Long>();
       if (allCommited()) {
@@ -63,7 +64,7 @@ public class Bucket {
       
       for (int i = transactions.nextClearBit(firstUncommited); i >= 0
             && i <= lastCommited; i = transactions.nextClearBit(i + 1)) {
-         aborted.add(position * BUCKET_SIZE + i);
+         aborted.add(position * bucketSize + i);
          commit(i);
       }
       
@@ -73,20 +74,20 @@ public class Bucket {
    }
 
    public synchronized void commit(long id) {
-      transactions.set((int) (id % BUCKET_SIZE));
+      transactions.set((int) (id % bucketSize));
       ++transactionsCommited;
    }
 
    public boolean allCommited() {
-      return BUCKET_SIZE == transactionsCommited || closed;
+      return bucketSize == transactionsCommited || closed;
    }
 
-   public static long getBucketSize() {
-      return BUCKET_SIZE;
+   public long getBucketSize() {
+      return bucketSize;
    }
 
    public long getFirstUncommitted() {
-      return position * BUCKET_SIZE + firstUncommited;
+      return position * bucketSize + firstUncommited;
    }
 
 }
