@@ -46,7 +46,7 @@ public class TestConflict extends TSOTestBase {
       assertTrue(cr1.commitTimestamp > tr1.timestamp);
       assertEquals(tr1.timestamp, cr1.startTimestamp);
 
-      clientHandler.sendMessage(new CommitRequest(tr1.timestamp, new RowKey[] { r1, r2 }));
+      clientHandler.sendMessage(new CommitRequest(tr2.timestamp, new RowKey[] { r1, r2 }));
       CommitResponse cr2 = clientHandler.receiveMessage(CommitResponse.class);
       assertFalse(cr2.committed);
    }

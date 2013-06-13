@@ -159,7 +159,7 @@ public class TestClientHandler extends TSOClient {
       try {
          TSOMessage msg;
          do {
-             msg = messageQueue.poll(5000, TimeUnit.SECONDS);
+             msg = messageQueue.poll(5, TimeUnit.SECONDS);
          } while (msg instanceof LargestDeletedTimestampReport);
          assertNotNull("Reception of message timed out", msg);
          assertThat(msg, is(type));
