@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -126,7 +127,9 @@ public class TransactionManager {
         TimerContext commitTimer = tsoclient.getMetrics().startTimer(Timers.COMMIT);
         try {
             tsoclient.commit(transaction.getStartTimestamp(), transaction.getRows(), cb);
-            cb.await();
+            if (!cb.await(20, TimeUnit.SECONDS)) {
+                throw new TransactionException("Commit timed out");
+            }
         } catch (Exception e) {
             throw new TransactionException("Could not commit", e);
         } finally {

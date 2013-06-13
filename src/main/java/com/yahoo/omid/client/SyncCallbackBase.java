@@ -18,6 +18,7 @@ package com.yahoo.omid.client;
 
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 class SyncCallbackBase implements Callback {
    private Exception e = null;
@@ -39,5 +40,9 @@ class SyncCallbackBase implements Callback {
    
    public void await() throws InterruptedException {
       latch.await();
+   }
+   
+   public boolean await(long timeout, TimeUnit unit) throws InterruptedException {
+      return latch.await(timeout, unit);
    }
 }
