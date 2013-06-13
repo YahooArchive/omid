@@ -14,109 +14,104 @@
  * limitations under the License. See accompanying LICENSE file.
  */
 
-
 package com.yahoo.omid.tso;
-import java.util.Collections;
+
+import java.util.HashSet;
 import java.util.Set;
-import java.util.TreeSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Uncommitted {
-   private static final Logger LOG = LoggerFactory.getLogger(TSOHandler.class);
-   
-   private final long bucketNumber;
-   private final long bucketSize;
+    private static final Logger LOG = LoggerFactory.getLogger(TSOHandler.class);
 
-   private Bucket buckets[];
-   private int firstUncommitedBucket = 0;
-   private long firstUncommittedAbsolute = 0;
-   private int lastOpenedBucket = 0;
+    private final long bucketNumber;
+    private final long bucketSize;
 
-   public Uncommitted(long startTimestamp, int bucketNumber, int bucketSize) {
-      this.bucketSize = bucketSize;
-      this.bucketNumber = bucketNumber;
-      this.buckets = new Bucket[(int) bucketNumber];
-      lastOpenedBucket = firstUncommitedBucket = getRelativePosition(startTimestamp);
-      firstUncommittedAbsolute = getAbsolutePosition(startTimestamp);
-      long ts = startTimestamp & ~(bucketSize - 1);
-      LOG.info("Start TS : " + startTimestamp + " firstUncom: " + firstUncommitedBucket + " Mask:" + ts );
-      LOG.info("BKT_NUMBER : " + bucketNumber + " BKT_SIZE: " + bucketSize);
-      for (; ts <= startTimestamp; ++ts)
-         commit(ts);
-   }
+    private Bucket buckets[];
+    private long largestDeletedTimestamp;
 
-   public synchronized void commit(long id) {
-      int position = getRelativePosition(id);
-      Bucket bucket = buckets[position];
-      if (bucket == null) {
-         bucket = new Bucket(getAbsolutePosition(id), (int) bucketSize);
-         buckets[position] = bucket;
-         lastOpenedBucket = position;
-      }
-      bucket.commit(id);
-      if (bucket.allCommited()) {
-         buckets[position] = null;
-         increaseFirstUncommitedBucket();
-      }
-   }
-   
-   public void abort(long id) {
-      commit(id);
-   }
-   
-   public boolean isUncommitted(long id) {
-      if (getAbsolutePosition(id) < firstUncommittedAbsolute) {
-          return false;
-      }
-      Bucket bucket = buckets[getRelativePosition(id)];
-      if (bucket == null) {
-         return true;
-      }
-      return bucket.isUncommited(id);
-   }
-   
-   public Set<Long> raiseLargestDeletedTransaction(long id) {
-      if (firstUncommittedAbsolute > getAbsolutePosition(id))
-         return Collections.emptySet();
-      int maxBucket = getRelativePosition(id);
-      Set<Long> aborted = new TreeSet<Long>();
-      for (int i = firstUncommitedBucket; i != maxBucket ; i = (int)((i+1) % bucketNumber)) {
-         Bucket bucket = buckets[i];
-         if (bucket != null) {
+    public Uncommitted(long startTimestamp, int bucketNumber, int bucketSize) {
+        this.bucketSize = bucketSize;
+        this.bucketNumber = bucketNumber;
+        this.buckets = new Bucket[(int) bucketNumber];
+        this.largestDeletedTimestamp = startTimestamp;
+        LOG.debug("Start TS : " + startTimestamp);
+        LOG.debug("BKT_NUMBER : " + bucketNumber + " BKT_SIZE: " + bucketSize);
+    }
+
+    private Bucket getBucketByTimestamp(long transaction) {
+        int position = getRelativePosition(transaction);
+        long absolutePosition = getAbsolutePosition(transaction);
+        return getBucketByRelativePosition(position, absolutePosition);
+    }
+
+    private Bucket getBucketByAbsolutePosition(long absolutePosition) {
+        int position = (int) (absolutePosition % bucketNumber);
+        return getBucketByRelativePosition(position, absolutePosition);
+    }
+    
+    private Bucket getBucketByRelativePosition(int position, long absolutePosition) {
+        Bucket bucket = buckets[position];
+        if (bucket == null) {
+            bucket = new Bucket(absolutePosition, (int) bucketSize);
+            buckets[position] = bucket;
+        } else if (bucket.getPosition() != absolutePosition) {
+            throw new RuntimeException("Overlapping on circular buffer");
+        }
+        return bucket;
+    }
+
+    public void start(long transaction) {
+        getBucketByTimestamp(transaction).start(transaction);
+    }
+
+    public void commit(long transaction) {
+        getBucketByTimestamp(transaction).commit(transaction);
+    }
+
+    public void abort(long transaction) {
+        commit(transaction);
+    }
+
+    public boolean isUncommitted(long transaction) {
+        return getBucketByTimestamp(transaction).isUncommited(transaction);
+    }
+
+    public Set<Long> raiseLargestDeletedTransaction(long newLargestDeletedTimestamp) {
+        // Last bucket to consider
+        Bucket lastBucket = getBucketByTimestamp(newLargestDeletedTimestamp);
+        // Position of first bucket to consider
+        long currentAbsolutePosition = getAbsolutePosition(largestDeletedTimestamp);
+        Bucket bucket;
+        Set<Long> aborted = new HashSet<Long>();
+        // All but the last bucket are reset
+        while ((bucket = getBucketByAbsolutePosition(currentAbsolutePosition)) != lastBucket) {
             aborted.addAll(bucket.abortAllUncommited());
-            buckets[i] = null;
-         }
-      }
-      
-      Bucket bucket = buckets[maxBucket];
-      if (bucket != null) {
-         aborted.addAll(bucket.abortUncommited(id));
-      }
-      
-      increaseFirstUncommitedBucket();
-      
-      return aborted;
-   }
-   
-   public synchronized long getFirstUncommitted() {
-      return buckets[firstUncommitedBucket].getFirstUncommitted();
-   }
+            resetBucket(currentAbsolutePosition);
+            currentAbsolutePosition++;
+        }
+        // Last bucket is only processed partially
+        aborted.addAll(bucket.abortUncommited(newLargestDeletedTimestamp));
 
-   private synchronized void increaseFirstUncommitedBucket() {
-      while (firstUncommitedBucket != lastOpenedBucket &&
-             buckets[firstUncommitedBucket] == null) {
-         firstUncommitedBucket = (int)((firstUncommitedBucket + 1) % bucketNumber);
-         firstUncommittedAbsolute++;
-      }
-   }
+        largestDeletedTimestamp = newLargestDeletedTimestamp;
+        return aborted;
+    }
 
-   private int getRelativePosition(long id) {
-      return (int) ((id / bucketSize) % bucketNumber);
-   }
+    private void resetBucket(long absolutePosition) {
+        int position = (int) (absolutePosition % bucketNumber);
+        buckets[position] = null;
+    }
 
-   private long getAbsolutePosition(long id) {
-      return id / bucketSize;
-   }
+    private int getRelativePosition(long id) {
+        return (int) ((id / bucketSize) % bucketNumber);
+    }
+
+    private long getAbsolutePosition(long id) {
+        return id / bucketSize;
+    }
+
+    public int getBucketSize() {
+        return (int) bucketSize;
+    }
 }

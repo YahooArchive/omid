@@ -12,13 +12,13 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Sets;
 
-public class TestUncommitted {
+public class TestUncommittedRandom {
 
-    private static final Logger logger = LoggerFactory.getLogger(TestUncommitted.class);
+    private static final Logger logger = LoggerFactory.getLogger(TestUncommittedRandom.class);
 
     @Test
     public void testRandomOperations() {
-        final int iterations = 1000;
+        final int iterations = 100;
         final int operations = 100000;
         final double raiseLargest = 0.05;
         final double commit = 0.9; 
@@ -61,6 +61,7 @@ public class TestUncommitted {
                 } else if (op < commit) {
                     // commit
                     currentTimestamp++;
+                    uncommitted.start(currentTimestamp);
                     uncommitted.commit(currentTimestamp);
                     latestUncommitted.clear();
                 } else {
@@ -68,6 +69,7 @@ public class TestUncommitted {
                     currentTimestamp++;
                     toAbort.add(currentTimestamp);
                     latestUncommitted.add(currentTimestamp);
+                    uncommitted.start(currentTimestamp);
                 }
             }
             Set<Long> aborted = uncommitted.raiseLargestDeletedTransaction(currentTimestamp);
@@ -76,8 +78,7 @@ public class TestUncommitted {
                     toAbort.containsAll(aborted));
             toAbort.removeAll(aborted);
             toAbort.removeAll(latestUncommitted);
-            assertTrue("toAbort is not empty, seed " + seed, toAbort.isEmpty());
+            assertTrue("toAbort is not empty, seed " + seed + " toAbort " + toAbort, toAbort.isEmpty());
         }
     }
-    
 }

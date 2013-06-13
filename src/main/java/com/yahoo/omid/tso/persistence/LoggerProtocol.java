@@ -91,7 +91,7 @@ public class LoggerProtocol extends TSOState{
                 break;
             case ABORT:
                 timestamp = bb.getLong();
-                processAbort(timestamp);
+                addExistingAbort(timestamp);
                 
                 break;
             case FULLABORT:

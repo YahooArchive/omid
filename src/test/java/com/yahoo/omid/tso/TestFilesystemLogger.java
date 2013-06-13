@@ -30,6 +30,9 @@ public class TestFilesystemLogger {
         TSOServerConfig config = TSOServerConfig.parseConfig(args.split(" "));
         TSOState state = FileSystemTimestampOnlyStateBuilder.getState(config);
         long timestamp = state.getSO().get();
+        for (int i = 0; i < uncommitted; ++i) {
+            state.uncommited.start(timestamp + i);
+        }
         Set<Long> toAbort = state.uncommited.raiseLargestDeletedTransaction(timestamp + uncommitted);
         assertEquals(uncommitted, toAbort.size());
     }

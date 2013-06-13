@@ -221,6 +221,7 @@ public class TSOHandler extends SimpleChannelHandler {
         synchronized (sharedState) {
             try {
                 timestamp = timestampOracle.next(sharedState.toWAL);
+                sharedState.uncommited.start(timestamp);
             } catch (IOException e) {
                 e.printStackTrace();
                 return;
@@ -326,7 +327,7 @@ public class TSOHandler extends SimpleChannelHandler {
             if (msg.startTimestamp < timestampOracle.first()) {
                 reply.committed = false;
                 LOG.warn("Aborting transaction after restarting TSO");
-            } else if (msg.startTimestamp < sharedState.largestDeletedTimestamp) {
+            } else if (msg.startTimestamp <= sharedState.largestDeletedTimestamp) {
                 if (msg.rows.length == 0) {
                     // read only, it has already been put in half aborted list
                     // we let it commit, but we mark it as fully aborted
@@ -370,7 +371,6 @@ public class TSOHandler extends SimpleChannelHandler {
                 // 2. commit
                 try {
                     long commitTimestamp = timestampOracle.next(toWAL);
-                    sharedState.uncommited.commit(commitTimestamp);
                     sharedState.uncommited.commit(msg.startTimestamp);
                     reply.commitTimestamp = commitTimestamp;
                     if (msg.rows.length > 0) {
@@ -400,7 +400,7 @@ public class TSOHandler extends SimpleChannelHandler {
                             metrics.oldAborted(toAbort.size());
                             synchronized (sharedMsgBufLock) {
                                 for (Long id : toAbort) {
-                                    sharedState.processAbort(id);
+                                    sharedState.addExistingAbort(id);
                                     queueHalfAbort(id);
                                 }
                                 queueLargestIncrease(sharedState.largestDeletedTimestamp);

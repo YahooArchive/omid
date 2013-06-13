@@ -14,80 +14,68 @@
  * limitations under the License. See accompanying LICENSE file.
  */
 
-
 package com.yahoo.omid.tso;
+
 import java.util.BitSet;
+import java.util.HashSet;
 import java.util.Set;
-import java.util.TreeSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 public class Bucket {
-   
-   private static final Log LOG = LogFactory.getLog(Bucket.class);
-     
-   private final long bucketSize;
-   private final BitSet transactions;
-   
-   private int transactionsCommited = 0;
-   private int firstUncommited = 0;
-   private boolean closed = false;
-   private final long position;
 
-   public Bucket(long position, int bucketSize) {
-      this.position = position;
-      this.bucketSize = bucketSize;
-      this.transactions = new BitSet(bucketSize);
-   }
+    private static final Log LOG = LogFactory.getLog(Bucket.class);
 
-   public boolean isUncommited(long id) {
-      return !transactions.get((int) (id % bucketSize));
-   }
+    private final long bucketSize;
+    private final BitSet transactions;
+    private final long position;
 
+    public Bucket(long position, int bucketSize) {
+        this.position = position;
+        this.bucketSize = bucketSize;
+        this.transactions = new BitSet(bucketSize);
+    }
 
-   public Set<Long> abortAllUncommited() {
-      Set<Long> result = abortUncommited(bucketSize - 1);
-      closed = true;
-      return result;
-   }
+    public boolean isUncommited(long id) {
+        return transactions.get((int) (id % bucketSize));
+    }
 
-   public synchronized Set<Long> abortUncommited(long id) {
-      int lastCommited = (int) (id % bucketSize);
-      
-      Set<Long> aborted = new TreeSet<Long>();
-      if (allCommited()) {
-         return aborted;
-      }
+    public Set<Long> abortAllUncommited() {
+        Set<Long> result = abortUncommited(bucketSize - 1);
+        return result;
+    }
 
-      LOG.trace("Performing scanning...");
-      
-      for (int i = transactions.nextClearBit(firstUncommited); i >= 0
-            && i <= lastCommited; i = transactions.nextClearBit(i + 1)) {
-         aborted.add(position * bucketSize + i);
-         commit(i);
-      }
-      
-      firstUncommited = lastCommited + 1;
+    public synchronized Set<Long> abortUncommited(long id) {
+        int lastCommited = (int) (id % bucketSize);
 
-      return aborted;
-   }
+        Set<Long> aborted = new HashSet<Long>();
 
-   public synchronized void commit(long id) {
-      transactions.set((int) (id % bucketSize));
-      ++transactionsCommited;
-   }
+        LOG.trace("Performing scanning...");
 
-   public boolean allCommited() {
-      return bucketSize == transactionsCommited || closed;
-   }
+        // Clear all set bits (uncommitted transactions) and clear them
+        for (int i = transactions.nextSetBit(0); i >= 0 && i <= lastCommited; i = transactions.nextSetBit(i + 1)) {
+            aborted.add(position * bucketSize + i);
+            transactions.clear(i);
+        }
 
-   public long getBucketSize() {
-      return bucketSize;
-   }
+        return aborted;
+    }
 
-   public long getFirstUncommitted() {
-      return position * bucketSize + firstUncommited;
-   }
+    public void commit(long transaction) {
+        transactions.clear((int) (transaction % bucketSize));
+    }
+
+    public void start(long transaction) {
+        transactions.set((int) (transaction % bucketSize));
+    }
+
+    public long getBucketSize() {
+        return bucketSize;
+    }
+
+    public long getPosition() {
+        return position;
+    }
 
 }
