@@ -31,7 +31,7 @@ public class Uncommitted {
 
    private Bucket buckets[];
    private int firstUncommitedBucket = 0;
-   private long firstUncommitedAbsolute = 0;
+   private long firstUncommittedAbsolute = 0;
    private int lastOpenedBucket = 0;
 
    public Uncommitted(long startTimestamp, int bucketNumber, int bucketSize) {
@@ -39,7 +39,7 @@ public class Uncommitted {
       this.bucketNumber = bucketNumber;
       this.buckets = new Bucket[(int) bucketNumber];
       lastOpenedBucket = firstUncommitedBucket = getRelativePosition(startTimestamp);
-      firstUncommitedAbsolute = getAbsolutePosition(startTimestamp);
+      firstUncommittedAbsolute = getAbsolutePosition(startTimestamp);
       long ts = startTimestamp & ~(bucketSize - 1);
       LOG.info("Start TS : " + startTimestamp + " firstUncom: " + firstUncommitedBucket + " Mask:" + ts );
       LOG.info("BKT_NUMBER : " + bucketNumber + " BKT_SIZE: " + bucketSize);
@@ -66,16 +66,19 @@ public class Uncommitted {
       commit(id);
    }
    
-   public boolean isUncommited(long id) {
+   public boolean isUncommitted(long id) {
+      if (getAbsolutePosition(id) < firstUncommittedAbsolute) {
+          return false;
+      }
       Bucket bucket = buckets[getRelativePosition(id)];
       if (bucket == null) {
-         return false;
+         return true;
       }
       return bucket.isUncommited(id);
    }
    
    public Set<Long> raiseLargestDeletedTransaction(long id) {
-      if (firstUncommitedAbsolute > getAbsolutePosition(id))
+      if (firstUncommittedAbsolute > getAbsolutePosition(id))
          return Collections.emptySet();
       int maxBucket = getRelativePosition(id);
       Set<Long> aborted = new TreeSet<Long>();
@@ -105,7 +108,7 @@ public class Uncommitted {
       while (firstUncommitedBucket != lastOpenedBucket &&
              buckets[firstUncommitedBucket] == null) {
          firstUncommitedBucket = (int)((firstUncommitedBucket + 1) % bucketNumber);
-         firstUncommitedAbsolute++;
+         firstUncommittedAbsolute++;
       }
    }
 

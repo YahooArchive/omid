@@ -186,7 +186,7 @@ public class TSOHandler extends SimpleChannelHandler {
 
     public void handle(AbortRequest msg, ChannelHandlerContext ctx) {
         synchronized (sharedState) {
-            if (!sharedState.uncommited.isUncommited(msg.startTimestamp)) {
+            if (!sharedState.uncommited.isUncommitted(msg.startTimestamp)) {
                 long commitTS = sharedState.hashmap.getCommittedTimestamp(msg.startTimestamp);
                 if (commitTS == 0) {
                     LOG.error("Transaction " + msg.startTimestamp + " has already been aborted");
@@ -338,7 +338,7 @@ public class TSOHandler extends SimpleChannelHandler {
                     LOG.warn("Too old starttimestamp: ST " + msg.startTimestamp + " MAX "
                             + sharedState.largestDeletedTimestamp);
                 }
-            } else if (!sharedState.uncommited.isUncommited(msg.startTimestamp)) {
+            } else if (!sharedState.uncommited.isUncommitted(msg.startTimestamp)) {
                 long commitTS = sharedState.hashmap.getCommittedTimestamp(msg.startTimestamp);
                 if (commitTS == 0) {
                     LOG.error("Transaction " + msg.startTimestamp + " has already been aborted");
@@ -491,7 +491,7 @@ public class TSOHandler extends SimpleChannelHandler {
                 reply.committed = value < msg.startTimestamp;// set as abort
             } else if (sharedState.hashmap.isHalfAborted(msg.queryTimestamp))
                 reply.committed = false;
-            else if (sharedState.uncommited.isUncommited(msg.queryTimestamp))
+            else if (sharedState.uncommited.isUncommitted(msg.queryTimestamp))
                 reply.committed = false;
             else
                 reply.retry = true;

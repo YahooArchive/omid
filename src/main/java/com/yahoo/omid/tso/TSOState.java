@@ -199,13 +199,13 @@ public class TSOState {
    public void initialize() {
       this.previousLargestDeletedTimestamp = this.timestampOracle.get();
       this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp;
-      int bucketSize = 8192;
-      int bucketNumber = (int) Math.pow(2, closestIntegerPowerOf2(MAX_COMMITS / (double) bucketSize) + 1); 
+      int bucketSize = closestIntegerPowerOf2(MAX_COMMITS / Math.sqrt(MAX_COMMITS));
+      int bucketNumber = closestIntegerPowerOf2(MAX_COMMITS / (double) bucketSize) * 2; 
       this.uncommited = new Uncommitted(timestampOracle.first(), bucketNumber, bucketSize);
    }
 
-   private double closestIntegerPowerOf2(double d) {
-      return Math.ceil(Math.max(Math.log(d) / Math.log(2), 1));
+   private int closestIntegerPowerOf2(double d) {
+      return (int) Math.pow(2, Math.ceil(Math.max(Math.log(d) / Math.log(2), 1)));
    }
 }
 
