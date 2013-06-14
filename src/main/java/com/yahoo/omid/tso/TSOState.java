@@ -112,7 +112,7 @@ public class TSOState {
     * The hash map to to keep track of recently committed rows
     * each bucket is about 20 byte, so the initial capacity is 20MB
     */
-   public CommitHashMap hashmap = new CommitHashMap(MAX_ITEMS);
+   public CommitHashMap hashmap;
 
    public Uncommitted uncommited;
 
@@ -206,6 +206,7 @@ public class TSOState {
       int bucketSize = closestIntegerPowerOf2(MAX_COMMITS / Math.sqrt(MAX_COMMITS));
       int bucketNumber = closestIntegerPowerOf2(MAX_COMMITS / (double) bucketSize) * 2; 
       this.uncommited = new Uncommitted(timestampOracle.first(), bucketNumber, bucketSize);
+      this.hashmap = new CommitHashMap(MAX_ITEMS, largestDeletedTimestamp);
    }
 
    private int closestIntegerPowerOf2(double d) {

@@ -87,7 +87,7 @@ public class TestPersistence extends TSOTestBase {
       clientHandler.sendMessage(new TimestampRequest());
       clientHandler.receiveBootstrap();
 
-      for (int i = 0; i < 10000; ++i) {
+      for (int i = 0; i < 2000; ++i) {
          Object msg;
          while (!((msg = clientHandler.receiveMessage()) instanceof TimestampResponse))
             // iterate until we get a TimestampResponse

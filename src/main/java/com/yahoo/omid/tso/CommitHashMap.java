@@ -50,8 +50,8 @@ class CommitHashMap {
     /**
      * Constructs a new, empty hashtable with a default size of 1000
      */
-    public CommitHashMap() {
-        this(1000);
+    public CommitHashMap(long largestDeletedTimestamp) {
+        this(1000, largestDeletedTimestamp);
     }
 
     /**
@@ -62,13 +62,14 @@ class CommitHashMap {
      * @throws IllegalArgumentException
      *             if the size is less than zero.
      */
-    public CommitHashMap(int size) {
+    public CommitHashMap(int size, long largestDeletedTimestamp) {
         if (size < 0) {
             throw new IllegalArgumentException("Illegal size: " + size);
         }
 
         this.startCommitMapping = new LongCache(size, 16);
         this.rowsCommitMapping = new LongCache(size, 32);
+        this.largestDeletedTimestamp = largestDeletedTimestamp;
     }
 
     public long getLatestWriteForRow(long hash) {
