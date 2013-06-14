@@ -186,6 +186,11 @@ public class TSOHandler extends SimpleChannelHandler {
 
     public void handle(AbortRequest msg, ChannelHandlerContext ctx) {
         synchronized (sharedState) {
+            if (msg.startTimestamp < sharedState.largestDeletedTimestamp) {
+                LOG.warn("Too old starttimestamp, already aborted: ST " + msg.startTimestamp + " MAX "
+                        + sharedState.largestDeletedTimestamp);
+                return;
+            }
             if (!sharedState.uncommited.isUncommitted(msg.startTimestamp)) {
                 long commitTS = sharedState.hashmap.getCommittedTimestamp(msg.startTimestamp);
                 if (commitTS == 0) {
