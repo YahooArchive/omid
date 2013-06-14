@@ -135,7 +135,7 @@ public class Compacter extends BaseRegionObserver {
                 }
                 for (KeyValue kv : raw) {
                     ColumnWrapper column = new ColumnWrapper(kv.getFamily(), kv.getQualifier());
-                    if (columnsSeen.add(column) || kv.getTimestamp() > minTimestamp) {
+                    if (kv.getTimestamp() > minTimestamp || columnsSeen.add(column)) {
                         result.add(kv);
                     } else if (LOG.isTraceEnabled()){
                         LOG.trace("Discarded " + kv);
