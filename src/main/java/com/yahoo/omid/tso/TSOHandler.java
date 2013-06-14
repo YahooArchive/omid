@@ -333,17 +333,19 @@ public class TSOHandler extends SimpleChannelHandler {
                 reply.committed = false;
                 LOG.warn("Aborting transaction after restarting TSO");
             } else if (msg.startTimestamp <= sharedState.largestDeletedTimestamp) {
-                if (msg.rows.length == 0) {
-                    // read only, it has already been put in half aborted list
-                    // we let it commit, but we mark it as fully aborted
-                    // since it is read only, it doesn't matter
-                    processFullAbort(msg.startTimestamp);
-                } else {
+                // We could let readonly transactions commit, but it makes the logic more complex
+                // since we shouldn't mark the transaction as committed (it has already been aborted!)
+//                if (msg.rows.length == 0) {
+//                    // read only, it has already been put in half aborted list
+//                    // we let it commit, but we mark it as fully aborted
+//                    // since it is read only, it doesn't matter
+//                    processFullAbort(msg.startTimestamp);
+//                } else {
                     // Too old
                     reply.committed = false;// set as abort
                     LOG.warn("Too old starttimestamp: ST " + msg.startTimestamp + " MAX "
                             + sharedState.largestDeletedTimestamp);
-                }
+//                }
             } else if (!sharedState.uncommited.isUncommitted(msg.startTimestamp)) {
                 long commitTS = sharedState.hashmap.getCommittedTimestamp(msg.startTimestamp);
                 if (commitTS == 0) {
@@ -433,10 +435,13 @@ public class TSOHandler extends SimpleChannelHandler {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                sharedState.processAbort(msg.startTimestamp);
+                if (msg.startTimestamp > sharedState.largestDeletedTimestamp) {
+                    // otherwise it is already on aborted list
+                    sharedState.processAbort(msg.startTimestamp);
 
-                synchronized (sharedMsgBufLock) {
-                    queueHalfAbort(msg.startTimestamp);
+                    synchronized (sharedMsgBufLock) {
+                        queueHalfAbort(msg.startTimestamp);
+                    }
                 }
             }
 
