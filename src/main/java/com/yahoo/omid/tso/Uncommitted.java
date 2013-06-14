@@ -50,7 +50,7 @@ public class Uncommitted {
         int position = (int) (absolutePosition % bucketNumber);
         return getBucketByRelativePosition(position, absolutePosition);
     }
-    
+
     private Bucket getBucketByRelativePosition(int position, long absolutePosition) {
         Bucket bucket = buckets[position];
         if (bucket == null) {
@@ -63,10 +63,18 @@ public class Uncommitted {
     }
 
     public void start(long transaction) {
+        if (transaction <= largestDeletedTimestamp) {
+            throw new IllegalArgumentException("Timestamp " + transaction + " is older than largestDeletedTimestamp "
+                    + largestDeletedTimestamp);
+        }
         getBucketByTimestamp(transaction).start(transaction);
     }
 
     public void commit(long transaction) {
+        if (transaction <= largestDeletedTimestamp) {
+            throw new IllegalArgumentException("Timestamp " + transaction + " is older than largestDeletedTimestamp "
+                    + largestDeletedTimestamp);
+        }
         getBucketByTimestamp(transaction).commit(transaction);
     }
 
@@ -79,6 +87,10 @@ public class Uncommitted {
     }
 
     public Set<Long> raiseLargestDeletedTransaction(long newLargestDeletedTimestamp) {
+        if (newLargestDeletedTimestamp <= largestDeletedTimestamp) {
+            throw new IllegalArgumentException("Received older largestDeletedTimestamp, " + newLargestDeletedTimestamp + " vs "
+                    + largestDeletedTimestamp);
+        }
         // Last bucket to consider
         Bucket lastBucket = getBucketByTimestamp(newLargestDeletedTimestamp);
         // Position of first bucket to consider
