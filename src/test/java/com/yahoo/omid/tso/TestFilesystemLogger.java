@@ -29,11 +29,11 @@ public class TestFilesystemLogger {
         String args = "-port 1245 -ha -fsLog " + directory.getAbsolutePath();
         TSOServerConfig config = TSOServerConfig.parseConfig(args.split(" "));
         TSOState state = FileSystemTimestampOnlyStateBuilder.getState(config);
-        long timestamp = state.getSO().get();
+        long startTimestamp = state.getSO().get() + 1;
         for (int i = 0; i < uncommitted; ++i) {
-            state.uncommited.start(timestamp + i);
+            state.uncommited.start(startTimestamp + i);
         }
-        Set<Long> toAbort = state.uncommited.raiseLargestDeletedTransaction(timestamp + uncommitted);
+        Set<Long> toAbort = state.uncommited.raiseLargestDeletedTransaction(startTimestamp + uncommitted);
         assertEquals(uncommitted, toAbort.size());
     }
 }

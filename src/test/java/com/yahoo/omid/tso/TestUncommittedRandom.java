@@ -50,7 +50,11 @@ public class TestUncommittedRandom {
                     if (diff == 0) {
                         continue;
                     }
-                    largestDeleted += rand.nextInt((int) diff);
+                    int increase = rand.nextInt((int) diff);
+                    if (increase == 0) {
+                        increase = 1;
+                    }
+                    largestDeleted += increase;
                     Set<Long> aborted = uncommitted.raiseLargestDeletedTransaction(largestDeleted);
                     
                     Set<Long> abortDiff = Sets.difference(aborted, toAbort);
