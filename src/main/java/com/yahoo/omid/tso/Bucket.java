@@ -23,6 +23,9 @@ import java.util.Set;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+/**
+ * Stores uncommitted transactions. First stored transaction = position*bucketSize
+ */
 public class Bucket {
 
     private static final Log LOG = LogFactory.getLog(Bucket.class);
@@ -30,6 +33,8 @@ public class Bucket {
     private final long bucketSize;
     private final BitSet transactions;
     private final long position;
+    // Pointer to next bucket in case of overlapping in the circular buffer
+    Bucket next;
 
     public Bucket(long position, int bucketSize) {
         this.position = position;

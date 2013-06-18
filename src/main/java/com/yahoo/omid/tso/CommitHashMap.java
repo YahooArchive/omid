@@ -76,21 +76,16 @@ class CommitHashMap {
         return rowsCommitMapping.get(hash);
     }
 
-    public void putLatestWriteForRow(long hash, long commitTimestamp) {
-        long oldCommitTS = rowsCommitMapping.set(hash, commitTimestamp);
-        largestDeletedTimestamp = Math
-                .max(oldCommitTS, largestDeletedTimestamp);
+    public long putLatestWriteForRow(long hash, long commitTimestamp) {
+        return rowsCommitMapping.set(hash, commitTimestamp);
     }
 
     public long getCommittedTimestamp(long startTimestamp) {
         return startCommitMapping.get(startTimestamp);
     }
 
-    public void setCommittedTimestamp(long startTimestamp, long commitTimestamp) {
-        long oldCommitTS = startCommitMapping.set(startTimestamp, commitTimestamp);
-
-        largestDeletedTimestamp = Math
-                .max(oldCommitTS, largestDeletedTimestamp);
+    public long setCommittedTimestamp(long startTimestamp, long commitTimestamp) {
+        return startCommitMapping.set(startTimestamp, commitTimestamp);
     }
 
     // set of half aborted transactions
@@ -117,9 +112,5 @@ class CommitHashMap {
     // query to see if a transaction is half aborted
     boolean isHalfAborted(long startTimestamp) {
         return halfAborted.contains(new AbortedTransaction(startTimestamp, 0));
-    }
-
-    public long getLargestDeletedTimestamp() {
-        return largestDeletedTimestamp;
     }
 }

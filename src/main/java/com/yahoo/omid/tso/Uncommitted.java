@@ -22,12 +22,41 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Stores uncommitted transactions, which have to be aborted when the LowWatermark (largestDeletedTimestamp) is 
+ * increased. Once committed or aborted, the transactions must be marked as not-uncommitted.
+ */
 public class Uncommitted {
     private static final Logger LOG = LoggerFactory.getLogger(TSOHandler.class);
 
     private final long bucketNumber;
     private final long bucketSize;
 
+    /* 
+     *  Circular buffer that stores the actual uncommitted transactions. Each bucket is actually a BitSet
+     * of size 'bucketSize'. Uncommitted transactions are represented as 'set bits' (1s) and committed, aborted or not
+     * yet started transactions are 'clear bits' (0s).
+     * 
+     *  Each bucket has a 'next' pointer which is used in case the circular buffer overlaps, which should happen
+     *  infrequently.
+     *
+     *  Example:
+     *  
+     *  [4] -> { absPos = 14 }
+     *  [3] -> { absPos = 13 }
+     *  [2] -> { absPos = 12 }
+     *  [1] -> { absPos = 11 } -> { absPos = 16 }
+     *  [0] -> { absPos = 10 } -> { absPos = 15 }
+     *  
+     *  Buckets for absolutePosition 10 and 15 are both stored at index 0 in the circular buffer. After the 
+     *  largestDeletedTimestamp is increased:
+     *  
+     *  [4] -> { absPos = 14 }
+     *  [3] -> null
+     *  [2] -> null
+     *  [1] -> { absPos = 16 }
+     *  [0] -> { absPos = 15 }
+     */
     private Bucket buckets[];
     private long largestDeletedTimestamp;
 
@@ -54,12 +83,26 @@ public class Uncommitted {
     private Bucket getBucketByRelativePosition(int position, long absolutePosition) {
         Bucket bucket = buckets[position];
         if (bucket == null) {
+            // If there is no bucket, create and return it
             bucket = new Bucket(absolutePosition, (int) bucketSize);
             buckets[position] = bucket;
-        } else if (bucket.getPosition() != absolutePosition) {
-            throw new RuntimeException("Overlapping on circular buffer");
+            return bucket;
         }
-        return bucket;
+        // Look for the correct bucket, ther might have been an overlap in the circular buffer
+        while (bucket.getPosition() != absolutePosition && bucket.next != null) {
+            if ((bucket.getPosition() + 1) * bucketSize < largestDeletedTimestamp) {
+                throw new RuntimeException("Old bucket wasn't collected on LW increase");
+            }
+            bucket = bucket.next;
+        }
+        if (bucket.getPosition() == absolutePosition) {
+            // If there is an existing bucket for this transaction, return it
+            return bucket;
+        }
+        // Otherwise there is an overlap (bucket exists for this relative position, but not for this absolute position)
+        // Create new bucket and asign it to the next pointer of the previous one.
+        bucket.next = new Bucket(absolutePosition, (int) bucketSize);;
+        return bucket.next;
     }
 
     public void start(long transaction) {
@@ -112,7 +155,7 @@ public class Uncommitted {
 
     private void resetBucket(long absolutePosition) {
         int position = (int) (absolutePosition % bucketNumber);
-        buckets[position] = null;
+        buckets[position] = buckets[position].next;
     }
 
     private int getRelativePosition(long id) {
@@ -125,5 +168,9 @@ public class Uncommitted {
 
     public int getBucketSize() {
         return (int) bucketSize;
+    }
+
+    public int getBucketNumber() {
+        return (int) bucketNumber;
     }
 }

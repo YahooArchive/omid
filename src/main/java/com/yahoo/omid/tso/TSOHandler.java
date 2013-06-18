@@ -388,36 +388,18 @@ public class TSOHandler extends SimpleChannelHandler {
                         toWAL.writeLong(msg.startTimestamp);
                         toWAL.writeLong(commitTimestamp);
 
-                        long oldLargestDeletedTimestamp = sharedState.largestDeletedTimestamp;
+                        long largestDeletedTimestamp = sharedState.largestDeletedTimestamp;
 
                         for (RowKey r : msg.rows) {
-                            sharedState.hashmap.putLatestWriteForRow(r.hashCode(), commitTimestamp);
+                            long removed = sharedState.hashmap.putLatestWriteForRow(r.hashCode(), commitTimestamp);
+                            largestDeletedTimestamp = Math.max(removed, largestDeletedTimestamp);
                         }
 
-                        sharedState.largestDeletedTimestamp = sharedState.hashmap.getLargestDeletedTimestamp();
-                        sharedState.processCommit(msg.startTimestamp, commitTimestamp);
-                        if (sharedState.largestDeletedTimestamp > oldLargestDeletedTimestamp) {
-                            toWAL.writeByte(LoggerProtocol.LARGESTDELETEDTIMESTAMP);
-                            toWAL.writeLong(sharedState.largestDeletedTimestamp);
-                            Set<Long> toAbort = sharedState.uncommited
-                                    .raiseLargestDeletedTransaction(sharedState.largestDeletedTimestamp);
-                            if (LOG.isWarnEnabled() && !toAbort.isEmpty()) {
-                                LOG.warn("Slow transactions after raising max: " + toAbort.size());
-                            }
-                            metrics.oldAborted(toAbort.size());
-                            synchronized (sharedMsgBufLock) {
-                                for (Long id : toAbort) {
-                                    sharedState.addExistingAbort(id);
-                                    queueHalfAbort(id);
-                                }
-                                queueLargestIncrease(sharedState.largestDeletedTimestamp);
-                            }
-                        }
-                        if (sharedState.largestDeletedTimestamp > sharedState.previousLargestDeletedTimestamp
-                                + TSOState.MAX_ITEMS) {
-                            // schedule snapshot
-                            executor.submit(createAbortedSnaphostTask);
-                            sharedState.previousLargestDeletedTimestamp = sharedState.largestDeletedTimestamp;
+                        long removed = sharedState.processCommit(msg.startTimestamp, commitTimestamp);
+                        largestDeletedTimestamp = Math.max(removed, largestDeletedTimestamp);
+                        if (largestDeletedTimestamp > sharedState.largestDeletedTimestamp) {
+                            sharedState.largestDeletedTimestamp = largestDeletedTimestamp;
+                            handleLargestDeletedTimestampIncrease(toWAL);
                         }
                         synchronized (sharedMsgBufLock) {
                             queueCommit(msg.startTimestamp, commitTimestamp);
@@ -435,7 +417,7 @@ public class TSOHandler extends SimpleChannelHandler {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                if (msg.startTimestamp > sharedState.largestDeletedTimestamp) {
+                if (msg.startTimestamp >= sharedState.largestDeletedTimestamp) {
                     // otherwise it is already on aborted list
                     sharedState.processAbort(msg.startTimestamp);
 
@@ -482,6 +464,29 @@ public class TSOHandler extends SimpleChannelHandler {
         }
 
         timerProcessing.stop();
+    }
+
+    private void handleLargestDeletedTimestampIncrease(DataOutputStream toWAL) throws IOException {
+        toWAL.writeByte(LoggerProtocol.LARGESTDELETEDTIMESTAMP);
+        toWAL.writeLong(sharedState.largestDeletedTimestamp);
+        Set<Long> toAbort = sharedState.uncommited.raiseLargestDeletedTransaction(sharedState.largestDeletedTimestamp);
+        if (LOG.isWarnEnabled() && !toAbort.isEmpty()) {
+            LOG.warn("Slow transactions after raising max: " + toAbort.size());
+        }
+        metrics.oldAborted(toAbort.size());
+        synchronized (sharedMsgBufLock) {
+            for (Long id : toAbort) {
+                sharedState.addExistingAbort(id);
+                queueHalfAbort(id);
+            }
+            queueLargestIncrease(sharedState.largestDeletedTimestamp);
+        }
+        if (sharedState.largestDeletedTimestamp > sharedState.previousLargestDeletedTimestamp
+                + TSOState.MAX_ITEMS) {
+            // schedule snapshot
+            executor.submit(createAbortedSnaphostTask);
+            sharedState.previousLargestDeletedTimestamp = sharedState.largestDeletedTimestamp;
+        }
     }
 
     /**
