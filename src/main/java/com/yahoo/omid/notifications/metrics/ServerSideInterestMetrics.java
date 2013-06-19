@@ -12,13 +12,14 @@ public class ServerSideInterestMetrics {
 
     Meter matchingRowsPerScanMeter;
     Timer scanTimer;
-    private Interest interest;
+    private Timer offerTimer;
 
     public ServerSideInterestMetrics(Interest interest) {
-        this.interest = interest;
         this.matchingRowsPerScanMeter = Metrics.newMeter(ServerSideInterestMetrics.class, interest
                 + "-matchingRowsPerScan", interest + "-matchingRowsPerScan", TimeUnit.SECONDS);
         this.scanTimer = Metrics.newTimer(ServerSideInterestMetrics.class, interest + "-scanTimer",
+                TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
+        this.offerTimer = Metrics.newTimer(ServerSideInterestMetrics.class, interest + "-offerTimer",
                 TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
     }
 
@@ -32,5 +33,9 @@ public class ServerSideInterestMetrics {
 
     public void scanEnd(TimerContext timer) {
         timer.stop();
+    }
+
+    public void offerTime(long elapsed) {
+        offerTimer.update(elapsed, TimeUnit.MILLISECONDS);
     }
 }

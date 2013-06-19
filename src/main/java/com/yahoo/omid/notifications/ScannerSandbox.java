@@ -49,6 +49,7 @@ import org.apache.hadoop.hbase.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.notifications.metrics.ServerSideInterestMetrics;
@@ -251,6 +252,7 @@ public class ScannerSandbox {
                         try {
                             scanner = table.getScanner(transaction, scan);
                             TimerContext timer = metrics.scanStart();
+                            Stopwatch stopwatch = new Stopwatch();
                             int count = 0;
                             for (Result result : scanner) { // TODO Maybe paginate the result traversal
                                 // TODO check consistent when loading only scanned families?
@@ -263,15 +265,19 @@ public class ScannerSandbox {
                                 }
 
                                 // TODO configurable timeout
+                                stopwatch.start();
                                 if (!getHandoffQueue(interest).offer(msg, 10, TimeUnit.SECONDS)) {
                                     logger.error("Cannot deliver message {} to any receiver application after 10s",
                                             msg);
+                                    stopwatch.stop();
                                     break;
                                 }
+                                stopwatch.stop();
                                 count++;
                             }
                             metrics.scanEnd(timer);
                             metrics.matched(count);
+                            metrics.offerTime(stopwatch.elapsed(TimeUnit.MILLISECONDS));
                         } catch (IOException e) {
                             logger.warn("Can't get scanner for table " + interest.getTable() + " retrying");
                         } finally {
