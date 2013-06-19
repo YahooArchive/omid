@@ -21,18 +21,14 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.Socket;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
-import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.netflix.curator.framework.CuratorFramework;
 import com.netflix.curator.framework.CuratorFrameworkFactory;
 import com.netflix.curator.retry.ExponentialBackoffRetry;
-import com.yahoo.omid.notifications.comm.ZNRecord;
-import com.yahoo.omid.notifications.comm.ZNRecordSerializer;
 import com.yahoo.omid.notifications.conf.DeltaOmidServerConfig;
 import com.yahoo.omid.notifications.conf.ServerConfiguration;
 import com.yahoo.omid.notifications.metrics.MetricsUtils;
@@ -48,8 +44,6 @@ public class DeltaOmidServer {
     private static AppSandbox appSandbox;
 
     private static Coordinator coordinator;
-
-    private static ZNRecordSerializer serializer;
 
     /**
      * This is where all starts...
@@ -80,9 +74,7 @@ public class DeltaOmidServer {
         zkClient.start();
         logger.info("ZK client started");
 
-        serializer = new ZNRecordSerializer();
-
-        scannerSandbox = new ScannerSandbox(conf);
+        scannerSandbox = new ScannerSandbox();
         logger.info("Scanner Sandbox started");
 
         coordinator = new ZkCoordinator(zkClient);

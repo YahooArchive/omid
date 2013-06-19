@@ -51,9 +51,11 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.notifications.conf.DeltaOmidServerConfig;
 import com.yahoo.omid.notifications.metrics.ServerSideInterestMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
+import com.yahoo.omid.transaction.TTable;
+import com.yahoo.omid.transaction.Transaction;
+import com.yahoo.omid.transaction.TransactionManager;
 import com.yammer.metrics.core.TimerContext;
 
 public class ScannerSandbox {
@@ -62,8 +64,6 @@ public class ScannerSandbox {
 
     // Lock used by ScannerContainers to protect concurrent accesses to HBaseAdmin when meta-data is created in HTables
     private static final Lock htableLock = new ReentrantLock();
-
-    private DeltaOmidServerConfig conf;
 
     private Configuration config = HBaseConfiguration.create();
 
@@ -81,8 +81,7 @@ public class ScannerSandbox {
     // each particular interest
     private Map<Interest, ScannerContainer> scanners = Maps.newHashMap();
 
-    public ScannerSandbox(DeltaOmidServerConfig conf) {
-        this.conf = conf;
+    public ScannerSandbox() {
     }
 
     public synchronized void registerInterestsFromApplication(App app) throws Exception {
@@ -157,6 +156,8 @@ public class ScannerSandbox {
 
         private Future<Boolean> scannerRef;
 
+        private TransactionManager transactionManager;
+
         /**
          * @param interest
          * @param appSandbox
@@ -199,6 +200,7 @@ public class ScannerSandbox {
                 admin.close();
                 htableLock.unlock();
             }
+            transactionManager = new TransactionManager(config);
         }
 
         public void addInterestedApplication(App app) {
@@ -214,7 +216,7 @@ public class ScannerSandbox {
         }
 
         public void start() throws Exception {
-            scannerRef = exec.submit(new Scanner(interest));
+            scannerRef = exec.submit(new Scanner());
             logger.info("{} scanner(s) on " + interest + " started", "" + 1);
         }
 
@@ -227,61 +229,56 @@ public class ScannerSandbox {
 
         public class Scanner implements Callable<Boolean> {
 
-            private HTable table = null;
+            private TTable table = null;
             private Random regionRoller = new Random();
             private Scan scan = new Scan();
-            private BlockingQueue<Notification> handOffQueue;
 
-            public Scanner(Interest interest) {
-                handOffQueue = getHandoffQueue(interest);
+            public Scanner() {
             }
 
             @Override
             public Boolean call() { // Scan and notify
                 ResultScanner scanner = null;
                 try {
-                    table = new HTable(config, interest.getTable());
+                    table = new TTable(config, interest.getTable());
                     while (!Thread.currentThread().isInterrupted()) {
                         scan = new Scan();
                         configureBasicScanProperties();
 
+                        chooseRandomRegionToScan();
+                        Transaction transaction = transactionManager.begin();
+
                         try {
-                            chooseRandomRegionToScan();
-                            scanner = table.getScanner(scan);
+                            scanner = table.getScanner(transaction, scan);
+                            TimerContext timer = metrics.scanStart();
+                            int count = 0;
+                            for (Result result : scanner) { // TODO Maybe paginate the result traversal
+                                // TODO check consistent when loading only scanned families?
+                                Notification msg = new Notification(ByteBuffer.wrap(result.getRow()));
+                                // logger.trace("Found update for {} in row {}", interest.toStringRepresentation(),
+                                // Bytes.toString(result.getRow()));
 
-                            try {
-                                TimerContext timer = metrics.scanStart();
-                                int count = 0;
-                                for (Result result : scanner) { // TODO Maybe paginate the result traversal
-                                    // TODO check consistent when loading only scanned families?
-                                    Notification msg = new Notification(ByteBuffer.wrap(result.getRow()));
-                                    // logger.trace("Found update for {} in row {}", interest.toStringRepresentation(),
-                                    // Bytes.toString(result.getRow()));
-
-                                    if (currentApp.get() == null) {
-                                        break;
-                                    }
-
-                                    // TODO configurable timeout
-                                    if (!getHandoffQueue(interest).offer(msg, 10, TimeUnit.SECONDS)) {
-                                        logger.error("Cannot deliver message {} to any receiver application after 10s",
-                                                msg);
-                                        break;
-                                    }
-                                    count++;
+                                if (currentApp.get() == null) {
+                                    break;
                                 }
-                                metrics.scanEnd(timer);
-                                metrics.matched(count);
-                            } finally {
-                                if (scanner != null) {
-                                    scanner.close();
+
+                                // TODO configurable timeout
+                                if (!getHandoffQueue(interest).offer(msg, 10, TimeUnit.SECONDS)) {
+                                    logger.error("Cannot deliver message {} to any receiver application after 10s",
+                                            msg);
+                                    break;
                                 }
+                                count++;
                             }
+                            metrics.scanEnd(timer);
+                            metrics.matched(count);
                         } catch (IOException e) {
                             logger.warn("Can't get scanner for table " + interest.getTable() + " retrying");
-                        } catch (RuntimeException e) {
-                            logger.warn("Timeout Exception for scanner");
-                            e.printStackTrace();
+                        } finally {
+                            if (scanner != null) {
+                                scanner.close();
+                            }
+                            transactionManager.commit(transaction);
                         }
                     }
                 } catch (InterruptedException e) {
@@ -329,7 +326,7 @@ public class ScannerSandbox {
 
             private void chooseRandomRegionToScan() {
                 try {
-                    Pair<byte[][], byte[][]> startEndKeys = table.getStartEndKeys();
+                    Pair<byte[][], byte[][]> startEndKeys = ((HTable) table.getHTable()).getStartEndKeys();
                     byte[][] startKeys = startEndKeys.getFirst();
                     byte[][] endKeys = startEndKeys.getSecond();
                     if (startKeys.length <= 0) {

@@ -18,7 +18,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableSet;
 import com.yahoo.omid.notifications.ScannerSandbox.ScannerContainer;
-import com.yahoo.omid.notifications.conf.DeltaOmidServerConfig;
 
 public class TestScannerSandbox extends TestInfrastructure {
 
@@ -28,8 +27,7 @@ public class TestScannerSandbox extends TestInfrastructure {
 
     @Before
     public void setup() throws Exception {
-        DeltaOmidServerConfig conf = DeltaOmidServerConfig.getDefaultConfig();
-        scannerSandbox = new ScannerSandbox(conf);
+        scannerSandbox = new ScannerSandbox();
     }
 
     @After
