@@ -54,6 +54,7 @@ import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.notifications.metrics.ServerSideInterestMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
+import com.yahoo.omid.transaction.RollbackException;
 import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;
@@ -284,7 +285,11 @@ public class ScannerSandbox {
                             if (scanner != null) {
                                 scanner.close();
                             }
-                            transactionManager.commit(transaction);
+                            try {
+                                transactionManager.commit(transaction);
+                            } catch (RollbackException e) {
+                                // ignore, read only transaction
+                            }
                         }
                     }
                 } catch (InterruptedException e) {
