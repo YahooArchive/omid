@@ -1,6 +1,7 @@
 package com.yahoo.omid.notifications.client;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 
@@ -15,9 +16,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.net.HostAndPort;
+import com.yahoo.omid.notifications.metrics.ClientSideAppMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
 import com.yahoo.omid.notifications.thrift.generated.NotificationService;
 import com.yahoo.omid.notifications.thrift.generated.NotificationService.Client;
+import com.yammer.metrics.core.TimerContext;
 
 /**
  * Starts a server and waits for the server connection information. Then starts the NotificationClient and 
@@ -28,13 +31,16 @@ class NotificationDispatcher {
 
     private static final Logger logger = LoggerFactory.getLogger(NotificationDispatcher.class);
     private final NotificationManager notificationManager;
+    private final ClientSideAppMetrics metrics;
     private Thread clientThread;
 
     /**
      * @param notificationManager
+     * @param metrics 
      */
-    NotificationDispatcher(NotificationManager notificationManager) {
+    NotificationDispatcher(NotificationManager notificationManager, ClientSideAppMetrics metrics) {
         this.notificationManager = notificationManager;
+        this.metrics = metrics;
     }
 
     public void stop() {
@@ -59,7 +65,7 @@ class NotificationDispatcher {
 
         String server = hostAndPort.toString();
         // TODO use executor
-        NotificationClient notificationClient = new NotificationClient(observerQueue, hostAndPort);
+        NotificationClient notificationClient = new NotificationClient(observerQueue, hostAndPort, metrics, observer);
         clientThread = new Thread(notificationClient, "NotificationClient-" + observer + "-" + server);
         clientThread.start();
         clients.put(hostAndPort, notificationClient);
@@ -79,12 +85,16 @@ class NotificationDispatcher {
         BlockingQueue<Notification> observerQueue;
         HostAndPort hostAndPort;
         volatile boolean running;
+        private ClientSideAppMetrics metrics;
+        private String observer;
 
-        public NotificationClient(BlockingQueue<Notification> observerQueue, HostAndPort hostAndPort) {
-            super();
+        public NotificationClient(BlockingQueue<Notification> observerQueue, HostAndPort hostAndPort,
+                ClientSideAppMetrics metrics, String observer) {
             this.observerQueue = observerQueue;
             this.hostAndPort = hostAndPort;
             this.running = true;
+            this.metrics = metrics;
+            this.observer = observer;
         }
         
         private Client initializeConnection() throws TException {
@@ -110,9 +120,17 @@ class NotificationDispatcher {
                 Client notificationClient = initializeConnection();
 
                 while (running) {
-                    for (Notification notification : notificationClient.getNotifications()) {
+                    TimerContext requestTimer = metrics.startNotificationRequest(observer);
+                    List<Notification> notifications = notificationClient.getNotifications();
+                    requestTimer.stop();
+                    if (notifications.isEmpty()) {
+                        continue;
+                    }
+                    TimerContext enqueueTimer = metrics.startNotificationEnqueue(observer);
+                    for (Notification notification : notifications) {
                         observerQueue.put(notification);
                     }
+                    enqueueTimer.stop();
                 }
             } catch (InterruptedException e) {
                 logger.warn("Interrupted, shutting down", e);

@@ -60,7 +60,7 @@ public class NotificationManager {
     }
 
     public void start() throws Exception {
-        dispatcher = new NotificationDispatcher(this);
+        dispatcher = new NotificationDispatcher(this, metrics);
         ServerChangesListener listener = new ServerChangesListener();
 
         for (String observer : app.getRegisteredObservers().keySet()) {

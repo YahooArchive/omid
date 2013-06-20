@@ -33,6 +33,9 @@ public class ClientSideAppMetrics {
     private Map<String, Meter> unknownAbortMeters = new HashMap<String, Meter>();
     private Map<String, Timer> observerExecutionTimers = new HashMap<String, Timer>();
     private Map<String, Meter> observerStarvationMeters = new HashMap<String, Meter>();
+    private Map<String, Timer> notificationRequestTimers = new HashMap<String, Timer>();
+    private Map<String, Timer> notificationEnqueueTimers = new HashMap<String, Timer>();
+    private Map<String, Timer> notificationQueuedTimers = new HashMap<String, Timer>();
 
     public ClientSideAppMetrics(String appName, ClientConfiguration conf) {
         this.appName = appName;
@@ -60,6 +63,12 @@ public class ClientSideAppMetrics {
                 Metrics.newTimer(ObserverWrapper.class, this.appName + "_" + obsName + "-processing-time"));
         observerStarvationMeters.put(obsName, Metrics.newMeter(ObserverWrapper.class, this.appName + "_" + obsName
                 + "@starvations", "starvations", TimeUnit.SECONDS));
+        notificationRequestTimers.put(obsName,
+                Metrics.newTimer(ObserverWrapper.class, this.appName + "_" + obsName + "@notification-request"));
+        notificationEnqueueTimers.put(obsName,
+                Metrics.newTimer(ObserverWrapper.class, this.appName + "_" + obsName + "@notification-enqueue"));
+        notificationQueuedTimers.put(obsName,
+                Metrics.newTimer(ObserverWrapper.class, this.appName + "_" + obsName + "@notification-queued"));
     }
 
     public void notificationReceivedEvent() {
@@ -98,4 +107,15 @@ public class ClientSideAppMetrics {
         observerStarvationMeters.get(obsName).mark();
     }
 
+    public TimerContext startNotificationRequest(String obsName) {
+        return notificationRequestTimers.get(obsName).time();
+    }
+
+    public TimerContext startNotificationEnqueue(String obsName) {
+        return notificationEnqueueTimers.get(obsName).time();
+    }
+
+    public Timer getQueueTimer(String obsName) {
+        return notificationQueuedTimers.get(obsName);
+    }
 }

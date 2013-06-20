@@ -52,8 +52,14 @@ public class AppInstanceNotifier {
     public void start() {
 
         // Start NotificationService
-
-        server = new NotificationServer(app.getHandoffQueue(interest), app.metrics);
+        observer = this.app.interestObserverMap.get(interest);
+        if (observer == null) {
+            this.app.logger.warn(this.app.name + " app notifier could not send notification to instance on "
+                    + hostAndPort.toString() + " because target observer has been removed.");
+            return;
+        }
+        
+        server = new NotificationServer(app.getHandoffQueue(interest), app.metrics, observer);
 
         // TODO use executor
         serverThread = new Thread(server, "NotificationServer-" + interest);
@@ -71,12 +77,6 @@ public class AppInstanceNotifier {
             return;
         }
 
-        observer = this.app.interestObserverMap.get(interest);
-
-        if (observer == null) {
-            this.app.logger.warn(this.app.name + " app notifier could not send notification to instance on "
-                    + hostAndPort.toString() + " because target observer has been removed.");
-        }
         coordinator.registerInstanceNotifier(hostAndPort, app.name, observer);
 
         this.app.logger.trace("App Notifier stopped");
@@ -99,10 +99,12 @@ public class AppInstanceNotifier {
         private CountDownLatch latch = new CountDownLatch(1);
         private BlockingQueue<Notification> handoffQueue;
         private ServerSideAppMetrics metrics;
+        private String observer;
 
-        public NotificationServer(BlockingQueue<Notification> handoffQueue, ServerSideAppMetrics metrics) {
+        public NotificationServer(BlockingQueue<Notification> handoffQueue, ServerSideAppMetrics metrics, String observer) {
             this.handoffQueue = handoffQueue;
             this.metrics = metrics;
+            this.observer = observer;
         }
 
         @Override

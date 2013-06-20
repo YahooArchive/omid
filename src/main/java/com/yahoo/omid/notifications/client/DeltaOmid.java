@@ -123,9 +123,11 @@ public class DeltaOmid implements IncrementalApplication {
 
         for (final Observer observer : builder.observers) {
             String obsName = observer.getName();
-            BlockingQueue<Notification> observerQueue = new ArrayBlockingQueue<Notification>(
-                    DEFAULT_NOTIFICATION_BUFFER_CAPACITY);
             this.metrics.addObserver(obsName);
+            BlockingQueue<Notification> observerQueue = 
+                    new TimedBlockingQueue<Notification>(
+                        new ArrayBlockingQueue<Object>(DEFAULT_NOTIFICATION_BUFFER_CAPACITY),
+                        this.metrics.getQueueTimer(obsName));
             observerBuffers.put(obsName, observerQueue);
             int parallelism = conf.getObserverParallelism(obsName);
             logger.info("Starting {} threads for observer {} on interest {}", new String[] { "" + parallelism, obsName,

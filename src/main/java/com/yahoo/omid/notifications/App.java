@@ -115,7 +115,7 @@ class App {
     }
     
     public void start() {
-        this.metrics = new ServerSideAppMetrics(name, interestObserverMap.keySet());
+        this.metrics = new ServerSideAppMetrics(name, interestObserverMap.values());
         String appPath = ZKPaths.makePath(ZkTreeUtils.getAppsNodePath(), this.name);
         for (Interest interest : interestObserverMap.keySet()) {
             AppInstanceNotifier notifier = new AppInstanceNotifier(this, interest, coordinator);
