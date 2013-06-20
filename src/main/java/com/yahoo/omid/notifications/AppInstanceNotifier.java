@@ -142,9 +142,17 @@ public class AppInstanceNotifier {
          */
         public List<Notification> getNotifications() throws TException {
             List<Notification> notifications = new ArrayList<Notification>();
-            // TODO use drainTo(notification, maxBatchSize)
-            int count = handoffQueue.drainTo(notifications);
-            metrics.notificationSentEvent(count);
+            int count = handoffQueue.drainTo(notifications, 100);
+            if (count == 0) {
+                // if we didn't get any, wait for one at least
+                try {
+                    notifications.add(handoffQueue.take());
+                    count = 1;
+                } catch (InterruptedException e) {
+                    throw new TException(e);
+                }
+            }
+            metrics.notificationSentEvent(observer, count);
             return notifications;
         }
 
