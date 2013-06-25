@@ -70,7 +70,7 @@ public class ScannerSandbox {
     private Configuration config = HBaseConfiguration.create();
 
     // TODO make batch_size configurable
-    private static final int BATCH_SIZE = 500;
+    private static final int BATCH_SIZE = 100;
 
     private Map<Interest, BlockingQueue<Notification>> handOffQueues = Maps.newHashMap();
     // private static final SynchronousQueue<UpdatedInterestMsg> handOffQueue = new
@@ -268,8 +268,7 @@ public class ScannerSandbox {
                                 // TODO configurable timeout
                                 stopwatch.start();
                                 if (!getHandoffQueue(interest).offer(msg, 10, TimeUnit.SECONDS)) {
-                                    logger.error("Cannot deliver message {} to any receiver application after 10s",
-                                            msg);
+                                    logger.error("Cannot deliver message {} to any receiver application after 10s", msg);
                                     stopwatch.stop();
                                     break;
                                 }
