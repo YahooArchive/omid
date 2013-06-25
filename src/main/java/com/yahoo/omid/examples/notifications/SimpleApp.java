@@ -16,7 +16,6 @@
 package com.yahoo.omid.examples.notifications;
 
 import static com.yahoo.omid.examples.Constants.COLUMN_1;
-import static com.yahoo.omid.examples.Constants.COLUMN_2;
 import static com.yahoo.omid.examples.Constants.COLUMN_FAMILY_1;
 import static com.yahoo.omid.examples.Constants.TABLE_1;
 
@@ -30,7 +29,6 @@ import org.apache.commons.cli.ParseException;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.log4j.Logger;
 
-import com.google.common.net.HostAndPort;
 import com.yahoo.omid.examples.notifications.ExamplesUtils.ExtendedPosixParser;
 import com.yahoo.omid.notifications.Interest;
 import com.yahoo.omid.notifications.client.DeltaOmid;
@@ -90,8 +88,6 @@ public class SimpleApp {
             System.exit(1);
         }
 
-        final HostAndPort omidHp = HostAndPort.fromString(omid);
-
         logger.info("ooo SimpleApp ooo - STARTING OMID'S EXAMPLE NOTIFICATION APP. - ooo SimpleApp ooo");
 
         logger.info("ooo SimpleApp ooo - TABLE " + TABLE_1 + " SHOULD EXISTS WITH CF " + COLUMN_FAMILY_1
@@ -101,34 +97,8 @@ public class SimpleApp {
 
             Interest interestObs1 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_1);
 
-            // private ThreadLocal<TTable> txTable = new ThreadLocal<TTable>() {
-            //
-            // @Override
-            // protected TTable initialValue() {
-            // // TSO Client setup
-            // Configuration tsoClientHbaseConfObs = HBaseConfiguration.create();
-            // tsoClientHbaseConfObs.set("tso.host", omidHp.getHostText());
-            // tsoClientHbaseConfObs.setInt("tso.port", omidHp.getPortOrDefault(1234));
-            // try {
-            // logger.info("Returning new " + TABLE_1 + " txtable");
-            // return new TTable(tsoClientHbaseConfObs, TABLE_1);
-            // } catch (IOException e) {
-            // throw new RuntimeException("Cannot create transactional table on content table", e);
-            // }
-            // }
-            //
-            // };
-
             public void onInterestChanged(Result rowData, Transaction tx) {
                 logger.info("o1 -> Update on " + rowData.list());
-
-                // try {
-                // ExamplesUtils.doTransactionalPut(tx, txTable.get(), rowData.getRow(),
-                // Bytes.toBytes(COLUMN_FAMILY_1), Bytes.toBytes(COLUMN_2),
-                // Bytes.toBytes("data written by observer o1"));
-                // } catch (IOException e) {
-                // e.printStackTrace();
-                // }
             }
 
             @Override
@@ -139,25 +109,6 @@ public class SimpleApp {
             @Override
             public Interest getInterest() {
                 return interestObs1;
-            }
-        };
-
-        Observer obs2 = new Observer() {
-
-            Interest interestObs2 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_2);
-
-            public void onInterestChanged(Result rowData, Transaction tx) {
-                logger.info("o2 -> Update on " + rowData.list());
-            }
-
-            @Override
-            public String getName() {
-                return "o2";
-            }
-
-            @Override
-            public Interest getInterest() {
-                return interestObs2;
             }
         };
 
