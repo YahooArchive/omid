@@ -17,6 +17,7 @@ package com.yahoo.omid.examples.notifications;
 
 import static com.yahoo.omid.examples.Constants.COLUMN_1;
 import static com.yahoo.omid.examples.Constants.COLUMN_FAMILY_1;
+import static com.yahoo.omid.examples.Constants.LATENCY_TS;
 import static com.yahoo.omid.examples.Constants.TABLE_1;
 
 import java.io.IOException;
@@ -242,6 +243,7 @@ public class SimpleAppInjector {
                 byte[] dataValue) throws IOException {
             Put row = new Put(rowName);
             row.add(colFamName, colName, dataValue);
+            row.add(colFamName, Bytes.toBytes(LATENCY_TS), Bytes.toBytes(String.valueOf(System.currentTimeMillis())));
             tt.put(tx, row);
         }
 

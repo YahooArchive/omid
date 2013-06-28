@@ -15,10 +15,9 @@
  */
 package com.yahoo.omid.examples;
 
-
 /**
  * Common constants used in examples
- *
+ * 
  */
 public class Constants {
 
@@ -29,5 +28,6 @@ public class Constants {
     public static final String COLUMN_1 = "c1";
     public static final String COLUMN_2 = "c2";
     public static final String COLUMN_3 = "c3";
-    
+    public static final String LATENCY_TS = "lts";
+
 }

@@ -17,16 +17,20 @@ package com.yahoo.omid.examples.notifications;
 
 import static com.yahoo.omid.examples.Constants.COLUMN_1;
 import static com.yahoo.omid.examples.Constants.COLUMN_FAMILY_1;
+import static com.yahoo.omid.examples.Constants.LATENCY_TS;
 import static com.yahoo.omid.examples.Constants.TABLE_1;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
 import com.yahoo.omid.examples.notifications.ExamplesUtils.ExtendedPosixParser;
@@ -36,6 +40,8 @@ import com.yahoo.omid.notifications.client.IncrementalApplication;
 import com.yahoo.omid.notifications.client.Observer;
 import com.yahoo.omid.notifications.conf.ClientConfiguration;
 import com.yahoo.omid.transaction.Transaction;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.Timer;
 
 /**
  * This applications shows the basic usage of the Omid's notification framework
@@ -93,12 +99,24 @@ public class SimpleApp {
         logger.info("ooo SimpleApp ooo - TABLE " + TABLE_1 + " SHOULD EXISTS WITH CF " + COLUMN_FAMILY_1
                 + "- ooo SimpleApp ooo");
 
+        final Timer o1Timer = Metrics.newTimer(SimpleApp.class, "SimpleApp@latency-o1", TimeUnit.MILLISECONDS,
+                TimeUnit.SECONDS);
+        final Timer o1TotalTimer = Metrics.newTimer(SimpleApp.class, "SimpleApp@latency-o1-total",
+                TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
+
         Observer obs1 = new Observer() {
 
             Interest interestObs1 = new Interest(TABLE_1, COLUMN_FAMILY_1, COLUMN_1);
 
             public void onInterestChanged(Result rowData, Transaction tx) {
-                logger.info("o1 -> Update on " + rowData.list());
+                logger.debug("o1 -> Update on " + rowData.list());
+                KeyValue timestampKV = rowData.getColumnLatest(Bytes.toBytes(COLUMN_FAMILY_1),
+                        Bytes.toBytes(LATENCY_TS));
+                if (timestampKV != null) {
+                    LatencyUtils.measureLatencies(o1TotalTimer, o1Timer, timestampKV);
+                } else {
+                    logger.warn("No timestamp2 for " + Bytes.toString(rowData.getRow()));
+                }
             }
 
             @Override
