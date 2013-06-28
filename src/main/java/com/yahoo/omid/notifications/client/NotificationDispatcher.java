@@ -23,8 +23,8 @@ import com.yahoo.omid.notifications.thrift.generated.NotificationService.Client;
 import com.yammer.metrics.core.TimerContext;
 
 /**
- * Starts a server and waits for the server connection information. Then starts the NotificationClient and 
- * feeds notifications into the queue.
+ * Starts a server and waits for the server connection information. Then starts the NotificationClient and feeds
+ * notifications into the queue.
  */
 // TODO watch ZooKeeper for new servers and connect to them
 class NotificationDispatcher {
@@ -36,7 +36,7 @@ class NotificationDispatcher {
 
     /**
      * @param notificationManager
-     * @param metrics 
+     * @param metrics
      */
     NotificationDispatcher(NotificationManager notificationManager, ClientSideAppMetrics metrics) {
         this.notificationManager = notificationManager;
@@ -48,7 +48,7 @@ class NotificationDispatcher {
             client.stop();
         }
     }
-    
+
     private Map<HostAndPort, NotificationClient> clients = new HashMap<HostAndPort, NotificationClient>();
 
     /**
@@ -87,6 +87,7 @@ class NotificationDispatcher {
         volatile boolean running;
         private ClientSideAppMetrics metrics;
         private String observer;
+        private TTransport transport;
 
         public NotificationClient(BlockingQueue<Notification> observerQueue, HostAndPort hostAndPort,
                 ClientSideAppMetrics metrics, String observer) {
@@ -96,11 +97,11 @@ class NotificationDispatcher {
             this.metrics = metrics;
             this.observer = observer;
         }
-        
+
         private Client initializeConnection() throws TException {
             String host = hostAndPort.getHostText();
             int port = hostAndPort.getPort();
-            TTransport transport = new TFramedTransport(new TSocket(host, port));
+            transport = new TFramedTransport(new TSocket(host, port));
             TProtocol protocol = new TBinaryProtocol(transport);
             Client notificationClient = new NotificationService.Client(protocol);
             try {
@@ -120,17 +121,24 @@ class NotificationDispatcher {
                 Client notificationClient = initializeConnection();
 
                 while (running) {
-                    TimerContext requestTimer = metrics.startNotificationRequest(observer);
-                    List<Notification> notifications = notificationClient.getNotifications();
-                    requestTimer.stop();
-                    if (notifications.isEmpty()) {
-                        continue;
+                    try {
+                        TimerContext requestTimer = metrics.startNotificationRequest(observer);
+                        List<Notification> notifications = notificationClient.getNotifications();
+                        requestTimer.stop();
+                        if (notifications.isEmpty()) {
+                            continue;
+                        }
+                        TimerContext enqueueTimer = metrics.startNotificationEnqueue(observer);
+                        for (Notification notification : notifications) {
+                            observerQueue.put(notification);
+                        }
+                        enqueueTimer.stop();
+                    } catch (TTransportException e) {
+                        logger.error("Disconnected while fetching notifications. Reconnecting after 1000 ms");
+                        Thread.sleep(1000);
+                        transport.close();
+                        notificationClient = initializeConnection();
                     }
-                    TimerContext enqueueTimer = metrics.startNotificationEnqueue(observer);
-                    for (Notification notification : notifications) {
-                        observerQueue.put(notification);
-                    }
-                    enqueueTimer.stop();
                 }
             } catch (InterruptedException e) {
                 logger.warn("Interrupted, shutting down", e);
@@ -138,7 +146,7 @@ class NotificationDispatcher {
                 logger.error("Unexpected exception, shutting down", e);
             }
         }
-        
+
         public void stop() {
             running = false;
         }
