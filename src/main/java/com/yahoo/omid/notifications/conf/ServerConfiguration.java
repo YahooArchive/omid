@@ -27,6 +27,7 @@ import com.google.common.io.Resources;
 public class ServerConfiguration extends AbstractConfiguration {
 
     protected final static String SCAN_INTERVAL_MS = "scanIntervalMs";
+    protected final static String TRANSFER_BUFFER_CAPACITY = "transferBufferCapacity";
     static Logger LOG = LoggerFactory.getLogger(ServerConfiguration.class);
 
     /**
@@ -69,4 +70,7 @@ public class ServerConfiguration extends AbstractConfiguration {
         return this;
     }
 
+    public int getTransferBufferCapacity() {
+        return getInt(TRANSFER_BUFFER_CAPACITY, 1000);
+    }
 }

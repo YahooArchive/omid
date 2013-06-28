@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableSet;
 import com.yahoo.omid.notifications.ScannerSandbox.ScannerContainer;
+import com.yahoo.omid.notifications.conf.ServerConfiguration;
 
 public class TestScannerSandbox extends TestInfrastructure {
 
@@ -27,7 +28,7 @@ public class TestScannerSandbox extends TestInfrastructure {
 
     @Before
     public void setup() throws Exception {
-        scannerSandbox = new ScannerSandbox();
+        scannerSandbox = new ScannerSandbox(new ServerConfiguration());
     }
 
     @After
@@ -54,10 +55,8 @@ public class TestScannerSandbox extends TestInfrastructure {
     public void testRegisterInterestsOf3ApplicationsConcurrently() throws Exception {
         Set<Interest> interestsApp1 = ImmutableSet.of(Interest.fromString("t1:cf1:c1"),
                 Interest.fromString("t1:cf2:c2"));
-        Set<Interest> interestsApp2 = ImmutableSet.of(
-                Interest.fromString("t1:cf1:c2"));
-        Set<Interest> interestsApp3 = ImmutableSet.of(
-                Interest.fromString("t1:cf1:c3"));
+        Set<Interest> interestsApp2 = ImmutableSet.of(Interest.fromString("t1:cf1:c2"));
+        Set<Interest> interestsApp3 = ImmutableSet.of(Interest.fromString("t1:cf1:c3"));
         final App app1 = mock(App.class);
         final App app2 = mock(App.class);
         final App app3 = mock(App.class);
@@ -135,7 +134,7 @@ public class TestScannerSandbox extends TestInfrastructure {
             assertTrue(scanners.get(Interest.fromString("t1:cf1:c1")).countInterestedApplications() == 1);
             assertTrue(scanners.get(Interest.fromString("t1:cf2:c2")).countInterestedApplications() == 1);
             assertTrue(scanners.get(Interest.fromString("t1:cf1:c2")).countInterestedApplications() == 1);
-            assertTrue(scanners.get(Interest.fromString("t1:cf1:c3")).countInterestedApplications() == 1);   
+            assertTrue(scanners.get(Interest.fromString("t1:cf1:c3")).countInterestedApplications() == 1);
         } finally {
             scannerSandbox.removeInterestsFromApplication(app1);
             scannerSandbox.removeInterestsFromApplication(app2);

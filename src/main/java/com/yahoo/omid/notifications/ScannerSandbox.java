@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.yahoo.omid.notifications.conf.ServerConfiguration;
 import com.yahoo.omid.notifications.metrics.ServerSideInterestMetrics;
 import com.yahoo.omid.notifications.thrift.generated.Notification;
 import com.yahoo.omid.transaction.RollbackException;
@@ -69,13 +70,7 @@ public class ScannerSandbox {
 
     private Configuration config = HBaseConfiguration.create();
 
-    // TODO make batch_size configurable
-    private static final int BATCH_SIZE = 100;
-
     private Map<Interest, BlockingQueue<Notification>> handOffQueues = Maps.newHashMap();
-    // private static final SynchronousQueue<UpdatedInterestMsg> handOffQueue = new
-    // SynchronousQueue<UpdatedInterestMsg>(
-    // true);
 
     // Key: Interest where the scanners running on the ScannerContainer will do
     // their work
@@ -83,7 +78,10 @@ public class ScannerSandbox {
     // each particular interest
     private Map<Interest, ScannerContainer> scanners = Maps.newHashMap();
 
-    public ScannerSandbox() {
+    private final ServerConfiguration serverConfiguration;
+
+    public ScannerSandbox(ServerConfiguration serverConfiguration) {
+        this.serverConfiguration = serverConfiguration;
     }
 
     public synchronized void registerInterestsFromApplication(App app) throws Exception {
@@ -92,7 +90,8 @@ public class ScannerSandbox {
         for (Interest appInterest : app.getInterests()) {
             logger.info("Adding handoff queue for {}/{}", app.name, appInterest.toString());
             // XXX use a different size for the queues?
-            handOffQueues.put(appInterest, new ArrayBlockingQueue<Notification>(BATCH_SIZE));
+            handOffQueues.put(appInterest,
+                    new ArrayBlockingQueue<Notification>(serverConfiguration.getTransferBufferCapacity()));
         }
 
         logger.info("app interests: " + app.getInterests());
@@ -331,7 +330,7 @@ public class ScannerSandbox {
                 // scan.setLoadColumnFamiliesOnDemand(true);
                 // TODO configurable
                 // NOTE: apparently that does not get set from hbase.client.scanner.caching , so we set it manually here
-                scan.setCaching(BATCH_SIZE);
+                scan.setCaching(serverConfiguration.getTransferBufferCapacity());
             }
 
             private void chooseRandomRegionToScan() {

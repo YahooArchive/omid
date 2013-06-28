@@ -74,7 +74,7 @@ public class DeltaOmidServer {
         zkClient.start();
         logger.info("ZK client started");
 
-        scannerSandbox = new ScannerSandbox();
+        scannerSandbox = new ScannerSandbox(serverConfiguration);
         logger.info("Scanner Sandbox started");
 
         coordinator = new ZkCoordinator(zkClient);
