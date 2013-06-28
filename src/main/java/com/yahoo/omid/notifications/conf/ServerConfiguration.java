@@ -51,12 +51,12 @@ public class ServerConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Get interval between scans in milliseconds
+     * Get minimum interval between scans in milliseconds
      * 
      * @return scan interval in millis
      */
     public long getScanIntervalMs() {
-        return getLong(SCAN_INTERVAL_MS, 5000);
+        return getLong(SCAN_INTERVAL_MS, 500);
     }
 
     /**

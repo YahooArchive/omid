@@ -241,53 +241,70 @@ public class ScannerSandbox {
             public Boolean call() { // Scan and notify
                 ResultScanner scanner = null;
                 try {
+                    long scanIntervalMs = serverConfiguration.getScanIntervalMs();
                     table = new TTable(config, interest.getTable());
+                    long initTimeMs = System.currentTimeMillis();
                     while (!Thread.currentThread().isInterrupted()) {
                         scan = new Scan();
                         configureBasicScanProperties();
 
-                        chooseRandomRegionToScan();
-                        Transaction transaction = transactionManager.begin();
-
+                        // in case of no or very few notifications, scan will be very fast, consuming resources without
+                        // actually returning anything. So we pause.
+                        if (System.currentTimeMillis() < (initTimeMs + scanIntervalMs)) {
+                            long waitTime = scanIntervalMs - (System.currentTimeMillis() - initTimeMs);
+                            logger.trace(interest + " scanner waiting " + waitTime + " millis");
+                            Thread.sleep(waitTime);
+                        }
+                        initTimeMs = System.currentTimeMillis();
                         try {
-                            scanner = table.getScanner(transaction, scan);
-                            TimerContext timer = metrics.scanStart();
-                            Stopwatch stopwatch = new Stopwatch();
-                            int count = 0;
-                            for (Result result : scanner) { // TODO Maybe paginate the result traversal
-                                // TODO check consistent when loading only scanned families?
-                                Notification msg = new Notification(ByteBuffer.wrap(result.getRow()));
-                                // logger.trace("Found update for {} in row {}", interest.toStringRepresentation(),
-                                // Bytes.toString(result.getRow()));
+                            chooseRandomRegionToScan();
+                            Transaction transaction = transactionManager.begin();
 
-                                if (currentApp.get() == null) {
-                                    break;
-                                }
-
-                                // TODO configurable timeout
-                                stopwatch.start();
-                                if (!getHandoffQueue(interest).offer(msg, 10, TimeUnit.SECONDS)) {
-                                    logger.error("Cannot deliver message {} to any receiver application after 10s", msg);
-                                    stopwatch.stop();
-                                    break;
-                                }
-                                stopwatch.stop();
-                                count++;
-                            }
-                            metrics.scanEnd(timer);
-                            metrics.matched(count);
-                            metrics.offerTime(stopwatch.elapsed(TimeUnit.MILLISECONDS));
-                        } catch (IOException e) {
-                            logger.warn("Can't get scanner for table " + interest.getTable() + " retrying");
-                        } finally {
-                            if (scanner != null) {
-                                scanner.close();
-                            }
                             try {
-                                transactionManager.commit(transaction);
-                            } catch (RollbackException e) {
-                                // ignore, read only transaction
+                                scanner = table.getScanner(transaction, scan);
+                                TimerContext timer = metrics.scanStart();
+                                Stopwatch stopwatch = new Stopwatch();
+                                int count = 0;
+                                for (Result result : scanner) { // TODO Maybe paginate the result traversal
+                                    // TODO check consistent when loading only scanned families?
+                                    Notification msg = new Notification(ByteBuffer.wrap(result.getRow()));
+                                    // logger.trace("Found update for {} in row {}", interest.toStringRepresentation(),
+                                    // Bytes.toString(result.getRow()));
+
+                                    if (currentApp.get() == null) {
+                                        break;
+                                    }
+
+                                    // TODO configurable timeout
+                                    stopwatch.start();
+                                    if (!getHandoffQueue(interest).offer(msg, 10, TimeUnit.SECONDS)) {
+                                        logger.error("Cannot deliver message {} to any receiver application after 10s",
+                                                msg);
+                                        stopwatch.stop();
+                                        break;
+                                    }
+                                    stopwatch.stop();
+                                    count++;
+                                }
+                                metrics.scanEnd(timer);
+                                metrics.matched(count);
+                                metrics.offerTime(stopwatch.elapsed(TimeUnit.MILLISECONDS));
+                            } catch (IOException e) {
+                                logger.warn("Can't get scanner for table " + interest.getTable() + " retrying");
+                            } finally {
+                                if (scanner != null) {
+                                    scanner.close();
+                                }
+                                try {
+                                    transactionManager.commit(transaction);
+                                } catch (RollbackException e) {
+                                    // ignore, read only transaction
+                                }
                             }
+                        } catch (RuntimeException e) {
+                            logger.error("Unhandled exception while scanning. Will retry scanning", e);
+                            // pause before trying again
+                            Thread.sleep(serverConfiguration.getScanIntervalMs());
                         }
                     }
                 } catch (InterruptedException e) {
