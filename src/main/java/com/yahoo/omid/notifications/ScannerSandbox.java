@@ -82,6 +82,8 @@ public class ScannerSandbox {
 
     public ScannerSandbox(ServerConfiguration serverConfiguration) {
         this.serverConfiguration = serverConfiguration;
+        config.set("tso.host", config.get("tso.host", "localhost"));
+        config.setInt("tso.port", config.getInt("tso.port", 1234));
     }
 
     public synchronized void registerInterestsFromApplication(App app) throws Exception {
