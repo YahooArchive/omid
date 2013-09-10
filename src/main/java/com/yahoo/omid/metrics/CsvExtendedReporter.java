@@ -1,4 +1,4 @@
-package com.yahoo.omid.notifications.metrics;
+package com.yahoo.omid.metrics;
 
 import java.io.File;
 import java.io.IOException;

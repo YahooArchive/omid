@@ -37,10 +37,6 @@ tso() {
     exec java -Xmx1024m -cp $CLASSPATH -Domid.maxItems=1000000 -Domid.maxCommits=1000000 -Dlog4j.configuration=log4j.properties com.yahoo.omid.tso.TSOServer -port 1234 -batch $BATCHSIZE -zk localhost:2181 -ha -fsLog /tmp/omid
 }
 
-notifsrv() {
-    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.notifications.DeltaOmidServer -zk localhost:2181 -scanIntervalMs 20000
-}
-
 tsobench() {
     exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.tso.TransactionClient localhost 1234 100000 10 5
 }
@@ -63,7 +59,6 @@ usage() {
     echo "Usage: omid.sh <command>"
     echo "where <command> is one of:"
     echo "  tso           Starts the timestamp oracle server."
-    echo "  notif-srv     Starts the notification framework."
     echo "  tsobench      Runs a simple benchmark of the TSO."
     echo "  bktest        Starts test bookkeeper ensemble. Starts zookeeper also."
     echo "  tran-hbase    Starts hbase with transaction support."
@@ -80,8 +75,6 @@ COMMAND=$1
 
 if [ "$COMMAND" = "tso" ]; then
     tso;
-elif [ "$COMMAND" = "notif-srv" ]; then
-    notifsrv;
 elif [ "$COMMAND" = "tsobench" ]; then
     tsobench;
 elif [ "$COMMAND" = "bktest" ]; then

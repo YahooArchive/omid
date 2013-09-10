@@ -39,7 +39,7 @@ import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
 import org.jboss.netty.util.ObjectSizeEstimator;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.notifications.metrics.MetricsUtils;
+import com.yahoo.omid.metrics.MetricsUtils;
 import com.yahoo.omid.tso.persistence.BookKeeperStateBuilder;
 import com.yahoo.omid.tso.persistence.FileSystemTimestampOnlyStateBuilder;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
