@@ -25,10 +25,16 @@ BATCHSIZE=0;
 SCRIPTDIR=`dirname $0`
 cd $SCRIPTDIR;
 CLASSPATH=../conf
+
+# for source release
 for j in ../target/omid*.jar; do
     CLASSPATH=$CLASSPATH:$j
 done
 
+# for binary release
+for j in ../omid*.jar; do
+    CLASSPATH=$CLASSPATH:$j
+done
 for j in ../lib/*.jar; do
     CLASSPATH=$CLASSPATH:$j
 done
