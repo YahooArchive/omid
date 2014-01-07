@@ -165,7 +165,13 @@ public class ClientHandler extends TSOClient {
       startTransaction();
    }
 
-   /**
+   
+   @Override
+   synchronized public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+       // TSO client will try to reconnect. Ignore that behaviour for this test
+   } 
+
+/**
     * If write of Commit Request was not possible before, just do it now
     */
    @Override
@@ -185,7 +191,7 @@ public class ClientHandler extends TSOClient {
       String Mbs = String.format("%9.3f TPS",
             ((nbMessage - curMessage) * 1000 / (float) (stopDate.getTime() - (startDate != null ? startDate.getTime()
                   : 0))));
-      System.out.println(MB + " " + Mbs);
+      LOG.info(MB + " " + Mbs);
    }
 
    /**
@@ -350,12 +356,12 @@ public class ClientHandler extends TSOClient {
             return;
 
          if (curMessage == 0) {
-            LOG.info("No more messages, stopping benchmark");
             // wait for all outstanding msgs and then close the channel
             // if (outstandingTransactions.intValue() == 0) {
             if (outstandingTransactions == 0) {
-               LOG.info("Close channel");
-               channel.close().addListener(new ChannelFutureListener() {
+                LOG.info("No more messages and all outstanding messages consumed. Stopping benchmark, closing channel ["
+                        + channel.getId() + "]");
+                channel.close().addListener(new ChannelFutureListener() {
                   public void operationComplete(ChannelFuture future) {
                      answer.offer(true);
                   }
@@ -364,10 +370,7 @@ public class ClientHandler extends TSOClient {
             return;
          }
          curMessage--;
-//         TimestampRequest tr = new TimestampRequest();
          outstandingTransactions++;
-         // outstandingTransactions.incrementAndGet();
-//         Channels.write(channel, tr);
          try {
             super.getNewTimestamp(new SyncCreateCallback());
          } catch (IOException e) {

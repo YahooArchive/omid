@@ -86,50 +86,34 @@ public class TransactionClient {
 
         // *** Start the Netty configuration ***
 
-        // Start client with Nb of active threads = 3 as maximum.
-        ChannelFactory factory = new NioClientSocketChannelFactory(Executors
-                .newCachedThreadPool(), Executors.newCachedThreadPool(), 30);
-
-        // Create the global ChannelGroup
-        ChannelGroup channelGroup = new DefaultChannelGroup(
-                TransactionClient.class.getName());
-        
         List<ClientHandler> handlers = new ArrayList<ClientHandler>();
 
         Configuration conf = HBaseConfiguration.create();
         conf.set("tso.host", host);
         conf.setInt("tso.port", port);
         conf.setInt("tso.executor.threads", 10);
+        
+        System.out.println("Starting " + runs + " clients with the following configuration:");
+        System.out.println("PARAM MAX_ROW: " + ClientHandler.MAX_ROW);
+        System.out.println("PARAM DB_SIZE: " + ClientHandler.DB_SIZE);
+        System.out.println("pause " + pauseClient);
+        System.out.println("readPercent " + percentRead);
 
         for(int i = 0; i < runs; ++i) {
          // Create the associated Handler
            ClientHandler handler = new ClientHandler(conf, nbMessage, inflight, pauseClient, percentRead);
    
            // *** Start the Netty running ***
-   
-           System.out.println("PARAM MAX_ROW: " + ClientHandler.MAX_ROW);
-           System.out.println("PARAM DB_SIZE: " + ClientHandler.DB_SIZE);
-           System.out.println("pause " + pauseClient);
-           System.out.println("readPercent " + percentRead);
-   
            handlers.add(handler);
-           
-           if ((i - 1) % 20 == 0) Thread.sleep(1000);
         }
         
         // Wait for the Traffic to finish
         for (ClientHandler handler : handlers) {
-           boolean result = handler.waitForAll();
-           System.out.println("Result: " + result);
+           handler.waitForAll();
         }
+        
+        System.out.println("\n**********\nBenchmark complete - please check the metrics from individual client threads in the console / log");
 
-        // *** Start the Netty shutdown ***
-
-        // Now close all channels
-        System.out.println("close channelGroup");
-        channelGroup.close().awaitUninterruptibly();
-        // Now release resources
-        System.out.println("close external resources");
-        factory.releaseExternalResources();
+        // NOTE: for simplicity we don't properly close netty channels or release resources in this example. 
     }
 }
