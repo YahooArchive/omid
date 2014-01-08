@@ -23,8 +23,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.apache.bookkeeper.util.LocalBookKeeper;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -42,11 +40,14 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.tso.TSOServer;
 
 public class OmidTestBase {
-   private static final Log LOG = LogFactory.getLog(OmidTestBase.class);
+   private static final Logger LOG = LoggerFactory.getLogger(OmidTestBase.class);
+
    
    private static ExecutorService bkExecutor;
    private static ExecutorService tsoExecutor;

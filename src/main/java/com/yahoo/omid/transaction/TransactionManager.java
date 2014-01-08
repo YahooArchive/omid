@@ -24,12 +24,12 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.client.AbortCompleteCallback;
 import com.yahoo.omid.client.RowKeyFamily;
@@ -48,7 +48,8 @@ import com.yammer.metrics.core.TimerContext;
  * 
  */
 public class TransactionManager {
-    private static final Log LOG = LogFactory.getLog(TSOClient.class);
+    
+    private static final Logger LOG = LoggerFactory.getLogger(TransactionManager.class);
 
     static TSOClient tsoclient = null;
     private static Object lock = new Object();

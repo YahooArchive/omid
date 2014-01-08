@@ -18,21 +18,22 @@ package com.yahoo.omid;
 
 import static org.junit.Assert.assertTrue;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;
 
 public class TestSingleColumnFamily extends OmidTestBase {
-   private static final Log LOG = LogFactory.getLog(TestSingleColumnFamily.class);
+   private static final Logger LOG = LoggerFactory.getLogger(TestSingleColumnFamily.class);
+
 
    @Test public void testSingleColumnFamily() throws Exception {
       TransactionManager tm = new TransactionManager(hbaseConf);
@@ -90,7 +91,7 @@ public class TestSingleColumnFamily extends OmidTestBase {
             notmodified++;
          }
          if (count == 8) {
-            System.out.println("stop");
+            LOG.debug("stop");
          }
       }
       assertTrue("Can't see puts. I should see " 

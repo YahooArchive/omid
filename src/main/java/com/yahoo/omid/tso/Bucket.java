@@ -20,15 +20,16 @@ import java.util.BitSet;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Stores uncommitted transactions. First stored transaction = position*bucketSize
  */
 public class Bucket {
 
-    private static final Log LOG = LogFactory.getLog(Bucket.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Bucket.class);
+
 
     private final long bucketSize;
     private final BitSet transactions;

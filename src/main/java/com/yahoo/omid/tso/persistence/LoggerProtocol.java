@@ -21,11 +21,12 @@ import java.nio.ByteBuffer;
 import com.yahoo.omid.tso.TSOState;
 import com.yahoo.omid.tso.TimestampOracle;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LoggerProtocol extends TSOState{
-    private static final Log LOG = LogFactory.getLog(LoggerProtocol.class);
+    private static final Logger LOG = LoggerFactory.getLogger(LoggerProtocol.class);
+
     
     /*
      * Protocol flags. Used to identify fields of the logger records.

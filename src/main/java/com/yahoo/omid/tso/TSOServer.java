@@ -21,8 +21,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.AdaptiveReceiveBufferSizePredictorFactory;
 import org.jboss.netty.channel.Channel;
@@ -37,6 +35,8 @@ import org.jboss.netty.handler.codec.serialization.ObjectDecoder;
 import org.jboss.netty.handler.codec.serialization.ObjectEncoder;
 import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
 import org.jboss.netty.util.ObjectSizeEstimator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.metrics.MetricsUtils;
@@ -50,7 +50,8 @@ import com.yahoo.omid.tso.persistence.LoggerProtocol;
  */
 public class TSOServer implements Runnable {
 
-    private static final Log LOG = LogFactory.getLog(BookKeeperStateBuilder.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TSOServer.class);
+
 
     private TSOState state;
     private TSOServerConfig config;
@@ -139,10 +140,10 @@ public class TSOServer implements Runnable {
         }
 
         TSOState.BATCH_SIZE = config.getBatchSize();
-        System.out.println("PARAM MAX_ITEMS: " + TSOState.MAX_ITEMS);
-        System.out.println("PARAM BATCH_SIZE: " + TSOState.BATCH_SIZE);
-        System.out.println("PARAM LOAD_FACTOR: " + TSOState.LOAD_FACTOR);
-        System.out.println("PARAM MAX_THREADS: " + maxThreads);
+        LOG.info("PARAM MAX_ITEMS: " + TSOState.MAX_ITEMS);
+        LOG.info("PARAM BATCH_SIZE: " + TSOState.BATCH_SIZE);
+        LOG.info("PARAM LOAD_FACTOR: " + TSOState.LOAD_FACTOR);
+        LOG.info("PARAM MAX_THREADS: " + maxThreads);
 
         final TSOHandler handler = new TSOHandler(channelGroup, state);
         handler.start();
@@ -216,14 +217,14 @@ public class TSOServer implements Runnable {
         // *** Start the Netty shutdown ***
 
         // Now close all channels
-        System.out.println("End of channel group");
+        LOG.info("End of channel group");
         channelGroup.close().awaitUninterruptibly();
         comGroup.close().awaitUninterruptibly();
         // Close the executor for Pipeline
-        System.out.println("End of pipeline executor");
+        LOG.info("End of pipeline executor");
         pipelineExecutor.shutdownNow();
         // Now release resources
-        System.out.println("End of resources");
+        LOG.info("End of resources");
         factory.releaseExternalResources();
         comFactory.releaseExternalResources();
         comBootstrap.releaseExternalResources();

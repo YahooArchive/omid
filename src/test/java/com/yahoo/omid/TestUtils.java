@@ -22,8 +22,8 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 
@@ -31,7 +31,7 @@ import org.apache.commons.logging.LogFactory;
  * 
  */
 public class TestUtils {
-    private static final Log LOG = LogFactory.getLog(TestUtils.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TestUtils.class);
 
     public static void waitForSocketListening(String host, int port,
             int sleepTimeMillis) throws UnknownHostException, IOException,

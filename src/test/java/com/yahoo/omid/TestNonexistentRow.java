@@ -18,20 +18,21 @@ package com.yahoo.omid;
 
 import static org.junit.Assert.assertTrue;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;
 
 public class TestNonexistentRow extends OmidTestBase {
-   private static final Log LOG = LogFactory.getLog(TestNonexistentRow.class);
+   private static final Logger LOG = LoggerFactory.getLogger(TestNonexistentRow.class);
+
 
    @Test public void testMultiPutSameRow() throws Exception {
       try{

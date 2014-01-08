@@ -28,14 +28,14 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelFutureListener;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.client.SyncAbortCompleteCallback;
@@ -54,7 +54,8 @@ import com.yahoo.omid.tso.messages.TimestampResponse;
  */
 public class ClientHandler extends TSOClient {
 
-   private static final Log LOG = LogFactory.getLog(ClientHandler.class);
+   private static final Logger LOG = LoggerFactory.getLogger(ClientHandler.class);
+
 
    /**
     * Maximum number of modified rows in each transaction

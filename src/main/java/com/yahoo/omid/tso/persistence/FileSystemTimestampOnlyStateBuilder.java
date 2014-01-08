@@ -22,8 +22,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.tso.TSOServerConfig;
 import com.yahoo.omid.tso.TSOState;
@@ -38,7 +38,8 @@ import com.yahoo.omid.tso.TimestampOracle;
  */
 
 public class FileSystemTimestampOnlyStateBuilder extends StateBuilder {
-    private static final Log LOG = LogFactory.getLog(FileSystemTimestampOnlyStateBuilder.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FileSystemTimestampOnlyStateBuilder.class);
+
 
     public static TSOState getState(TSOServerConfig config) {
         TSOState returnValue;
@@ -107,7 +108,7 @@ public class FileSystemTimestampOnlyStateBuilder extends StateBuilder {
                         try {
                             reader.close();
                         } catch (IOException e) {
-                            LOG.error(e);
+                            LOG.error("Cannot close file {}", file.getAbsolutePath() , e);
                         }
                     }
                 }

@@ -6,13 +6,14 @@ import static org.junit.Assert.assertThat;
 
 import java.util.Random;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestLongCache {
 
-    private static final Log LOG = LogFactory.getLog(TestLongCache.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TestLongCache.class);
+
 
     final int entries = 1000;
     Histogram hist = new Histogram(entries * 10);

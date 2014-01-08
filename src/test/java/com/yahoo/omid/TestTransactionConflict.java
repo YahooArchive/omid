@@ -19,8 +19,6 @@ package com.yahoo.omid;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.Delete;
@@ -32,6 +30,8 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.transaction.RollbackException;
 import com.yahoo.omid.transaction.TTable;
@@ -39,7 +39,8 @@ import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;
 
 public class TestTransactionConflict extends OmidTestBase {
-   private static final Log LOG = LogFactory.getLog(TestTransactionConflict.class);
+   private static final Logger LOG = LoggerFactory.getLogger(TestTransactionConflict.class);
+
 
    @Test
    public void runTestWriteWriteConflict() throws Exception {

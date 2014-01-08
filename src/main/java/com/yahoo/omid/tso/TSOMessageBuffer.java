@@ -16,13 +16,13 @@
 
 package com.yahoo.omid.tso;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.Channels;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.tso.messages.AbortedTransactionReport;
 import com.yahoo.omid.tso.messages.CommitQueryRequest;
@@ -37,7 +37,8 @@ import com.yahoo.omid.tso.messages.TimestampResponse;
 
 public class TSOMessageBuffer {
 
-   private static final Log LOG = LogFactory.getLog(TSOMessageBuffer.class);
+   private static final Logger LOG = LoggerFactory.getLogger(TSOMessageBuffer.class);
+
    
    private static final int CAPACITY = 20000;
    private static final int THRESHOLD = 32;

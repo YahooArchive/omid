@@ -21,8 +21,8 @@ import java.io.DataOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.replication.SharedMessageBuffer;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
@@ -36,7 +36,8 @@ import com.yahoo.omid.tso.persistence.StateLogger;
  * @author maysam
  */
 public class TSOState {
-    private static final Log LOG = LogFactory.getLog(TSOState.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TSOState.class);
+
     
     
    /**

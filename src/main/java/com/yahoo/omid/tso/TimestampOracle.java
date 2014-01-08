@@ -25,8 +25,8 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.tso.persistence.LoggerProtocol;
 
@@ -39,7 +39,8 @@ import com.yahoo.omid.tso.persistence.LoggerProtocol;
 
 public class TimestampOracle {
 
-    private static final Log LOG = LogFactory.getLog(TimestampOracle.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TimestampOracle.class);
+
 
     private static final long TIMESTAMP_BATCH = 100000;
 
