@@ -24,8 +24,6 @@ import java.io.IOException;
 
 import junit.framework.Assert;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.Delete;
@@ -37,6 +35,8 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.transaction.RollbackException;
 import com.yahoo.omid.transaction.TTable;
@@ -45,7 +45,8 @@ import com.yahoo.omid.transaction.TransactionException;
 import com.yahoo.omid.transaction.TransactionManager;
 
 public class TestBasicTransaction extends OmidTestBase {
-   private static final Log LOG = LogFactory.getLog(TestBasicTransaction.class);
+   private static final Logger LOG = LoggerFactory.getLogger(TestBasicTransaction.class);
+
 
     @Test
     public void testTimestampsOfTwoRowsInstertedAfterCommitOfSingleTransactionAreEquals()
@@ -342,7 +343,7 @@ public class TestBasicTransaction extends OmidTestBase {
             if (LOG.isTraceEnabled()) {
                LOG.trace("Scan1 :" + Bytes.toString(r.getRow()) + " => " + Bytes.toString(r.getValue(fam, col)));
             }
-            System.out.println(++i);
+            LOG.debug(""+ ++i);
 
             assertTrue("Unexpected value for SI scan " + tscan + ": " + Bytes.toString(r.getValue(fam, col)),
                        Bytes.equals(data1, r.getValue(fam, col)));

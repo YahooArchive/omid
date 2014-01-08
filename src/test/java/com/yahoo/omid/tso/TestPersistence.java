@@ -22,9 +22,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.tso.messages.CommitRequest;
 import com.yahoo.omid.tso.messages.CommitResponse;
@@ -33,7 +33,8 @@ import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 
 public class TestPersistence extends TSOTestBase {
-    private static final Log LOG = LogFactory.getLog(TestPersistence.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TestPersistence.class);
+
    
    @Override
    protected boolean recoveryEnabled() {

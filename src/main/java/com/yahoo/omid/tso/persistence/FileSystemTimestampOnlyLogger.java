@@ -30,8 +30,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.tso.TSOServerConfig;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
@@ -39,7 +39,8 @@ import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.LoggerInitCallback;
 import com.yahoo.omid.tso.persistence.LoggerException.Code;
 
 class FileSystemTimestampOnlyLogger implements StateLogger {
-    private static final Log LOG = LogFactory.getLog(FileSystemTimestampOnlyLogger.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FileSystemTimestampOnlyLogger.class);
+
 
     private File directory;
     private Random random = new Random();

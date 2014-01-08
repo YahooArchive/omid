@@ -29,8 +29,6 @@ import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.conf.ClientConfiguration;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.zookeeper.AsyncCallback.DataCallback;
 import org.apache.zookeeper.AsyncCallback.StringCallback;
 import org.apache.zookeeper.CreateMode;
@@ -40,6 +38,8 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.tso.TSOServerConfig;
 import com.yahoo.omid.tso.TSOState;
@@ -59,7 +59,8 @@ import com.yahoo.omid.tso.persistence.LoggerException.Code;
  */
 
 public class BookKeeperStateBuilder extends StateBuilder {
-    private static final Log LOG = LogFactory.getLog(BookKeeperStateBuilder.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BookKeeperStateBuilder.class);
+
     
     /*
      * Assuming that each entry is 1k bytes, we read 50k bytes at each call.

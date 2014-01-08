@@ -319,7 +319,7 @@ public class TSOClient extends SimpleChannelHandler {
         createCallbacks = new ConcurrentLinkedQueue<CreateCallback>();
         channel = null;
 
-        System.out.println("Starting TSOClient");
+        LOG.info("Starting TSOClient");
 
         // Start client with Nb of active threads = 3 as maximum.
         factory = new NioClientSocketChannelFactory(Executors.newCachedThreadPool(new ThreadFactoryBuilder()

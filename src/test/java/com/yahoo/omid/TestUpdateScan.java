@@ -20,8 +20,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -34,13 +32,16 @@ import org.apache.hadoop.hbase.filter.RowFilter;
 import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;
 
 public class TestUpdateScan extends OmidTestBase {
-   private static final Log LOG = LogFactory.getLog(TestUpdateScan.class);
+   private static final Logger LOG = LoggerFactory.getLogger(TestUpdateScan.class);
+
    private static final String TEST_COL = "value";
 
    @Test public void testGet() throws Exception {

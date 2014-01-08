@@ -21,8 +21,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.apache.bookkeeper.util.LocalBookKeeper;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.jboss.netty.channel.ChannelFactory;
@@ -33,13 +31,16 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 
 public class TSOTestBase {
-   private static final Log LOG = LogFactory.getLog(TSOTestBase.class);
+   private static final Logger LOG = LoggerFactory.getLogger(TSOTestBase.class);
+
 
    //private static Thread bkthread;
    //private static Thread tsothread;

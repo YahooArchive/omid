@@ -10,8 +10,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.KeyValue;
@@ -30,13 +28,17 @@ import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.handler.codec.serialization.ObjectDecoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.client.ColumnWrapper;
 import com.yahoo.omid.tso.messages.MinimumTimestamp;
 
 public class Compacter extends BaseRegionObserver {
-    private static final Log LOG = LogFactory.getLog(Compacter.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Compacter.class);
+    
+
 
     private static ExecutorService bossExecutor = Executors.newCachedThreadPool(new ThreadFactoryBuilder()
             .setNameFormat("compacter-boss-%d").build());

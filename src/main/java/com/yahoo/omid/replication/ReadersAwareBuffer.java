@@ -16,14 +16,16 @@
 
 package com.yahoo.omid.replication;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class ReadersAwareBuffer {
-   private static final Log LOG = LogFactory.getLog(ReadersAwareBuffer.class);
+   private static final Logger LOG = LoggerFactory.getLogger(ReadersAwareBuffer.class);
+
+
 
    private static final int CAPACITY = 1024*1024;
    

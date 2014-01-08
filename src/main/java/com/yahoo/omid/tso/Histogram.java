@@ -2,11 +2,13 @@ package com.yahoo.omid.tso;
 
 import java.io.PrintWriter;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Histogram {
-    private static final Log LOG = LogFactory.getLog(Histogram.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Histogram.class);
+    
+
     final private int size;
     final private int[] counts;
     private int max;

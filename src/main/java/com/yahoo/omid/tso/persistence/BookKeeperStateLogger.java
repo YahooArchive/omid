@@ -42,9 +42,9 @@ import org.apache.zookeeper.AsyncCallback.StatCallback;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import com.yahoo.omid.tso.TSOHandler;
 import com.yahoo.omid.tso.TSOServerConfig;
 import com.yahoo.omid.tso.persistence.StateLogger;
@@ -55,7 +55,8 @@ import com.yahoo.omid.tso.persistence.LoggerConstants;
 import com.yahoo.omid.tso.persistence.LoggerException.Code;
 
 class BookKeeperStateLogger implements StateLogger {
-    private static final Log LOG = LogFactory.getLog(BookKeeperStateLogger.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BookKeeperStateLogger.class);
+
     
     private ZooKeeper zk;
     private BookKeeper bk;

@@ -21,8 +21,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class stores the mapping between start a commit timestamps and between modified row and commit timestamp.
@@ -42,7 +42,8 @@ import org.apache.commons.logging.LogFactory;
 
 class CommitHashMap {
 
-    private static final Log LOG = LogFactory.getLog(CommitHashMap.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CommitHashMap.class);
+
 
     private long largestDeletedTimestamp;
     private final Cache startCommitMapping;

@@ -2,21 +2,22 @@ package com.yahoo.omid;
 
 import static org.junit.Assert.assertTrue;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;
 
 public class TestAbortTransaction extends OmidTestBase {
-   private static final Log LOG = LogFactory.getLog(TestAbortTransaction.class);
+   private static final Logger LOG = LoggerFactory.getLogger(TestAbortTransaction.class);
+
 
    @Test public void runTestInterleaveScan() throws Exception {
       try {

@@ -31,8 +31,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
@@ -44,6 +42,8 @@ import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.group.ChannelGroup;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.replication.SharedMessageBuffer.ReadingBuffer;
@@ -69,7 +69,8 @@ import com.yammer.metrics.core.TimerContext;
  */
 public class TSOHandler extends SimpleChannelHandler {
 
-    private static final Log LOG = LogFactory.getLog(TSOHandler.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TSOHandler.class);
+
 
     /**
      * Bytes monitor

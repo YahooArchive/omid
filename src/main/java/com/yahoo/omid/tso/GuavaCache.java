@@ -1,7 +1,7 @@
 package com.yahoo.omid.tso;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.RemovalCause;
@@ -10,7 +10,8 @@ import com.google.common.cache.RemovalNotification;
 
 public class GuavaCache implements Cache, RemovalListener<Long, Long> {
 
-    private static final Log LOG = LogFactory.getLog(GuavaCache.class);
+    private static final Logger LOG = LoggerFactory.getLogger(GuavaCache.class);
+
     private com.google.common.cache.Cache<Long, Long> cache;
     private long removed;
 

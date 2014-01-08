@@ -16,16 +16,17 @@
 
 package com.yahoo.omid;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestTable {
-   private static final Log LOG = LogFactory.getLog(TestTable.class);
+   private static final Logger LOG = LoggerFactory.getLogger(TestTable.class);
+
    
    private static final String TEST_TABLE = "usertable";
    private static final String TEST_FAMILY = "Teste";
