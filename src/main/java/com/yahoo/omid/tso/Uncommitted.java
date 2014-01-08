@@ -85,14 +85,13 @@ public class Uncommitted {
         if (bucket == null) {
             // If there is no bucket, create and return it
             bucket = new Bucket(absolutePosition, (int) bucketSize);
+            LOG.trace("Creating bucket [" + bucket.getPosition() + "] for position [" + position
+                    + "] for absolute position [" + absolutePosition + "] with bucket size " + buckets.length);
             buckets[position] = bucket;
             return bucket;
         }
         // Look for the correct bucket, ther might have been an overlap in the circular buffer
         while (bucket.getPosition() != absolutePosition && bucket.next != null) {
-            if ((bucket.getPosition() + 1) * bucketSize < largestDeletedTimestamp) {
-                throw new RuntimeException("Old bucket wasn't collected on LW increase");
-            }
             bucket = bucket.next;
         }
         if (bucket.getPosition() == absolutePosition) {
@@ -101,6 +100,8 @@ public class Uncommitted {
         }
         // Otherwise there is an overlap (bucket exists for this relative position, but not for this absolute position)
         // Create new bucket and asign it to the next pointer of the previous one.
+        LOG.trace("No match, need to overlap: {} by appending new bucket to existing {}", new String[] {
+                "" + absolutePosition, "" + bucket.getPosition() });
         bucket.next = new Bucket(absolutePosition, (int) bucketSize);;
         return bucket.next;
     }
@@ -138,6 +139,9 @@ public class Uncommitted {
         Bucket lastBucket = getBucketByTimestamp(newLargestDeletedTimestamp);
         // Position of first bucket to consider
         long currentAbsolutePosition = getAbsolutePosition(largestDeletedTimestamp);
+        LOG.debug("raising LW to " + newLargestDeletedTimestamp + ", iterating from {}/{} to {}/{}", new String[] {
+                "" + largestDeletedTimestamp, "" + getBucketByTimestamp(largestDeletedTimestamp).getPosition(),
+                "" + newLargestDeletedTimestamp, "" + lastBucket.getPosition() });
         Bucket bucket;
         Set<Long> aborted = new HashSet<Long>();
         // All but the last bucket are reset
