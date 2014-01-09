@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 
 import com.yahoo.omid.client.RowKeyFamily;
 import com.yahoo.omid.client.TSOClient;
@@ -39,7 +40,7 @@ public class Transaction {
     private long startTimestamp;
     private long commitTimestamp;
     private Set<RowKeyFamily> rows;
-    private Set<HTable> writtenTables;
+    private Set<HTableInterface> writtenTables;
     private Status status = Status.RUNNING;
 
     TSOClient tsoclient;
@@ -49,7 +50,7 @@ public class Transaction {
         this.startTimestamp = startTimestamp;
         this.commitTimestamp = 0;
         this.tsoclient = client;
-        this.writtenTables = new HashSet<HTable>();
+        this.writtenTables = new HashSet<HTableInterface>();
     }
 
     public long getStartTimestamp() {
@@ -84,11 +85,11 @@ public class Transaction {
         rows.add(row);
     }
 
-    void addWrittenTable(HTable table) {
+    void addWrittenTable(HTableInterface table) {
         writtenTables.add(table);
     }
 
-    Set<HTable> getWrittenTables() {
+    Set<HTableInterface> getWrittenTables() {
         return writtenTables;
     }
 

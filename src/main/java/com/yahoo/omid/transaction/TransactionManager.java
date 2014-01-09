@@ -28,6 +28,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,16 +55,22 @@ public class TransactionManager {
     static TSOClient tsoclient = null;
     private static Object lock = new Object();
     private Configuration conf;
-    private HashMap<byte[], HTable> tableCache;
+    private HashMap<byte[], HTableInterface> tableCache;
+    private HTableFactory hTableFactory;
 
     public TransactionManager(Configuration conf) throws IOException {
+        this(conf, new DefaultHTableFactory());
+    }
+    
+    public TransactionManager(Configuration conf, HTableFactory hTableFactory) throws IOException {
         this.conf = conf;
+        this.hTableFactory = hTableFactory;
         synchronized (lock) {
             if (tsoclient == null) {
                 tsoclient = new TSOClient(conf);
             }
         }
-        tableCache = new HashMap<byte[], HTable>();
+        tableCache = new HashMap<byte[], HTableInterface>();
     }
 
     /**
@@ -161,7 +168,7 @@ public class TransactionManager {
     private boolean flushTables(Transaction transaction) {
         TimerContext flushTimer = tsoclient.getMetrics().startTimer(Timers.FLUSH_COMMITS);
         boolean result = true;
-        for (HTable writtenTable : transaction.getWrittenTables()) {
+        for (HTableInterface writtenTable : transaction.getWrittenTables()) {
             try {
                 writtenTable.flushCommits();
             } catch (IOException e) {
@@ -228,12 +235,12 @@ public class TransactionManager {
         }
         
         boolean cleanupFailed = false;
-        List<HTable> tablesToFlush = new ArrayList<HTable>();
+        List<HTableInterface> tablesToFlush = new ArrayList<HTableInterface>();
         for (final Entry<byte[], List<Delete>> entry : deleteBatches.entrySet()) {
             try {
-                HTable table = tableCache.get(entry.getKey());
+                HTableInterface table = tableCache.get(entry.getKey());
                 if (table == null) {
-                    table = new HTable(conf, entry.getKey());
+                    table = hTableFactory.create(conf, entry.getKey());
                     table.setAutoFlush(false, true);
                     tableCache.put(entry.getKey(), table);
                 }
@@ -243,7 +250,7 @@ public class TransactionManager {
                 cleanupFailed = true;
             }
         }
-        for (HTable table : tablesToFlush) {
+        for (HTableInterface table : tablesToFlush) {
             try {
                 table.flushCommits();
             } catch (IOException e) {
