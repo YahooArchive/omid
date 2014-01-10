@@ -71,14 +71,18 @@ public class TTable {
     /** How fast do we adapt the average */
     private static final double alpha = 0.975;
 
-    private HTable table;
+    private HTableInterface table;
 
     public TTable(Configuration conf, byte[] tableName) throws IOException {
-        table = new HTable(conf, tableName);
+        this(new HTable(conf, tableName));
     }
 
     public TTable(Configuration conf, String tableName) throws IOException {
         this(conf, Bytes.toBytes(tableName));
+    }
+    
+    public TTable(HTableInterface hTable) {
+        table = hTable;
     }
 
     /**
