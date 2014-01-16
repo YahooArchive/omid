@@ -221,7 +221,6 @@ public class TSOHandler extends SimpleChannelHandler {
      * Handle the TimestampRequest message
      */
     public void handle(TimestampRequest msg, ChannelHandlerContext ctx) {
-        metrics.begin();
         TimerContext timer = metrics.startBeginProcessing();
         long timestamp;
         synchronized (sharedState) {
@@ -332,7 +331,7 @@ public class TSOHandler extends SimpleChannelHandler {
             // 0. check if it should abort
             if (msg.startTimestamp < timestampOracle.first()) {
                 reply.committed = false;
-                LOG.warn("Aborting transaction after restarting TSO");
+                LOG.warn("Aborting transaction [{}] after restarting TSO", msg.startTimestamp);
             } else if (msg.startTimestamp <= sharedState.largestDeletedTimestamp) {
                 // We could let readonly transactions commit, but it makes the logic more complex
                 // since we shouldn't mark the transaction as committed (it has already been aborted!)
@@ -344,8 +343,7 @@ public class TSOHandler extends SimpleChannelHandler {
 //                } else {
                     // Too old
                     reply.committed = false;// set as abort
-                    LOG.warn("Too old starttimestamp: ST " + msg.startTimestamp + " MAX "
-                            + sharedState.largestDeletedTimestamp);
+                    LOG.debug("Too old starttimestamp: ST [{}] , MAX [{}]",msg.startTimestamp , sharedState.largestDeletedTimestamp);
 //                }
             } else if (!sharedState.uncommited.isUncommitted(msg.startTimestamp)) {
                 long commitTS = sharedState.hashmap.getCommittedTimestamp(msg.startTimestamp);
@@ -366,8 +364,8 @@ public class TSOHandler extends SimpleChannelHandler {
                     } else if (value == 0 && sharedState.largestDeletedTimestamp > msg.startTimestamp) {
                         // then it could have been committed after start
                         // timestamp but deleted by recycling
-                        LOG.warn("Old transaction {Start timestamp  " + msg.startTimestamp
-                                + "} {Largest deleted timestamp " + sharedState.largestDeletedTimestamp + "}");
+                        LOG.warn("Old transaction {Start timestamp  [{}], Largest deleted timestamp [{}]", 
+                                msg.startTimestamp,sharedState.largestDeletedTimestamp );
                         reply.committed = false;// set as abort
                         break;
                     }
@@ -382,9 +380,7 @@ public class TSOHandler extends SimpleChannelHandler {
                     sharedState.uncommited.commit(msg.startTimestamp);
                     reply.commitTimestamp = commitTimestamp;
                     if (msg.rows.length > 0) {
-                        if (LOG.isTraceEnabled()) {
-                            LOG.trace("Adding commit to WAL");
-                        }
+                        LOG.trace("Adding commit [{}] to WAL", commitTimestamp);
                         toWAL.writeByte(LoggerProtocol.COMMIT);
                         toWAL.writeLong(msg.startTimestamp);
                         toWAL.writeLong(commitTimestamp);
@@ -471,8 +467,8 @@ public class TSOHandler extends SimpleChannelHandler {
         toWAL.writeByte(LoggerProtocol.LARGESTDELETEDTIMESTAMP);
         toWAL.writeLong(sharedState.largestDeletedTimestamp);
         Set<Long> toAbort = sharedState.uncommited.raiseLargestDeletedTransaction(sharedState.largestDeletedTimestamp);
-        if (LOG.isWarnEnabled() && !toAbort.isEmpty()) {
-            LOG.warn("Slow transactions after raising max: " + toAbort.size());
+        if (LOG.isDebugEnabled() && !toAbort.isEmpty()) {
+            LOG.debug("Slow transactions after raising max: " + toAbort.size());
         }
         metrics.oldAborted(toAbort.size());
         synchronized (sharedMsgBufLock) {
