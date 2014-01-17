@@ -72,6 +72,10 @@ import com.yahoo.omid.tso.messages.TimestampResponse;
 import com.yahoo.omid.tso.serialization.TSODecoder;
 import com.yahoo.omid.tso.serialization.TSOEncoder;
 
+/**
+ * Communication endpoint for TSO clients.
+ *
+ */
 public class TSOClient extends SimpleChannelHandler {
     private static final Logger LOG = LoggerFactory.getLogger(TSOClient.class);
 

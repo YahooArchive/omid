@@ -19,6 +19,11 @@ package com.yahoo.omid.tso;
 
 import java.util.Arrays;
 
+/**
+ * Client-side data structure that holds the list of commit timestamps 
+ * of transactions (a mapping start timestamp->commit timestamp)
+ *
+ */
 public class Committed {
    
    private static final int BKT_NUMBER = 1<<15;

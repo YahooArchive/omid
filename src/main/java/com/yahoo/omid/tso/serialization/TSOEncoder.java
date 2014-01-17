@@ -39,6 +39,10 @@ import com.yahoo.omid.tso.messages.LargestDeletedTimestampReport;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 
+/**
+ * Encodes TSO transaction messages.
+ *
+ */
 public class TSOEncoder extends OneToOneEncoder{
 
    //just override decode method

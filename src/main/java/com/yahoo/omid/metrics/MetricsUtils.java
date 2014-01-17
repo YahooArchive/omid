@@ -10,6 +10,10 @@ import org.slf4j.LoggerFactory;
 
 import com.yammer.metrics.reporting.ConsoleReporter;
 
+/**
+ * Parses metrics configuration and initializes metrics reporting.
+ *
+ */
 public class MetricsUtils {
 
     static Logger logger = LoggerFactory.getLogger(MetricsUtils.class);

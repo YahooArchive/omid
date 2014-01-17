@@ -66,7 +66,11 @@ import com.yahoo.omid.tso.persistence.LoggerProtocol;
 import com.yammer.metrics.core.TimerContext;
 
 /**
- * ChannelHandler for the TSO Server
+ * ChannelHandler for the TSO Server.
+ * <p>
+ * 
+ * Incoming requests are processed in this class and by accessing a shared data structure, {@link TSOState}
+ * 
  */
 public class TSOHandler extends SimpleChannelHandler {
 

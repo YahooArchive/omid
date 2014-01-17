@@ -24,6 +24,10 @@ import com.yahoo.omid.tso.TimestampOracle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Rebuilds the state of the TSO by reading the log and applying stored operations.
+ *
+ */
 public class LoggerProtocol extends TSOState{
     private static final Logger LOG = LoggerFactory.getLogger(LoggerProtocol.class);
 

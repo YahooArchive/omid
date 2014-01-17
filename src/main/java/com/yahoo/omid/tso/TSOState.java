@@ -31,7 +31,19 @@ import com.yahoo.omid.tso.persistence.StateLogger;
 
 
 /**
- * The wrapper for different states of TSO
+ * The wrapper for different states of TSO: it maintains the following data structures:
+ * <ul>
+ * <li> committed rows
+ * <li> uncommitted transactions
+ * <li> the low watermark corresponding to the oldest transaction managed by the TSO
+ * </ul>
+ * 
+ * It also maintains a reference to the state WAL, along with a queue of outstanding changes 
+ * to first persist in the WAL and second reply to clients
+ * 
+ * Also 
+ * 
+ * 
  * This state is shared between handlers
  * @author maysam
  */

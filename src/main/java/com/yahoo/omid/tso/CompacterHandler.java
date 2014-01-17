@@ -29,7 +29,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.tso.messages.MinimumTimestamp;
 
 /**
- * ChannelHandler for the TSO Server
+ * ChannelHandler for the TSO Server - sends oldest timestamp to HBase compaction coproc for cleanup
  *
  */
 public class CompacterHandler extends SimpleChannelHandler {

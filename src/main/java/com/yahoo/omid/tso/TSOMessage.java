@@ -22,7 +22,7 @@ import java.io.IOException;
 import org.jboss.netty.buffer.ChannelBuffer;
 
 /**
- * The interface the identified the messages sent to TSO
+ * This interface defines messages sent to the TSO
  * @author maysam
  *
  */
