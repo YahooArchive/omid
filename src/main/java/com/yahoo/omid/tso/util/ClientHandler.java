@@ -14,7 +14,7 @@
  * limitations under the License. See accompanying LICENSE file.
  */
 
-package com.yahoo.omid.tso;
+package com.yahoo.omid.tso.util;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -43,6 +43,9 @@ import com.yahoo.omid.client.SyncCommitCallback;
 import com.yahoo.omid.client.SyncCommitQueryCallback;
 import com.yahoo.omid.client.SyncCreateCallback;
 import com.yahoo.omid.client.TSOClient;
+import com.yahoo.omid.tso.Committed;
+import com.yahoo.omid.tso.RowKey;
+import com.yahoo.omid.tso.TSOMessage;
 import com.yahoo.omid.tso.messages.CommitResponse;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 
@@ -60,12 +63,12 @@ public class ClientHandler extends TSOClient {
    /**
     * Maximum number of modified rows in each transaction
     */
-   static final int MAX_ROW = 20;
+   public static final int MAX_ROW = 20;
 
    /**
     * The number of rows in database
     */
-   static final int DB_SIZE = 20000000;
+   public static final int DB_SIZE = 20000000;
 
    private static final long PAUSE_LENGTH = 50; // in ms
 

@@ -26,7 +26,6 @@ import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.handler.codec.oneone.OneToOneEncoder;
 
 import com.yahoo.omid.replication.ZipperState;
-import com.yahoo.omid.tso.BufferPool;
 import com.yahoo.omid.tso.TSOMessage;
 import com.yahoo.omid.tso.messages.AbortRequest;
 import com.yahoo.omid.tso.messages.AbortedTransactionReport;

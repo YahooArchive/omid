@@ -1,13 +1,17 @@
-package com.yahoo.omid.tso;
+package com.yahoo.omid.tso.util;
 
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.Random;
 
+import com.yahoo.omid.tso.Cache;
+import com.yahoo.omid.tso.LongCache;
+import com.yahoo.omid.tso.util.GuavaCache;
+
 public class CacheEvaluation {
 
-    final static int ENTRIES = 150000000;
+    final static int ENTRIES = 1000000;
     final static int WARMUP_ROUNDS = 2;
     final static int ROUNDS = 4;
     final static double HOT_PERC = 1;

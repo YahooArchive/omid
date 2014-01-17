@@ -37,6 +37,8 @@ import org.slf4j.LoggerFactory;
 import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
+import com.yahoo.omid.tso.util.ClientHandler;
+import com.yahoo.omid.tso.util.TransactionClient;
 
 public class TSOTestBase {
    private static final Logger LOG = LoggerFactory.getLogger(TSOTestBase.class);

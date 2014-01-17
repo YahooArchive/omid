@@ -14,7 +14,7 @@
  * limitations under the License. See accompanying LICENSE file.
  */
 
-package com.yahoo.omid.tso;
+package com.yahoo.omid.tso.util;
 
 import java.util.ArrayList;
 import java.util.List;
