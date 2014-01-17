@@ -223,6 +223,7 @@ public class TSOHandler extends SimpleChannelHandler {
      * Handle the TimestampRequest message
      */
     public void handle(TimestampRequest msg, ChannelHandlerContext ctx) {
+        metrics.begin();
         TimerContext timer = metrics.startBeginProcessing();
         long timestamp;
         synchronized (sharedState) {
