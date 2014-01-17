@@ -157,6 +157,7 @@ public class TSOHandler extends SimpleChannelHandler {
 
     public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
         channelGroup.add(ctx.getChannel());
+        LOG.warn("Channel [{}] connected from [{}]", ctx.getChannel().getId(), ((InetSocketAddress)ctx.getChannel().getRemoteAddress()).getHostName()+":"+((InetSocketAddress)ctx.getChannel().getRemoteAddress()).getPort());
     }
 
     @Override
@@ -251,9 +252,9 @@ public class TSOHandler extends SimpleChannelHandler {
                     buffer = sharedState.sharedMessageBuffer.getReadingBuffer(ctx);
                     messageBuffersMap.put(channel, buffer);
                     channelGroup.add(channel);
-                    LOG.warn("Channel [{}] connected from [{}], total connected [{}] ",
-                            channel.getId(),
+                    LOG.warn("Initialized TSO communication on channel [{}] from [{}], total connected clients [{}] ",
                             new Object[] {
+                            channel.getId(),
                             ((InetSocketAddress)channel.getRemoteAddress()).getHostName()
                             +":"+((InetSocketAddress)channel.getRemoteAddress()).getPort(), 
                             messageBuffersMap.size()});
