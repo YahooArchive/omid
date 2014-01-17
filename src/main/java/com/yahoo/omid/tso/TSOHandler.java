@@ -19,6 +19,7 @@ package com.yahoo.omid.tso;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -158,6 +159,7 @@ public class TSOHandler extends SimpleChannelHandler {
     public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
         synchronized (sharedMsgBufLock) {
             sharedState.sharedMessageBuffer.removeReadingBuffer(ctx);
+            LOG.warn("Channel [{}] disconnected", ctx.getChannel().getId());
         }
     }
 
@@ -244,7 +246,12 @@ public class TSOHandler extends SimpleChannelHandler {
                     buffer = sharedState.sharedMessageBuffer.getReadingBuffer(ctx);
                     messageBuffersMap.put(channel, buffer);
                     channelGroup.add(channel);
-                    LOG.warn("Channel connected: " + messageBuffersMap.size());
+                    LOG.warn("Channel [{}] connected from [{}], total connected [{}] ",
+                            channel.getId(),
+                            new Object[] {
+                            ((InetSocketAddress)channel.getRemoteAddress()).getHostName()
+                            +":"+((InetSocketAddress)channel.getRemoteAddress()).getPort(), 
+                            messageBuffersMap.size()});
                 }
             }
         }
