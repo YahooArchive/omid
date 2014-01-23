@@ -109,6 +109,8 @@ public class TransactionClient {
         System.out.println("\n**********\nBenchmark complete - please check the metrics from individual client threads in the console / log");
 
         // NOTE: for simplicity we don't properly close netty channels or release resources in this example. 
+        
+        System.exit(0);
     }
     
     
