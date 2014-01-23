@@ -25,13 +25,6 @@
 		</project.build.sourceEncoding>
 	</properties>
 
-	<repositories>
-		<repository>
-			<id>typesafe-releases</id>
-			<url>http://repo.typesafe.com/typesafe/releases</url>
-		</repository>
-	</repositories>
-
 	<build>
 
 		<plugins>
