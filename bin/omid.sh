@@ -44,7 +44,7 @@ tso() {
 }
 
 tsobench() {
-    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.tso.TransactionClient localhost 1234 100000 10 5
+    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.tso.util.TransactionClient -tsoHost localhost -tsoPort 1234 -nbMessages 10000000 -nbOutstanding 100 -nbRuns 5
 }
 
 bktest() {

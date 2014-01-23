@@ -63,19 +63,21 @@ public class ClientHandler extends TSOClient {
    /**
     * Maximum number of modified rows in each transaction
     */
-   public static final int MAX_ROW = 20;
+   final int maxTxSize;
+   public static final int DEFAULT_MAX_ROW = 20;
 
    /**
     * The number of rows in database
     */
-   public static final int DB_SIZE = 20000000;
+   private final int dbSize;
+   public static final int DEFAULT_DB_SIZE = 20000000;
 
-   private static final long PAUSE_LENGTH = 50; // in ms
+   public static final long PAUSE_LENGTH = 50; // in ms
 
    /**
-    * Maximum number if outstanding message
+    * Maximum number if outstanding messages
     */
-   private final int MAX_IN_FLIGHT;
+   private final int maxInFlight;
 
    /**
     * Number of message to do
@@ -122,6 +124,8 @@ public class ClientHandler extends TSOClient {
 
    private float percentReads;
 
+
+
    /**
     * Method to wait for the final response
     * 
@@ -145,16 +149,18 @@ public class ClientHandler extends TSOClient {
     * @throws IOException
     */
    public ClientHandler(Configuration conf, int nbMessage, int inflight, boolean pauseClient, 
-         float percentReads) throws IOException {
+         float percentReads, int maxTxSize, int dbSize) throws IOException {
       super(conf);
       if (nbMessage < 0) {
          throw new IllegalArgumentException("nbMessage: " + nbMessage);
       }
-      this.MAX_IN_FLIGHT = inflight;
+      this.maxInFlight = inflight;
       this.nbMessage = nbMessage;
       this.curMessage = nbMessage;
       this.pauseClient = pauseClient;
       this.percentReads = percentReads;
+      this.maxTxSize = maxTxSize;
+      this.dbSize = dbSize;
    }
 
    /**
@@ -296,10 +302,10 @@ public class ClientHandler extends TSOClient {
 
       boolean readOnly = (rnd.nextFloat() * 100) < percentReads;
 
-      int size = readOnly ? 0 : rnd.nextInt(MAX_ROW);
+      int size = readOnly ? 0 : rnd.nextInt(maxTxSize);
       final RowKey [] rows = new RowKey[size];
       for (byte i = 0; i < rows.length; i++) {
-         long l = rnd.nextInt(DB_SIZE);
+         long l = rnd.nextInt(dbSize);
          byte[] b = new byte[8];
          for (int iii = 0; iii < 8; iii++) {
             b[7 - iii] = (byte) (l >>> (iii * 8));
@@ -356,7 +362,7 @@ public class ClientHandler extends TSOClient {
             return;
 
          // if (outstandingTransactions.intValue() >= MAX_IN_FLIGHT)
-         if (outstandingTransactions >= MAX_IN_FLIGHT)
+         if (outstandingTransactions >= maxInFlight)
             return;
 
          if (curMessage == 0) {
