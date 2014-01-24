@@ -18,15 +18,14 @@ package com.yahoo.omid.tso;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.replication.SharedMessageBuffer;
+import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.LoggerInitCallback;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
-import com.yahoo.omid.tso.persistence.LoggerException.Code;
+import com.yahoo.omid.tso.persistence.LoggerException;
 import com.yahoo.omid.tso.persistence.StateLogger;
 
 
@@ -60,13 +59,26 @@ public class TSOState {
     * Hash map load factor
     */
    static final public float LOAD_FACTOR = 0.5f;
-   
+    
    /**
     * Object that implements the logic to log records
     * for recoverability
     */
    
-   StateLogger logger;
+    StateLogger logger = new StateLogger() {
+            @Override
+            public void initialize(LoggerInitCallback cb, Object ctx) throws LoggerException {
+                cb.loggerInitComplete(LoggerException.Code.OK, this, ctx);
+            }
+
+            @Override
+            public void addRecord(byte[] record, AddRecordCallback cb, Object ctx) {
+                cb.addRecordComplete(LoggerException.Code.OK, ctx);
+            }
+
+            @Override
+            public void shutdown() {}
+        };
 
    public StateLogger getLogger(){
        return logger;
@@ -153,7 +165,7 @@ public class TSOState {
        if(logger != null){
            logger.addRecord(record, cb, ctx);
        } else{
-           cb.addRecordComplete(Code.OK, ctx);
+           cb.addRecordComplete(LoggerException.Code.OK, ctx);
        }
    }
    
@@ -168,15 +180,18 @@ public class TSOState {
    
    public ByteArrayOutputStream baos = new ByteArrayOutputStream();
    public DataOutputStream toWAL = new DataOutputStream(baos);
-   public List<TSOHandler.ChannelandMessage> nextBatch = new ArrayList<TSOHandler.ChannelandMessage>();
    
    public TSOState(StateLogger logger, TimestampOracle timestampOracle, TSOServerConfig config) {
        this.timestampOracle = timestampOracle;
-       this.logger = logger;
+
        this.maxCommits = config.getMaxCommits();
        this.maxItems = config.getMaxItems();
        this.flushTimeout = config.getFlushTimeout();
        this.batchSize = config.getBatchSize();
+
+       if (logger != null) {
+           this.logger = logger;
+       }
    }
    
    public TSOState(TimestampOracle timestampOracle, TSOServerConfig config) {

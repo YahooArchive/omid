@@ -28,44 +28,73 @@ import org.jboss.netty.channel.group.ChannelGroup;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.tso.messages.MinimumTimestamp;
 
+import com.lmax.disruptor.EventFactory;
+import com.lmax.disruptor.EventHandler;
+
 /**
  * ChannelHandler for the TSO Server - sends oldest timestamp to HBase compaction coproc for cleanup
  *
  */
-public class CompacterHandler extends SimpleChannelHandler {
+public class CompacterHandler extends SimpleChannelHandler implements EventHandler<CompacterHandler.CompactionEvent> {
 
-   private final ChannelGroup channelGroup;
-   private final ScheduledExecutorService executor;
+    private final ChannelGroup channelGroup;
+    private final ScheduledExecutorService executor;
 
-   public CompacterHandler(ChannelGroup channelGroup, TSOState state) {
-      this.channelGroup = channelGroup;
-      this.executor = Executors.newScheduledThreadPool(4, 
-              new ThreadFactoryBuilder().setNameFormat("compacter-executor-%d").build());
-      this.executor.scheduleWithFixedDelay(new Notifier(channelGroup, state), 1, 1, TimeUnit.SECONDS);
-   }
+    volatile long largestDeletedTimestamp = 0;
 
-   public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-//      System.out.println("New connection");
-      channelGroup.add(ctx.getChannel());
-   }
+    public CompacterHandler(ChannelGroup channelGroup) {
+        this.channelGroup = channelGroup;
+        this.executor = Executors.newScheduledThreadPool(4, 
+                                                         new ThreadFactoryBuilder().setNameFormat("compacter-executor-%d").build());
+        this.executor.scheduleWithFixedDelay(new Notifier(channelGroup), 1, 1, TimeUnit.SECONDS);
+    }
 
-   private static class Notifier implements Runnable {
-      private final ChannelGroup channelGroup;
-      private final TSOState sharedState;
+    public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        //      System.out.println("New connection");
+        channelGroup.add(ctx.getChannel());
+    }
+
+    private class Notifier implements Runnable {
+        private final ChannelGroup channelGroup;
       
-      public Notifier(ChannelGroup channelGroup, TSOState sharedState) {
-         this.channelGroup = channelGroup;
-         this.sharedState = sharedState;
-      }
-      @Override
-      public void run() {
-         long timestamp = sharedState.largestDeletedTimestamp;
-//         System.out.println("sending " + timestamp);
-         channelGroup.write(new MinimumTimestamp(timestamp));
-      }
-   }
+        public Notifier(ChannelGroup channelGroup) {
+            this.channelGroup = channelGroup;
+        }
+        @Override
+        public void run() {
+            long timestamp = largestDeletedTimestamp;
+            //         System.out.println("sending " + timestamp);
+            channelGroup.write(new MinimumTimestamp(timestamp));
+        }
+    }
 
-   public void stop() {
-      this.executor.shutdown();
-   }
+    public void stop() {
+        this.executor.shutdown();
+    }
+
+    @Override
+    public void onEvent(final CompactionEvent event, final long sequence, final boolean endOfBatch)
+        throws Exception
+    {
+        largestDeletedTimestamp = event.getLargestDeletedTimestamp();
+    }
+
+    public final static class CompactionEvent {
+        private long largestDeletedTimestamp = 0;
+
+        long getLargestDeletedTimestamp() { return largestDeletedTimestamp; }
+        CompactionEvent setLargestDeletedTimestamp(long largestDeletedTimestamp) {
+            this.largestDeletedTimestamp = largestDeletedTimestamp;
+            return this;
+        }
+
+        public final static EventFactory<CompactionEvent> EVENT_FACTORY
+            = new EventFactory<CompactionEvent>()
+        {
+            public CompactionEvent newInstance()
+            {
+                return new CompactionEvent();
+            }
+        };
+    }
 }

@@ -44,6 +44,12 @@ import com.yahoo.omid.tso.persistence.BookKeeperStateBuilder;
 import com.yahoo.omid.tso.persistence.FileSystemTimestampOnlyStateBuilder;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
 import com.yahoo.omid.tso.persistence.LoggerProtocol;
+import com.yahoo.omid.tso.SharedBufferProcessor.SharedBufEvent;
+import com.yahoo.omid.tso.ReplyProcessor.ReplyEvent;
+import com.yahoo.omid.tso.WALProcessor.WALEvent;
+import com.yahoo.omid.tso.CompacterHandler.CompactionEvent;
+
+import com.lmax.disruptor.*;
 
 /**
  * TSO Server with serialization
@@ -100,8 +106,8 @@ public class TSOServer implements Runnable {
         // Create the global ChannelGroup
         ChannelGroup channelGroup = new DefaultChannelGroup(TSOServer.class.getName());
         // threads max
-        // int maxThreads = Runtime.getRuntime().availableProcessors() *2 + 1;
-        int maxThreads = 5;
+        int maxThreads = Runtime.getRuntime().availableProcessors() *2 + 1;
+        //int maxThreads = 5;
         // Memory limitation: 1MB by channel, 1GB global, 100 ms of timeout
         ThreadPoolExecutor pipelineExecutor = new OrderedMemoryAwareThreadPoolExecutor(maxThreads, 1048576, 1073741824,
                 100, TimeUnit.MILLISECONDS, new ObjectSizeEstimator() {
@@ -139,7 +145,54 @@ public class TSOServer implements Runnable {
         LOG.info("PARAM LOAD_FACTOR: " + TSOState.LOAD_FACTOR);
         LOG.info("PARAM MAX_THREADS: " + maxThreads);
 
-        final TSOHandler handler = new TSOHandler(channelGroup, state);
+        RingBuffer<TSOEvent> requestRing = RingBuffer.<TSOEvent>createMultiProducer(TSOEvent.EVENT_FACTORY, 1<<12,
+                                                                                    new BusySpinWaitStrategy());
+        RingBuffer<SharedBufEvent> sharedBufRing = RingBuffer.<SharedBufEvent>createMultiProducer(SharedBufEvent.EVENT_FACTORY, 1<<12,
+                                                                                                  new BusySpinWaitStrategy());
+        RingBuffer<ReplyEvent> replyRing = RingBuffer.<ReplyEvent>createSingleProducer(ReplyEvent.EVENT_FACTORY, 1<<12,
+                                                                                           new SleepingWaitStrategy());
+        RingBuffer<CompactionEvent> compactionRing = RingBuffer.<CompactionEvent>createSingleProducer(CompactionEvent.EVENT_FACTORY, 1<<12,
+                                                                                                      new SleepingWaitStrategy());
+        RingBuffer<WALEvent> walRing = RingBuffer.<WALEvent>createSingleProducer(WALEvent.EVENT_FACTORY, 1<<12,
+                                                                                 new BusySpinWaitStrategy());
+
+        SequenceBarrier walSequenceBarrier = walRing.newBarrier();
+        WALProcessor wal = new WALProcessor(walRing, state.getLogger());
+        BatchEventProcessor<WALEvent> walProcessor = new BatchEventProcessor<WALEvent>(
+                walRing,
+                walSequenceBarrier,
+                wal);
+        walRing.addGatingSequences(walProcessor.getSequence());
+
+        SequenceBarrier tsosequenceBarrier = requestRing.newBarrier();
+        BatchEventProcessor reqProcessor = new BatchEventProcessor<TSOEvent>(
+                requestRing,
+                tsosequenceBarrier,
+                new RequestProcessor(state, replyRing, sharedBufRing, wal));
+        requestRing.addGatingSequences(reqProcessor.getSequence());
+
+        SequenceBarrier sharedBufSequenceBarrier = sharedBufRing.newBarrier();
+        BatchEventProcessor<SharedBufEvent> sharedBufProcessor = new BatchEventProcessor<SharedBufEvent>(
+                sharedBufRing,
+                sharedBufSequenceBarrier,
+                new SharedBufferProcessor(compactionRing));
+        sharedBufRing.addGatingSequences(sharedBufProcessor.getSequence());
+
+        SequenceBarrier replySequenceBarrier = replyRing.newBarrier();
+        BatchEventProcessor<ReplyEvent> replyProcessor = new BatchEventProcessor<ReplyEvent>(
+                replyRing,
+                replySequenceBarrier,
+                new ReplyProcessor());
+        replyRing.addGatingSequences(replyProcessor.getSequence());
+
+
+        // Each processor runs on a separate thread
+        pipelineExecutor.submit(reqProcessor);
+        pipelineExecutor.submit(replyProcessor);
+        pipelineExecutor.submit(sharedBufProcessor);
+        pipelineExecutor.submit(walProcessor);
+
+        final TSOHandler handler = new TSOHandler(channelGroup, requestRing, sharedBufRing);
         handler.start();
 
         bootstrap.setPipelineFactory(new TSOPipelineFactory(pipelineExecutor, handler));
@@ -172,7 +225,16 @@ public class TSOServer implements Runnable {
                 (Runtime.getRuntime().availableProcessors() * 2 + 1) * 2);
         ServerBootstrap comBootstrap = new ServerBootstrap(comFactory);
         ChannelGroup comGroup = new DefaultChannelGroup("compacter");
-        final CompacterHandler comHandler = new CompacterHandler(comGroup, state);
+        final CompacterHandler comHandler = new CompacterHandler(comGroup);
+
+        SequenceBarrier compactionSequenceBarrier = compactionRing.newBarrier();
+        BatchEventProcessor<CompactionEvent> compactionProcessor = new BatchEventProcessor<CompactionEvent>(
+                compactionRing,
+                compactionSequenceBarrier,
+                comHandler);
+        compactionRing.addGatingSequences(compactionProcessor.getSequence());
+        pipelineExecutor.submit(compactionProcessor);
+
         comBootstrap.setPipelineFactory(new ChannelPipelineFactory() {
 
             @Override

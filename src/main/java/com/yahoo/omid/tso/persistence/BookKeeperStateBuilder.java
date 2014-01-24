@@ -223,6 +223,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
      */
     class LoggerExecutor implements ReadCallback {
         public void readComplete(int rc, LedgerHandle lh, Enumeration<LedgerEntry> entries, Object ctx){
+            LOG.info("IKDEBUG release");
             throttleReads.release();
             if(rc != BKException.Code.OK){
                 LOG.error("Error while reading ledger entries." + BKException.getMessage(rc));
