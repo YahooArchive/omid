@@ -1,0 +1,29 @@
+{
+    "version": 2,
+    "shared": {
+        "notification_email": "scalable-computing@yahoo-inc.com"
+    },
+    "jobs": {
+        "component": {
+            "build": {
+                "compile": {
+                    "task": "none"
+                },
+                "test": {
+                    "task": "script",
+                    "command": "mvn -Dmaven.clover.generateXml=true -Dmaven.clover.generateHtml=true -Dmaven.clover.licenseLocation=/home/y/conf/clover/clover.license -B clean com.atlassian.maven.plugins:maven-clover2-plugin:3.1.12:instrument-test com.atlassian.maven.plugins:maven-clover2-plugin:3.1.12:aggregate com.atlassian.maven.plugins:maven-clover2-plugin:3.1.12:clover",
+                    "after": "cp ${SRC_DIR}/target/clover/surefire-reports/*xml ${TEST_RESULTS_DIR}/"
+                },
+                "docs": {
+                    "task": "none"
+                },
+                "publish": {
+                    "task": "none"
+                },
+                "deploy": {
+                    "task": "none"
+                }
+            }
+        }
+    }
+}
