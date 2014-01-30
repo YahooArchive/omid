@@ -138,7 +138,9 @@ public class SharedMessageBuffer {
     }
 
     public void removeReadingBuffer(ChannelHandlerContext ctx) {
-        readingBuffers.remove(new ReadingBuffer(ctx));
+        if (!readingBuffers.remove(new ReadingBuffer(ctx))) {
+            LOG.warn("Cannot remove reading buffer for channel ", ctx.getChannel().getId());
+        };
     }
 
     public void writeCommit(long startTimestamp, long commitTimestamp) {

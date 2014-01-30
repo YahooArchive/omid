@@ -20,6 +20,7 @@ public class StatusOracleMetrics {
     private final Meter queryMeter;
     private final Meter beginMeter;
     private final Meter cleanedAbortMeter;
+    private final Meter tooOldTimestampMeter;
 
     public StatusOracleMetrics() {
         committedMeter = Metrics.defaultRegistry().newMeter(TSOHandler.class, "statusOracle@committed", "statusOracle",
@@ -33,6 +34,8 @@ public class StatusOracleMetrics {
         queryMeter = Metrics.defaultRegistry().newMeter(TSOHandler.class, "statusOracle@query", "statusOracle",
                 TimeUnit.SECONDS);
         beginMeter = Metrics.defaultRegistry().newMeter(TSOHandler.class, "statusOracle@begin",
+                "statusOracle", TimeUnit.SECONDS);
+        tooOldTimestampMeter = Metrics.defaultRegistry().newMeter(TSOHandler.class, "statusOracle@tooOldTimestamp",
                 "statusOracle", TimeUnit.SECONDS);
         cleanedAbortMeter = Metrics.defaultRegistry().newMeter(TSOHandler.class, "statusOracle@cleanedAbort",
                 "statusOracle", TimeUnit.SECONDS);
@@ -70,6 +73,10 @@ public class StatusOracleMetrics {
 
     public void begin() {
         beginMeter.mark();
+    }
+    
+    public void tooOldTimestamp() {
+        tooOldTimestampMeter.mark();
     }
 
     public TimerContext startCommitProcessing() {

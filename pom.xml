@@ -25,13 +25,6 @@
 		</project.build.sourceEncoding>
 	</properties>
 
-	<repositories>
-		<repository>
-			<id>typesafe-releases</id>
-			<url>http://repo.typesafe.com/typesafe/releases</url>
-		</repository>
-	</repositories>
-
 	<build>
 
 		<plugins>
@@ -148,7 +141,7 @@
 		<dependency>
 			<groupId>org.apache.bookkeeper</groupId>
 			<artifactId>bookkeeper-server</artifactId>
-			<version>4.0.0</version>
+			<version>4.2.2</version>
 			<scope>compile</scope>
 		</dependency>
 		<dependency>

@@ -37,6 +37,8 @@ import org.slf4j.LoggerFactory;
 import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
+import com.yahoo.omid.tso.util.ClientHandler;
+import com.yahoo.omid.tso.util.TransactionClient;
 
 public class TSOTestBase {
    private static final Logger LOG = LoggerFactory.getLogger(TSOTestBase.class);
@@ -77,8 +79,8 @@ public class TSOTestBase {
 
       // *** Start the Netty running ***
 
-      System.out.println("PARAM MAX_ROW: " + ClientHandler.MAX_ROW);
-      System.out.println("PARAM DB_SIZE: " + ClientHandler.DB_SIZE);
+      System.out.println("PARAM MAX_ROW: " + ClientHandler.DEFAULT_MAX_ROW);
+      System.out.println("PARAM DB_SIZE: " + ClientHandler.DEFAULT_DB_SIZE);
 
       // Connect to the server, wait for the connection and get back the channel
       clientHandler.await();
@@ -88,8 +90,8 @@ public class TSOTestBase {
 
       // *** Start the Netty running ***
 
-      System.out.println("PARAM MAX_ROW: " + ClientHandler.MAX_ROW);
-      System.out.println("PARAM DB_SIZE: " + ClientHandler.DB_SIZE);
+      System.out.println("PARAM MAX_ROW: " + ClientHandler.DEFAULT_MAX_ROW);
+      System.out.println("PARAM DB_SIZE: " + ClientHandler.DEFAULT_DB_SIZE);
    }
    
    public static void teardownClient() {

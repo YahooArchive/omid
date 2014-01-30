@@ -38,6 +38,10 @@ import com.yahoo.omid.tso.messages.LargestDeletedTimestampReport;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 
+/**
+ * Decodes TSO transaction messages
+ *
+ */
 public class TSODecoder extends FrameDecoder {
     private static final Logger LOG = LoggerFactory.getLogger(TSODecoder.class);
 

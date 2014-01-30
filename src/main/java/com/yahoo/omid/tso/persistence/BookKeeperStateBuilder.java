@@ -355,7 +355,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
         bk.asyncOpenLedger(ledgerId, BookKeeper.DigestType.CRC32, 
                                         "flavio was here".getBytes(), 
                                         new OpenCallback(){
-            public void openComplete(int rc, LedgerHandle lh, Object ctx){
+            public void openComplete(final int rc, final LedgerHandle lh, final Object ctx){
                 if(LOG.isDebugEnabled()){
                     LOG.debug("Open complete, ledger id: " + lh.getId());
                 }
@@ -363,21 +363,28 @@ public class BookKeeperStateBuilder extends StateBuilder {
                     LOG.error("Could not open ledger for reading." + BKException.getMessage(rc));
                     ((BookKeeperStateBuilder.Context) ctx).setState(null);
                 } else {
-                    long counter = lh.getLastAddConfirmed();
-                    while(counter >= 0){
-                        try {
-                           throttleReads.acquire();
-                        } catch (InterruptedException e) {
-                           LOG.error("Couldn't build state", e);
-                           ((Context) ctx).abort();
-                           break;
-                        }
-                        if (((Context) ctx).isReady()) break;
-                        ((Context) ctx).incrementPending();
-                        long nextBatch = Math.max(counter - BKREADBATCHSIZE + 1, 0);
-                        lh.asyncReadEntries(nextBatch, counter, new LoggerExecutor(), ctx);
-                        counter -= BKREADBATCHSIZE;
-                    }
+                    Thread t = new Thread("BK-state-builder") {
+                            @Override
+                            public void run() {
+                                long counter = lh.getLastAddConfirmed();
+                                while(counter >= 0){
+                                    try {
+                                        throttleReads.acquire();
+                                    } catch (InterruptedException e) {
+                                        LOG.error("Couldn't build state", e);
+                                        ((Context) ctx).abort();
+                                        break;
+                                    }
+                                    if (((Context) ctx).isReady()) break;
+                                    ((Context) ctx).incrementPending();
+                                    long nextBatch = Math.max(counter - BKREADBATCHSIZE + 1, 0);
+                                    lh.asyncReadEntries(nextBatch, counter,
+                                                        new LoggerExecutor(), ctx);
+                                    counter -= BKREADBATCHSIZE;
+                                }
+                            }
+                        };
+                    t.start();
                 }
             }
         }, ctx);

@@ -25,9 +25,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This class stores the mapping between start a commit timestamps and between modified row and commit timestamp.
+ * This class stores the mapping between start and commit timestamps and between modified row and commit timestamp.
  * 
- * Both mappings are respresented as a long->long mapping, each of them implemented using a single long []
+ * Both mappings are represented as a long->long mapping, each of them implemented using a single long []
  * 
  * For a map of size N we create an array of size 2*N and store the keys on even indexes and values on odd indexes.
  * 

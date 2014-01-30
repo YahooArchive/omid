@@ -14,15 +14,17 @@
  * limitations under the License. See accompanying LICENSE file.
  */
 
-package com.yahoo.omid.tso;
+package com.yahoo.omid.tso.util;
 
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -43,6 +45,9 @@ import com.yahoo.omid.client.SyncCommitCallback;
 import com.yahoo.omid.client.SyncCommitQueryCallback;
 import com.yahoo.omid.client.SyncCreateCallback;
 import com.yahoo.omid.client.TSOClient;
+import com.yahoo.omid.tso.Committed;
+import com.yahoo.omid.tso.RowKey;
+import com.yahoo.omid.tso.TSOMessage;
 import com.yahoo.omid.tso.messages.CommitResponse;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 
@@ -53,6 +58,15 @@ import com.yahoo.omid.tso.messages.TimestampResponse;
  * 
  */
 public class ClientHandler extends TSOClient {
+    
+    public enum RowDistribution {
+        
+        UNIFORM,ZIPFIAN
+    }
+    
+    private IntegerGenerator intGenerator;
+   
+   private CountDownLatch signalInitialized = new CountDownLatch(1);
 
    private static final Logger LOG = LoggerFactory.getLogger(ClientHandler.class);
 
@@ -60,19 +74,21 @@ public class ClientHandler extends TSOClient {
    /**
     * Maximum number of modified rows in each transaction
     */
-   static final int MAX_ROW = 20;
+   final int maxTxSize;
+   public static final int DEFAULT_MAX_ROW = 20;
 
    /**
     * The number of rows in database
     */
-   static final int DB_SIZE = 20000000;
+   private final int dbSize;
+   public static final int DEFAULT_DB_SIZE = 20000000;
 
-   private static final long PAUSE_LENGTH = 50; // in ms
+   public static final long PAUSE_LENGTH = 50; // in ms
 
    /**
-    * Maximum number if outstanding message
+    * Maximum number if outstanding messages
     */
-   private final int MAX_IN_FLIGHT;
+   private final int maxInFlight;
 
    /**
     * Number of message to do
@@ -119,6 +135,8 @@ public class ClientHandler extends TSOClient {
 
    private float percentReads;
 
+
+
    /**
     * Method to wait for the final response
     * 
@@ -142,16 +160,20 @@ public class ClientHandler extends TSOClient {
     * @throws IOException
     */
    public ClientHandler(Configuration conf, int nbMessage, int inflight, boolean pauseClient, 
-         float percentReads) throws IOException {
-      super(conf);
-      if (nbMessage < 0) {
-         throw new IllegalArgumentException("nbMessage: " + nbMessage);
-      }
-      this.MAX_IN_FLIGHT = inflight;
-      this.nbMessage = nbMessage;
-      this.curMessage = nbMessage;
-      this.pauseClient = pauseClient;
-      this.percentReads = percentReads;
+           float percentReads, int maxTxSize, final int dbSize, IntegerGenerator intGenerator) throws IOException {
+       super(conf);
+       if (nbMessage < 0) {
+           throw new IllegalArgumentException("nbMessage: " + nbMessage);
+       }
+       this.maxInFlight = inflight;
+       this.nbMessage = nbMessage;
+       this.curMessage = nbMessage;
+       this.pauseClient = pauseClient;
+       this.percentReads = percentReads;
+       this.maxTxSize = maxTxSize;
+       this.dbSize = dbSize;
+       this.intGenerator = intGenerator;
+       this.signalInitialized.countDown();
    }
 
    /**
@@ -160,6 +182,12 @@ public class ClientHandler extends TSOClient {
    @Override
    public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) {
       super.channelConnected(ctx, e);
+      try {
+          // don't serve before ClientHandler fully initialized
+          signalInitialized.await();
+      } catch (InterruptedException e1) {
+          throw new RuntimeException(e1);
+      }
       startDate = new Date();
       channel = e.getChannel();
       outstandingTransactions = 0;
@@ -293,10 +321,10 @@ public class ClientHandler extends TSOClient {
 
       boolean readOnly = (rnd.nextFloat() * 100) < percentReads;
 
-      int size = readOnly ? 0 : rnd.nextInt(MAX_ROW);
+      int size = readOnly ? 0 : rnd.nextInt(maxTxSize);
       final RowKey [] rows = new RowKey[size];
       for (byte i = 0; i < rows.length; i++) {
-         long l = rnd.nextInt(DB_SIZE);
+         long l = intGenerator.nextInt();
          byte[] b = new byte[8];
          for (int iii = 0; iii < 8; iii++) {
             b[7 - iii] = (byte) (l >>> (iii * 8));
@@ -353,7 +381,7 @@ public class ClientHandler extends TSOClient {
             return;
 
          // if (outstandingTransactions.intValue() >= MAX_IN_FLIGHT)
-         if (outstandingTransactions >= MAX_IN_FLIGHT)
+         if (outstandingTransactions >= maxInFlight)
             return;
 
          if (curMessage == 0) {

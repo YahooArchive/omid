@@ -35,6 +35,11 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.client.ColumnWrapper;
 import com.yahoo.omid.tso.messages.MinimumTimestamp;
 
+/**
+ * Garbage collector for stale data: triggered upon HBase compactions,
+ * it removes data from uncommitted transactions older than the
+ *
+ */
 public class Compacter extends BaseRegionObserver {
     private static final Logger LOG = LoggerFactory.getLogger(Compacter.class);
     
@@ -86,12 +91,11 @@ public class Compacter extends BaseRegionObserver {
 
     @Override
     public void stop(CoprocessorEnvironment e) throws IOException {
-        LOG.info("Stoping compacter");
         if (channel != null) {
-            LOG.info("Calling close");
+            LOG.debug("Calling close");
             channel.close();
         }
-        LOG.info("Compacter stopped");
+        LOG.debug("Compacter stopped");
     }
 
     @Override
@@ -113,7 +117,7 @@ public class Compacter extends BaseRegionObserver {
         public CompacterScanner(InternalScanner internalScanner, long minTimestamp) {
             this.minTimestamp = minTimestamp;
             this.internalScanner = internalScanner;
-            LOG.info("Created scanner with " + minTimestamp);
+            LOG.debug("Created scanner for cleaning up uncommitted operations older than [{}]", minTimestamp);
         }
 
         @Override

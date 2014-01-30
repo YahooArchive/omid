@@ -26,7 +26,6 @@ import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.handler.codec.oneone.OneToOneEncoder;
 
 import com.yahoo.omid.replication.ZipperState;
-import com.yahoo.omid.tso.BufferPool;
 import com.yahoo.omid.tso.TSOMessage;
 import com.yahoo.omid.tso.messages.AbortRequest;
 import com.yahoo.omid.tso.messages.AbortedTransactionReport;
@@ -40,6 +39,10 @@ import com.yahoo.omid.tso.messages.LargestDeletedTimestampReport;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 
+/**
+ * Encodes TSO transaction messages.
+ *
+ */
 public class TSOEncoder extends OneToOneEncoder{
 
    //just override decode method

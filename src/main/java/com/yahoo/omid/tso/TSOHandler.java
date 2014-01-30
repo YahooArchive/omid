@@ -19,6 +19,7 @@ package com.yahoo.omid.tso;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -65,7 +66,11 @@ import com.yahoo.omid.tso.persistence.LoggerProtocol;
 import com.yammer.metrics.core.TimerContext;
 
 /**
- * ChannelHandler for the TSO Server
+ * ChannelHandler for the TSO Server.
+ * <p>
+ * 
+ * Incoming requests are processed in this class and by accessing a shared data structure, {@link TSOState}
+ * 
  */
 public class TSOHandler extends SimpleChannelHandler {
 
@@ -152,12 +157,14 @@ public class TSOHandler extends SimpleChannelHandler {
 
     public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
         channelGroup.add(ctx.getChannel());
+        LOG.warn("Channel [{}] connected from [{}]", ctx.getChannel().getId(), ((InetSocketAddress)ctx.getChannel().getRemoteAddress()).getHostName()+":"+((InetSocketAddress)ctx.getChannel().getRemoteAddress()).getPort());
     }
 
     @Override
     public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
         synchronized (sharedMsgBufLock) {
             sharedState.sharedMessageBuffer.removeReadingBuffer(ctx);
+            LOG.warn("Channel [{}] disconnected", ctx.getChannel().getId());
         }
     }
 
@@ -245,7 +252,12 @@ public class TSOHandler extends SimpleChannelHandler {
                     buffer = sharedState.sharedMessageBuffer.getReadingBuffer(ctx);
                     messageBuffersMap.put(channel, buffer);
                     channelGroup.add(channel);
-                    LOG.warn("Channel connected: " + messageBuffersMap.size());
+                    LOG.warn("Initialized TSO communication on channel [{}] from [{}], total connected clients [{}] ",
+                            new Object[] {
+                            channel.getId(),
+                            ((InetSocketAddress)channel.getRemoteAddress()).getHostName()
+                            +":"+((InetSocketAddress)channel.getRemoteAddress()).getPort(), 
+                            messageBuffersMap.size()});
                 }
             }
         }
@@ -332,7 +344,7 @@ public class TSOHandler extends SimpleChannelHandler {
             // 0. check if it should abort
             if (msg.startTimestamp < timestampOracle.first()) {
                 reply.committed = false;
-                LOG.warn("Aborting transaction after restarting TSO");
+                LOG.warn("Aborting transaction [{}] after restarting TSO", msg.startTimestamp);
             } else if (msg.startTimestamp <= sharedState.largestDeletedTimestamp) {
                 // We could let readonly transactions commit, but it makes the logic more complex
                 // since we shouldn't mark the transaction as committed (it has already been aborted!)
@@ -344,8 +356,7 @@ public class TSOHandler extends SimpleChannelHandler {
 //                } else {
                     // Too old
                     reply.committed = false;// set as abort
-                    LOG.warn("Too old starttimestamp: ST " + msg.startTimestamp + " MAX "
-                            + sharedState.largestDeletedTimestamp);
+                    LOG.debug("Too old starttimestamp: ST [{}] , MAX [{}]",msg.startTimestamp , sharedState.largestDeletedTimestamp);
 //                }
             } else if (!sharedState.uncommited.isUncommitted(msg.startTimestamp)) {
                 long commitTS = sharedState.hashmap.getCommittedTimestamp(msg.startTimestamp);
@@ -366,8 +377,8 @@ public class TSOHandler extends SimpleChannelHandler {
                     } else if (value == 0 && sharedState.largestDeletedTimestamp > msg.startTimestamp) {
                         // then it could have been committed after start
                         // timestamp but deleted by recycling
-                        LOG.warn("Old transaction {Start timestamp  " + msg.startTimestamp
-                                + "} {Largest deleted timestamp " + sharedState.largestDeletedTimestamp + "}");
+                        LOG.warn("Old transaction {Start timestamp  [{}], Largest deleted timestamp [{}]", 
+                                msg.startTimestamp,sharedState.largestDeletedTimestamp );
                         reply.committed = false;// set as abort
                         break;
                     }
@@ -382,9 +393,7 @@ public class TSOHandler extends SimpleChannelHandler {
                     sharedState.uncommited.commit(msg.startTimestamp);
                     reply.commitTimestamp = commitTimestamp;
                     if (msg.rows.length > 0) {
-                        if (LOG.isTraceEnabled()) {
-                            LOG.trace("Adding commit to WAL");
-                        }
+                        LOG.trace("Adding commit [{}] to WAL", commitTimestamp);
                         toWAL.writeByte(LoggerProtocol.COMMIT);
                         toWAL.writeLong(msg.startTimestamp);
                         toWAL.writeLong(commitTimestamp);
@@ -471,8 +480,8 @@ public class TSOHandler extends SimpleChannelHandler {
         toWAL.writeByte(LoggerProtocol.LARGESTDELETEDTIMESTAMP);
         toWAL.writeLong(sharedState.largestDeletedTimestamp);
         Set<Long> toAbort = sharedState.uncommited.raiseLargestDeletedTransaction(sharedState.largestDeletedTimestamp);
-        if (LOG.isWarnEnabled() && !toAbort.isEmpty()) {
-            LOG.warn("Slow transactions after raising max: " + toAbort.size());
+        if (LOG.isDebugEnabled() && !toAbort.isEmpty()) {
+            LOG.debug("Slow transactions after raising max: " + toAbort.size());
         }
         metrics.oldAborted(toAbort.size());
         synchronized (sharedMsgBufLock) {
