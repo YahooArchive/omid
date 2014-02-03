@@ -18,6 +18,7 @@ package com.yahoo.omid.tso;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
@@ -185,12 +186,16 @@ public class TSOServer implements Runnable {
                 new ReplyProcessor());
         replyRing.addGatingSequences(replyProcessor.getSequence());
 
+        ExecutorService reqExec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("reqproc-%d").build());
+        ExecutorService replyExec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("replyproc-%d").build());
+        ExecutorService sharedBufExec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("sharedbuf-%d").build());
+        ExecutorService walExec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("wal-%d").build());
 
         // Each processor runs on a separate thread
-        pipelineExecutor.submit(reqProcessor);
-        pipelineExecutor.submit(replyProcessor);
-        pipelineExecutor.submit(sharedBufProcessor);
-        pipelineExecutor.submit(walProcessor);
+        reqExec.submit(reqProcessor);
+        replyExec.submit(replyProcessor);
+        sharedBufExec.submit(sharedBufProcessor);
+        walExec.submit(walProcessor);
 
         final TSOHandler handler = new TSOHandler(channelGroup, requestRing, sharedBufRing);
         handler.start();
