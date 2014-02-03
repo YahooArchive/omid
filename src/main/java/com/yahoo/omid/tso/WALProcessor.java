@@ -77,6 +77,7 @@ class WALProcessor implements EventHandler<WALProcessor.WALEvent> {
                          }, null);
 
         buffer = new ByteArrayOutputStream(TSOState.BATCH_SIZE);
+        dataBuffer = new DataOutputStream(buffer);
         deferredResponses = new ArrayList<DeferredResponse>();
     }
     
