@@ -172,9 +172,6 @@ class RequestProcessor implements EventHandler<TSOEvent>
                 sharedState.uncommited.commit(msg.startTimestamp);
 
                 if (msg.rows.length > 0) {
-                    if (LOG.isTraceEnabled()) {
-                        LOG.trace("Adding commit to WAL");
-                    }
                     wal.logEvent(LoggerProtocol.COMMIT, msg.startTimestamp, commitTimestamp);
 
                     long largestDeletedTimestamp = sharedState.largestDeletedTimestamp;

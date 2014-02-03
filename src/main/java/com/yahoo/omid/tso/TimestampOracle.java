@@ -64,13 +64,13 @@ public class TimestampOracle {
         if (last == maxTimestamp) {
             maxTimestamp += TIMESTAMP_BATCH;
             wal.logEvent(LoggerProtocol.TIMESTAMPORACLE, maxTimestamp);
-            if (LOG.isTraceEnabled()) {
+            /*if (LOG.isTraceEnabled()) {
                LOG.trace("Logging TimestampOracle " + maxTimestamp);
-            }
+               }*/
         }
-        if(LOG.isTraceEnabled()){
+        /*if(LOG.isTraceEnabled()){
             LOG.trace("Next timestamp: " + last);
-        }
+            }*/
         
         return last;
     }
