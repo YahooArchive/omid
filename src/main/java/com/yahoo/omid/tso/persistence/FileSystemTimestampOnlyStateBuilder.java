@@ -45,7 +45,7 @@ public class FileSystemTimestampOnlyStateBuilder extends StateBuilder {
         TSOState returnValue;
         if (!config.isRecoveryEnabled()) {
             LOG.warn("Logger is disabled");
-            returnValue = new TSOState(new TimestampOracle());
+            returnValue = new TSOState(new TimestampOracle(), config);
             returnValue.initialize();
         } else {
             FileSystemTimestampOnlyStateBuilder builder = new FileSystemTimestampOnlyStateBuilder(config);
@@ -75,7 +75,7 @@ public class FileSystemTimestampOnlyStateBuilder extends StateBuilder {
     public TSOState buildState() throws LoggerException {
 
         File directory = new File(config.getFsLog());
-        TSOState state = new TSOState(timestampOracle);
+        TSOState state = new TSOState(timestampOracle, config);
 
         long startTimestamp = getTimestamp(directory);
 

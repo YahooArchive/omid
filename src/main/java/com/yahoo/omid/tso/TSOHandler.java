@@ -134,7 +134,7 @@ public class TSOHandler extends SimpleChannelHandler {
                 return t;
             }
         });
-        this.flushFuture = scheduledExecutor.schedule(flushThread, TSOState.FLUSH_TIMEOUT, TimeUnit.MILLISECONDS);
+        this.flushFuture = scheduledExecutor.schedule(flushThread, sharedState.flushTimeout, TimeUnit.MILLISECONDS);
         this.executor = Executors.newSingleThreadExecutor(
                 new ThreadFactoryBuilder().setDaemon(true).setNameFormat("aborts-snapshotter").build());
     }
@@ -356,6 +356,7 @@ public class TSOHandler extends SimpleChannelHandler {
 //                } else {
                     // Too old
                     reply.committed = false;// set as abort
+                    metrics.tooOldTimestamp();
                     LOG.debug("Too old starttimestamp: ST [{}] , MAX [{}]",msg.startTimestamp , sharedState.largestDeletedTimestamp);
 //                }
             } else if (!sharedState.uncommited.isUncommitted(msg.startTimestamp)) {
@@ -442,7 +443,7 @@ public class TSOHandler extends SimpleChannelHandler {
             ChannelandMessage cam = new ChannelandMessage(ctx, reply, timerLatency);
 
             sharedState.nextBatch.add(cam);
-            if (sharedState.baos.size() >= TSOState.BATCH_SIZE) {
+            if (sharedState.baos.size() >= sharedState.batchSize) {
                 if (LOG.isTraceEnabled()) {
                     LOG.trace("Going to add record of size " + sharedState.baos.size());
                 }
@@ -492,7 +493,7 @@ public class TSOHandler extends SimpleChannelHandler {
             queueLargestIncrease(sharedState.largestDeletedTimestamp);
         }
         if (sharedState.largestDeletedTimestamp > sharedState.previousLargestDeletedTimestamp
-                + TSOState.MAX_ITEMS) {
+                + sharedState.maxItems) {
             // schedule snapshot
             executor.submit(createAbortedSnaphostTask);
             sharedState.previousLargestDeletedTimestamp = sharedState.largestDeletedTimestamp;
@@ -560,7 +561,7 @@ public class TSOHandler extends SimpleChannelHandler {
             sharedState.nextBatch = new ArrayList<ChannelandMessage>(sharedState.nextBatch.size() + 5);
             sharedState.baos.reset();
             if (flushFuture.cancel(false)) {
-                flushFuture = scheduledExecutor.schedule(flushThread, TSOState.FLUSH_TIMEOUT, TimeUnit.MILLISECONDS);
+                flushFuture = scheduledExecutor.schedule(flushThread, sharedState.flushTimeout, TimeUnit.MILLISECONDS);
             }
         }
     }
@@ -581,7 +582,7 @@ public class TSOHandler extends SimpleChannelHandler {
                     }
                 }
             }
-            flushFuture = scheduledExecutor.schedule(flushThread, TSOState.FLUSH_TIMEOUT, TimeUnit.MILLISECONDS);
+            flushFuture = scheduledExecutor.schedule(flushThread, sharedState.flushTimeout, TimeUnit.MILLISECONDS);
         }
     }
 

@@ -73,7 +73,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
         TSOState returnValue;
         if(!config.isRecoveryEnabled()){
             LOG.warn("Logger is disabled");
-            returnValue = new TSOState(new TimestampOracle());
+            returnValue = new TSOState(new TimestampOracle(), config);
             returnValue.initialize();
         } else {
             BookKeeperStateBuilder builder = new BookKeeperStateBuilder(config);
@@ -96,7 +96,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
     LoggerProtocol lp;
     boolean enabled;
     Semaphore throttleReads;
-    TSOServerConfig config;
+    final TSOServerConfig config;
     
     BookKeeperStateBuilder(TSOServerConfig config) {
         this.timestampOracle = new TimestampOracle();
@@ -203,7 +203,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
                 LOG.warn("No node exists. " + KeeperException.Code.get(rc).toString()); 
                 TSOState tempState; 
                 try{
-                    tempState = new TSOState(timestampOracle);
+                    tempState = new TSOState(timestampOracle, config);
                 } catch (Exception e) {
                     LOG.error("Error while creating state logger.", e);
                     tempState = null;
@@ -339,7 +339,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
             LOG.debug("Creating logger protocol object");
         }
         try{
-            this.lp = new LoggerProtocol(timestampOracle); 
+            this.lp = new LoggerProtocol(timestampOracle, config); 
         } catch (Exception e) {
             LOG.error("Error while creating state logger for logger protocol.", e);
             ((BookKeeperStateBuilder.Context) ctx).setState(null);
