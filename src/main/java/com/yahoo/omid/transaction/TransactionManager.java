@@ -63,14 +63,23 @@ public class TransactionManager {
     }
     
     public TransactionManager(Configuration conf, HTableFactory hTableFactory) throws IOException {
+        this(conf, hTableFactory, buildTSOClient(conf));
+    }
+
+    public TransactionManager(Configuration conf, HTableFactory hTableFactory, TSOClient tsoClient) throws IOException {
         this.conf = conf;
         this.hTableFactory = hTableFactory;
+        tableCache = new HashMap<byte[], HTableInterface>();
+        this.tsoclient = tsoClient;
+    }
+
+    private static TSOClient buildTSOClient(Configuration conf) throws IOException {
         synchronized (lock) {
             if (tsoclient == null) {
                 tsoclient = new TSOClient(conf);
             }
         }
-        tableCache = new HashMap<byte[], HTableInterface>();
+        return tsoclient;
     }
 
     /**

@@ -49,10 +49,22 @@ public class Compacter extends BaseRegionObserver {
             .setNameFormat("compacter-boss-%d").build());
     private static ExecutorService workerExecutor = Executors.newCachedThreadPool(new ThreadFactoryBuilder()
             .setNameFormat("compacter-worker-%d").build());
+    private String tsoHost;
+    private int tsoPort;
     private volatile long minTimestamp;
     private ClientBootstrap bootstrap;
     private ChannelFactory factory;
     private Channel channel;
+
+    public Compacter() {
+        LOG.debug("Compacter initialized via empty constructor");
+    }
+
+    public Compacter(String tsoHost, int tsoPort) {
+        this.tsoHost = tsoHost;
+        this.tsoPort = tsoPort;
+        LOG.debug(String.format("Compacter initialized, TSO %s:%s", tsoHost, tsoPort));
+    }
 
     @Override
     public void start(CoprocessorEnvironment e) throws IOException {
@@ -68,8 +80,9 @@ public class Compacter extends BaseRegionObserver {
         bootstrap.setOption("reuseAddress", true);
         bootstrap.setOption("connectTimeoutMillis", 100);
 
-        String host = conf.get("tso.host");
-        int port = conf.getInt("tso.port", 1234) + 1;
+        String host = conf.get("tso.host", tsoHost);
+        int port = conf.getInt("tso.port", tsoPort) + 1;
+        LOG.debug(String.format("TSO %s:%s", tsoHost, tsoPort));
 
         if (host == null) {
             throw new IOException("tso.host missing from configuration");

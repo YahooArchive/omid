@@ -20,6 +20,7 @@ package com.yahoo.omid.transaction;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -53,7 +54,7 @@ import com.yammer.metrics.core.TimerContext;
 /**
  * Provides transactional methods for accessing and modifying a given snapshot
  * of data identified by an opaque {@link Transaction} object.
- * 
+ *
  */
 public class TTable {
     private static Logger LOG = LoggerFactory.getLogger(TTable.class);
@@ -80,14 +81,14 @@ public class TTable {
     public TTable(Configuration conf, String tableName) throws IOException {
         this(conf, Bytes.toBytes(tableName));
     }
-    
+
     public TTable(HTableInterface hTable) {
         table = hTable;
     }
 
     /**
      * Extracts certain cells from a given row.
-     * 
+     *
      * @param get
      *            The object that specifies what data to fetch and from which
      *            row.
@@ -100,7 +101,7 @@ public class TTable {
      */
     public Result get(Transaction transaction, final Get get) throws IOException {
         TimerContext getTimer = transaction.tsoclient.getMetrics().startTimer(Timers.GET);
-        
+
         final int requestedVersions = (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD);
         final long readTimestamp = transaction.getStartTimestamp();
         final Get tsget = new Get(get.getRow());
@@ -141,7 +142,7 @@ public class TTable {
 
     /**
      * Deletes the specified cells/row.
-     * 
+     *
      * @param delete
      *            The object that specifies what to delete.
      * @throws IOException
@@ -149,7 +150,7 @@ public class TTable {
      */
     public void delete(Transaction transaction, Delete delete) throws IOException {
         TimerContext timer = transaction.tsoclient.getMetrics().startTimer(Timers.DELETE);
-        
+
         final long startTimestamp = transaction.getStartTimestamp();
         boolean issueGet = false;
 
@@ -184,11 +185,14 @@ public class TTable {
             // It's better to perform a transactional get to avoid deleting more
             // than necessary
             Result result = this.get(transaction, deleteG);
-            for (Entry<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> entryF : result.getMap().entrySet()) {
-                byte[] family = entryF.getKey();
-                for (Entry<byte[], NavigableMap<Long, byte[]>> entryQ : entryF.getValue().entrySet()) {
-                    byte[] qualifier = entryQ.getKey();
-                    deleteP.add(family, qualifier, null);
+            if (!result.isEmpty()) {
+                for (Entry<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> entryF : result.getMap()
+                        .entrySet()) {
+                    byte[] family = entryF.getKey();
+                    for (Entry<byte[], NavigableMap<Long, byte[]>> entryQ : entryF.getValue().entrySet()) {
+                        byte[] qualifier = entryQ.getKey();
+                        deleteP.add(family, qualifier, null);
+                    }
                 }
             }
         }
@@ -208,7 +212,7 @@ public class TTable {
      * <p>
      * If {@link #isAutoFlush isAutoFlush} is false, the update is buffered
      * until the internal buffer is full.
-     * 
+     *
      * @param put
      *            The data to put.
      * @throws IOException
@@ -242,7 +246,7 @@ public class TTable {
      * Returns a scanner on the current table as specified by the {@link Scan}
      * object. Note that the passed {@link Scan}'s start row and caching
      * properties maybe changed.
-     * 
+     *
      * @param scan
      *            A configured {@link Scan} object.
      * @return A scanner.
@@ -255,8 +259,8 @@ public class TTable {
         Scan tsscan = new Scan(scan);
         tsscan.setMaxVersions((int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
         tsscan.setTimeRange(0, transaction.getStartTimestamp() + 1);
-        TransactionalClientScanner scanner = new TransactionalClientScanner(transaction, getConfiguration(),
-                tsscan, getTableName(), (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
+        TransactionalClientScanner scanner = new TransactionalClientScanner(transaction,
+                tsscan, (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
         timer.stop();
         return scanner;
     }
@@ -266,7 +270,7 @@ public class TTable {
      * belonging to the current snapshot, as defined by the transaction
      * object. If the raw results don't contain enough information for a
      * particular qualifier, it will request more versions from HBase.
-     * 
+     *
      * @param transaction
      *            Defines the current snapshot
      * @param kvs
@@ -302,7 +306,7 @@ public class TTable {
             if (!currentColumn.equals(lastColumn)) {
                 if (LOG.isTraceEnabled()) {
                     LOG.trace("We got a new column, reset stuff", kv);
-                    LOG.trace("valid {} versionsProcessed {} localversions {}", 
+                    LOG.trace("valid {} versionsProcessed {} localversions {}",
                             new Object[] { validRead, versionsProcessed, localVersions });
                 }
                 // New column, if we didn't read a committed value for last one,
@@ -364,23 +368,25 @@ public class TTable {
         return filtered;
     }
 
-    protected class TransactionalClientScanner extends ClientScanner {
+    protected class TransactionalClientScanner implements ResultScanner {
         private Transaction state;
+        private ResultScanner innerScanner;
         private int maxVersions;
 
-        TransactionalClientScanner(Transaction state, Configuration conf, Scan scan, byte[] table, int maxVersions)
+        TransactionalClientScanner(Transaction state, Scan scan, int maxVersions)
                 throws IOException {
-            super(conf, scan, table);
             this.state = state;
+            this.innerScanner = table.getScanner(scan);
             this.maxVersions = maxVersions;
         }
+
 
         @Override
         public Result next() throws IOException {
             TimerContext nextTimer = state.tsoclient.getMetrics().startTimer(Timers.NEXT);
             List<KeyValue> filteredResult = Collections.emptyList();
             while (filteredResult.isEmpty()) {
-                Result result = super.next();
+                Result result = innerScanner.next();
                 if (result == null) {
                     return null;
                 }
@@ -413,11 +419,20 @@ public class TTable {
             return resultSets.toArray(new Result[resultSets.size()]);
         }
 
+        @Override
+        public void close() {
+            innerScanner.close();
+        }
+
+        @Override
+        public Iterator<Result> iterator() {
+            return innerScanner.iterator();
+        }
     }
 
     /**
      * Gets the name of this table.
-     * 
+     *
      * @return the table name.
      */
     public byte[] getTableName() {
@@ -436,7 +451,7 @@ public class TTable {
 
     /**
      * Gets the {@link HTableDescriptor table descriptor} for this table.
-     * 
+     *
      * @throws IOException
      *             if a remote or network exception occurs.
      */
@@ -447,13 +462,13 @@ public class TTable {
     /**
      * Test for the existence of columns in the table, as specified in the Get.
      * <p>
-     * 
+     *
      * This will return true if the Get matches one or more keys, false if not.
      * <p>
-     * 
+     *
      * This is a server-side call so it prevents any data from being transfered
      * to the client.
-     * 
+     *
      * @param get
      *            the Get
      * @return true if the specified Get matches one or more keys, false if not
@@ -489,11 +504,11 @@ public class TTable {
 
     /**
      * Extracts certain cells from the given rows, in batch.
-     * 
+     *
      * @param gets
      *            The objects that specify what data to fetch and from which
      *            rows.
-     * 
+     *
      * @return The data coming from the specified rows, if it exists. If the row
      *         specified doesn't exist, the {@link Result} instance returned
      *         won't contain any {@link KeyValue}, as indicated by
@@ -502,7 +517,7 @@ public class TTable {
      *         Gets, AND an exception will be thrown.
      * @throws IOException
      *             if a remote or network exception occurs.
-     * 
+     *
      */
     public Result[] get(Transaction transaction, List<Get> gets) throws IOException {
         Result[] results = new Result[gets.size()];
@@ -515,7 +530,7 @@ public class TTable {
 
     /**
      * Gets a scanner on the current table for the given family.
-     * 
+     *
      * @param family
      *            The column family to scan.
      * @return A scanner.
@@ -530,7 +545,7 @@ public class TTable {
 
     /**
      * Gets a scanner on the current table for the given family and qualifier.
-     * 
+     *
      * @param family
      *            The column family to scan.
      * @param qualifier
@@ -555,7 +570,7 @@ public class TTable {
      * batches. The writeBuffer will be periodically inspected while the List is
      * processed, so depending on the List size the writeBuffer may flush not at
      * all, or more than once.
-     * 
+     *
      * @param puts
      *            The list of mutations to apply. The batch put is done by
      *            aggregating the iteration of the Puts over the write buffer at
@@ -571,7 +586,7 @@ public class TTable {
 
     /**
      * Deletes the specified cells/rows in bulk.
-     * 
+     *
      * @param deletes
      *            List of things to delete. List gets modified by this method
      *            (in particular it gets re-ordered, so the order in which the
@@ -592,7 +607,7 @@ public class TTable {
      * Provides access to the underliying HTable in order to configure it or to
      * perform unsafe (non-transactional) operations. The latter would break the
      * transactional guarantees of the whole system.
-     * 
+     *
      * @return The underlying HTable object
      */
     public HTableInterface getHTable() {
@@ -601,7 +616,7 @@ public class TTable {
 
     /**
      * Releases any resources held or pending changes in internal buffers.
-     * 
+     *
      * @throws IOException
      *             if a remote or network exception occurs.
      */
@@ -611,12 +626,12 @@ public class TTable {
 
     /**
      * Turns 'auto-flush' on or off.
-     * 
+     *
      * When enabled (default), Put operations don't get buffered/delayed and are immediately executed.
-     * 
+     *
      * Turning off autoFlush means that multiple Puts will be accepted before any RPC is actually sent to do the write
      * operations. Writes will still be automatically flushed at commit time, so no data will be lost.
-     * 
+     *
      * @param autoFlush
      *            Whether or not to enable 'auto-flush'.
      */
@@ -626,7 +641,7 @@ public class TTable {
 
     /**
      * Tells whether or not 'auto-flush' is turned on.
-     * 
+     *
      * @return true if 'auto-flush' is enabled (default), meaning Put operations don't get buffered/delayed and are
      *         immediately executed.
      */
