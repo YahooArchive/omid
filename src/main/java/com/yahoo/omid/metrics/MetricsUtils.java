@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.yammer.metrics.reporting.ConsoleReporter;
+import com.yammer.metrics.reporting.GraphiteReporter;
 
 /**
  * Parses metrics configuration and initializes metrics reporting.
@@ -18,7 +19,7 @@ public class MetricsUtils {
 
     static Logger logger = LoggerFactory.getLogger(MetricsUtils.class);
     static final Pattern METRICS_CONFIG_PATTERN = Pattern
-            .compile("(csv:.+|console):(\\d+):(DAYS|HOURS|MICROSECONDS|MILLISECONDS|MINUTES|NANOSECONDS|SECONDS)");
+            .compile("(csv:.+|console|graphite:.+:.+):(\\d+):(DAYS|HOURS|MICROSECONDS|MILLISECONDS|MINUTES|NANOSECONDS|SECONDS)");
 
     public static void initMetrics(String metricsConfig) {
         if (metricsConfig == null || metricsConfig.equals("")) {
@@ -47,6 +48,16 @@ public class MetricsUtils {
                 logger.info("Reporting metrics through csv files in directory [{}] with frequency of [{}] [{}]",
                         new String[] { outputDir, String.valueOf(period), timeUnit.name() });
                 CsvExtendedReporter.enable(new File(outputDir), period, timeUnit);
+            } else if (group1.startsWith("graphite")) {
+                long period = Long.valueOf(matcher.group(2));
+                TimeUnit timeUnit = TimeUnit.valueOf(matcher.group(3));
+                String parts[] = group1.split(":");
+                assert (parts[0].equals("graphite"));
+                String host = parts[1];
+                Integer port = Integer.valueOf(parts[2]);
+                logger.info("Reporting metrics to graphite {}:{} with frequency of [{}] [{}]",
+                        new Object[] { host, port, String.valueOf(period), timeUnit.name() });
+                GraphiteReporter.enable(period, timeUnit, host, port, "omid");
             } else {
                 long period = Long.valueOf(matcher.group(2));
                 TimeUnit timeUnit = TimeUnit.valueOf(matcher.group(3));
