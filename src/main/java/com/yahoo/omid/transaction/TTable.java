@@ -662,4 +662,8 @@ public class TTable {
     public void setWriteBufferSize(long writeBufferSize) throws IOException {
         table.setWriteBufferSize(writeBufferSize);
     }
+
+    public void flushCommits() throws IOException{
+        table.flushCommits();
+    }
 }
