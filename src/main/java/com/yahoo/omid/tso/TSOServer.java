@@ -146,15 +146,15 @@ public class TSOServer implements Runnable {
         LOG.info("PARAM LOAD_FACTOR: " + TSOState.LOAD_FACTOR);
         LOG.info("PARAM MAX_THREADS: " + maxThreads);
 
-        RingBuffer<TSOEvent> requestRing = RingBuffer.<TSOEvent>createMultiProducer(TSOEvent.EVENT_FACTORY, 1<<12,
+        RingBuffer<TSOEvent> requestRing = RingBuffer.<TSOEvent>createMultiProducer(TSOEvent.EVENT_FACTORY, 1<<14,
                                                                                     new BusySpinWaitStrategy());
-        RingBuffer<SharedBufEvent> sharedBufRing = RingBuffer.<SharedBufEvent>createMultiProducer(SharedBufEvent.EVENT_FACTORY, 1<<12,
+        RingBuffer<SharedBufEvent> sharedBufRing = RingBuffer.<SharedBufEvent>createMultiProducer(SharedBufEvent.EVENT_FACTORY, 1<<14,
                                                                                                   new BusySpinWaitStrategy());
-        RingBuffer<ReplyEvent> replyRing = RingBuffer.<ReplyEvent>createSingleProducer(ReplyEvent.EVENT_FACTORY, 1<<12,
+        RingBuffer<ReplyEvent> replyRing = RingBuffer.<ReplyEvent>createSingleProducer(ReplyEvent.EVENT_FACTORY, 1<<14,
                                                                                            new SleepingWaitStrategy());
-        RingBuffer<CompactionEvent> compactionRing = RingBuffer.<CompactionEvent>createSingleProducer(CompactionEvent.EVENT_FACTORY, 1<<12,
+        RingBuffer<CompactionEvent> compactionRing = RingBuffer.<CompactionEvent>createSingleProducer(CompactionEvent.EVENT_FACTORY, 1<<14,
                                                                                                       new SleepingWaitStrategy());
-        RingBuffer<WALEvent> walRing = RingBuffer.<WALEvent>createSingleProducer(WALEvent.EVENT_FACTORY, 1<<12,
+        RingBuffer<WALEvent> walRing = RingBuffer.<WALEvent>createSingleProducer(WALEvent.EVENT_FACTORY, 1<<14,
                                                                                  new BusySpinWaitStrategy());
 
         SequenceBarrier walSequenceBarrier = walRing.newBarrier();
@@ -201,7 +201,7 @@ public class TSOServer implements Runnable {
         handler.start();
 
         bootstrap.setPipelineFactory(new TSOPipelineFactory(pipelineExecutor, handler));
-        bootstrap.setOption("tcpNoDelay", true);
+        bootstrap.setOption("tcpNoDelay", false);
         // setting buffer size can improve I/O
         bootstrap.setOption("child.sendBufferSize", 1048576);
         bootstrap.setOption("child.receiveBufferSize", 1048576);
@@ -212,7 +212,7 @@ public class TSOServer implements Runnable {
         bootstrap.setOption("writeBufferLowWaterMark", 32 * 1024);
         bootstrap.setOption("writeBufferHighWaterMark", 64 * 1024);
 
-        bootstrap.setOption("child.tcpNoDelay", true);
+        bootstrap.setOption("child.tcpNoDelay", false);
         bootstrap.setOption("child.keepAlive", true);
         bootstrap.setOption("child.reuseAddress", true);
         bootstrap.setOption("child.connectTimeoutMillis", 60000);
