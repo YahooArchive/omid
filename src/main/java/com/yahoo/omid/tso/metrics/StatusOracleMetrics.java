@@ -6,6 +6,7 @@ import com.yahoo.omid.tso.TSOHandler;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.Timer;
+import com.yammer.metrics.core.Counter;
 import com.yammer.metrics.core.TimerContext;
 
 public class StatusOracleMetrics {
@@ -21,6 +22,7 @@ public class StatusOracleMetrics {
     private final Meter beginMeter;
     private final Meter cleanedAbortMeter;
     private final Meter tooOldTimestampMeter;
+    private final Counter connectionCounter;
 
     public StatusOracleMetrics() {
         committedMeter = Metrics.defaultRegistry().newMeter(TSOHandler.class, "statusOracle@committed", "statusOracle",
@@ -45,6 +47,11 @@ public class StatusOracleMetrics {
                 "statusOracle");
         beginTimer = Metrics.defaultRegistry().newTimer(TSOHandler.class, "statusOracle@begin-processingTime",
                 "statusOracle");
+        connectionCounter = Metrics.defaultRegistry().newCounter(TSOHandler.class, "statusOracle@connections");
+    }
+
+    public Counter getConnectionCounter() {
+        return connectionCounter;
     }
 
     public void commited() {

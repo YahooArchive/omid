@@ -21,6 +21,8 @@ import com.yahoo.omid.tso.messages.TimestampResponse;
 
 import com.yahoo.omid.tso.CompacterHandler.CompactionEvent;
 
+import com.yahoo.omid.tso.metrics.StatusOracleMetrics;
+
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
@@ -38,6 +40,8 @@ class SharedBufferProcessor implements EventHandler<SharedBufferProcessor.Shared
     long largestDeletedTimestamp = 0;
     Set<Long> halfAborted = new HashSet<Long>(10000);
     final RingBuffer<CompactionEvent> compactionRing;
+
+    StatusOracleMetrics metrics = new StatusOracleMetrics();
 
     SharedBufferProcessor(RingBuffer<CompactionEvent> compactionRing) {
         this.compactionRing = compactionRing;
@@ -102,7 +106,7 @@ class SharedBufferProcessor implements EventHandler<SharedBufferProcessor.Shared
         if (buffer == null) {
             buffer = sharedMessageBuffer.getReadingBuffer(event.getContext());
             messageBuffersMap.put(channel, buffer);
-
+            metrics.getConnectionCounter().inc();
             channel.write(buffer.getZipperState());
             buffer.initializeIndexes();
 
@@ -121,6 +125,7 @@ class SharedBufferProcessor implements EventHandler<SharedBufferProcessor.Shared
    
     private void handleChannelClosed(SharedBufEvent event) {
         sharedMessageBuffer.removeReadingBuffer(event.getContext());
+        metrics.getConnectionCounter().dec();
     }
 
     public final static class SharedBufEvent {
