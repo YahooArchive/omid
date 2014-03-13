@@ -58,12 +58,7 @@ public class TSOServer implements Runnable {
     private boolean finish;
     private Object lock;
 
-    public TSOServer() {
-        super();
-        this.config = TSOServerConfig.configFactory();
-
-        this.finish = false;
-        this.lock = new Object();
+    private TSOServer() {
     }
 
     public TSOServer(TSOServerConfig config) {
@@ -139,9 +134,8 @@ public class TSOServer implements Runnable {
             MetricsUtils.initMetrics(metricsConfig);
         }
 
-        TSOState.BATCH_SIZE = config.getBatchSize();
-        LOG.info("PARAM MAX_ITEMS: " + TSOState.MAX_ITEMS);
-        LOG.info("PARAM BATCH_SIZE: " + TSOState.BATCH_SIZE);
+        LOG.info("PARAM MAX_ITEMS: " + state.maxItems);
+        LOG.info("PARAM BATCH_SIZE: " + state.batchSize);
         LOG.info("PARAM LOAD_FACTOR: " + TSOState.LOAD_FACTOR);
         LOG.info("PARAM MAX_THREADS: " + maxThreads);
 

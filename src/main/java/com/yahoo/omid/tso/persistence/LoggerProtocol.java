@@ -18,6 +18,7 @@ package com.yahoo.omid.tso.persistence;
 
 import java.nio.ByteBuffer;
 
+import com.yahoo.omid.tso.TSOServerConfig;
 import com.yahoo.omid.tso.TSOState;
 import com.yahoo.omid.tso.TimestampOracle;
 
@@ -51,8 +52,8 @@ public class LoggerProtocol extends TSOState{
      * @param logger
      * @param largestDeletedTimestamp
      */
-    LoggerProtocol(TimestampOracle timestampOracle){
-        super(timestampOracle);
+    LoggerProtocol(TimestampOracle timestampOracle, TSOServerConfig config){
+        super(timestampOracle, config);
     }
     
     private boolean commits;

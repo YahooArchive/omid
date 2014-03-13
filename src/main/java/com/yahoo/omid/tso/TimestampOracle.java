@@ -65,12 +65,6 @@ public class TimestampOracle {
             maxTimestamp += TIMESTAMP_BATCH;
             toWal.writeByte(LoggerProtocol.TIMESTAMPORACLE);
             toWal.writeLong(maxTimestamp);
-            if (LOG.isTraceEnabled()) {
-               LOG.trace("Logging TimestampOracle " + maxTimestamp);
-            }
-        }
-        if(LOG.isTraceEnabled()){
-            LOG.trace("Next timestamp: " + last);
         }
         
         return last;

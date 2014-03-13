@@ -50,39 +50,11 @@ import com.yahoo.omid.tso.persistence.StateLogger;
 public class TSOState {
     private static final Logger LOG = LoggerFactory.getLogger(TSOState.class);
 
+    final int maxCommits;
+    final int maxItems;
+    final int flushTimeout;
+    final int batchSize;
     
-    
-   /**
-    * The maximum entries kept in TSO
-    */
-   // static final public int MAX_ITEMS = 10000000;
-   // static final public int MAX_ITEMS = 4000000;
-   static public int MAX_ITEMS = 100000;
-   static {
-      try {
-         MAX_ITEMS = Integer.valueOf(System.getProperty("omid.maxItems"));
-      } catch (Exception e) {
-         // ignore, usedefault
-      }
-   };
-
-   static public int MAX_COMMITS = 100000;
-   static {
-      try {
-         MAX_COMMITS = Integer.valueOf(System.getProperty("omid.maxCommits"));
-      } catch (Exception e) {
-         // ignore, usedefault
-      }
-   };
-
-   static public int FLUSH_TIMEOUT = 10;
-   static {
-      try {
-         FLUSH_TIMEOUT = Integer.valueOf(System.getProperty("omid.flushTimeout"));
-      } catch (Exception e) {
-         // ignore, usedefault
-      }
-   };
 
    /**
     * Hash map load factor
@@ -194,31 +166,31 @@ public class TSOState {
        }
    }
    
-   /*
-    * WAL related pointers
-    */
-   public static int BATCH_SIZE = 1024;//in bytes
    public ByteArrayOutputStream baos = new ByteArrayOutputStream();
    public DataOutputStream toWAL = new DataOutputStream(baos);
    public List<TSOHandler.ChannelandMessage> nextBatch = new ArrayList<TSOHandler.ChannelandMessage>();
    
-   public TSOState(StateLogger logger, TimestampOracle timestampOracle) {
+   public TSOState(StateLogger logger, TimestampOracle timestampOracle, TSOServerConfig config) {
        this.timestampOracle = timestampOracle;
        this.logger = logger;
+       this.maxCommits = config.getMaxCommits();
+       this.maxItems = config.getMaxItems();
+       this.flushTimeout = config.getFlushTimeout();
+       this.batchSize = config.getBatchSize();
    }
    
-   public TSOState(TimestampOracle timestampOracle) {
-       this(null, timestampOracle);
+   public TSOState(TimestampOracle timestampOracle, TSOServerConfig config) {
+       this(null, timestampOracle, config);
        initialize();
    }
 
    public void initialize() {
       this.previousLargestDeletedTimestamp = this.timestampOracle.get();
       this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp;
-      int bucketSize = closestIntegerPowerOf2(MAX_COMMITS / Math.sqrt(MAX_COMMITS));
-      int bucketNumber = closestIntegerPowerOf2(MAX_COMMITS / (double) bucketSize) * 2; 
+      int bucketSize = closestIntegerPowerOf2(maxCommits / Math.sqrt(maxCommits));
+      int bucketNumber = closestIntegerPowerOf2(maxCommits / (double) bucketSize) * 2; 
       this.uncommited = new Uncommitted(timestampOracle.first(), bucketNumber, bucketSize);
-      this.hashmap = new CommitHashMap(MAX_ITEMS, largestDeletedTimestamp);
+      this.hashmap = new CommitHashMap(maxItems, largestDeletedTimestamp);
    }
 
    private int closestIntegerPowerOf2(double d) {

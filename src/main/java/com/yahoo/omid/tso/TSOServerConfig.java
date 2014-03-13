@@ -25,13 +25,18 @@ import com.beust.jcommander.Parameter;
  */
 public class TSOServerConfig {
 
-    static public TSOServerConfig configFactory() {
-        return new TSOServerConfig();
-    }
 
+    // used for testing
     static public TSOServerConfig configFactory(int port, int batch, boolean recoveryEnabled, int ensSize, int qSize,
             String zkservers) {
-        return new TSOServerConfig(port, batch, recoveryEnabled, ensSize, qSize, zkservers);
+        TSOServerConfig config = new TSOServerConfig();
+        config.port = port;
+        config.batch = batch;
+        config.recoveryEnabled = recoveryEnabled;
+        config.ensemble = ensSize;
+        config.quorum = qSize;
+        config.zkServers = zkservers;
+        return config;
     }
 
     static public TSOServerConfig parseConfig(String args[]) {
@@ -50,7 +55,7 @@ public class TSOServerConfig {
     @Parameter(names = "-port", description = "Port reserved by the Status Oracle", required = true)
     private int port;
 
-    @Parameter(names = "-batch", description = "Threshold for the batch sent to the WAL")
+    @Parameter(names = "-batch", description = "Number of bytes to batch before flushing to WAL and sending responses.")
     private int batch;
 
     @Parameter(names = "-ha", description = "Highly Available status oracle: logs operations to the WAL and recovers from a crash")
@@ -70,25 +75,17 @@ public class TSOServerConfig {
 
     @Parameter(names = "-metrics", description = "Metrics config")
     private String metrics;
-
-    TSOServerConfig() {
-        this.port = Integer.parseInt(System.getProperty("PORT", "1234"));
-        this.batch = Integer.parseInt(System.getProperty("BATCH", "0"));
-        this.recoveryEnabled = Boolean.parseBoolean(System.getProperty("RECOVERABLE", "false"));
-        this.zkServers = System.getProperty("ZKSERVERS");
-        this.ensemble = Integer.parseInt(System.getProperty("ENSEMBLE", "3"));
-        this.quorum = Integer.parseInt(System.getProperty("QUORUM", "2"));
-    }
-
-    TSOServerConfig(int port, int batch, boolean recoveryEnabled, int ensemble, int quorum, String zkServers) {
-        this.port = port;
-        this.batch = batch;
-        this.recoveryEnabled = recoveryEnabled;
-        this.zkServers = zkServers;
-        this.ensemble = ensemble;
-        this.quorum = quorum;
-    }
-
+    
+    @Parameter(names = "-maxCommits", description = "Size of commit list")
+    private int maxCommits = 1000000;
+    
+    @Parameter(names = "-maxItems", description = "Maximum number of items in the TSO (will determine the 'low watermark')")
+    private int maxItems = 1000000;
+    
+    @Parameter(names = "-flushTimeout", description = "Maximum delay before flushing batch of replies and sending responses, unit is [ms]")
+    private int flushTimeout = 10;
+    
+    
     public int getPort() {
         return port;
     }
@@ -120,4 +117,17 @@ public class TSOServerConfig {
     public String getFsLog() {
         return fsLog;
     }
+    
+    public int getMaxCommits() {
+        return maxCommits;
+    }
+
+    public int getMaxItems() {
+        return maxItems;
+    }
+
+    public int getFlushTimeout() {
+        return flushTimeout;
+    }
+
 }
