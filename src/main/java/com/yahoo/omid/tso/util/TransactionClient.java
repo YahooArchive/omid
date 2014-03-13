@@ -29,7 +29,6 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.yahoo.omid.tso.util.ClientHandler.RowDistribution;
 
-
 /**
  * Simple Transaction Client using Serialization
  * @author maysam
@@ -37,15 +36,6 @@ import com.yahoo.omid.tso.util.ClientHandler.RowDistribution;
  */
 public class TransactionClient {
 
-    /**
-     * Main class for Client taking from two to four arguments<br>
-     * -host for server<br>
-     * -port for server<br>
-     * -number of message (default is 256)<br>
-     * -MAX_IN_FLIGHT
-     * @param args
-     * @throws Exception
-     */
     public static void main(String[] args) throws Exception {
 
         // *** Start the Netty configuration ***
@@ -94,8 +84,10 @@ public class TransactionClient {
 
         for(int i = 0; i < config.nbClients; ++i) {
          // Create the associated Handler
-            ClientHandler handler = new ClientHandler(conf, config.nbMessages, config.maxInFlight, config.pause, 
-                    readPercentage, config.maxTxSize, config.dbSize, intGenerators[i]);
+            ClientHandler handler = new ClientHandler(conf, config.runFor, config.nbMessages,
+                                                      config.maxInFlight, config.pause,
+                                                      readPercentage, config.maxTxSize,
+                                                      config.dbSize, intGenerators[i]);
    
            // *** Start the Netty running ***
            handlers.add(handler);
@@ -129,17 +121,20 @@ public class TransactionClient {
             return config;
         }
         
-        @Parameter(names = "-tsoHost", description = "Hostname of the Status Oracle", required = true)
-        String tsoHost;
+        @Parameter(names = "-tsoHost", description = "Hostname of the Status Oracle")
+        String tsoHost = "localhost";
         
-        @Parameter(names = "-tsoPort", description = "Port reserved by the Status Oracle", required = true)
-        int tsoPort =-1;
+        @Parameter(names = "-tsoPort", description = "Port reserved by the Status Oracle")
+        int tsoPort = 1234;
         
         @Parameter(names = "-tsoExecutorThreads", description = "Concurrent netty client threads", required = false)
         int executorThreads = 10;
 
-        @Parameter(names= "-nbMessages", description = "Number of messages to send")
-        int nbMessages = 100000;
+        @Parameter(names = "-runFor", description = "Number of seconds to run for")
+        int runFor = 600;
+
+        @Parameter(names= "-nbMessages", description = "Maximum number of messages to send")
+        long nbMessages = Long.MAX_VALUE;
         
         @Parameter(names="-maxInFlight", description="Max number of outstanding messages in the TSO pipe")
         int maxInFlight = 100;
