@@ -93,12 +93,17 @@ public class ClientHandler extends TSOClient {
    /**
     * Number of message to do
     */
-   private final int nbMessage;
+   private final long nbMessage;
+
+    /**
+     * Number of second to run for
+     */
+    private volatile boolean timedOut = false;
 
    /**
     * Current rank (decreasing, 0 is the end of the game)
     */
-   private int curMessage;
+   private long curMessage;
 
    /**
     * number of outstanding commit requests
@@ -159,7 +164,7 @@ public class ClientHandler extends TSOClient {
     * @param inflight
     * @throws IOException
     */
-   public ClientHandler(Configuration conf, int nbMessage, int inflight, boolean pauseClient, 
+   public ClientHandler(Configuration conf, int runFor, long nbMessage, int inflight, boolean pauseClient, 
            float percentReads, int maxTxSize, final int dbSize, IntegerGenerator intGenerator) throws IOException {
        super(conf);
        if (nbMessage < 0) {
@@ -174,6 +179,13 @@ public class ClientHandler extends TSOClient {
        this.dbSize = dbSize;
        this.intGenerator = intGenerator;
        this.signalInitialized.countDown();
+
+       executor.schedule(new Runnable() {
+               @Override
+               public void run() {
+                   timedOut = true;
+               }
+           }, runFor, TimeUnit.SECONDS);
    }
 
    /**
@@ -384,7 +396,7 @@ public class ClientHandler extends TSOClient {
          if (outstandingTransactions >= maxInFlight)
             return;
 
-         if (curMessage == 0) {
+         if (curMessage == 0 || timedOut) {
             // wait for all outstanding msgs and then close the channel
             // if (outstandingTransactions.intValue() == 0) {
             if (outstandingTransactions == 0) {

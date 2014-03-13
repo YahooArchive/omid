@@ -44,7 +44,7 @@ tso() {
 }
 
 tsobench() {
-    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.tso.util.TransactionClient -tsoHost localhost -tsoPort 1234 -nbMessages 100000 -maxInFlight 100 -nbClients 5 -percentRead 0 -maxTxSize 20 -requestDistribution uniform 
+    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.tso.util.TransactionClient $@
 }
 
 bktest() {
@@ -78,17 +78,18 @@ if [ $# = 0 ]; then
 fi
 
 COMMAND=$1
+shift
 
 if [ "$COMMAND" = "tso" ]; then
-    tso;
+    tso $@;
 elif [ "$COMMAND" = "tsobench" ]; then
-    tsobench;
+    tsobench $@;
 elif [ "$COMMAND" = "bktest" ]; then
-    bktest;
+    bktest $@;
 elif [ "$COMMAND" = "tran-hbase" ]; then
-    tranhbase;
+    tranhbase $@;
 elif [ "$COMMAND" = "test-table" ]; then
-    testtable;
+    testtable $@;
 else
     usage;
 fi
