@@ -54,7 +54,7 @@ public class TSOTestBase {
    private static ChannelGroup channelGroup;
    private static ChannelFactory channelFactory;
    protected static TSOState state;
-   private static TSOServer tso;
+   protected static TSOServer tso;
    
 
    final static public RowKey r1 = new RowKey(new byte[] { 0xd, 0xe, 0xa, 0xd }, new byte[] { 0xb, 0xe, 0xe, 0xf });

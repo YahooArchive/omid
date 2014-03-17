@@ -223,6 +223,10 @@ public class TSOServer implements Runnable {
         comFactory.releaseExternalResources();
         comBootstrap.releaseExternalResources();
     }
+    
+    public TSOServerConfig getConfig() {
+        return config;
+    }
 
     public void stop() {
         finish = true;

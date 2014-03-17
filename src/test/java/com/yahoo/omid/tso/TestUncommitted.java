@@ -33,7 +33,7 @@ public class TestUncommitted extends TSOTestBase {
 
         RowKey[] rows = new RowKey[] { new RowKey(Bytes.toBytes("row"), Bytes.toBytes("table")) };
 
-        for (int i = 0; i < new TSOServerConfig().getMaxCommits() * 2; ++i) {
+        for (int i = 0; i < tso.getConfig().getMaxCommits() * 2; ++i) {
             clientHandler.sendMessage(new TimestampRequest());
             Object msg;
             do {
