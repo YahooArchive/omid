@@ -54,7 +54,7 @@ public class TSOTestBase {
    private static ChannelGroup channelGroup;
    private static ChannelFactory channelFactory;
    protected static TSOState state;
-   private static TSOServer tso;
+   protected static TSOServer tso;
    
 
    final static public RowKey r1 = new RowKey(new byte[] { 0xd, 0xe, 0xa, 0xd }, new byte[] { 0xb, 0xe, 0xe, 0xf });
@@ -154,9 +154,7 @@ public class TSOTestBase {
        Thread.sleep(500);
        
       LOG.info("Starting TSO");
-      System.setProperty("omid.maxItems", "100");
-      System.setProperty("omid.maxCommits", "100");
-      tso = new TSOServer(TSOServerConfig.configFactory(1234, 0, recoveryEnabled(), 4, 2, new String("localhost:2181")));
+      tso = new TSOServer(TSOServerConfig.configFactory(1234, 0, recoveryEnabled(), 4, 2, new String("localhost:2181"), 100, 100));
       tsoExecutor = Executors.newSingleThreadExecutor();
       tsoExecutor.execute(tso);
       TestUtils.waitForSocketListening("localhost", 1234, 100);
