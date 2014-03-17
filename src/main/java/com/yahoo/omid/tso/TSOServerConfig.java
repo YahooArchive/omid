@@ -28,7 +28,7 @@ public class TSOServerConfig {
 
     // used for testing
     static public TSOServerConfig configFactory(int port, int batch, boolean recoveryEnabled, int ensSize, int qSize,
-            String zkservers) {
+            String zkservers, int maxCommits, int maxItems) {
         TSOServerConfig config = new TSOServerConfig();
         config.port = port;
         config.batch = batch;
@@ -36,6 +36,8 @@ public class TSOServerConfig {
         config.ensemble = ensSize;
         config.quorum = qSize;
         config.zkServers = zkservers;
+        config.maxCommits = maxCommits;
+        config.maxItems = maxItems;
         return config;
     }
 

@@ -85,8 +85,6 @@ public class OmidTestBase {
 
       Thread.sleep(1000);
 
-      System.setProperty("omid.maxItems", "200");
-      System.setProperty("omid.maxCommits", "200");
       // TSO Setup
 	  tsoExecutor = Executors.newSingleThreadExecutor();
       Runnable tsoTask = new Runnable() {
@@ -97,7 +95,9 @@ public class OmidTestBase {
                         "-batch", "100",
                         "-ensemble", "4",
                         "-quorum", "2",
-                        "-zk", "localhost:2181"
+                        "-zk", "localhost:2181",
+                        "-maxItems", "200",
+                        "-maxCommits", "200"
                 };
                 TSOServer.main(args);
              } catch (InterruptedException e) {
