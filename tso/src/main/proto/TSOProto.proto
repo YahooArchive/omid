@@ -10,7 +10,7 @@ message TimestampRequest {}
 
 message CommitRequest {
   optional int64 startTimestamp = 1;
-  repeated int64 rowHashes = 2;
+  repeated int64 rowHash = 2;
 }
 
 message Response {

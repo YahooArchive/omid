@@ -40,10 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.client.SyncAbortCompleteCallback;
-import com.yahoo.omid.client.SyncCommitCallback;
-import com.yahoo.omid.client.SyncCommitQueryCallback;
-import com.yahoo.omid.client.SyncCreateCallback;
+
 import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.tso.Committed;
 import com.yahoo.omid.tso.RowKey;
@@ -191,9 +188,9 @@ public class ClientHandler extends TSOClient {
    /**
     * Starts the traffic
     */
-   @Override
+    //   @Override FIXME
    public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) {
-      super.channelConnected(ctx, e);
+       //super.channelConnected(ctx, e);
       try {
           // don't serve before ClientHandler fully initialized
           signalInitialized.await();
@@ -207,7 +204,7 @@ public class ClientHandler extends TSOClient {
    }
 
    
-   @Override
+    //@Override
    synchronized public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
        // TSO client will try to reconnect. Ignore that behaviour for this test
    } 
@@ -215,7 +212,7 @@ public class ClientHandler extends TSOClient {
 /**
     * If write of Commit Request was not possible before, just do it now
     */
-   @Override
+    //@Override
    public void channelInterestChanged(ChannelHandlerContext ctx, ChannelStateEvent e) {
       startTransaction();
    }
@@ -223,9 +220,9 @@ public class ClientHandler extends TSOClient {
    /**
     * When the channel is closed, print result
     */
-   @Override
+    //@Override
    public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-      super.channelClosed(ctx, e);
+       //super.channelClosed(ctx, e);
       stopDate = new Date();
       String MB = String.format("Memory Used: %8.3f MB", (Runtime.getRuntime().totalMemory() - Runtime.getRuntime()
             .freeMemory()) / 1048576.0);
@@ -239,7 +236,7 @@ public class ClientHandler extends TSOClient {
     * When a message is received, handle it based on its type
     * @throws IOException 
     */
-   @Override
+   //@Override
    protected void processMessage(TSOMessage msg) {
       if (msg instanceof CommitResponse) {
          handle((CommitResponse) msg);
@@ -293,11 +290,11 @@ public class ClientHandler extends TSOClient {
             lastTimeout = timeout;
          }
       } else {// aborted
-         try {
-            super.completeAbort(msg.startTimestamp, new SyncAbortCompleteCallback());
-         } catch (IOException e) {
-            LOG.error("Couldn't send abort", e);
-         }
+         // try {
+         //    super.completeAbort(msg.startTimestamp, new SyncAbortCompleteCallback());
+         // } catch (IOException e) {
+         //    LOG.error("Couldn't send abort", e);
+         // }
       }
       startTransaction();
    }
@@ -363,12 +360,12 @@ public class ClientHandler extends TSOClient {
             // keep statistics
             wallClockTime.put(timestamp, System.nanoTime());
 
-            try {
-               commit(timestamp, rows, new SyncCommitCallback());
-            } catch (IOException e) {
-               LOG.error("Couldn't send commit", e);
-               e.printStackTrace();
-            }
+            // try {
+            //    commit(timestamp, rows, new SyncCommitCallback());
+            // } catch (IOException e) {
+            //    LOG.error("Couldn't send commit", e);
+            //    e.printStackTrace();
+            // }
          }
       }, pauseClient ? PAUSE_LENGTH : 0, TimeUnit.MILLISECONDS);
 
@@ -413,11 +410,11 @@ public class ClientHandler extends TSOClient {
          }
          curMessage--;
          outstandingTransactions++;
-         try {
-            super.getNewTimestamp(new SyncCreateCallback());
-         } catch (IOException e) {
-            LOG.error("Couldn't start transaction", e);
-         }
+         // try {
+         //    super.getNewTimestamp(new SyncCreateCallback());
+         // } catch (IOException e) {
+         //    LOG.error("Couldn't start transaction", e);
+         // }
 
          Thread.yield();
       }

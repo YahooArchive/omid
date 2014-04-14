@@ -75,7 +75,7 @@ public class TSOTestBase {
       // Create the global ChannelGroup
       channelGroup = new DefaultChannelGroup(TransactionClient.class.getName());
       // Create the associated Handler
-      clientHandler = new TestClientHandler(conf);
+      clientHandler = null; // IKFIXMEnew TestClientHandler(conf);
 
       // *** Start the Netty running ***
 
@@ -83,10 +83,10 @@ public class TSOTestBase {
       System.out.println("PARAM DB_SIZE: " + ClientHandler.DEFAULT_DB_SIZE);
 
       // Connect to the server, wait for the connection and get back the channel
-      clientHandler.await();
+      //IKFIXMEclientHandler.await();
       
       // Second client handler
-      secondClientHandler = new TestClientHandler(conf);
+      secondClientHandler = null;//IKFIXMEnew TestClientHandler(conf);
 
       // *** Start the Netty running ***
 
@@ -170,25 +170,25 @@ public class TSOTestBase {
    @After
    public void teardownTSO() throws Exception {
 	   
-      clientHandler.sendMessage(new TimestampRequest());
-      while (!(clientHandler.receiveMessage() instanceof TimestampResponse))
-         ; // Do nothing
-      clientHandler.clearMessages();
-      clientHandler.setAutoFullAbort(true);
-      secondClientHandler.sendMessage(new TimestampRequest());
-      while (!(secondClientHandler.receiveMessage() instanceof TimestampResponse))
-         ; // Do nothing
-      secondClientHandler.clearMessages();
-      secondClientHandler.setAutoFullAbort(true);
+       // IKFIXME      clientHandler.sendMessage(new TimestampRequest());
+      // while (!(clientHandler.receiveMessage() instanceof TimestampResponse))
+      //    ; // Do nothing
+      // clientHandler.clearMessages();
+      // clientHandler.setAutoFullAbort(true);
+      // secondClientHandler.sendMessage(new TimestampRequest());
+      // while (!(secondClientHandler.receiveMessage() instanceof TimestampResponse))
+      //    ; // Do nothing
+      // secondClientHandler.clearMessages();
+      // secondClientHandler.setAutoFullAbort(true);
       
-      tso.stop();
-      if (tsoExecutor != null) {
-    	  tsoExecutor.shutdownNow();
-      }
-      tso = null;
-      teardownClient();
+      // tso.stop();
+      // if (tsoExecutor != null) {
+      //     tsoExecutor.shutdownNow();
+      // }
+      // tso = null;
+      // teardownClient();
 
-      TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
+      // TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
       
       Thread.sleep(10);
    }

@@ -18,6 +18,7 @@ package com.yahoo.omid.client;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,10 +33,12 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ScheduledExecutorService;
 
 import org.apache.hadoop.conf.Configuration;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelFactory;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelFutureListener;
@@ -68,274 +71,67 @@ import com.yahoo.omid.tso.messages.LargestDeletedTimestampReport;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 
+import com.yahoo.omid.proto.TSOProto;
+
+import org.jboss.netty.handler.codec.frame.LengthFieldBasedFrameDecoder;
+import org.jboss.netty.handler.codec.frame.LengthFieldPrepender;
+import org.jboss.netty.handler.codec.protobuf.ProtobufDecoder;
+import org.jboss.netty.handler.codec.protobuf.ProtobufEncoder;
+
+import com.yahoo.omid.util.StateMachine.State;
+import com.yahoo.omid.util.StateMachine.Event;
+import com.yahoo.omid.util.StateMachine.Fsm;
+import com.yahoo.omid.util.StateMachine.FsmImpl;
+import com.yahoo.omid.util.StateMachine.UserEvent;
+
 /**
  * Communication endpoint for TSO clients.
  *
  */
-public class TSOClient extends SimpleChannelHandler {
+public class TSOClient {
     private static final Logger LOG = LoggerFactory.getLogger(TSOClient.class);
-
-    public static long askedTSO = 0;
-
-    public enum Result {
-        OK, ABORTED
-    };
-
-    private Queue<CreateCallback> createCallbacks;
-    private Map<Long, CommitCallback> commitCallbacks;
-    private Map<Long, List<CommitQueryCallback>> isCommittedCallbacks;
-
-    private Committed committed = new Committed();
-    private Set<Long> aborted = Collections.synchronizedSet(new HashSet<Long>(1000));
-    private long largestDeletedTimestamp;
-    private long connectionTimestamp = 0;
-    private boolean hasConnectionTimestamp = false;
 
     private ChannelFactory factory;
     private ClientBootstrap bootstrap;
-    private Channel channel;
-    private InetSocketAddress addr;
-    private int max_retries;
-    private int retries;
-    private int retry_delay_ms;
-    private Timer retryTimer;
+    private Fsm fsm;
+
+    private final int max_retries;
+    private final int retry_delay_ms; // ignored for now
+    private final InetSocketAddress addr;
+
     private static OmidClientMetrics metrics = new OmidClientMetrics();
 
-    private enum State {
-        DISCONNECTED, CONNECTING, CONNECTED, RETRY_CONNECT_WAIT
-    };
-
-    private interface Op {
-        public void execute(Channel channel);
-
-        public void error(Exception e);
-    }
-
-    private class AbortOp implements Op {
-        long transactionId;
-
-        AbortOp(long transactionid) throws IOException {
-            this.transactionId = transactionid;
-        }
-
-        public void execute(Channel channel) {
-            try {
-                synchronized (commitCallbacks) {
-                    if (commitCallbacks.containsKey(transactionId)) {
-                        throw new IOException("Already committing transaction " + transactionId);
-                    }
-                }
-
-                AbortRequest ar = new AbortRequest();
-                ar.startTimestamp = transactionId;
-                ChannelFuture f = channel.write(ar);
-                f.addListener(new ChannelFutureListener() {
-                    public void operationComplete(ChannelFuture future) {
-                        if (!future.isSuccess()) {
-                            error(new IOException("Error writing to socket"));
-                        }
-                    }
-                });
-            } catch (Exception e) {
-                error(e);
-            }
-        }
-
-        public void error(Exception e) {
-        }
-    }
-
-    private class NewTimestampOp implements Op {
-        private CreateCallback cb;
-
-        NewTimestampOp(CreateCallback cb) {
-            this.cb = cb;
-        }
-
-        public void execute(Channel channel) {
-            try {
-                synchronized (createCallbacks) {
-                    createCallbacks.add(cb);
-                }
-
-                TimestampRequest tr = new TimestampRequest();
-                ChannelFuture f = channel.write(tr);
-                f.addListener(new ChannelFutureListener() {
-                    public void operationComplete(ChannelFuture future) {
-                        if (!future.isSuccess()) {
-                            error(new IOException("Error writing to socket"));
-                        }
-                    }
-                });
-            } catch (Exception e) {
-                error(e);
-            }
-        }
-
-        public void error(Exception e) {
-            synchronized (createCallbacks) {
-                createCallbacks.remove();
-            }
-
-            cb.error(e);
-        }
-    }
-
-    private class CommitQueryOp implements Op {
-        long startTimestamp;
-        long pendingWriteTimestamp;
-        CommitQueryCallback cb;
-
-        CommitQueryOp(long startTimestamp, long pendingWriteTimestamp, CommitQueryCallback cb) {
-            this.startTimestamp = startTimestamp;
-            this.pendingWriteTimestamp = pendingWriteTimestamp;
-            this.cb = cb;
-        }
-
-        public void execute(Channel channel) {
-            try {
-                synchronized (isCommittedCallbacks) {
-                    List<CommitQueryCallback> callbacks = isCommittedCallbacks.get(startTimestamp);
-                    if (callbacks == null) {
-                        callbacks = new ArrayList<CommitQueryCallback>(1);
-                    }
-                    callbacks.add(cb);
-                    isCommittedCallbacks.put(startTimestamp, callbacks);
-                }
-
-                CommitQueryRequest qr = new CommitQueryRequest(startTimestamp, pendingWriteTimestamp);
-                ChannelFuture f = channel.write(qr);
-                f.addListener(new ChannelFutureListener() {
-                    public void operationComplete(ChannelFuture future) {
-                        if (!future.isSuccess()) {
-                            error(new IOException("Error writing to socket"));
-                        }
-                    }
-                });
-            } catch (Exception e) {
-                error(e);
-            }
-        }
-
-        public void error(Exception e) {
-            synchronized (isCommittedCallbacks) {
-                isCommittedCallbacks.remove(startTimestamp);
-            }
-
-            cb.error(e);
-        }
-    }
-
-    private class CommitOp implements Op {
-        long transactionId;
-        RowKey[] rows;
-        CommitCallback cb;
-
-        CommitOp(long transactionid, RowKey[] rows, CommitCallback cb) throws IOException {
-            this.transactionId = transactionid;
-            this.rows = rows;
-            this.cb = cb;
-        }
-
-        public void execute(Channel channel) {
-            try {
-                synchronized (commitCallbacks) {
-                    if (commitCallbacks.containsKey(transactionId)) {
-                        throw new IOException("Already committing transaction " + transactionId);
-                    }
-                    commitCallbacks.put(transactionId, cb);
-                }
-
-                CommitRequest cr = new CommitRequest();
-                cr.startTimestamp = transactionId;
-                cr.rows = rows;
-                ChannelFuture f = channel.write(cr);
-                f.addListener(new ChannelFutureListener() {
-                    public void operationComplete(ChannelFuture future) {
-                        if (!future.isSuccess()) {
-                            error(new IOException("Error writing to socket"));
-                        }
-                    }
-                });
-            } catch (Exception e) {
-                error(e);
-            }
-        }
-
-        public void error(Exception e) {
-            synchronized (commitCallbacks) {
-                commitCallbacks.remove(transactionId);
-            }
-            cb.error(e);
-        }
-    }
-
-    private class AbortCompleteOp implements Op {
-        long transactionId;
-        AbortCompleteCallback cb;
-
-        AbortCompleteOp(long transactionId, AbortCompleteCallback cb) throws IOException {
-            this.transactionId = transactionId;
-            this.cb = cb;
-        }
-
-        public void execute(Channel channel) {
-            try {
-                FullAbortRequest far = new FullAbortRequest();
-                far.startTimestamp = transactionId;
-
-                ChannelFuture f = channel.write(far);
-                f.addListener(new ChannelFutureListener() {
-                    public void operationComplete(ChannelFuture future) {
-                        if (!future.isSuccess()) {
-                            error(new IOException("Error writing to socket"));
-                        } else {
-                            cb.complete();
-                        }
-                    }
-                });
-            } catch (Exception e) {
-                error(e);
-            }
-
-        }
-
-        public void error(Exception e) {
-            cb.error(e);
-        }
-    }
-
-    private ArrayBlockingQueue<Op> queuedOps;
-
-    private State state;
+    private static class ConnectionException extends IOException {}
+    private static class AbortException extends Exception {}
 
     public TSOClient(Configuration conf) throws IOException {
-        state = State.DISCONNECTED;
-        queuedOps = new ArrayBlockingQueue<Op>(200);
-        retryTimer = new Timer(true);
-
-        commitCallbacks = Collections.synchronizedMap(new HashMap<Long, CommitCallback>());
-        isCommittedCallbacks = Collections.synchronizedMap(new HashMap<Long, List<CommitQueryCallback>>());
-        createCallbacks = new ConcurrentLinkedQueue<CreateCallback>();
-        channel = null;
-
         LOG.info("Starting TSOClient");
 
         // Start client with Nb of active threads = 3 as maximum.
-        factory = new NioClientSocketChannelFactory(Executors.newCachedThreadPool(new ThreadFactoryBuilder()
-                .setNameFormat("tsoclient-boss-%d").build()), Executors.newCachedThreadPool(new ThreadFactoryBuilder()
-                .setNameFormat("tsoclient-worker-%d").build()), 3);
+        factory = new NioClientSocketChannelFactory(
+                Executors.newCachedThreadPool(
+                        new ThreadFactoryBuilder().setNameFormat("tsoclient-boss-%d").build()),
+                Executors.newCachedThreadPool(
+                        new ThreadFactoryBuilder().setNameFormat("tsoclient-worker-%d").build()), 3);
         // Create the bootstrap
         bootstrap = new ClientBootstrap(factory);
 
         int executorThreads = conf.getInt("tso.executor.threads", 3);
 
-        bootstrap.getPipeline().addLast(
-                "executor",
-                new ExecutionHandler(new OrderedMemoryAwareThreadPoolExecutor(executorThreads, 1024 * 1024,
-                        4 * 1024 * 1024, 60, TimeUnit.SECONDS, new ThreadFactoryBuilder().setNameFormat(
-                                "tsoclient-executor-%d").build())));
-        bootstrap.getPipeline().addLast("handler", this);
+        ScheduledExecutorService fsmExecutor = Executors.newSingleThreadScheduledExecutor(
+                new ThreadFactoryBuilder().setNameFormat("tsofsm-%d").build());
+        fsm = new FsmImpl(fsmExecutor);
+        fsm.setInitState(new DisconnectedState());
+
+        ChannelPipeline pipeline = bootstrap.getPipeline();
+        pipeline.addLast("lengthbaseddecoder",
+                         new LengthFieldBasedFrameDecoder(8*1024, 0, 4, 0, 4));
+        pipeline.addLast("lengthprepender", new LengthFieldPrepender(4));
+        pipeline.addLast("protobufdecoder",
+                         new ProtobufDecoder(TSOProto.Response.getDefaultInstance()));
+        pipeline.addLast("protobufencoder", new ProtobufEncoder());
+        pipeline.addLast("handler", new Handler(fsm));
+
         bootstrap.setOption("tcpNoDelay", true);
         bootstrap.setOption("keepAlive", true);
         bootstrap.setOption("reuseAddress", true);
@@ -351,307 +147,278 @@ public class TSOClient extends SimpleChannelHandler {
         }
 
         addr = new InetSocketAddress(host, port);
-        connectIfNeeded();
     }
 
     public OmidClientMetrics getMetrics() {
         return metrics;
     }
 
-    private State connectIfNeeded() throws IOException {
-        synchronized (state) {
-            if (state == State.CONNECTED || state == State.CONNECTING) {
-                return state;
-            }
-            if (state == State.RETRY_CONNECT_WAIT) {
-                return State.CONNECTING;
-            }
+    InetSocketAddress getAddress() {
+        return addr;
+    }
 
-            if (retries > max_retries) {
-                IOException e = new IOException("Max connection retries exceeded");
-                bailout(e);
-                throw e;
-            }
-            retries++;
-            bootstrap.connect(addr).addListener(new ChannelFutureListener() {
-                @Override
-                public void operationComplete(ChannelFuture future) throws Exception {
-                    LOG.debug("Connection completed. Success: " + future.isSuccess());
+    public TSOFuture<Long> createTransaction() {
+        TSOProto.Request.Builder builder = TSOProto.Request.newBuilder();
+        TSOProto.TimestampRequest.Builder tsreqBuilder = TSOProto.TimestampRequest.newBuilder();
+        builder.setTimestampReq(tsreqBuilder.build());
+        RequestEvent request = new RequestEvent(builder.build());
+        fsm.sendEvent(request);
+        return new ForwardingTSOFuture<Long>(request);
+    }
+
+    public TSOFuture<Long> commit(long transactionId, RowKey[] rows) {
+        TSOProto.Request.Builder builder = TSOProto.Request.newBuilder();
+        TSOProto.CommitRequest.Builder commitbuilder = TSOProto.CommitRequest.newBuilder();
+        commitbuilder.setStartTimestamp(transactionId);
+        for (RowKey r : rows) {
+            commitbuilder.addRowHash(r.hashCode());
+        }
+        builder.setCommitReq(commitbuilder.build());
+        RequestEvent request = new RequestEvent(builder.build());
+        fsm.sendEvent(request);
+        return new ForwardingTSOFuture<Long>(request);
+    }
+
+    private static class ParamEvent<T> implements Event {
+        final T param;
+        ParamEvent(T param) {
+            this.param = param;
+        }
+
+        T getParam() {
+            return param;
+        }
+    }
+
+    private static class ErrorEvent extends ParamEvent<Throwable> {
+        ErrorEvent(Throwable t) { super(t); }
+    }
+    private static class ConnectedEvent extends ParamEvent<Channel> {
+        ConnectedEvent(Channel c) { super(c); }
+    }
+    
+    private static class CloseEvent extends UserEvent<Void> {}
+    private static class ChannelClosedEvent implements Event {}
+    private static class RequestEvent extends UserEvent<Long> {
+        final TSOProto.Request req;
+        RequestEvent(TSOProto.Request req) {
+            this.req = req;
+        }
+
+        TSOProto.Request getRequest() {
+            return req;
+        }
+    }
+
+    private static class ResponseEvent extends ParamEvent<TSOProto.Response> {
+        ResponseEvent(TSOProto.Response r) { super(r); }
+    }
+
+    private class BaseState implements State {
+        @Override
+        public State handleEvent(Fsm fsm, Event e) {
+            LOG.error("Unhandled event {} while in state {}", e, this.getClass().getName());
+            return this;
+        }
+    }
+
+    private class DisconnectedState extends BaseState {
+        final int retries;
+
+        DisconnectedState(int retries) {
+            this.retries = retries;
+        }
+
+        DisconnectedState() {
+            this.retries = max_retries;
+        }
+
+        @Override
+        public State handleEvent(final Fsm fsm, Event e) {
+            if (e instanceof RequestEvent) {
+                if (retries == 0) {
+                    LOG.error("Unable to connect after {} retries", max_retries);
+                    ((UserEvent)e).error(new ConnectionException());
+                    return this;
                 }
-            });
-            state = State.CONNECTING;
-            return state;
-        }
-    }
+                fsm.deferUserEvent((UserEvent)e);
 
-    private void withConnection(Op op) throws IOException {
-        State state = connectIfNeeded();
-
-        if (state == State.CONNECTING) {
-            try {
-                queuedOps.put(op);
-            } catch (InterruptedException e) {
-                throw new IOException("Couldn't add new operation", e);
-            }
-        } else if (state == State.CONNECTED) {
-            op.execute(channel);
-        } else {
-            throw new IOException("Invalid connection state " + state);
-        }
-    }
-
-    public void getNewTimestamp(CreateCallback cb) throws IOException {
-        withConnection(new NewTimestampOp(cb));
-    }
-
-    public void isCommitted(long startTimestamp, long pendingWriteTimestamp, CommitQueryCallback cb) throws IOException {
-        withConnection(new CommitQueryOp(startTimestamp, pendingWriteTimestamp, cb));
-    }
-
-    public void abort(long transactionId) throws IOException {
-        withConnection(new AbortOp(transactionId));
-    }
-
-    public void commit(long transactionId, RowKey[] rows, CommitCallback cb) throws IOException {
-        withConnection(new CommitOp(transactionId, rows, cb));
-    }
-
-    public void completeAbort(long transactionId, AbortCompleteCallback cb) throws IOException {
-        withConnection(new AbortCompleteOp(transactionId, cb));
-    }
-
-    @Override
-    synchronized public void channelOpen(ChannelHandlerContext ctx, ChannelStateEvent e) {
-        //e.getChannel().getPipeline().addFirst("decoder", new TSODecoder(new Zipper()));
-        //e.getChannel().getPipeline().addAfter("decoder", "encoder", new TSOEncoder());
-    }
-
-    /**
-     * Starts the traffic
-     */
-    @Override
-    synchronized public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) {
-        synchronized (state) {
-            channel = e.getChannel();
-            state = State.CONNECTED;
-            retries = 0;
-        }
-        clearState();
-        LOG.debug("Channel connected");
-        Op o = queuedOps.poll();
-        ;
-        while (o != null && state == State.CONNECTED) {
-            o.execute(channel);
-            o = queuedOps.poll();
-        }
-    }
-
-    private void clearState() {
-        committed = new Committed();
-        aborted.clear();
-        largestDeletedTimestamp = 0;
-        connectionTimestamp = 0;
-        hasConnectionTimestamp = false;
-    }
-
-    @Override
-    synchronized public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-        synchronized (state) {
-            LOG.debug("Channel disconnected");
-            channel = null;
-            state = State.DISCONNECTED;
-            for (CreateCallback cb : createCallbacks) {
-                cb.error(new IOException("Channel Disconnected"));
-            }
-            for (CommitCallback cb : commitCallbacks.values()) {
-                cb.error(new IOException("Channel Disconnected"));
-            }
-            for (List<CommitQueryCallback> lcqb : isCommittedCallbacks.values()) {
-                for (CommitQueryCallback cqb : lcqb) {
-                    cqb.error(new IOException("Channel Disconnected"));
-                }
-            }
-            createCallbacks.clear();
-            commitCallbacks.clear();
-            isCommittedCallbacks.clear();
-            connectIfNeeded();
-        }
-    }
-
-    public boolean validRead(long transaction, long startTimestamp) throws IOException {
-        LOG.trace("Checking if {} is inside {} snapshot", transaction, startTimestamp);
-        if (transaction == startTimestamp)
-            return true;
-        if (aborted.contains(transaction)) {
-            LOG.trace("{} is aborted", transaction);
-            return false;
-        }
-        long commitTimestamp = committed.getCommit(transaction);
-        if (LOG.isTraceEnabled()) {
-            LOG.trace("Commit timestamp for {} is {}", transaction, commitTimestamp);
-            LOG.trace("hasConnectionTS {} connectionTimestamp {} largestDeletedTimestamp", new Object[] {
-                    hasConnectionTimestamp, connectionTimestamp, largestDeletedTimestamp });
-        }
-        if (commitTimestamp != -1)
-            return commitTimestamp <= startTimestamp;
-        if (hasConnectionTimestamp && transaction > connectionTimestamp)
-            return transaction <= largestDeletedTimestamp;
-        if (transaction <= largestDeletedTimestamp)
-            return true;
-        askedTSO++;
-        LOG.trace("Asking TSO...");
-        SyncCommitQueryCallback cb = new SyncCommitQueryCallback();
-        isCommitted(startTimestamp, transaction, cb);
-        try {
-            cb.await();
-        } catch (InterruptedException e) {
-            throw new IOException("Commit query didn't complete", e);
-        }
-        LOG.trace("Transaction is committed: {}", cb.isCommitted());
-        return cb.isCommitted();
-    }
-
-    /**
-     * When a message is received, handle it based on its type
-     */
-    @Override
-    public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
-        if (LOG.isTraceEnabled()) {
-            LOG.trace("messageReceived " + e.getMessage());
-        }
-        Object msg = e.getMessage();
-        if (msg instanceof CommitResponse) {
-            CommitResponse r = (CommitResponse) msg;
-            CommitCallback cb = null;
-            synchronized (commitCallbacks) {
-                cb = commitCallbacks.remove(r.startTimestamp);
-            }
-            if (cb == null) {
-                LOG.error("Received a commit response for a nonexisting commit");
-                return;
-            }
-            cb.complete(r.committed ? Result.OK : Result.ABORTED, r.commitTimestamp);
-        } else if (msg instanceof TimestampResponse) {
-            CreateCallback cb = createCallbacks.poll();
-            long timestamp = ((TimestampResponse) msg).timestamp;
-            if (!hasConnectionTimestamp || timestamp < connectionTimestamp) {
-                hasConnectionTimestamp = true;
-                connectionTimestamp = timestamp;
-            }
-            if (cb == null) {
-                LOG.error("Receiving a timestamp response, but none requested: " + timestamp);
-                return;
-            }
-            cb.complete(timestamp);
-        } else if (msg instanceof CommitQueryResponse) {
-            CommitQueryResponse r = (CommitQueryResponse) msg;
-            if (r.commitTimestamp != 0) {
-                committed.commit(r.queryTimestamp, r.commitTimestamp);
-            } else if (r.committed) {
-                committed.commit(r.queryTimestamp, largestDeletedTimestamp);
-            }
-            List<CommitQueryCallback> cbs = null;
-            synchronized (isCommittedCallbacks) {
-                cbs = isCommittedCallbacks.remove(r.startTimestamp);
-            }
-            if (cbs == null) {
-                LOG.error("Received a commit query response for a nonexisting request");
-                return;
-            }
-            for (CommitQueryCallback cb : cbs) {
-                cb.complete(r.committed);
-            }
-        } else if (msg instanceof CommittedTransactionReport) {
-            CommittedTransactionReport ctr = (CommittedTransactionReport) msg;
-            committed.commit(ctr.startTimestamp, ctr.commitTimestamp);
-        } else if (msg instanceof CleanedTransactionReport) {
-            CleanedTransactionReport r = (CleanedTransactionReport) msg;
-            aborted.remove(r.startTimestamp);
-        } else if (msg instanceof AbortedTransactionReport) {
-            AbortedTransactionReport r = (AbortedTransactionReport) msg;
-            aborted.add(r.startTimestamp);
-        } else if (msg instanceof LargestDeletedTimestampReport) {
-            LargestDeletedTimestampReport r = (LargestDeletedTimestampReport) msg;
-            largestDeletedTimestamp = r.largestDeletedTimestamp;
-            committed.raiseLargestDeletedTransaction(r.largestDeletedTimestamp);
-            //        } else if (msg instanceof ZipperState) {
-            // ignore
-        } else {
-            LOG.error("Unknown message received " + msg);
-        }
-        processMessage((TSOMessage) msg);
-    }
-
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
-        LOG.error("Unexpected exception", e.getCause());
-
-        synchronized (state) {
-
-            if (state == State.CONNECTING) {
-                state = State.RETRY_CONNECT_WAIT;
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Retrying connect in " + retry_delay_ms + "ms " + retries);
-                }
-                try {
-                    retryTimer.schedule(new TimerTask() {
-                        public void run() {
-                            synchronized (state) {
-                                state = State.DISCONNECTED;
-                                try {
-                                    connectIfNeeded();
-                                } catch (IOException e) {
-                                    bailout(e);
-                                }
+                bootstrap.connect(getAddress()).addListener(new ChannelFutureListener() {
+                        @Override
+                        public void operationComplete(ChannelFuture future) throws Exception {
+                            if (!future.isSuccess()) {
+                                fsm.sendEvent(new ErrorEvent(future.getCause()));
                             }
                         }
-                    }, retry_delay_ms);
-                } catch (Exception cause) {
-                    bailout(cause);
-                }
+                    });
+                return new ConnectingState(retries - 1);
+            } else if (e instanceof CloseEvent) {
+                ((CloseEvent)e).success(null);
+                return this;
             } else {
-                LOG.error("Exception on channel", e.getCause());
+                super.handleEvent(fsm, e);
+                return this;
             }
         }
     }
 
-    public void bailout(Exception cause) {
-        synchronized (state) {
-            state = State.DISCONNECTED;
-        }
-        LOG.error("Unrecoverable error in client, bailing out", cause);
-        Exception e = new IOException("Unrecoverable error", cause);
-        Op o = queuedOps.poll();
-        ;
-        while (o != null) {
-            o.error(e);
-            o = queuedOps.poll();
-        }
-        synchronized (createCallbacks) {
-            for (CreateCallback cb : createCallbacks) {
-                cb.error(e);
-            }
-            createCallbacks.clear();
+    private class ConnectingState extends BaseState {
+        final int retries;
+        ConnectingState(int retries) {
+            this.retries = retries;
         }
 
-        synchronized (commitCallbacks) {
-            for (CommitCallback cb : commitCallbacks.values()) {
-                cb.error(e);
+        @Override
+        public State handleEvent(Fsm fsm, Event e) {
+            if (e instanceof UserEvent) {
+                fsm.deferUserEvent((UserEvent)e);
+                return this;
+            } else if (e instanceof ConnectedEvent) {
+                ConnectedEvent ce = (ConnectedEvent)e;
+                return new ConnectedState(ce.getParam());
+            } else if (e instanceof ErrorEvent) {
+                LOG.error("Error connecting", ((ErrorEvent)e).getParam());
+                return new DisconnectedState(retries);
+            } else {
+                return super.handleEvent(fsm, e);
             }
-            commitCallbacks.clear();
+        }
+    }
+
+    private class ConnectedState extends BaseState {
+        final Queue<RequestEvent> timestampRequests;
+        final Map<Long, RequestEvent> commitRequests;
+        final Channel channel;
+
+        ConnectedState(Channel channel) {
+            this.channel = channel;
+            timestampRequests = new ArrayDeque<RequestEvent>();
+            commitRequests = new HashMap<Long, RequestEvent>();
         }
 
-        synchronized (isCommittedCallbacks) {
-            for (List<CommitQueryCallback> cbs : isCommittedCallbacks.values()) {
-                for (CommitQueryCallback cb : cbs) {
-                    cb.error(e);
+        private void sendRequest(RequestEvent request) {
+            TSOProto.Request req = request.getRequest();
+
+            if (req.hasTimestampReq()) {
+                timestampRequests.add(request);
+            } else if (req.hasCommitReq()) {
+                TSOProto.CommitRequest commitReq = req.getCommitReq();
+                commitRequests.put(commitReq.getStartTimestamp(), request);
+            } else {
+                request.error(new IllegalArgumentException("Unknown request type"));
+                return;
+            }
+            ChannelFuture f = channel.write(req);
+            f.addListener(new ChannelFutureListener() {
+                    public void operationComplete(ChannelFuture future) {
+                        if (!future.isSuccess()) {
+                            fsm.sendEvent(new ErrorEvent(future.getCause()));
+                        }
+                    }
+                });
+        }
+
+        private void handleResponse(ResponseEvent response) {
+            TSOProto.Response resp = response.getParam();
+            if (resp.hasTimestampResponse()) {
+                if (timestampRequests.size() == 0) {
+                    LOG.warn("Received timestamp response when no requests outstanding");
+                    return;
+                }
+                RequestEvent e = timestampRequests.remove();
+                e.success(resp.getTimestampResponse().getStartTimestamp());
+            } else if (resp.hasCommitResponse()) {
+                long startTimestamp = resp.getCommitResponse().getStartTimestamp();
+                RequestEvent e = commitRequests.get(startTimestamp);
+                if (e == null) {
+                    LOG.warn("Received commit response for request that doesn't exist."
+                            + " Start timestamp: {}", startTimestamp);
+                    return;
+                }
+                if (resp.getCommitResponse().getAborted()) {
+                    e.error(new AbortException());
+                } else {
+                    e.success(resp.getCommitResponse().getCommitTimestamp());
                 }
             }
-            isCommittedCallbacks.clear();
+        }
+
+        @Override
+        public State handleEvent(Fsm fsm, Event e) {
+            if (e instanceof CloseEvent) {
+                fsm.deferUserEvent((CloseEvent)e);
+                return new ClosingState();
+            } else if (e instanceof RequestEvent) {
+                sendRequest((RequestEvent)e);
+                return this;
+            } else if (e instanceof ResponseEvent) {
+                handleResponse((ResponseEvent)e);
+                return this;
+            } else if (e instanceof ErrorEvent) {
+                for (RequestEvent r : timestampRequests) {
+                    r.error(new ConnectionException());
+                }
+                for (RequestEvent r : commitRequests.values()) {
+                    r.error(new ConnectionException());
+                }
+                return new ClosingState();
+            } else {
+                return super.handleEvent(fsm, e);
+            }
         }
     }
 
-    protected void processMessage(TSOMessage msg) {
+    private class ClosingState extends BaseState {
+        @Override
+        public State handleEvent(Fsm fsm, Event e) {
+            if (e instanceof UserEvent) {
+                fsm.deferUserEvent((UserEvent)e);
+                return this;
+            } else if (e instanceof ChannelClosedEvent) {
+                return new DisconnectedState();
+            } else {
+                return super.handleEvent(fsm, e);
+            }
+        }
     }
 
+    private class Handler extends SimpleChannelHandler {
+        private Fsm fsm;
+
+        Handler(Fsm fsm) {
+            this.fsm = fsm;
+        }
+
+        @Override
+        public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) {
+            fsm.sendEvent(new ConnectedEvent(e.getChannel()));
+        }
+
+        @Override
+        public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e)
+                throws Exception {
+            fsm.sendEvent(new CloseEvent());
+        }
+
+        @Override
+        public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e)
+                throws Exception {
+            fsm.sendEvent(new ChannelClosedEvent());
+        }
+
+        @Override
+        public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
+            if (e.getMessage() instanceof TSOProto.Response) {
+                fsm.sendEvent(new ResponseEvent((TSOProto.Response)e.getMessage()));
+            } else {
+                LOG.warn("Received unknown message", e.getMessage());
+            }
+        }
+
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
+            LOG.error("Error on channel {}", ctx.getChannel(), e.getCause());
+            fsm.sendEvent(new ErrorEvent(e.getCause()));
+        }
+    }
 }
