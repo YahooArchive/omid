@@ -59,11 +59,11 @@ public class TimestampOracle {
      * 
      * return the next timestamp
      */
-    public long next(WALProcessor wal) throws IOException {
+    public long next(PersistenceProcessor wal) throws IOException {
         last++;
         if (last == maxTimestamp) {
             maxTimestamp += TIMESTAMP_BATCH;
-            wal.logEvent(LoggerProtocol.TIMESTAMPORACLE, maxTimestamp);
+            // FIXMEwal.logEvent(LoggerProtocol.TIMESTAMPORACLE, maxTimestamp);
             /*if (LOG.isTraceEnabled()) {
                LOG.trace("Logging TimestampOracle " + maxTimestamp);
                }*/

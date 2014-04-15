@@ -7,6 +7,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ArrayList;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 
@@ -19,12 +23,13 @@ import com.yahoo.omid.tso.persistence.StateLogger;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class WALProcessor implements EventHandler<WALProcessor.WALEvent> {
-    private static final Logger LOG = LoggerFactory.getLogger(WALProcessor.class);
+class PersistenceProcessorImpl implements EventHandler<PersistenceProcessorImpl.WALEvent>, PersistenceProcessor {
+    private static final Logger LOG = LoggerFactory.getLogger(PersistenceProcessor.class);
 
     private final static byte QUEUE_RESPONSE = -16;
     List<DeferredResponse> deferredResponses = new ArrayList<DeferredResponse>();
@@ -32,15 +37,27 @@ class WALProcessor implements EventHandler<WALProcessor.WALEvent> {
     ByteArrayOutputStream buffer = new ByteArrayOutputStream(TSOState.BATCH_SIZE);
     DataOutputStream dataBuffer = new DataOutputStream(buffer);
     final StateLogger logger;
-    final RingBuffer<WALEvent> walRing;
     final ReplyProcessor reply;
     
-    WALProcessor(RingBuffer<WALEvent> walRing, ReplyProcessor reply) {
-        this.walRing = walRing;
+    PersistenceProcessorImpl(ReplyProcessor reply) {
         this.logger = null;
         this.reply = reply;
+
+        RingBuffer<WALEvent> walRing = RingBuffer.<WALEvent>createSingleProducer(WALEvent.EVENT_FACTORY, 1<<12,
+                                                                                 new BusySpinWaitStrategy());
+        SequenceBarrier walSequenceBarrier = walRing.newBarrier();
+        BatchEventProcessor<WALEvent> walProcessor = new BatchEventProcessor<WALEvent>(
+                walRing,
+                walSequenceBarrier,
+                this);
+        walRing.addGatingSequences(walProcessor.getSequence());
+
+        ExecutorService walExec = Executors.newSingleThreadExecutor(
+                new ThreadFactoryBuilder().setNameFormat("persist-%d").build());
+        walExec.submit(walProcessor);
     }
 
+    @Override
     public void onEvent(final WALEvent event, final long sequence, final boolean endOfBatch)
         throws Exception {
         if (event.getOp() == QUEUE_RESPONSE) {
@@ -59,6 +76,18 @@ class WALProcessor implements EventHandler<WALProcessor.WALEvent> {
         if (endOfBatch || buffer.size() > TSOState.BATCH_SIZE) {
             flush();
         }
+    }
+    
+    @Override
+    public void persistCommit(long startTimestamp, long commitTimestamp, Channel c) {
+    }
+    
+    @Override
+    public void persistAbort(long startTimestamp, Channel c) {
+    }
+
+    @Override
+    public void persistTimestamp(long startTimestamp, Channel c) {
     }
 
     public void flush() {
@@ -86,26 +115,26 @@ class WALProcessor implements EventHandler<WALProcessor.WALEvent> {
 
     public void queueReponse(ChannelHandlerContext ctx, boolean committed,
                              long startTimestamp, long commitTimestamp) {
-        long seq = walRing.next();
-        WALEvent event = walRing.get(seq);
-        event.setOp(QUEUE_RESPONSE);
-        event.setContext(ctx);
-        event.setNumParams(3);
-        event.setParam(0, committed ? 1 : 0);
-        event.setParam(1, startTimestamp);
-        event.setParam(2, commitTimestamp);
-        walRing.publish(seq);
+        // long seq = walRing.next();
+        // WALEvent event = walRing.get(seq);
+        // event.setOp(QUEUE_RESPONSE);
+        // event.setContext(ctx);
+        // event.setNumParams(3);
+        // event.setParam(0, committed ? 1 : 0);
+        // event.setParam(1, startTimestamp);
+        // event.setParam(2, commitTimestamp);
+        // walRing.publish(seq);
     }
 
     public void logEvent(byte type, Long... params) {
-        long seq = walRing.next();
-        WALEvent event = walRing.get(seq);
-        event.setOp(type);
-        event.setNumParams(params.length);
-        for (int i = 0; i < params.length; i++) {
-            event.setParam(i, params[i]);
-        }
-        walRing.publish(seq);
+        // long seq = walRing.next();
+        // WALEvent event = walRing.get(seq);
+        // event.setOp(type);
+        // event.setNumParams(params.length);
+        // for (int i = 0; i < params.length; i++) {
+        //     event.setParam(i, params[i]);
+        // }
+        // walRing.publish(seq);
     }
 
     private static class DeferredResponse {

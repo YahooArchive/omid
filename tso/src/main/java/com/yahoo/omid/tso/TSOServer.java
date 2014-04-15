@@ -46,11 +46,6 @@ import com.yahoo.omid.tso.persistence.FileSystemTimestampOnlyStateBuilder;
 import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
 import com.yahoo.omid.tso.persistence.LoggerProtocol;
 
-import com.yahoo.omid.tso.ReplyProcessor.ReplyEvent;
-import com.yahoo.omid.tso.WALProcessor.WALEvent;
-import com.yahoo.omid.tso.CompacterHandler.CompactionEvent;
-import com.yahoo.omid.tso.RequestProcessor.RequestEvent;
-
 import com.lmax.disruptor.*;
 
 /**
@@ -86,43 +81,10 @@ public class TSOServer implements Runnable {
             MetricsUtils.initMetrics(metricsConfig);
         }
 
-        RingBuffer<RequestEvent> requestRing = RingBuffer.<RequestEvent>createMultiProducer(RequestEvent.EVENT_FACTORY, 1<<12,
-                                                                                            new BusySpinWaitStrategy());
-        RingBuffer<WALEvent> walRing = RingBuffer.<WALEvent>createSingleProducer(WALEvent.EVENT_FACTORY, 1<<12,
-                                                                                 new BusySpinWaitStrategy());
-        RingBuffer<ReplyEvent> replyRing = RingBuffer.<ReplyEvent>createMultiProducer(ReplyEvent.EVENT_FACTORY, 1<<12,
-                                                                                      new BusySpinWaitStrategy());
-        SequenceBarrier replySequenceBarrier = replyRing.newBarrier();
-        ReplyProcessor reply = new ReplyProcessor();
-        BatchEventProcessor<ReplyEvent> replyProcessor = new BatchEventProcessor<ReplyEvent>(
-                replyRing,
-                replySequenceBarrier,
-                reply);
-        replyRing.addGatingSequences(replyProcessor.getSequence());
-
-        SequenceBarrier walSequenceBarrier = walRing.newBarrier();
-        WALProcessor wal = new WALProcessor(walRing, reply);
-        BatchEventProcessor<WALEvent> walProcessor = new BatchEventProcessor<WALEvent>(
-                walRing,
-                walSequenceBarrier,
-                wal);
-        walRing.addGatingSequences(walProcessor.getSequence());
-
-        SequenceBarrier requestSequenceBarrier = requestRing.newBarrier();
-        BatchEventProcessor requestProcessor = new BatchEventProcessor<RequestEvent>(
-                requestRing,
-                requestSequenceBarrier,
-                new RequestProcessor(0L, wal, reply)); // FIXME first timestamp should be loaded from WAL
-        requestRing.addGatingSequences(requestProcessor.getSequence());
-
-        ExecutorService requestExec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("request-%d").build());
-        ExecutorService walExec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("wal-%d").build());
-        ExecutorService replyExec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("reply-%d").build());
-
-        // Each processor runs on a separate thread
-        requestExec.submit(requestProcessor);
-        replyExec.submit(replyProcessor);
-        walExec.submit(walProcessor);
+        ReplyProcessor replyProc = new ReplyProcessorImpl();
+        PersistenceProcessor persistProc = new PersistenceProcessorImpl(replyProc);
+        RequestProcessor reqProc = new RequestProcessorImpl(0L,
+                config.MAX_ITEMS, persistProc);
 
         // Setup netty listener
         ChannelFactory factory = new NioServerSocketChannelFactory(
@@ -135,7 +97,7 @@ public class TSOServer implements Runnable {
         // Create the global ChannelGroup
         ChannelGroup channelGroup = new DefaultChannelGroup(TSOServer.class.getName());
 
-        final TSOHandler handler = new TSOHandler(channelGroup, requestRing);
+        final TSOHandler handler = new TSOHandler(channelGroup, reqProc);
 
         ServerBootstrap bootstrap = new ServerBootstrap(factory);
         bootstrap.setPipelineFactory(new TSOPipelineFactory(handler));

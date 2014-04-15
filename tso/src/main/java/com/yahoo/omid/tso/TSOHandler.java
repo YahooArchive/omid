@@ -47,7 +47,7 @@ public class TSOHandler extends SimpleChannelHandler {
      * Channel Group
      */
     private ChannelGroup channelGroup = null;
-    private final RingBuffer<RequestProcessor.RequestEvent> ringBuffer;
+    private final RequestProcessor requestProcessor;
 
     /**
      * Constructor
@@ -55,9 +55,9 @@ public class TSOHandler extends SimpleChannelHandler {
      * @param channelGroup
      */
     public TSOHandler(ChannelGroup channelGroup,
-                      RingBuffer<RequestProcessor.RequestEvent> requestRing) {
+                      RequestProcessor requestProcessor) {
         this.channelGroup = channelGroup;
-        this.ringBuffer = requestRing;
+        this.requestProcessor = requestProcessor;
      }
 
     public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
@@ -76,12 +76,12 @@ public class TSOHandler extends SimpleChannelHandler {
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
         Object msg = e.getMessage();
 
-        long seq = ringBuffer.next();
-        RequestProcessor.RequestEvent event = ringBuffer.get(seq);
+        //long seq = ringBuffer.next();
+        //RequestProcessor.RequestEvent event = ringBuffer.get(seq);
         //event.setContext(ctx);
         //event.setMessage(msg);
 
-        ringBuffer.publish(seq);
+        //ringBuffer.publish(seq);
     }
 
     @Override
