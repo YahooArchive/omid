@@ -60,7 +60,7 @@ public class TSOServer implements Runnable {
 
     public TSOServer() {
         super();
-        this.config = TSOServerConfig.configFactory();
+        config = new TSOServerConfig();
     }
 
     public TSOServer(TSOServerConfig config) {
@@ -84,7 +84,7 @@ public class TSOServer implements Runnable {
         ReplyProcessor replyProc = new ReplyProcessorImpl();
         PersistenceProcessor persistProc = new PersistenceProcessorImpl(replyProc);
         RequestProcessor reqProc = new RequestProcessorImpl(0L,
-                config.MAX_ITEMS, persistProc);
+                config.getMaxItems(), persistProc);
 
         // Setup netty listener
         ChannelFactory factory = new NioServerSocketChannelFactory(

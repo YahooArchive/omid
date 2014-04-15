@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Set;
 import java.util.List;
 import java.util.Collection;
+import java.util.Iterator;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
@@ -36,17 +37,19 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
     private static final Logger LOG = LoggerFactory.getLogger(RequestProcessorImpl.class);
 
     StatusOracleMetrics metrics = new StatusOracleMetrics();
-    private TimestampOracle timestampOracle = null;
+    private TimestampOracle timestampOracle = new TimestampOracle();
 
     public CommitHashMap hashmap;
     final PersistenceProcessor persistProc;
     final RingBuffer<RequestEvent> requestRing;
     long lowWatermark;
 
-    RequestProcessorImpl(long firstTimestamp, long maxItems, PersistenceProcessor persistProc) {
+    RequestProcessorImpl(long firstTimestamp, int maxItems, PersistenceProcessor persistProc) {
         this.persistProc = persistProc;
-        this.lowWatermark = firstTimestamp;
-        
+
+        timestampOracle.initialize(firstTimestamp);
+        this.lowWatermark = timestampOracle.first();
+
         this.hashmap = new CommitHashMap(maxItems, firstTimestamp);
 
         // Set up the disruptor thread
@@ -166,7 +169,7 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
         timerLatency.stop();
     }
 
-    public final static class RequestEvent {
+    final static class RequestEvent implements Iterable<Long> {
         enum Type {
             TIMESTAMP, COMMIT
         };
@@ -216,12 +219,33 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
             return channel;
         }
 
-        Iterable<Long> rows() {
-            if (rowCollection == null) {
-                return Arrays.<Long>asList(rows);
-            } else {
-                return rowCollection;
+        @Override
+        public Iterator iterator() {
+            if (rowCollection != null) {
+                return rowCollection.iterator();
             }
+            return new Iterator() {
+                int i = 0;
+
+                @Override
+                public boolean hasNext() {
+                    return i < numRows;
+                }
+
+                @Override
+                public Long next() {
+                    return rows[i++];
+                }
+
+                @Override
+                public void remove() {
+                    throw new UnsupportedOperationException();
+                }
+            };
+        }
+
+        Iterable<Long> rows() {
+            return this;
         }
         
         public final static EventFactory<RequestEvent> EVENT_FACTORY

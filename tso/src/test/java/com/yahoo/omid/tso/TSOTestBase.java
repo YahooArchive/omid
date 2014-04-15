@@ -154,9 +154,7 @@ public class TSOTestBase {
        Thread.sleep(500);
        
       LOG.info("Starting TSO");
-      System.setProperty("omid.maxItems", "100");
-      System.setProperty("omid.maxCommits", "100");
-      tso = new TSOServer(TSOServerConfig.configFactory(1234, 0, recoveryEnabled(), 4, 2, new String("localhost:2181")));
+      tso = new TSOServer(TSOServerConfig.configFactory(1234, 0, recoveryEnabled(), 4, 2, new String("localhost:2181"), 1000, 1000));
       tsoExecutor = Executors.newSingleThreadExecutor();
       tsoExecutor.execute(tso);
       TestUtils.waitForSocketListening("localhost", 1234, 100);
