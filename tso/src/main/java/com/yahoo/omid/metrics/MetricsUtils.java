@@ -8,8 +8,8 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.yammer.metrics.reporting.ConsoleReporter;
-import com.yammer.metrics.reporting.GraphiteReporter;
+//import com.yammer.metrics.reporting.ConsoleReporter;
+//import com.yammer.metrics.reporting.GraphiteReporter;
 
 /**
  * Parses metrics configuration and initializes metrics reporting.
@@ -22,7 +22,7 @@ public class MetricsUtils {
             .compile("(csv:.+|console|graphite:.+:.+):(\\d+):(DAYS|HOURS|MICROSECONDS|MILLISECONDS|MINUTES|NANOSECONDS|SECONDS)");
 
     public static void initMetrics(String metricsConfig) {
-        if (metricsConfig == null || metricsConfig.equals("")) {
+        /*        if (metricsConfig == null || metricsConfig.equals("")) {
             metricsConfig = "console:1:MINUTES";
         }
         Matcher matcher = METRICS_CONFIG_PATTERN.matcher(metricsConfig);
@@ -65,6 +65,6 @@ public class MetricsUtils {
                         new String[] { String.valueOf(period), timeUnit.name() });
                 ConsoleReporter.enable(period, timeUnit);
             }
-        }
+            }*/
     }
 }

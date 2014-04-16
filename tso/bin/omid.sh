@@ -27,12 +27,12 @@ cd $SCRIPTDIR;
 CLASSPATH=../conf
 
 # for source release
-for j in ../target/omid*.jar; do
+for j in ../target/tso*.jar; do
     CLASSPATH=$CLASSPATH:$j
 done
 
 # for binary release
-for j in ../omid*.jar; do
+for j in ../tso*.jar; do
     CLASSPATH=$CLASSPATH:$j
 done
 for j in ../lib/*.jar; do

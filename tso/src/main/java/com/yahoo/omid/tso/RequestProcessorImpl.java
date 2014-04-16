@@ -154,8 +154,8 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
                     }
 
                     lowWatermark = newLowWatermark;
-                    persistProc.persistCommit(startTimestamp, commitTimestamp, c);
                 }
+                persistProc.persistCommit(startTimestamp, commitTimestamp, c);
             } catch (IOException e) {
                 LOG.error("Error committing", e);
             }

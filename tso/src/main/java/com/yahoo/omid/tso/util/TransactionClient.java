@@ -22,12 +22,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.yahoo.omid.tso.util.ClientHandler.RowDistribution;
+
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Slf4jReporter;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Simple Transaction Client using Serialization
@@ -50,7 +57,6 @@ public class TransactionClient {
         
         System.out.println("Starting " + config.nbClients + " clients with the following configuration:");
         System.out.println("PARAM MAX_ROW: " + config.maxTxSize);
-        System.out.println("pause " + config.pause);
         
         float readPercentage = config.readproportion==-1?config.percentReads:(config.readproportion * 100);
         
@@ -82,10 +88,19 @@ public class TransactionClient {
             }
         }
 
+        MetricRegistry metrics = new MetricRegistry();
+        final Slf4jReporter reporter = Slf4jReporter.forRegistry(metrics)
+            .outputTo(LoggerFactory.getLogger("metrics"))
+            .convertRatesTo(TimeUnit.SECONDS)
+            .convertDurationsTo(TimeUnit.MILLISECONDS)
+            .build();
+        reporter.start(10, TimeUnit.SECONDS);
+
         for(int i = 0; i < config.nbClients; ++i) {
             // Create the associated Handler
-            ClientHandler handler = new ClientHandler(conf, config.runFor, config.nbMessages,
-                                                      config.maxInFlight, config.pause,
+            ClientHandler handler = new ClientHandler(conf, metrics,
+                                                      config.runFor, config.nbMessages,
+                                                      config.maxInFlight, config.commitDelay,
                                                       readPercentage, config.maxTxSize,
                                                       intGenerators[i]);
             // *** Start the Netty running ***
@@ -149,8 +164,8 @@ public class TransactionClient {
         @Parameter(names="-nbClients", description="Number of TSO clients")
         int nbClients = 1;
         
-        @Parameter(names="-pause", description="Pause client for " + ClientHandler.PAUSE_LENGTH + "ms after sending a commit request")
-        boolean pause = false;
+        @Parameter(names="-commitDelay", description="Number of milliseconds to delay between acquiring timestamp and committing")
+        int commitDelay = 50;
         
         @Parameter(names="-maxTxSize", description="Maximum size of transaction (size homogeneously distributed between 1 and this number)")
         int maxTxSize = ClientHandler.DEFAULT_MAX_ROW;

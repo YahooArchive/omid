@@ -329,7 +329,7 @@ public class TSOClient {
                 e.success(resp.getTimestampResponse().getStartTimestamp());
             } else if (resp.hasCommitResponse()) {
                 long startTimestamp = resp.getCommitResponse().getStartTimestamp();
-                RequestEvent e = commitRequests.get(startTimestamp);
+                RequestEvent e = commitRequests.remove(startTimestamp);
                 if (e == null) {
                     LOG.warn("Received commit response for request that doesn't exist."
                             + " Start timestamp: {}", startTimestamp);
