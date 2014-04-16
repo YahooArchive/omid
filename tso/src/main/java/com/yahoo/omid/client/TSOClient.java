@@ -101,8 +101,8 @@ public class TSOClient {
 
     private static OmidClientMetrics metrics = new OmidClientMetrics();
 
-    private static class ConnectionException extends IOException {}
-    private static class AbortException extends Exception {}
+    public static class ConnectionException extends IOException {}
+    public static class AbortException extends Exception {}
 
     public TSOClient(Configuration conf) throws IOException {
         LOG.info("Starting TSOClient");
@@ -117,6 +117,17 @@ public class TSOClient {
         bootstrap = new ClientBootstrap(factory);
 
         int executorThreads = conf.getInt("tso.executor.threads", 3);
+
+        String host = conf.get("tso.host");
+        int port = conf.getInt("tso.port", 1234);
+        max_retries = conf.getInt("tso.max_retries", 100);
+        retry_delay_ms = conf.getInt("tso.retry_delay_ms", 1000);
+
+        if (host == null) {
+            throw new IOException("tso.host missing from configuration");
+        }
+
+        addr = new InetSocketAddress(host, port);
 
         ScheduledExecutorService fsmExecutor = Executors.newSingleThreadScheduledExecutor(
                 new ThreadFactoryBuilder().setNameFormat("tsofsm-%d").build());
@@ -136,17 +147,6 @@ public class TSOClient {
         bootstrap.setOption("keepAlive", true);
         bootstrap.setOption("reuseAddress", true);
         bootstrap.setOption("connectTimeoutMillis", 100);
-
-        String host = conf.get("tso.host");
-        int port = conf.getInt("tso.port", 1234);
-        max_retries = conf.getInt("tso.max_retries", 100);
-        retry_delay_ms = conf.getInt("tso.retry_delay_ms", 1000);
-
-        if (host == null) {
-            throw new IOException("tso.host missing from configuration");
-        }
-
-        addr = new InetSocketAddress(host, port);
     }
 
     public OmidClientMetrics getMetrics() {

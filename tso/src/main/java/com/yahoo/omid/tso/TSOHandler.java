@@ -27,6 +27,7 @@ import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.group.ChannelGroup;
 
+import com.yahoo.omid.proto.TSOProto;
 import com.lmax.disruptor.RingBuffer;
 
 import org.slf4j.Logger;
@@ -75,13 +76,22 @@ public class TSOHandler extends SimpleChannelHandler {
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
         Object msg = e.getMessage();
-
-        //long seq = ringBuffer.next();
-        //RequestProcessor.RequestEvent event = ringBuffer.get(seq);
-        //event.setContext(ctx);
-        //event.setMessage(msg);
-
-        //ringBuffer.publish(seq);
+        if (msg instanceof TSOProto.Request) {
+            TSOProto.Request request = (TSOProto.Request)msg;
+            if (request.hasTimestampReq()) {
+                requestProcessor.timestampRequest(ctx.getChannel());
+            } else if (request.hasCommitReq()) {
+                TSOProto.CommitRequest cr = request.getCommitReq();
+                requestProcessor.commitRequest(cr.getStartTimestamp(),
+                                               cr.getRowHashList(),
+                                               ctx.getChannel());
+            } else {
+                LOG.error("Invalid request {}", request);
+                ctx.getChannel().close();
+            }
+        } else {
+            LOG.error("Unknown message type", msg);
+        }
     }
 
     @Override

@@ -80,14 +80,17 @@ class PersistenceProcessorImpl implements EventHandler<PersistenceProcessorImpl.
     
     @Override
     public void persistCommit(long startTimestamp, long commitTimestamp, Channel c) {
+        reply.commitResponse(startTimestamp, commitTimestamp, c);
     }
     
     @Override
     public void persistAbort(long startTimestamp, Channel c) {
+        reply.abortResponse(startTimestamp, c);
     }
 
     @Override
     public void persistTimestamp(long startTimestamp, Channel c) {
+        reply.timestampResponse(startTimestamp, c);
     }
 
     public void flush() {

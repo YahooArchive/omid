@@ -9,6 +9,7 @@ import org.jboss.netty.channel.ChannelHandlerContext;
 
 import com.yahoo.omid.tso.messages.CommitQueryResponse;
 import com.yahoo.omid.tso.messages.CommitResponse;
+import com.yahoo.omid.proto.TSOProto;
 
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
@@ -21,14 +22,16 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
 {
     private static final Logger LOG = LoggerFactory.getLogger(ReplyProcessorImpl.class);
 
+    final RingBuffer<ReplyEvent> replyRing;
+
     ReplyProcessorImpl() {
-        RingBuffer<ReplyEvent> replyRing = RingBuffer.<ReplyEvent>createMultiProducer(ReplyEvent.EVENT_FACTORY, 1<<12,
-                                                                                      new BusySpinWaitStrategy());
+        replyRing = RingBuffer.<ReplyEvent>createMultiProducer(ReplyEvent.EVENT_FACTORY, 1<<12,
+                                                               new BusySpinWaitStrategy());
         SequenceBarrier replySequenceBarrier = replyRing.newBarrier();
         BatchEventProcessor<ReplyEvent> replyProcessor = new BatchEventProcessor<ReplyEvent>(
-                replyRing,
-                replySequenceBarrier,
-                this);
+                                                                                             replyRing,
+                                                                                             replySequenceBarrier,
+                                                                                             this);
         replyRing.addGatingSequences(replyProcessor.getSequence());
 
         ExecutorService replyExec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("reply-%d").build());
@@ -39,113 +42,114 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
         throws Exception
     {
         switch (event.getType()) {
-        case COMMIT_QUERY:
-            handleCommitQueryReply(event);
-            break;
         case COMMIT:
-            handleCommitReply(event);
+            handleCommitResponse(event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel());
+            break;
+        case ABORT:
+            handleAbortResponse(event.getStartTimestamp(), event.getChannel());
+            break;
+        case TIMESTAMP:
+            handleTimestampResponse(event.getStartTimestamp(), event.getChannel());
             break;
         default:
             LOG.error("Unknown event {}", event.getType());
             break;
         }
     }
-    
+
     @Override
     public void commitResponse(long startTimestamp, long commitTimestamp, Channel c) {
+        long seq = replyRing.next();
+        ReplyEvent e = replyRing.get(seq);
+        ReplyEvent.makeCommitResponse(e, startTimestamp, commitTimestamp, c);
+        replyRing.publish(seq);
     }
 
     @Override
     public void abortResponse(long startTimestamp, Channel c) {
+        long seq = replyRing.next();
+        ReplyEvent e = replyRing.get(seq);
+        ReplyEvent.makeAbortResponse(e, startTimestamp, c);
+        replyRing.publish(seq);
     }
 
     @Override
     public void timestampResponse(long startTimestamp, Channel c) {
+        long seq = replyRing.next();
+        ReplyEvent e = replyRing.get(seq);
+        ReplyEvent.makeTimestampReponse(e, startTimestamp, c);
+        replyRing.publish(seq);
     }
 
-    private void handleCommitQueryReply(ReplyEvent event) {
-        Channel channel = event.getContext().getChannel();
-
-        CommitQueryResponse msg = new CommitQueryResponse(event.getStartTimestamp());
-        msg.queryTimestamp = event.getQueryTimestamp();
-        if (event.getCommitTimestamp() != 0) {
-            msg.commitTimestamp = event.getCommitTimestamp();
-            msg.committed = event.getCommitted();
-        } else if (event.getRetry()) {
-            msg.retry = true;
-        } else {
-            msg.committed = false;
-        }
-        event.getContext().getChannel().write(msg);
+    void handleCommitResponse(long startTimestamp, long commitTimestamp, Channel c) {
+        TSOProto.Response.Builder builder = TSOProto.Response.newBuilder();
+        TSOProto.CommitResponse.Builder commitBuilder = TSOProto.CommitResponse.newBuilder();
+        commitBuilder.setAborted(false)
+            .setStartTimestamp(startTimestamp)
+            .setCommitTimestamp(commitTimestamp);
+        builder.setCommitResponse(commitBuilder.build());
+        c.write(builder.build());
     }
 
-    private void handleCommitReply(ReplyEvent event) {
-        Channel channel = event.getContext().getChannel();
-
-        CommitResponse msg = new CommitResponse(event.getStartTimestamp());
-        msg.committed = event.getCommitted();
-        msg.commitTimestamp = event.getCommitTimestamp();
-
-        event.getContext().getChannel().write(msg);
+    void handleAbortResponse(long startTimestamp, Channel c) {
+        TSOProto.Response.Builder builder = TSOProto.Response.newBuilder();
+        TSOProto.CommitResponse.Builder commitBuilder = TSOProto.CommitResponse.newBuilder();
+        commitBuilder.setAborted(true)
+            .setStartTimestamp(startTimestamp);
+        builder.setCommitResponse(commitBuilder.build());
+        c.write(builder.build());
     }
-    
+
+    void handleTimestampResponse(long startTimestamp, Channel c) {
+        TSOProto.Response.Builder builder = TSOProto.Response.newBuilder();
+        TSOProto.TimestampResponse.Builder respBuilder = TSOProto.TimestampResponse.newBuilder();
+        respBuilder.setStartTimestamp(startTimestamp);
+        builder.setTimestampResponse(respBuilder.build());
+        c.write(builder.build());
+    }
+
     public final static class ReplyEvent {
         enum Type {
-            COMMIT_QUERY, COMMIT
+            TIMESTAMP, COMMIT, ABORT
         }
         private Type type = null;
-        private ChannelHandlerContext ctx = null;
+        private Channel channel = null;
 
         private long startTimestamp = 0;
         private long commitTimestamp = 0;
-        private long queryTimestamp = 0;
-        private boolean committed = false;
-        private boolean retry = true;
+        
+        Type getType() { return type; }
+        Channel getChannel() { return channel; }
+        long getStartTimestamp() { return startTimestamp; }
+        long getCommitTimestamp() { return commitTimestamp; }
 
-       Type getType() { return type; }
-       ReplyEvent setType(Type type) {
-           this.type = type;
-           return this;
-       }
-       long getStartTimestamp() { return startTimestamp; }
-       ReplyEvent setStartTimestamp(long startTimestamp) {
-           this.startTimestamp = startTimestamp;
-           return this;
-       }
-       long getCommitTimestamp() { return commitTimestamp; }
-       ReplyEvent setCommitTimestamp(long commitTimestamp) {
-           this.commitTimestamp = commitTimestamp;
-           return this;
-       }
-       long getQueryTimestamp() { return queryTimestamp; }
-       ReplyEvent setQueryTimestamp(long queryTimestamp) {
-           this.queryTimestamp = queryTimestamp;
-           return this;
-       }
-       boolean getCommitted() { return committed; }
-       ReplyEvent setCommitted(boolean committed) {
-           this.committed = committed;
-           return this;
-       }
-       boolean getRetry() { return retry; }
-       ReplyEvent setRetry(boolean retry) {
-           this.retry = retry;
-           return this;
-       }
-       ChannelHandlerContext getContext() { return ctx; }
-       ReplyEvent setContext(ChannelHandlerContext ctx) {
-           this.ctx = ctx;
-           return this;
-       }
+        static void makeTimestampReponse(ReplyEvent e, long startTimestamp, Channel c) {
+            e.type = Type.TIMESTAMP;
+            e.startTimestamp = startTimestamp;
+            e.channel = c;
+        }
 
-       public final static EventFactory<ReplyEvent> EVENT_FACTORY
-           = new EventFactory<ReplyEvent>()
-       {
-           public ReplyEvent newInstance()
-           {
-               return new ReplyEvent();
-           }
-       };
-   }
+        static void makeCommitResponse(ReplyEvent e, long startTimestamp, long commitTimestamp, Channel c) {
+            e.type = Type.COMMIT;
+            e.startTimestamp = startTimestamp;
+            e.commitTimestamp = commitTimestamp;
+            e.channel = c;
+        }
+
+        static void makeAbortResponse(ReplyEvent e, long startTimestamp, Channel c) {
+            e.type = Type.ABORT;
+            e.startTimestamp = startTimestamp;
+            e.channel = c;
+        }
+
+        public final static EventFactory<ReplyEvent> EVENT_FACTORY
+            = new EventFactory<ReplyEvent>()
+        {
+            public ReplyEvent newInstance()
+            {
+                return new ReplyEvent();
+            }
+        };
+    }
 }
 

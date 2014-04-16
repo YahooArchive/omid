@@ -111,7 +111,7 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
         timer.stop();
     }
 
-    public void handleCommit(long startTimestamp, Iterable<Long> rows, Channel c) {
+    public long handleCommit(long startTimestamp, Iterable<Long> rows, Channel c) {
         TimerContext timerProcessing = metrics.startCommitProcessing();
         TimerContext timerLatency = metrics.startCommitLatency();
         
@@ -167,6 +167,8 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
 
         timerProcessing.stop();
         timerLatency.stop();
+
+        return commitTimestamp;
     }
 
     final static class RequestEvent implements Iterable<Long> {

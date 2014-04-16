@@ -2,8 +2,8 @@ option java_package = "com.yahoo.omid.proto";
 option optimize_for = SPEED;
 
 message Request {
-  optional TimestampRequest timestampReq = 1;
-  optional CommitRequest commitReq = 2;
+  optional TimestampRequest timestampRequest = 1;
+  optional CommitRequest commitRequest = 2;
 }
 
 message TimestampRequest {}

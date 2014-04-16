@@ -16,14 +16,16 @@
 
 package com.yahoo.omid.tso;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.io.IOException;
 
 import org.junit.Test;
 
+
+import com.yahoo.omid.client.TSOClient;
+import com.yahoo.omid.client.TSOFuture;
+import com.yahoo.omid.client.TSOClient.AbortException;
 import com.yahoo.omid.tso.messages.AbortedTransactionReport;
 import com.yahoo.omid.tso.messages.CleanedTransactionReport;
 import com.yahoo.omid.tso.messages.CommitRequest;
@@ -33,72 +35,31 @@ import com.yahoo.omid.tso.messages.FullAbortRequest;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 
+import java.util.concurrent.ExecutionException;
+
 public class TestBasicTransaction extends TSOTestBase {
 
-   @Test
-   public void testConflicts() throws IOException, InterruptedException {
-       // IKFIXME
-//       clientHandler.sendMessage(new TimestampRequest());
-//       clientHandler.receiveBootstrap();
-//       TimestampResponse tr1 = clientHandler.receiveMessage(TimestampResponse.class);
+    @Test
+    public void testConflicts() throws Exception {
+        long tr1 = client.createTransaction().get();
+        long tr2 = client.createTransaction().get();
 
-//       clientHandler.sendMessage(new TimestampRequest());
-//       TimestampResponse tr2 = clientHandler.receiveMessage(TimestampResponse.class);
+        long cr1 = client.commit(tr1, new RowKey[] { r1 }).get();
 
-//       clientHandler.sendMessage(new CommitRequest(tr1.timestamp, new RowKey[] { r1 }));
-//       CommitResponse cr1 = clientHandler.receiveMessage(CommitResponse.class);
-//       assertTrue(cr1.committed);
-//       assertEquals(tr1.timestamp, cr1.startTimestamp);
+        try {
+            long cr2 = client.commit(tr2, new RowKey[] { r1, r2 }).get();
+            fail("Shouldn't have committed");
+        } catch (ExecutionException ee) {
+            assertEquals("Should have aborted", ee.getCause().getClass(), AbortException.class);
+        }
 
-//       clientHandler.sendMessage(new CommitRequest(tr2.timestamp, new RowKey[] { r1, r2 }));
-//       CommitResponse cr2 = clientHandler.receiveMessage(CommitResponse.class);
-//       assertFalse(cr2.committed);
-
-//       // TODO fix this. Commiting an already committed value (either failed or commited) should fail
-//       // FIXME to do this.
-// //      clientHandler.sendMessage(new CommitRequest(tr1.timestamp, new RowKey[] { r2 }));
-// //      messageReceived = clientHandler.receiveMessage();
-// //      assertThat(messageReceived, is(CommitResponse.class));
-// //      CommitResponse cr3 = (CommitResponse) messageReceived;
-// //      assertFalse(cr3.committed);
-      
-//       clientHandler.sendMessage(new TimestampRequest());
-//       // Pending commit report
-//       CommittedTransactionReport ctr1 = clientHandler.receiveMessage(CommittedTransactionReport.class);
-//       assertEquals(cr1.startTimestamp, ctr1.startTimestamp);
-//       assertEquals(cr1.commitTimestamp, ctr1.commitTimestamp);
-//       // Aborted transaction report
-//       AbortedTransactionReport atr = clientHandler.receiveMessage(AbortedTransactionReport.class);
-//       assertEquals(cr2.startTimestamp, atr.startTimestamp);
-//       // Full Abort report
-//       CleanedTransactionReport cltr = clientHandler.receiveMessage(CleanedTransactionReport.class);
-//       assertEquals(cr2.startTimestamp, cltr.startTimestamp);
-      
-//       TimestampResponse tr3 = clientHandler.receiveMessage(TimestampResponse.class);
-
-//       clientHandler.sendMessage(new CommitRequest(tr3.timestamp, new RowKey[] { r1, r2 }));
-//       CommitResponse cr3 = clientHandler.receiveMessage(CommitResponse.class);
-//       assertTrue(cr3.committed);
-//       assertEquals(tr3.timestamp, cr3.startTimestamp);
-
-//       clientHandler.sendMessage(new TimestampRequest());
-
-//       // Pending commit report
-//       CommittedTransactionReport ctr3 = clientHandler.receiveMessage(CommittedTransactionReport.class);
-//       assertEquals(cr3.startTimestamp, ctr3.startTimestamp);
-//       assertEquals(cr3.commitTimestamp, ctr3.commitTimestamp);
-      
-//       TimestampResponse tr4 = clientHandler.receiveMessage(TimestampResponse.class);
-
-//       clientHandler.sendMessage(new CommitRequest(tr4.timestamp, new RowKey[] { r2 }));
-//       CommitResponse cr4 = clientHandler.receiveMessage(CommitResponse.class);
-//       assertTrue(cr4.committed);
-//       assertEquals(tr4.timestamp, cr4.startTimestamp);
-      
-//       // Fetch commit report
-//       clientHandler.sendMessage(new TimestampRequest());
-//       clientHandler.receiveMessage(CommittedTransactionReport.class);
-//       clientHandler.receiveMessage(TimestampResponse.class);
-   }
+        // TODO fix this. Commiting an already committed value (either failed or commited) should fail
+        // FIXME to do this.
+        //      clientHandler.sendMessage(new CommitRequest(tr1.timestamp, new RowKey[] { r2 }));
+        //      messageReceived = clientHandler.receiveMessage();
+        //      assertThat(messageReceived, is(CommitResponse.class));
+        //      CommitResponse cr3 = (CommitResponse) messageReceived;
+        //      assertFalse(cr3.committed);
+    }
 
 }

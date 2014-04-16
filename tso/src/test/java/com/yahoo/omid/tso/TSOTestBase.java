@@ -34,165 +34,122 @@ import org.junit.BeforeClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 import com.yahoo.omid.TestUtils;
+import com.yahoo.omid.client.TSOClient;
+import com.yahoo.omid.client.TSOFuture;
 import com.yahoo.omid.tso.messages.TimestampRequest;
 import com.yahoo.omid.tso.messages.TimestampResponse;
 import com.yahoo.omid.tso.util.ClientHandler;
 import com.yahoo.omid.tso.util.TransactionClient;
 
 public class TSOTestBase {
-   private static final Logger LOG = LoggerFactory.getLogger(TSOTestBase.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TSOTestBase.class);
 
-
-   //private static Thread bkthread;
-   //private static Thread tsothread;
-   private static ExecutorService bkExecutor;
-   private static ExecutorService tsoExecutor;
+    //private static Thread bkthread;
+    //private static Thread tsothread;
+    private static ExecutorService bkExecutor;
+    private static ExecutorService tsoExecutor;
    
-   protected static TestClientHandler clientHandler;
-   protected static TestClientHandler secondClientHandler;
-   private static ChannelGroup channelGroup;
-   private static ChannelFactory channelFactory;
+    protected static TSOClient client;
+    protected static TestClientHandler clientHandler;
+    protected static TestClientHandler secondClientHandler;
+    private static ChannelGroup channelGroup;
+    private static ChannelFactory channelFactory;
 
-   private static TSOServer tso;
+    private static TSOServer tso;
    
 
-   final static public RowKey r1 = new RowKey(new byte[] { 0xd, 0xe, 0xa, 0xd }, new byte[] { 0xb, 0xe, 0xe, 0xf });
-   final static public RowKey r2 = new RowKey(new byte[] { 0xb, 0xa, 0xa, 0xd }, new byte[] { 0xc, 0xa, 0xf, 0xe });
+    final static public RowKey r1 = new RowKey(new byte[] { 0xd, 0xe, 0xa, 0xd }, new byte[] { 0xb, 0xe, 0xe, 0xf });
+    final static public RowKey r2 = new RowKey(new byte[] { 0xb, 0xa, 0xa, 0xd }, new byte[] { 0xc, 0xa, 0xf, 0xe });
 
-   public static void setupClient() throws IOException {
+    public static void setupClient() throws IOException {
 
-      // *** Start the Netty configuration ***
+        // *** Start the Netty configuration ***
+        Configuration conf = HBaseConfiguration.create();
+        conf.set("tso.host", "localhost");
+        conf.setInt("tso.port", 1234);
+
+        // Start client with Nb of active threads = 3 as maximum.
+        channelFactory = new NioClientSocketChannelFactory(Executors.newCachedThreadPool(),
+                                                           Executors.newCachedThreadPool(), 3);
+        // Create the bootstrap
+        // Create the global ChannelGroup
+        channelGroup = new DefaultChannelGroup(TransactionClient.class.getName());
+        // Create the associated Handler
+        client = new TSOClient(conf);
+        clientHandler = null; // IKFIXMEnew TestClientHandler(conf);
+
+        // *** Start the Netty running ***
+
+        System.out.println("PARAM MAX_ROW: " + ClientHandler.DEFAULT_MAX_ROW);
+        System.out.println("PARAM DB_SIZE: " + ClientHandler.DEFAULT_DB_SIZE);
+
+        // Connect to the server, wait for the connection and get back the channel
+        //IKFIXMEclientHandler.await();
       
-      Configuration conf = HBaseConfiguration.create();
-      conf.set("tso.host", "localhost");
-      conf.setInt("tso.port", 1234);
+        // Second client handler
+        secondClientHandler = null;//IKFIXMEnew TestClientHandler(conf);
 
-      // Start client with Nb of active threads = 3 as maximum.
-      channelFactory = new NioClientSocketChannelFactory(Executors.newCachedThreadPool(),
-            Executors.newCachedThreadPool(), 3);
-      // Create the bootstrap
-      // Create the global ChannelGroup
-      channelGroup = new DefaultChannelGroup(TransactionClient.class.getName());
-      // Create the associated Handler
-      clientHandler = null; // IKFIXMEnew TestClientHandler(conf);
+        // *** Start the Netty running ***
 
-      // *** Start the Netty running ***
-
-      System.out.println("PARAM MAX_ROW: " + ClientHandler.DEFAULT_MAX_ROW);
-      System.out.println("PARAM DB_SIZE: " + ClientHandler.DEFAULT_DB_SIZE);
-
-      // Connect to the server, wait for the connection and get back the channel
-      //IKFIXMEclientHandler.await();
-      
-      // Second client handler
-      secondClientHandler = null;//IKFIXMEnew TestClientHandler(conf);
-
-      // *** Start the Netty running ***
-
-      System.out.println("PARAM MAX_ROW: " + ClientHandler.DEFAULT_MAX_ROW);
-      System.out.println("PARAM DB_SIZE: " + ClientHandler.DEFAULT_DB_SIZE);
-   }
+        System.out.println("PARAM MAX_ROW: " + ClientHandler.DEFAULT_MAX_ROW);
+        System.out.println("PARAM DB_SIZE: " + ClientHandler.DEFAULT_DB_SIZE);
+    }
    
-   public static void teardownClient() {
-      // Now close all channels
-      System.out.println("close channelGroup");
-      channelGroup.close().awaitUninterruptibly();
-      // Now release resources
-      System.out.println("close external resources");
-      channelFactory.releaseExternalResources();
-   }
+    public static void teardownClient() {
+        // Now close all channels
+        System.out.println("close channelGroup");
+        channelGroup.close().awaitUninterruptibly();
+        // Now release resources
+        System.out.println("close external resources");
+        channelFactory.releaseExternalResources();
+    }
 
-   @BeforeClass
-   public static void setupBookkeeper() throws Exception {
-      System.out.println("PATH : "
-            + System.getProperty("java.library.path"));
+    @Before
+    public void setupTSO() throws Exception {
+        LOG.info("Starting TSO");
+        tso = new TSOServer(TSOServerConfig.configFactory(1234, 0, recoveryEnabled(), 4, 2, new String("localhost:2181"), 1000, 1000));
+        tsoExecutor = Executors.newSingleThreadExecutor(
+                new ThreadFactoryBuilder().setNameFormat("tsomain-%d").build());
+        tsoExecutor.execute(tso);
+        TestUtils.waitForSocketListening("localhost", 1234, 100);
+        LOG.info("Finished loading TSO");
       
-      if (bkExecutor == null) {
-    	  bkExecutor = Executors.newSingleThreadExecutor();
-    	  Runnable bkTask = new Runnable() {
-            public void run() {
-               try {
-                  Thread.currentThread().setName("BookKeeper");
-                  String[] args = new String[1];
-                  args[0] = "5";
-                  LOG.info("Starting bk");
-                  LocalBookKeeper.main(args);
-               } catch (InterruptedException e) {
-                  // go away quietly
-               } catch (Exception e) {
-                  LOG.error("Error starting local bk", e);
-               }
-            }
-         };
+        Thread.currentThread().setName("JUnit Thread");
+      
+        setupClient();
+    }
    
-         bkExecutor.execute(bkTask);
-      }
-   }
+    @After
+    public void teardownTSO() throws Exception {
+        
+        // IKFIXME      clientHandler.sendMessage(new TimestampRequest());
+        // while (!(clientHandler.receiveMessage() instanceof TimestampResponse))
+        //    ; // Do nothing
+        // clientHandler.clearMessages();
+        // clientHandler.setAutoFullAbort(true);
+        // secondClientHandler.sendMessage(new TimestampRequest());
+        // while (!(secondClientHandler.receiveMessage() instanceof TimestampResponse))
+        //    ; // Do nothing
+        // secondClientHandler.clearMessages();
+        // secondClientHandler.setAutoFullAbort(true);
+      
+        // tso.stop();
+        // if (tsoExecutor != null) {
+        //     tsoExecutor.shutdownNow();
+        // }
+        // tso = null;
+        // teardownClient();
 
-   @AfterClass
-   public static void teardownBookkeeper() throws Exception {
+        // TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
+      
+        Thread.sleep(10);
+    }
 
-      if (bkExecutor != null) {
-         bkExecutor.shutdownNow();
-      }
-      TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
-      
-      Thread.sleep(10);
-   }
-   
-   @Before
-   public void setupTSO() throws Exception {
-       if (!LocalBookKeeper.waitForServerUp("localhost:2181", 10000)) {
-           throw new Exception("Error starting zookeeper/bookkeeper");
-        }
-      
-       /*
-        * TODO: Fix LocalBookKeeper to wait until the bookies are up
-        * instead of waiting only until the zookeeper server is up.
-        */
-       Thread.sleep(500);
-       
-      LOG.info("Starting TSO");
-      tso = new TSOServer(TSOServerConfig.configFactory(1234, 0, recoveryEnabled(), 4, 2, new String("localhost:2181"), 1000, 1000));
-      tsoExecutor = Executors.newSingleThreadExecutor();
-      tsoExecutor.execute(tso);
-      TestUtils.waitForSocketListening("localhost", 1234, 100);
-      LOG.info("Finished loading TSO");
-      
-      Thread.currentThread().setName("JUnit Thread");
-      
-      setupClient();
-   }
-   
-   @After
-   public void teardownTSO() throws Exception {
-	   
-       // IKFIXME      clientHandler.sendMessage(new TimestampRequest());
-      // while (!(clientHandler.receiveMessage() instanceof TimestampResponse))
-      //    ; // Do nothing
-      // clientHandler.clearMessages();
-      // clientHandler.setAutoFullAbort(true);
-      // secondClientHandler.sendMessage(new TimestampRequest());
-      // while (!(secondClientHandler.receiveMessage() instanceof TimestampResponse))
-      //    ; // Do nothing
-      // secondClientHandler.clearMessages();
-      // secondClientHandler.setAutoFullAbort(true);
-      
-      // tso.stop();
-      // if (tsoExecutor != null) {
-      //     tsoExecutor.shutdownNow();
-      // }
-      // tso = null;
-      // teardownClient();
-
-      // TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
-      
-      Thread.sleep(10);
-   }
-
-   protected boolean recoveryEnabled() {
-      return false;
-   }
+    protected boolean recoveryEnabled() {
+        return false;
+    }
 
 }
