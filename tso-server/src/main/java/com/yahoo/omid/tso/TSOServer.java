@@ -40,6 +40,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
+import com.codahale.metrics.MetricRegistry;
+
 import com.yahoo.omid.metrics.MetricsUtils;
 import com.yahoo.omid.tso.persistence.BookKeeperStateBuilder;
 import com.yahoo.omid.tso.persistence.FileSystemTimestampOnlyStateBuilder;
@@ -76,15 +79,15 @@ public class TSOServer implements Runnable {
 
     @Override
     public void run() {
-        String metricsConfig = config.getMetrics();
-        if (metricsConfig != null) {
-            MetricsUtils.initMetrics(metricsConfig);
-        }
+        MetricRegistry metrics = MetricsUtils.initMetrics(config.getMetrics());
 
-        ReplyProcessor replyProc = new ReplyProcessorImpl();
-        PersistenceProcessor persistProc = new PersistenceProcessorImpl(replyProc);
-        RequestProcessor reqProc = new RequestProcessorImpl(0L,
-                config.getMaxItems(), persistProc);
+        TimestampOracle timestampOracle = new TimestampOracle();
+        timestampOracle.initialize(0L);
+
+        ReplyProcessor replyProc = new ReplyProcessorImpl(metrics);
+        PersistenceProcessor persistProc = new PersistenceProcessorImpl(metrics, replyProc);
+        RequestProcessor reqProc = new RequestProcessorImpl(metrics, timestampOracle,
+                persistProc, config.getMaxItems());
 
         // Setup netty listener
         ChannelFactory factory = new NioServerSocketChannelFactory(

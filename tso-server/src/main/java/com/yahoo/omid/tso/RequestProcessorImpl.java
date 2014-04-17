@@ -14,9 +14,9 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import org.jboss.netty.channel.Channel;
 
-import com.yahoo.omid.tso.metrics.StatusOracleMetrics;
 import com.yahoo.omid.tso.persistence.LoggerProtocol;
-import com.yammer.metrics.core.TimerContext;
+
+import com.codahale.metrics.MetricRegistry;
 
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
@@ -27,25 +27,24 @@ import com.lmax.disruptor.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestEvent>, RequestProcessor
+class RequestProcessorImpl
+    implements EventHandler<RequestProcessorImpl.RequestEvent>, RequestProcessor
 {
     private static final Logger LOG = LoggerFactory.getLogger(RequestProcessorImpl.class);
 
-    StatusOracleMetrics metrics = new StatusOracleMetrics();
-    private TimestampOracle timestampOracle = new TimestampOracle();
+    private final TimestampOracle timestampOracle;
+    public final CommitHashMap hashmap;
+    private final PersistenceProcessor persistProc;
+    private final RingBuffer<RequestEvent> requestRing;
+    private long lowWatermark;
 
-    public CommitHashMap hashmap;
-    final PersistenceProcessor persistProc;
-    final RingBuffer<RequestEvent> requestRing;
-    long lowWatermark;
-
-    RequestProcessorImpl(long firstTimestamp, int maxItems, PersistenceProcessor persistProc) {
+    RequestProcessorImpl(MetricRegistry metrics, TimestampOracle timestampOracle,
+                         PersistenceProcessor persistProc, int conflictMapSize) {
         this.persistProc = persistProc;
-
-        timestampOracle.initialize(firstTimestamp);
+        this.timestampOracle = timestampOracle;
         this.lowWatermark = timestampOracle.first();
 
-        this.hashmap = new CommitHashMap(maxItems, firstTimestamp);
+        this.hashmap = new CommitHashMap(conflictMapSize, lowWatermark);
 
         // Set up the disruptor thread
         requestRing = RingBuffer.<RequestEvent>createMultiProducer(RequestEvent.EVENT_FACTORY, 1<<12,
@@ -91,8 +90,6 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
     }
     
     public void handleTimestamp(Channel c) {
-        metrics.begin();
-        TimerContext timer = metrics.startBeginProcessing();
         long timestamp;
 
         try {
@@ -103,13 +100,9 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
         }
 
         persistProc.persistTimestamp(timestamp, c);
-        timer.stop();
     }
 
     public long handleCommit(long startTimestamp, Iterable<Long> rows, Channel c) {
-        TimerContext timerProcessing = metrics.startCommitProcessing();
-        TimerContext timerLatency = metrics.startCommitLatency();
-        
         boolean committed = false;
         long commitTimestamp = 0L;
         
@@ -135,7 +128,6 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
         }
 
         if (committed) {
-            metrics.commited();
             // 2. commit
             try {
                 commitTimestamp = timestampOracle.next(persistProc);
@@ -155,13 +147,8 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
                 LOG.error("Error committing", e);
             }
         } else { // add it to the aborted list
-            metrics.aborted();
-
             persistProc.persistAbort(startTimestamp, c);
         }
-
-        timerProcessing.stop();
-        timerLatency.stop();
 
         return commitTimestamp;
     }

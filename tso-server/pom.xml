@@ -169,7 +169,7 @@
     <dependency>
       <groupId>com.beust</groupId>
       <artifactId>jcommander</artifactId>
-      <version>1.23</version>
+      <version>1.35</version>
       <type>jar</type>
       <scope>compile</scope>
     </dependency>
@@ -211,6 +211,11 @@
     <dependency>
       <groupId>com.codahale.metrics</groupId>
       <artifactId>metrics-core</artifactId>
+      <version>3.0.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.codahale.metrics</groupId>
+      <artifactId>metrics-graphite</artifactId>
       <version>3.0.1</version>
     </dependency>
     <dependency>

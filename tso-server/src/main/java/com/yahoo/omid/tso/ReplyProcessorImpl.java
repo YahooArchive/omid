@@ -13,6 +13,10 @@ import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.*;
 
+import com.codahale.metrics.MetricRegistry;
+import static com.codahale.metrics.MetricRegistry.name;
+import com.codahale.metrics.Meter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,19 +25,25 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
     private static final Logger LOG = LoggerFactory.getLogger(ReplyProcessorImpl.class);
 
     final RingBuffer<ReplyEvent> replyRing;
+    final Meter abortMeter;
+    final Meter commitMeter;
+    final Meter timestampMeter;
 
-    ReplyProcessorImpl() {
+    ReplyProcessorImpl(MetricRegistry metrics) {
         replyRing = RingBuffer.<ReplyEvent>createMultiProducer(ReplyEvent.EVENT_FACTORY, 1<<12,
                                                                new BusySpinWaitStrategy());
         SequenceBarrier replySequenceBarrier = replyRing.newBarrier();
         BatchEventProcessor<ReplyEvent> replyProcessor = new BatchEventProcessor<ReplyEvent>(
-                                                                                             replyRing,
-                                                                                             replySequenceBarrier,
-                                                                                             this);
+                replyRing, replySequenceBarrier, this);
         replyRing.addGatingSequences(replyProcessor.getSequence());
 
-        ExecutorService replyExec = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("reply-%d").build());
+        ExecutorService replyExec = Executors.newSingleThreadExecutor(
+                new ThreadFactoryBuilder().setNameFormat("reply-%d").build());
         replyExec.submit(replyProcessor);
+
+        abortMeter = metrics.meter(name("tso", "aborts"));
+        commitMeter = metrics.meter(name("tso", "commits"));
+        timestampMeter = metrics.meter(name("tso", "timestampAllocation"));
     }
 
     public void onEvent(final ReplyEvent event, final long sequence, final boolean endOfBatch)
@@ -87,6 +97,8 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
             .setCommitTimestamp(commitTimestamp);
         builder.setCommitResponse(commitBuilder.build());
         c.write(builder.build());
+
+        commitMeter.mark();
     }
 
     void handleAbortResponse(long startTimestamp, Channel c) {
@@ -96,6 +108,8 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
             .setStartTimestamp(startTimestamp);
         builder.setCommitResponse(commitBuilder.build());
         c.write(builder.build());
+
+        abortMeter.mark();
     }
 
     void handleTimestampResponse(long startTimestamp, Channel c) {
@@ -104,6 +118,8 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
         respBuilder.setStartTimestamp(startTimestamp);
         builder.setTimestampResponse(respBuilder.build());
         c.write(builder.build());
+
+        timestampMeter.mark();
     }
 
     public final static class ReplyEvent {

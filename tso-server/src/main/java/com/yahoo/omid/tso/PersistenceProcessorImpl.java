@@ -24,6 +24,8 @@ import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.*;
 
+import com.codahale.metrics.MetricRegistry;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +39,7 @@ class PersistenceProcessorImpl implements EventHandler<PersistenceProcessorImpl.
     final StateLogger logger;
     final ReplyProcessor reply;
     
-    PersistenceProcessorImpl(ReplyProcessor reply) {
+    PersistenceProcessorImpl(MetricRegistry metrics, ReplyProcessor reply) {
         this.logger = null;
         this.reply = reply;
 

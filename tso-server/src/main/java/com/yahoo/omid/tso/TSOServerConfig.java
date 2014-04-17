@@ -18,12 +18,16 @@ package com.yahoo.omid.tso;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.IVariableArity;
+
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * Holds the configuration parameters of a TSO server instance.
  * 
  */
-public class TSOServerConfig {
+public class TSOServerConfig implements IVariableArity {
 
 
     // used for testing
@@ -75,8 +79,8 @@ public class TSOServerConfig {
     @Parameter(names = "-fsLog", description = "local FS WAL directory")
     private String fsLog;
 
-    @Parameter(names = "-metrics", description = "Metrics config")
-    private String metrics;
+    @Parameter(names = "-metrics", description = "Metrics config", variableArity = true)
+    private List<String> metrics = new ArrayList<String>();
     
     @Parameter(names = "-maxCommits", description = "Size of commit list")
     private int maxCommits = 1000000;
@@ -86,7 +90,12 @@ public class TSOServerConfig {
     
     @Parameter(names = "-flushTimeout", description = "Maximum delay before flushing batch of replies and sending responses, unit is [ms]")
     private int flushTimeout = 10;
-    
+
+    @Override
+    public int processVariableArity(String optionName,
+                                    String[] options) {
+        return options.length;
+    }
     
     public int getPort() {
         return port;
@@ -112,7 +121,7 @@ public class TSOServerConfig {
         return quorum;
     }
 
-    public String getMetrics() {
+    public List<String> getMetrics() {
         return metrics;
     }
 
