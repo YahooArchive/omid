@@ -18,7 +18,7 @@ public class TestLongCache {
     final int entries = 1000;
     Histogram hist = new Histogram(entries * 10);
 
-    @Test
+    @Test(timeout=10000)
     public void testEntriesAge() {
         
 

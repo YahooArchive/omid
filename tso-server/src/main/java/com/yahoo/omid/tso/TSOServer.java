@@ -21,6 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutionException;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.AdaptiveReceiveBufferSizePredictorFactory;
@@ -43,6 +44,8 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import com.codahale.metrics.MetricRegistry;
 
+import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.DelayNullCommitTable;
 import com.yahoo.omid.metrics.MetricsUtils;
 import com.yahoo.omid.tso.persistence.BookKeeperStateBuilder;
 import com.yahoo.omid.tso.persistence.FileSystemTimestampOnlyStateBuilder;
@@ -58,23 +61,19 @@ public class TSOServer implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(TSOServer.class);
 
     private TSOServerConfig config;
+    private CommitTable commitTable;
     private boolean finish = false;
     private final Object lock = new Object();
 
-    public TSOServer() {
-        super();
-        config = new TSOServerConfig();
-    }
-
-    public TSOServer(TSOServerConfig config) {
-        super();
+    public TSOServer(TSOServerConfig config, CommitTable commitTable) {
         this.config = config;
+        this.commitTable = commitTable;
     }
 
     public static void main(String[] args) throws Exception {
         TSOServerConfig config = TSOServerConfig.parseConfig(args);
 
-        new TSOServer(config).run();
+        new TSOServer(config, new DelayNullCommitTable(1, TimeUnit.SECONDS)).run();
     }
 
     @Override
@@ -84,8 +83,18 @@ public class TSOServer implements Runnable {
         TimestampOracle timestampOracle = new TimestampOracle();
         timestampOracle.initialize(0L);
 
+        CommitTable.Writer writer;
+        try {
+            writer = commitTable.getWriter().get();
+        } catch (ExecutionException ee) {
+            throw new IllegalStateException("Cannot run without a committable");
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted creating committable");
+        }
+
         ReplyProcessor replyProc = new ReplyProcessorImpl(metrics);
-        PersistenceProcessor persistProc = new PersistenceProcessorImpl(metrics, replyProc);
+        PersistenceProcessor persistProc = new PersistenceProcessorImpl(metrics, writer, replyProc);
         RequestProcessor reqProc = new RequestProcessorImpl(metrics, timestampOracle,
                 persistProc, config.getMaxItems());
 

@@ -16,36 +16,31 @@
 
 package com.yahoo.omid.tso;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
+import com.yahoo.omid.client.TSOClient.AbortException;
+
+import java.util.concurrent.ExecutionException;
 
 import org.junit.Test;
 
 import com.yahoo.omid.tso.RowKey;
 
 public class TestConflict extends TSOTestBase {
-
-   @Test
+    @Test(timeout=10000)
     public void testConflict() throws Exception {
-        // IKFIXME
-      // clientHandler.sendMessage(new TimestampRequest());
-      // clientHandler.receiveBootstrap();
-      // TimestampResponse tr1 = clientHandler.receiveMessage(TimestampResponse.class);
+        long tr1 = client.createTransaction().get();
+        long tr2 = client.createTransaction().get();
+        assertTrue("second txn should have higher timestamp", tr2 > tr1);
 
-      // clientHandler.sendMessage(new TimestampRequest());
-      // TimestampResponse tr2 = clientHandler.receiveMessage(TimestampResponse.class);
-      // assertTrue(tr2.timestamp > tr1.timestamp);
+        long cr1 = client.commit(tr1, new RowKey[] { r1 }).get();
+        assertTrue("commit ts must be higher than start ts", cr1 > tr1);
 
-      // clientHandler.sendMessage(new CommitRequest(tr1.timestamp, new RowKey[] { r1 }));
-      // CommitResponse cr1 = clientHandler.receiveMessage(CommitResponse.class);
-      // assertTrue(cr1.committed);
-      // assertTrue(cr1.commitTimestamp > tr1.timestamp);
-      // assertEquals(tr1.timestamp, cr1.startTimestamp);
-
-      // clientHandler.sendMessage(new CommitRequest(tr2.timestamp, new RowKey[] { r1, r2 }));
-      // CommitResponse cr2 = clientHandler.receiveMessage(CommitResponse.class);
-      // assertFalse(cr2.committed);
-   }
+        try {
+            long cr2 = client.commit(tr2, new RowKey[] { r1, r2 }).get();
+            fail("Second commit should fail");
+        } catch (ExecutionException ee) {
+            assertEquals("Should have aborted", ee.getCause().getClass(), AbortException.class);
+        }
+    }
 
 }

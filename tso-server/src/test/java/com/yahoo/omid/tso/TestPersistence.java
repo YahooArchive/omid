@@ -18,9 +18,8 @@ package com.yahoo.omid.tso;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.number.OrderingComparison.greaterThan;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+
+import static org.junit.Assert.*;
 
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -36,8 +35,9 @@ public class TestPersistence extends TSOTestBase {
       return true;
    }
     
-   @Test
+   @Test(timeout=10000)
    public void testCommit() throws Exception {
+       fail("need to implement persistence");
        // IKFIXME
        // clientHandler.sendMessage(new TimestampRequest());
        // clientHandler.receiveBootstrap();

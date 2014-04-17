@@ -24,43 +24,20 @@ import org.junit.Test;
 
 public class TestMultipleCommitsWithoutConflict extends TSOTestBase {
 
-   @Test
-   public void testMultipleCommitsWithoutConflict() throws Exception {
-      // clientHandler.sendMessage(new TimestampRequest());
-      // clientHandler.receiveBootstrap();
-      // TimestampResponse tr1 = clientHandler.receiveMessage(TimestampResponse.class);
+    @Test(timeout=10000)
+    public void testMultipleCommitsWithoutConflict() throws Exception {
+        long tr1 = client.createTransaction().get();
+        long cr1 = client.commit(tr1, new RowKey[] { r1 }).get();
+        assertTrue("commit ts must be greater than start ts", cr1 > tr1);
 
-      // clientHandler.sendMessage(new CommitRequest(tr1.timestamp, new RowKey[] { r1 }));
-      // CommitResponse cr1 = clientHandler.receiveMessage(CommitResponse.class);
-      // assertTrue(cr1.committed);
-      // assertTrue(cr1.commitTimestamp > tr1.timestamp);
-      // assertEquals(tr1.timestamp, cr1.startTimestamp);
+        long tr2 = client.createTransaction().get();
+        assertTrue("ts should grow monotonically", tr2 > cr1);
 
-      // // Queued commit report
-      // clientHandler.sendMessage(new TimestampRequest());
-      // clientHandler.receiveMessage(CommittedTransactionReport.class);
-      
-      // TimestampResponse tr2 = clientHandler.receiveMessage(TimestampResponse.class);
-      // assertTrue(tr2.timestamp > tr1.timestamp);
+        long cr2 = client.commit(tr2, new RowKey[] { r1, r2 }).get();
+        assertTrue("commit ts must be greater than start ts", cr2 > tr2);
 
-      // clientHandler.sendMessage(new CommitRequest(tr2.timestamp, new RowKey[] { r1, r2 }));
-      // CommitResponse cr2 = clientHandler.receiveMessage(CommitResponse.class);
-      // assertTrue(cr2.committed);
-      // assertTrue(cr2.commitTimestamp > tr2.timestamp);
-      // assertEquals(tr2.timestamp, cr2.startTimestamp);
-
-      // // Queued commit report
-      // clientHandler.sendMessage(new TimestampRequest());
-      // clientHandler.receiveMessage(CommittedTransactionReport.class);
-      
-      // TimestampResponse tr3 = clientHandler.receiveMessage(TimestampResponse.class);
-      // assertTrue(tr3.timestamp > tr1.timestamp);
-
-      // clientHandler.sendMessage(new CommitRequest(tr3.timestamp, new RowKey[] { r2 }));
-      // CommitResponse cr3 = clientHandler.receiveMessage(CommitResponse.class);
-      // assertTrue(cr3.committed);
-      // assertTrue(cr3.commitTimestamp > tr3.timestamp);
-      // assertEquals(tr3.timestamp, cr3.startTimestamp);
-   }
-
+        long tr3 = client.createTransaction().get();
+        long cr3 = client.commit(tr3, new RowKey[] { r2 }).get();
+        assertTrue("commit ts must be greater than start ts", cr3 > tr3);
+    }
 }

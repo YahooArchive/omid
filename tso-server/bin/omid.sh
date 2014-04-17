@@ -40,7 +40,7 @@ for j in ../lib/*.jar; do
 done
 
 tso() {
-    exec java -Xmx1024m -cp $CLASSPATH -Domid.maxItems=1000000 -Domid.maxCommits=1000000 -Dlog4j.configuration=log4j.properties com.yahoo.omid.tso.TSOServer -port 1234 -batch $BATCHSIZE -zk localhost:2181 -ha -fsLog /tmp/omid
+    exec java -Xmx8096m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.tso.TSOServer -port 1234 $@
 }
 
 tsobench() {

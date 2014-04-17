@@ -37,6 +37,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
+import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.InMemoryCommitTable;
 import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.client.TSOFuture;
@@ -52,8 +54,8 @@ public class TSOTestBase {
     private static ExecutorService tsoExecutor;
    
     protected static TSOClient client;
-    protected static TestClientHandler clientHandler;
-    protected static TestClientHandler secondClientHandler;
+    protected static TSOClient client2;
+
     private static ChannelGroup channelGroup;
     private static ChannelFactory channelFactory;
 
@@ -63,53 +65,34 @@ public class TSOTestBase {
     final static public RowKey r1 = new RowKey(new byte[] { 0xd, 0xe, 0xa, 0xd }, new byte[] { 0xb, 0xe, 0xe, 0xf });
     final static public RowKey r2 = new RowKey(new byte[] { 0xb, 0xa, 0xa, 0xd }, new byte[] { 0xc, 0xa, 0xf, 0xe });
 
-    public static void setupClient() throws IOException {
+    public static void setupClient(CommitTable.Client commitTable) throws IOException {
 
         // *** Start the Netty configuration ***
         Configuration conf = new BaseConfiguration();
         conf.setProperty("tso.host", "localhost");
         conf.setProperty("tso.port", 1234);
 
-        // Start client with Nb of active threads = 3 as maximum.
-        channelFactory = new NioClientSocketChannelFactory(Executors.newCachedThreadPool(),
-                                                           Executors.newCachedThreadPool(), 3);
-        // Create the bootstrap
-        // Create the global ChannelGroup
-        channelGroup = new DefaultChannelGroup(TransactionClient.class.getName());
         // Create the associated Handler
-        client = TSOClient.newBuilder().withConfiguration(conf).build();
-        clientHandler = null; // IKFIXMEnew TestClientHandler(conf);
+        client = TSOClient.newBuilder().withConfiguration(conf)
+            .withCommitTableClient(commitTable).build();
 
-        // *** Start the Netty running ***
+        client2 = TSOClient.newBuilder().withConfiguration(conf)
+            .withCommitTableClient(commitTable).build();
 
-        System.out.println("PARAM MAX_ROW: " + ClientHandler.DEFAULT_MAX_ROW);
-        System.out.println("PARAM DB_SIZE: " + ClientHandler.DEFAULT_DB_SIZE);
-
-        // Connect to the server, wait for the connection and get back the channel
-        //IKFIXMEclientHandler.await();
-      
-        // Second client handler
-        secondClientHandler = null;//IKFIXMEnew TestClientHandler(conf);
-
-        // *** Start the Netty running ***
-
-        System.out.println("PARAM MAX_ROW: " + ClientHandler.DEFAULT_MAX_ROW);
-        System.out.println("PARAM DB_SIZE: " + ClientHandler.DEFAULT_DB_SIZE);
     }
    
     public static void teardownClient() {
-        // Now close all channels
-        System.out.println("close channelGroup");
-        channelGroup.close().awaitUninterruptibly();
-        // Now release resources
-        System.out.println("close external resources");
-        channelFactory.releaseExternalResources();
+        // FIXME add client cleanup
     }
 
     @Before
     public void setupTSO() throws Exception {
         LOG.info("Starting TSO");
-        tso = new TSOServer(TSOServerConfig.configFactory(1234, 0, recoveryEnabled(), 4, 2, new String("localhost:2181"), 1000, 1000));
+        CommitTable commitTable = new InMemoryCommitTable();
+        tso = new TSOServer(TSOServerConfig.configFactory(1234, 0, recoveryEnabled(),
+                                    4, 2, new String("localhost:2181"), 1000, 1000),
+                            commitTable);
+
         tsoExecutor = Executors.newSingleThreadExecutor(
                 new ThreadFactoryBuilder().setNameFormat("tsomain-%d").build());
         tsoExecutor.execute(tso);
@@ -118,7 +101,7 @@ public class TSOTestBase {
       
         Thread.currentThread().setName("JUnit Thread");
       
-        setupClient();
+        setupClient(commitTable.getClient().get());
     }
    
     @After

@@ -18,6 +18,8 @@ package com.yahoo.omid.tso;
 
 import java.net.InetSocketAddress;
 
+import java.nio.channels.ClosedChannelException;
+
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
@@ -96,6 +98,9 @@ public class TSOHandler extends SimpleChannelHandler {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) {
+        if (e.getCause() instanceof ClosedChannelException) {
+            return;
+        }
         LOG.warn("TSOHandler: Unexpected exception from downstream.", e.getCause());
         Channels.close(e.getChannel());
     }

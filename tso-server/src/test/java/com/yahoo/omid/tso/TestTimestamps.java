@@ -23,15 +23,11 @@ import org.junit.Test;
 
 public class TestTimestamps extends TSOTestBase {
 
-   @Test
-   public void testGetTimestamp() throws Exception {
-      // clientHandler.sendMessage(new TimestampRequest());
-      // clientHandler.receiveBootstrap();
-      // TimestampResponse tr1 = clientHandler.receiveMessage(TimestampResponse.class);
-
-      // clientHandler.sendMessage(new TimestampRequest());
-      // TimestampResponse tr2 = clientHandler.receiveMessage(TimestampResponse.class);
-      // assertTrue(tr2.timestamp > tr1.timestamp);
-   }
+    @Test(timeout=10000)
+    public void testGetTimestamp() throws Exception {
+        long tr1 = client.createTransaction().get();
+        long tr2 = client.createTransaction().get();;
+        assertTrue("timestamps should grow", tr2 > tr1);
+    }
    
 }

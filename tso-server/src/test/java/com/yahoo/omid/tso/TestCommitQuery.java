@@ -17,89 +17,29 @@
 
 package com.yahoo.omid.tso;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import org.junit.Test;
 
 
 public class TestCommitQuery extends TSOTestBase {
 
-   @Test
-   public void testCommitQuery() throws Exception {
-      // Disable auto full abort for testing every commit query request case
-      // clientHandler.setAutoFullAbort(false);
+    @Test(timeout=10000)
+    public void testCommitQuery() throws Exception {
+        long tr1 = client.createTransaction().get();
+        long tr2 = client.createTransaction().get();
+        assertTrue("start timestamps should grow", tr2 > tr1);
 
-      // clientHandler.sendMessage(new TimestampRequest());
-      // clientHandler.receiveBootstrap();
-      // TimestampResponse tr1 = clientHandler.receiveMessage(TimestampResponse.class);
+        Long cq1 = client.getCommitTimestamp(tr1).get();
+        assertNull("tr1 isn't committed", cq1);
 
-      // clientHandler.sendMessage(new TimestampRequest());
-      // TimestampResponse tr2 = clientHandler.receiveMessage(TimestampResponse.class);
-      // assertTrue(tr2.timestamp > tr1.timestamp);
+        long cr1 = client.commit(tr1, new RowKey[] { r1 }).get();
+        assertTrue("commit timestamp should be higher than start timestamp", cr1 > tr1);
 
-      // //
-      // // Test Commit query of uncommitted transaction
-      // //
-      // clientHandler.sendMessage(new CommitQueryRequest(tr2.timestamp, tr1.timestamp));
-      // CommitQueryResponse cqr1 = clientHandler.receiveMessage(CommitQueryResponse.class);
-      // assertFalse(cqr1.committed);
-      // assertFalse(cqr1.retry);
-
-      // clientHandler.sendMessage(new CommitRequest(tr1.timestamp, new RowKey[] { r1 }));
-      // CommitResponse cr1 = clientHandler.receiveMessage(CommitResponse.class);
-      // assertTrue(cr1.committed);
-      // assertTrue(cr1.commitTimestamp > tr1.timestamp);
-      // assertEquals(tr1.timestamp, cr1.startTimestamp);
-
-      // //
-      // // Test Commit query of concurrent committed transaction
-      // //
-      // clientHandler.sendMessage(new CommitQueryRequest(tr2.timestamp, tr1.timestamp));
-      // CommitQueryResponse cqr2 = clientHandler.receiveMessage(CommitQueryResponse.class);
-      // assertFalse(cqr2.committed);
-      // assertFalse(cqr2.retry);
-
-      // clientHandler.sendMessage(new CommitRequest(tr2.timestamp, new RowKey[] { r1, r2 }));
-      // CommitResponse cr2 = clientHandler.receiveMessage(CommitResponse.class);
-      // assertFalse(cr2.committed);
-
-      // // Queued reports
-      // clientHandler.sendMessage(new TimestampRequest());
-      // clientHandler.receiveMessage(CommittedTransactionReport.class);
-      // clientHandler.receiveMessage(AbortedTransactionReport.class);
-
-      // TimestampResponse tr3 = clientHandler.receiveMessage(TimestampResponse.class);
-      // assertTrue(tr3.timestamp > tr2.timestamp);
-
-      // //state.largestDeletedTimestamp = 1000000;
-      // if (tr3 != null) throw new Exception("FIXME");
-
-      // //
-      // // Test Commit query of half aborted transaction
-      // //
-      // clientHandler.sendMessage(new CommitQueryRequest(tr3.timestamp, tr2.timestamp));
-      // CommitQueryResponse cqr3 = clientHandler.receiveMessage(CommitQueryResponse.class);
-      // assertFalse(cqr3.committed);
-      // assertFalse(cqr3.retry);
-
-      // clientHandler.sendMessage(new FullAbortRequest(tr2.timestamp));
-
-      // //
-      // // Test Commit query of full aborted transaction
-      // //
-      // clientHandler.sendMessage(new CommitQueryRequest(tr3.timestamp, tr2.timestamp));
-      // CommitQueryResponse cqr4 = clientHandler.receiveMessage(CommitQueryResponse.class);
-      // assertFalse(cqr4.committed);
-      // assertTrue(cqr4.retry);
-
-      // //
-      // // Test Commit query of committed transaction
-      // //
-      // clientHandler.sendMessage(new CommitQueryRequest(tr3.timestamp, tr1.timestamp));
-      // CommitQueryResponse cqr5 = clientHandler.receiveMessage(CommitQueryResponse.class);
-      // assertTrue(cqr5.committed);
-      // assertFalse(cqr5.retry);
-   }
+        Long cq2 = client2.getCommitTimestamp(tr1).get();
+        assertNotNull("transaction is committed, should return as such", cq2);
+        assertEquals("getCommitTimestamp and commit should report same thing for same transaction",
+                     (long)cq2, (long)cr1);
+        assertTrue("commit should be higher than previously created transaction", cq2 > tr2);
+    }
 }

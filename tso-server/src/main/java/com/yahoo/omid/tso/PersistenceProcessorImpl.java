@@ -7,9 +7,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ArrayList;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ExecutionException;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.common.util.concurrent.ListenableFuture;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ArrayBlockingQueue;
 
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
@@ -19,124 +24,243 @@ import com.yahoo.omid.tso.persistence.LoggerException;
 import com.yahoo.omid.tso.persistence.LoggerException.Code;
 import com.yahoo.omid.tso.persistence.StateLogger;
 
+import com.yahoo.omid.committable.CommitTable;
+
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.*;
 
 import com.codahale.metrics.MetricRegistry;
+import static com.codahale.metrics.MetricRegistry.name;
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.Histogram;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class PersistenceProcessorImpl implements EventHandler<PersistenceProcessorImpl.WALEvent>, PersistenceProcessor {
+class PersistenceProcessorImpl
+    implements EventHandler<PersistenceProcessorImpl.PersistEvent>, PersistenceProcessor {
     private static final Logger LOG = LoggerFactory.getLogger(PersistenceProcessor.class);
 
-    private final static byte QUEUE_RESPONSE = -16;
-
-    ByteArrayOutputStream buffer = new ByteArrayOutputStream(TSOState.BATCH_SIZE);
-    DataOutputStream dataBuffer = new DataOutputStream(buffer);
-    final StateLogger logger;
     final ReplyProcessor reply;
-    
-    PersistenceProcessorImpl(MetricRegistry metrics, ReplyProcessor reply) {
-        this.logger = null;
+    final CommitTable.Writer writer;
+    final RingBuffer<PersistEvent> persistRing;
+
+    // should probably use a ringbuffer for this too
+    final static int MAX_BATCH_SIZE = 1000;
+    final static int BATCH_COUNT = 3000; // triple buffering
+    final BlockingQueue<Batch> batchPool = new ArrayBlockingQueue<Batch>(BATCH_COUNT);
+    Batch curBatch = null;
+
+    final Timer flushTimer;
+    final Histogram batchSizeHistogram;
+    final ExecutorService callbackExec;
+
+    PersistenceProcessorImpl(MetricRegistry metrics,
+                             CommitTable.Writer writer, ReplyProcessor reply) {
         this.reply = reply;
+        this.writer = writer;        
 
-        RingBuffer<WALEvent> walRing = RingBuffer.<WALEvent>createSingleProducer(WALEvent.EVENT_FACTORY, 1<<12,
-                                                                                 new BusySpinWaitStrategy());
-        SequenceBarrier walSequenceBarrier = walRing.newBarrier();
-        BatchEventProcessor<WALEvent> walProcessor = new BatchEventProcessor<WALEvent>(
-                walRing,
-                walSequenceBarrier,
+        flushTimer = metrics.timer(name("tso", "persist", "flush"));
+        batchSizeHistogram = metrics.histogram(name("tso", "persist", "batchsize"));
+
+        persistRing = RingBuffer.<PersistEvent>createSingleProducer(
+                PersistEvent.EVENT_FACTORY, 1<<12, new BusySpinWaitStrategy());
+        SequenceBarrier persistSequenceBarrier = persistRing.newBarrier();
+        BatchEventProcessor<PersistEvent> persistProcessor = new BatchEventProcessor<PersistEvent>(
+                persistRing,
+                persistSequenceBarrier,
                 this);
-        walRing.addGatingSequences(walProcessor.getSequence());
+        persistRing.addGatingSequences(persistProcessor.getSequence());
 
-        ExecutorService walExec = Executors.newSingleThreadExecutor(
+        for (int i = 0; i < BATCH_COUNT; i++) {
+            batchPool.add(new Batch());
+        }
+
+        ExecutorService persistExec = Executors.newSingleThreadExecutor(
                 new ThreadFactoryBuilder().setNameFormat("persist-%d").build());
-        walExec.submit(walProcessor);
+        persistExec.submit(persistProcessor);
+
+        callbackExec = Executors.newSingleThreadExecutor(
+                new ThreadFactoryBuilder().setNameFormat("persist-cb-%d").build());        
     }
 
     @Override
-    public void onEvent(final WALEvent event, final long sequence, final boolean endOfBatch)
+    public void onEvent(final PersistEvent event, final long sequence, final boolean endOfBatch)
         throws Exception {
-        /*if (event.getOp() == QUEUE_RESPONSE) {
-            CommitResponse msg = new CommitResponse(event.getParam(1));
-            msg.committed = (event.getParam(0) == 1);
-            msg.commitTimestamp = event.getParam(2);
-            
-            deferredResponses.add(new DeferredResponse(event.getContext().getChannel(), msg));
-        } else {
-            dataBuffer.writeByte(event.getOp());
-            for (int i = 0; i < event.getNumParams(); i++) {
-                dataBuffer.writeLong(event.getParam(i));
-            }
+
+        if (curBatch == null) {
+            curBatch = batchPool.take();
         }
         
-        if (endOfBatch || buffer.size() > TSOState.BATCH_SIZE) {
-            flush();
-            }*/
+        switch (event.getType()) {
+        case COMMIT:
+            writer.addCommittedTransaction(event.getStartTimestamp(), event.getCommitTimestamp());
+            curBatch.addCommit(event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel());
+            break;
+        case TIMESTAMP:
+            curBatch.addTimestamp(event.getStartTimestamp(), event.getChannel());
+            break;
+        }
+        
+        if (endOfBatch || curBatch.getNumEvents() >= MAX_BATCH_SIZE) {
+            long startTime = System.nanoTime();
+            batchSizeHistogram.update(curBatch.getNumEvents());
+            ListenableFuture<Void> f = writer.flush();
+            f.addListener(new PersistedListener(f, curBatch, startTime), callbackExec);
+            curBatch = null;
+        }
     }
-    
+
     @Override
     public void persistCommit(long startTimestamp, long commitTimestamp, Channel c) {
-        reply.commitResponse(startTimestamp, commitTimestamp, c);
+        long seq = persistRing.next();
+        PersistEvent e = persistRing.get(seq);
+        PersistEvent.makePersistCommit(e, startTimestamp, commitTimestamp, c);
+        persistRing.publish(seq);
     }
     
     @Override
     public void persistAbort(long startTimestamp, Channel c) {
+        // nothing is persisted for aborts
         reply.abortResponse(startTimestamp, c);
     }
 
     @Override
     public void persistTimestamp(long startTimestamp, Channel c) {
-        reply.timestampResponse(startTimestamp, c);
+        long seq = persistRing.next();
+        PersistEvent e = persistRing.get(seq);
+        PersistEvent.makePersistTimestamp(e, startTimestamp, c);
+        persistRing.publish(seq);
     }
 
-    public final static class WALEvent {
-        final static int MAX_PARAMS = 8;
-        private byte op;
-        private int numParam = 0;
-        private long[] params = new long[MAX_PARAMS];
-                
-        private ChannelHandlerContext ctx = null;
-        
-        ChannelHandlerContext getContext() { return ctx; }
-        WALEvent setContext(ChannelHandlerContext ctx) {
-            this.ctx = ctx;
-            return this;
+    public void panic() {
+        // FIXME panic properly, shouldn't call 
+        LOG.error("Ended up in bad state, panicking");
+        System.exit(-1);
+    }
+
+    class PersistedListener implements Runnable {
+        ListenableFuture<Void> future;
+        Batch batch;
+        long startTime;
+
+        PersistedListener(ListenableFuture<Void> future, Batch batch, long startTime) {
+            this.future = future;
+            this.batch = batch;
+            this.startTime = startTime;
         }
 
-        byte getOp() { return op; }
-        WALEvent setOp(byte op) {
-            this.op = op;
-            return this;
+        @Override
+        public void run() {
+            flushTimer.update(startTime, TimeUnit.NANOSECONDS);
+
+            try {
+                future.get();
+                batch.sendReplies(reply);
+
+                batch.reset();
+                batchPool.put(batch);
+            } catch (ExecutionException ee) {
+                LOG.error("Error persisting commit batch", ee.getCause());
+                panic();
+                return;
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                LOG.error("Interrupted after persistence");
+                return;
+            }
+        }
+    }
+
+    public final static class Batch {
+        PersistEvent[] events = new PersistEvent[MAX_BATCH_SIZE];
+        int numEvents;
+
+        Batch() {
+            numEvents = 0;
+            for (int i = 0; i < MAX_BATCH_SIZE; i++) {
+                events[i] = new PersistEvent();
+            }
         }
 
-        long getParam(int index) {
-            assert (index < numParam && index >= 0);
-            return params[index];            
-        }
-        WALEvent setParam(int index, long value) {
-            assert (index < numParam && index >= 0);
-            params[index] = value;
-            return this;
+        void reset() {
+            numEvents = 0;
         }
 
-        int getNumParams() {
-            return numParam;
-        }
-        WALEvent setNumParams(int numParam) {
-            assert (numParam >= 0 && numParam <= MAX_PARAMS);
-            this.numParam = numParam;
-            return this;
+        int getNumEvents() {
+            return numEvents;
         }
 
-        public final static EventFactory<WALEvent> EVENT_FACTORY
-            = new EventFactory<WALEvent>() {
-            public WALEvent newInstance()
+        void addCommit(long startTimestamp, long commitTimestamp, Channel c) {
+            int index = numEvents++;
+            if (numEvents > MAX_BATCH_SIZE) {
+                throw new IllegalStateException("batch full");
+            }
+            PersistEvent e = events[index];
+            PersistEvent.makePersistCommit(e, startTimestamp, commitTimestamp, c);
+        }
+
+        void addTimestamp(long startTimestamp, Channel c) {
+            int index = numEvents++;
+            if (numEvents > MAX_BATCH_SIZE) {
+                throw new IllegalStateException("batch full");
+            }
+            PersistEvent e = events[index];
+            PersistEvent.makePersistTimestamp(e, startTimestamp, c);
+        }
+
+        void sendReplies(ReplyProcessor reply) {
+            for (int i = 0; i < numEvents; i++) {
+                PersistEvent e = events[i];
+                switch (e.getType()) {
+                case TIMESTAMP:
+                    reply.timestampResponse(e.getStartTimestamp(), e.getChannel());
+                    break;
+                case COMMIT:
+                    reply.commitResponse(e.getStartTimestamp(), e.getCommitTimestamp(), e.getChannel());
+                    break;
+                }
+            }
+            numEvents = 0;
+        }
+    }
+
+    public final static class PersistEvent {
+        enum Type {
+            TIMESTAMP, COMMIT
+        }
+        private Type type = null;
+        private Channel channel = null;
+
+        private long startTimestamp = 0;
+        private long commitTimestamp = 0;
+
+        static void makePersistCommit(PersistEvent e, long startTimestamp,
+                                      long commitTimestamp, Channel c) {
+            e.type = Type.COMMIT;
+            e.startTimestamp = startTimestamp;
+            e.commitTimestamp = commitTimestamp;
+            e.channel = c;
+        }
+
+        static void makePersistTimestamp(PersistEvent e, long startTimestamp, Channel c) {
+            e.type = Type.TIMESTAMP;
+            e.startTimestamp = startTimestamp;
+            e.channel = c;
+        }
+
+        Type getType() { return type; }
+        Channel getChannel() { return channel; }
+        long getStartTimestamp() { return startTimestamp; }
+        long getCommitTimestamp() { return commitTimestamp; }
+
+        public final static EventFactory<PersistEvent> EVENT_FACTORY
+            = new EventFactory<PersistEvent>() {
+            public PersistEvent newInstance()
             {
-                return new WALEvent();
+                return new PersistEvent();
             }
         };
     }

@@ -23,18 +23,11 @@ import org.junit.Test;
 
 public class TestCommit extends TSOTestBase {
    
-   @Test
-   public void testCommit() throws Exception {
-       // IKFIXME
-      // clientHandler.sendMessage(new TimestampRequest());
-      // clientHandler.receiveBootstrap();
-      // TimestampResponse tr1 = clientHandler.receiveMessage(TimestampResponse.class);
-
-      // clientHandler.sendMessage(new CommitRequest(tr1.timestamp));
-      // CommitResponse cr1 = clientHandler.receiveMessage(CommitResponse.class);
-      // assertTrue(cr1.committed);
-      // assertTrue(cr1.commitTimestamp > tr1.timestamp);
-      // assertEquals(tr1.timestamp, cr1.startTimestamp);
+    @Test(timeout=10000)
+    public void testCommit() throws Exception {
+        Long tr1 = client.createTransaction().get();
+        Long cr1 = client.commit(tr1, new RowKey[] {}).get();
+        assertTrue(cr1 > tr1);
    }
    
 }

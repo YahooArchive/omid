@@ -16,48 +16,36 @@
 
 package com.yahoo.omid.tso;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
+import com.yahoo.omid.client.TSOClient.AbortException;
+
+import java.util.concurrent.ExecutionException;
 
 import org.junit.Test;
 
 
 public class TestReadAlgorithm extends TSOTestBase {
    
-   @Test
-   public void testReadAlgorithm() throws Exception {      
-      // secondClientHandler.sendMessage(new TimestampRequest());
-      // secondClientHandler.receiveBootstrap();
-      // TimestampResponse tr1 = secondClientHandler.receiveMessage(TimestampResponse.class);
+    @Test(timeout=10000)
+    public void testReadAlgorithm() throws Exception {      
+        long tr1 = client.createTransaction().get();
+        long tr2 = client.createTransaction().get();
+        long tr3 = client.createTransaction().get();
 
-      // clientHandler.sendMessage(new TimestampRequest());
-      // clientHandler.sendMessage(new TimestampRequest());
-      // clientHandler.receiveBootstrap();
-      // TimestampResponse tr2 = clientHandler.receiveMessage(TimestampResponse.class);
-      // TimestampResponse tr3 = clientHandler.receiveMessage(TimestampResponse.class);
-      
-      // clientHandler.setAutoFullAbort(false);
-      // clientHandler.sendMessage(new CommitRequest(tr2.timestamp, new RowKey[] { r1 }));
-      // CommitResponse cr1 = clientHandler.receiveMessage(CommitResponse.class);
-      // assertTrue(cr1.committed);
-      // clientHandler.sendMessage(new CommitRequest(tr3.timestamp, new RowKey[] { r1, r2 }));
-      // CommitResponse cr2 = clientHandler.receiveMessage(CommitResponse.class);
-      // assertFalse(cr2.committed);
+        long cr1 = client.commit(tr1, new RowKey[] { r1 }).get();
+        try {
+            long cr2 = client.commit(tr3, new RowKey[] { r1, r2 }).get();
+            fail("Second commit should fail");
+        } catch (ExecutionException ee) {
+            assertEquals("Should have aborted", ee.getCause().getClass(), AbortException.class);
+        }
+        long tr4 = client2.createTransaction().get();
 
-      // secondClientHandler.sendMessage(new TimestampRequest());
-      // secondClientHandler.receiveMessage(CommittedTransactionReport.class);
-      // secondClientHandler.receiveMessage(AbortedTransactionReport.class);
-      // TimestampResponse tr4 = secondClientHandler.receiveMessage(TimestampResponse.class);
-      
-      // // Transaction half aborted
-      // assertFalse(secondClientHandler.validRead(tr3.timestamp, tr4.timestamp));
-      
-      // // Transaction committed after start timestamp
-      // assertFalse(secondClientHandler.validRead(tr2.timestamp, tr1.timestamp));
-
-      // // Transaction committed before start timestamp
-      // assertTrue(secondClientHandler.validRead(tr2.timestamp, tr4.timestamp));
-
+        assertNull("tr3 didn't commit", client2.getCommitTimestamp(tr3).get());
+        assertTrue("txn committed after start timestamp",
+                   client2.getCommitTimestamp(tr1).get() > tr2);
+        assertTrue("txn committed before start timestamp",
+                   client2.getCommitTimestamp(tr1).get() < tr4);
    }
    
 }

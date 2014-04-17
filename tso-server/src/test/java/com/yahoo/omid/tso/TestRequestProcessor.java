@@ -14,16 +14,19 @@ import com.google.common.collect.Lists;
 
 import org.jboss.netty.channel.Channel;
 
+import com.codahale.metrics.MetricRegistry;
+
 import static org.mockito.Mockito.*;
 import org.mockito.ArgumentCaptor;
 
 public class TestRequestProcessor {
     private static final Logger LOG = LoggerFactory.getLogger(TestRequestProcessor.class);
 
-    @Test
+    @Test(timeout=10000)
     public void testTimestamp() throws Exception {
         PersistenceProcessor persist = mock(PersistenceProcessor.class);
-        RequestProcessor proc = new RequestProcessorImpl(0L, 1000, persist);
+        RequestProcessor proc = new RequestProcessorImpl(new MetricRegistry(),
+                                                         new TimestampOracle(), persist, 1000);
 
         proc.timestampRequest(null);
         ArgumentCaptor<Long> firstTScapture = ArgumentCaptor.forClass(Long.class);
@@ -38,12 +41,13 @@ public class TestRequestProcessor {
         }
     }
 
-    @Test
+    @Test(timeout=10000)
     public void testCommit() throws Exception {
         List<Long> rows = Lists.newArrayList(1L, 20L, 203L);
 
         PersistenceProcessor persist = mock(PersistenceProcessor.class);
-        RequestProcessor proc = new RequestProcessorImpl(0L, 1000, persist);
+        RequestProcessor proc = new RequestProcessorImpl(new MetricRegistry(),
+                                                         new TimestampOracle(), persist, 1000);
         proc.timestampRequest(null);
         ArgumentCaptor<Long> TScapture = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(1)).persistTimestamp(
