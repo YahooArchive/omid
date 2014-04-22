@@ -44,13 +44,7 @@ class CommitHashMap {
 
     private static final Logger LOG = LoggerFactory.getLogger(CommitHashMap.class);
 
-
-    private long largestDeletedTimestamp;
-    private final Cache startCommitMapping;
     private final Cache rowsCommitMapping;
-
-    private AtomicLong addHalfAbortedCount = new AtomicLong(0);
-    private AtomicLong removeHalfAbortedCount = new AtomicLong(0);
 
     /**
      * Constructs a new, empty hashtable with a default size of 1000
@@ -72,9 +66,7 @@ class CommitHashMap {
             throw new IllegalArgumentException("Illegal size: " + size);
         }
 
-        this.startCommitMapping = new LongCache(size, 16);
         this.rowsCommitMapping = new LongCache(size, 32);
-        this.largestDeletedTimestamp = largestDeletedTimestamp;
     }
 
     public long getLatestWriteForRow(long hash) {
@@ -83,49 +75,5 @@ class CommitHashMap {
 
     public long putLatestWriteForRow(long hash, long commitTimestamp) {
         return rowsCommitMapping.set(hash, commitTimestamp);
-    }
-
-    public long getCommittedTimestamp(long startTimestamp) {
-        return startCommitMapping.get(startTimestamp);
-    }
-
-    public long setCommittedTimestamp(long startTimestamp, long commitTimestamp) {
-        return startCommitMapping.set(startTimestamp, commitTimestamp);
-    }
-
-    // set of half aborted transactions
-    // TODO: set the initial capacity in a smarter way
-    Set<AbortedTransaction> halfAborted = Collections.newSetFromMap(new ConcurrentHashMap<AbortedTransaction, Boolean>(
-            10000));
-
-    private AtomicLong abortedSnapshot = new AtomicLong();
-
-    long getAndIncrementAbortedSnapshot() {
-        return abortedSnapshot.getAndIncrement();
-    }
-
-    // add a new half aborted transaction
-    void setHalfAborted(long startTimestamp) {
-        long currentVal = addHalfAbortedCount.incrementAndGet();
-        if ((currentVal % 10000) == 0) {
-            LOG.debug("addHalfAbortedCount value" + currentVal);
-        }
-        halfAborted.add(new AbortedTransaction(startTimestamp, abortedSnapshot.get()));
-    }
-
-    // call when a half aborted transaction is fully aborted
-    void setFullAborted(long startTimestamp) {
-        long currentVal = removeHalfAbortedCount.incrementAndGet();
-        if ((currentVal % 10000) == 0) {
-            LOG.debug("removeHalfAbortedCount value" + currentVal);
-        }
-        if (!halfAborted.remove(new AbortedTransaction(startTimestamp, 0))) {
-            LOG.error("TX not found! Cannot clean stuff for transaction with ST: " + startTimestamp);
-        }
-    }
-
-    // query to see if a transaction is half aborted
-    boolean isHalfAborted(long startTimestamp) {
-        return halfAborted.contains(new AbortedTransaction(startTimestamp, 0));
     }
 }

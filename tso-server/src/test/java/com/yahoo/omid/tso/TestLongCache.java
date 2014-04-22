@@ -16,7 +16,6 @@ public class TestLongCache {
 
 
     final int entries = 1000;
-    Histogram hist = new Histogram(entries * 10);
 
     @Test(timeout=10000)
     public void testEntriesAge() {
@@ -55,7 +54,6 @@ public class TestLongCache {
             double oldAvg = tempAvg;
             tempAvg += (gap - tempAvg) / removals;
             tempStdDev += (gap - oldAvg) * (gap - tempAvg);
-            hist.add(gap);
         }
         long elapsed = System.nanoTime() - time;
         LOG.info("Elapsed (ms): " + (elapsed / (double)1000));

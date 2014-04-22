@@ -7,7 +7,6 @@ import java.util.Random;
 
 import com.yahoo.omid.tso.Cache;
 import com.yahoo.omid.tso.LongCache;
-import com.yahoo.omid.tso.util.GuavaCache;
 
 public class CacheEvaluation {
 
@@ -90,7 +89,7 @@ public class CacheEvaluation {
         }
         {
             PrintWriter writer = new PrintWriter("guava.out", "UTF-8");
-            new CacheEvaluation().testEntriesAge(new GuavaCache(ENTRIES), writer);
+
             writer.close();
         }
 

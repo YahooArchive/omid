@@ -19,11 +19,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 
-import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
-import com.yahoo.omid.tso.persistence.LoggerException;
-import com.yahoo.omid.tso.persistence.LoggerException.Code;
-import com.yahoo.omid.tso.persistence.StateLogger;
-
 import com.yahoo.omid.committable.CommitTable;
 
 import com.lmax.disruptor.EventFactory;
@@ -51,7 +46,8 @@ class PersistenceProcessorImpl
 
     // should probably use a ringbuffer for this too
     final static int MAX_BATCH_SIZE = 1000;
-    final static int BATCH_COUNT = 3000; // triple buffering
+    final static int BATCH_COUNT = 1000;
+
     final BlockingQueue<Batch> batchPool = new ArrayBlockingQueue<Batch>(BATCH_COUNT);
     Batch curBatch = null;
 
@@ -174,7 +170,7 @@ class PersistenceProcessorImpl
     }
 
     public void panic() {
-        // FIXME panic properly, shouldn't call 
+        // FIXME panic properly, shouldn't call system exit directly
         LOG.error("Ended up in bad state, panicking");
         System.exit(-1);
     }

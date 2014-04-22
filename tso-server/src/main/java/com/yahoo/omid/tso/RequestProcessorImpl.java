@@ -14,8 +14,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import org.jboss.netty.channel.Channel;
 
-import com.yahoo.omid.tso.persistence.LoggerProtocol;
-
 import com.codahale.metrics.MetricRegistry;
 
 import com.lmax.disruptor.EventFactory;

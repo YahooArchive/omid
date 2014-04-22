@@ -28,8 +28,6 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.yahoo.omid.tso.persistence.LoggerProtocol;
-
 /**
  * The Timestamp Oracle that gives monotonically increasing timestamps
  * 

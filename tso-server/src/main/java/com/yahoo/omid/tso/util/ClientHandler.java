@@ -46,9 +46,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.client.TSOFuture;
 
-import com.yahoo.omid.tso.Committed;
 import com.yahoo.omid.tso.RowKey;
-import com.yahoo.omid.tso.TSOMessage;
 
 import com.codahale.metrics.MetricRegistry;
 import static com.codahale.metrics.MetricRegistry.name;
@@ -115,13 +113,6 @@ public class ClientHandler {
     private int outstandingTransactions = 0;
 
 
-    private long getSizeCom() {
-        return committed.getSize();
-    }
-
-    private long getSizeAborted() {
-        return aborted.size() * 8 * 8;
-    }
 
     private java.util.Random rnd;
     /**
@@ -138,9 +129,6 @@ public class ClientHandler {
      * Return value for the caller
      */
     final BlockingQueue<Boolean> answer = new LinkedBlockingQueue<Boolean>();
-
-    private Committed committed = new Committed();
-    private Set<Long> aborted = Collections.synchronizedSet(new HashSet<Long>(100000));
 
     /*
      * For statistial purposes

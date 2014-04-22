@@ -47,10 +47,6 @@ import com.codahale.metrics.MetricRegistry;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.DelayNullCommitTable;
 import com.yahoo.omid.metrics.MetricsUtils;
-import com.yahoo.omid.tso.persistence.BookKeeperStateBuilder;
-import com.yahoo.omid.tso.persistence.FileSystemTimestampOnlyStateBuilder;
-import com.yahoo.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
-import com.yahoo.omid.tso.persistence.LoggerProtocol;
 
 import com.lmax.disruptor.*;
 
