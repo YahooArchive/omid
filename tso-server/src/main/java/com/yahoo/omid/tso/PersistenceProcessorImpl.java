@@ -70,8 +70,12 @@ class PersistenceProcessorImpl
                         return batchPool.size();
                     }
             });
-        WaitStrategy timeoutStrategy = new TimeoutBlockingWaitStrategy(BATCH_TIMEOUT_MS,
-                                                                       TimeUnit.MILLISECONDS);
+
+        // FIXME consider putting something more like a phased strategy here to avoid
+        // all the syscalls
+        final TimeoutBlockingWaitStrategy timeoutStrategy
+            = new TimeoutBlockingWaitStrategy(BATCH_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+
         persistRing = RingBuffer.<PersistEvent>createSingleProducer(
                 PersistEvent.EVENT_FACTORY, 1<<12, timeoutStrategy);
         SequenceBarrier persistSequenceBarrier = persistRing.newBarrier();
