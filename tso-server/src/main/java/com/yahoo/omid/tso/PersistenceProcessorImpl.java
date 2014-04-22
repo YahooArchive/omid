@@ -119,7 +119,6 @@ class PersistenceProcessorImpl
     // no event has been received in the timeout period
     @Override
     public void onTimeout(final long sequence) {
-        LOG.info("Timeout");
         maybeFlushBatch();
     }
 
