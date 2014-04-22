@@ -1,8 +1,6 @@
 package com.yahoo.omid.tso;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.number.OrderingComparison.greaterThan;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Random;
 
@@ -61,6 +59,7 @@ public class TestLongCache {
         double avgGap = totalAge / (double) removals;
         LOG.info("Avg gap: " + (tempAvg ));
         LOG.info("Std dev gap: " + Math.sqrt((tempStdDev / entries)));
-        assertThat(avgGap, is(greaterThan(entries * .6 )));
+        assertTrue("avgGap should be greater than entries * 0.6",
+                   avgGap > entries * 0.6);
     }
 }

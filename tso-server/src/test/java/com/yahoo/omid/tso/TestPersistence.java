@@ -16,8 +16,8 @@
 
 package com.yahoo.omid.tso;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.number.OrderingComparison.greaterThan;
+//import static org.hamcrest.CoreMatchers.is;
+//import static org.hamcrest.number.OrderingComparison.greaterThan;
 
 import static org.junit.Assert.*;
 

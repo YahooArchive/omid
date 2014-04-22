@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.apache.bookkeeper.util.LocalBookKeeper;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.BaseConfiguration;
 
