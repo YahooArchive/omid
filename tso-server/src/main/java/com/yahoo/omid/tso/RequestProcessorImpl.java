@@ -204,11 +204,11 @@ class RequestProcessorImpl
         }
 
         @Override
-        public Iterator iterator() {
+        public Iterator<Long> iterator() {
             if (rowCollection != null) {
                 return rowCollection.iterator();
             }
-            return new Iterator() {
+            return new Iterator<Long>() {
                 int i = 0;
 
                 @Override
