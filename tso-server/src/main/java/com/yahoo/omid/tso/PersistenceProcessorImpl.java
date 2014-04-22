@@ -35,12 +35,14 @@ import com.codahale.metrics.MetricRegistry;
 import static com.codahale.metrics.MetricRegistry.name;
 import com.codahale.metrics.Timer;
 import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Gauge;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 class PersistenceProcessorImpl
-    implements EventHandler<PersistenceProcessorImpl.PersistEvent>, PersistenceProcessor {
+    implements EventHandler<PersistenceProcessorImpl.PersistEvent>,
+               PersistenceProcessor, TimeoutHandler {
     private static final Logger LOG = LoggerFactory.getLogger(PersistenceProcessor.class);
 
     final ReplyProcessor reply;
@@ -56,17 +58,26 @@ class PersistenceProcessorImpl
     final Timer flushTimer;
     final Histogram batchSizeHistogram;
     final ExecutorService callbackExec;
+    long lastFlush = System.nanoTime();
+    final static int BATCH_TIMEOUT_MS = 5;
 
     PersistenceProcessorImpl(MetricRegistry metrics,
                              CommitTable.Writer writer, ReplyProcessor reply) {
         this.reply = reply;
-        this.writer = writer;        
+        this.writer = writer;
 
         flushTimer = metrics.timer(name("tso", "persist", "flush"));
         batchSizeHistogram = metrics.histogram(name("tso", "persist", "batchsize"));
-
+        metrics.register(name("tso", "persist", "batchPool"), new Gauge<Integer>() {
+                    @Override
+                    public Integer getValue() {
+                        return batchPool.size();
+                    }
+            });
+        WaitStrategy timeoutStrategy = new TimeoutBlockingWaitStrategy(BATCH_TIMEOUT_MS,
+                                                                       TimeUnit.MILLISECONDS);
         persistRing = RingBuffer.<PersistEvent>createSingleProducer(
-                PersistEvent.EVENT_FACTORY, 1<<12, new BusySpinWaitStrategy());
+                PersistEvent.EVENT_FACTORY, 1<<12, timeoutStrategy);
         SequenceBarrier persistSequenceBarrier = persistRing.newBarrier();
         BatchEventProcessor<PersistEvent> persistProcessor = new BatchEventProcessor<PersistEvent>(
                 persistRing,
@@ -103,12 +114,39 @@ class PersistenceProcessorImpl
             curBatch.addTimestamp(event.getStartTimestamp(), event.getChannel());
             break;
         }
-        
-        if (endOfBatch || curBatch.getNumEvents() >= MAX_BATCH_SIZE) {
-            long startTime = System.nanoTime();
+
+        if (curBatch.getNumEvents() >= MAX_BATCH_SIZE || endOfBatch) {
+            maybeFlushBatch();
+        }
+    }
+
+    // no event has been received in the timeout period
+    @Override
+    public void onTimeout(final long sequence) {
+        LOG.info("Timeout");
+        maybeFlushBatch();
+    }
+
+    /**
+     * Flush the current batch if it is larger than the max batch size,
+     * or BATCH_TIMEOUT_MS milliseconds have elapsed since the last flush.
+     */
+    private void maybeFlushBatch() {
+        if (curBatch == null) {
+            return;
+        }
+        boolean flushNow = false;
+        if (curBatch.getNumEvents() >= MAX_BATCH_SIZE) {
+            flushNow = true;
+        } else if ((System.nanoTime() - lastFlush) > TimeUnit.MILLISECONDS.toNanos(BATCH_TIMEOUT_MS)) {
+            flushNow = true;
+        }
+
+        if (flushNow) {
+            lastFlush = System.nanoTime();
             batchSizeHistogram.update(curBatch.getNumEvents());
             ListenableFuture<Void> f = writer.flush();
-            f.addListener(new PersistedListener(f, curBatch, startTime), callbackExec);
+            f.addListener(new PersistedListener(f, curBatch, lastFlush), callbackExec);
             curBatch = null;
         }
     }
