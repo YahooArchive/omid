@@ -79,7 +79,11 @@ public class TSOTestBase {
             .withCommitTableClient(commitTable).build();
 
     }
-   
+
+    public TSOClient getClient() {
+        return client;
+    }
+
     public static void teardownClient() {
         // FIXME add client cleanup
     }
@@ -117,16 +121,14 @@ public class TSOTestBase {
         // secondClientHandler.clearMessages();
         // secondClientHandler.setAutoFullAbort(true);
       
-        // tso.stop();
-        // if (tsoExecutor != null) {
-        //     tsoExecutor.shutdownNow();
-        // }
-        // tso = null;
-        // teardownClient();
+        tso.stop();
+        if (tsoExecutor != null) {
+            tsoExecutor.shutdownNow();
+        }
+        tso = null;
 
-        // TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
-      
-        Thread.sleep(10);
+        TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
+        
     }
 
     protected boolean recoveryEnabled() {

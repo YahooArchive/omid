@@ -13,10 +13,10 @@
 	 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.yahoo.omid</groupId>
-  <artifactId>tso-server</artifactId>
+  <artifactId>hbase-client</artifactId>
   <packaging>jar</packaging>
   <version>2.0-SNAPSHOT</version>
-  <name>Omid TSO Server</name>
+  <name>Omid HBase Client</name>
   <url>http://maven.apache.org</url>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -105,21 +105,10 @@
 	    </lifecycleMappingMetadata>
 	  </configuration>
 	</plugin>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-jar-plugin</artifactId>
-          <version>2.2</version>
-          <executions>
-            <execution>
-              <goals>
-                <goal>test-jar</goal>
-              </goals>
-            </execution>
-          </executions>
-        </plugin>
       </plugins>
     </pluginManagement>
   </build>
+
   <dependencies>
     <dependency>
       <groupId>com.yahoo.omid</groupId>
@@ -130,6 +119,42 @@
       <groupId>com.yahoo.omid</groupId>
       <artifactId>commit-table</artifactId>
       <version>2.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>com.yahoo.omid</groupId>
+      <artifactId>tso-server</artifactId>
+      <version>2.0-SNAPSHOT</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.yahoo.omid</groupId>
+      <artifactId>tso-server</artifactId>
+      <version>2.0-SNAPSHOT</version>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hbase</groupId>
+      <artifactId>hbase</artifactId>
+      <version>0.94.18</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hbase</groupId>
+      <artifactId>hbase</artifactId>
+      <version>0.94.18</version>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-core</artifactId>
+      <version>1.0.4</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-test</artifactId>
+      <version>1.0.4</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
@@ -152,7 +177,6 @@
       <groupId>com.beust</groupId>
       <artifactId>jcommander</artifactId>
       <version>1.35</version>
-      <type>jar</type>
       <scope>compile</scope>
     </dependency>
     <dependency>
