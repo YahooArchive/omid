@@ -9,97 +9,53 @@
 	OF ANY KIND, either express or implied. See the License for the specific 
 	language governing permissions and limitations under the License. -->
 
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.yahoo.omid</groupId>
+    <artifactId>omid</artifactId>
+    <version>2.0-SNAPSHOT</version>
+  </parent>
+
   <groupId>com.yahoo.omid</groupId>
   <artifactId>tso-client</artifactId>
   <packaging>jar</packaging>
   <version>2.0-SNAPSHOT</version>
   <name>Omid TSO Client</name>
-  <url>http://maven.apache.org</url>
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
-
-  <build>
-    <plugins>
-      <plugin>
-	<artifactId>maven-compiler-plugin</artifactId>
-	<version>3.1</version>
-	<configuration>
-	  <source>1.6</source>
-	  <target>1.6</target>
-	</configuration>
-      </plugin>
-    </plugins>
-    <pluginManagement>
-      <plugins>
-	<!--This plugin's configuration is used to store Eclipse m2e settings 
-	    only. It has no influence on the Maven build itself. -->
-	<plugin>
-	  <groupId>org.eclipse.m2e</groupId>
-	  <artifactId>lifecycle-mapping</artifactId>
-	  <version>1.0.0</version>
-	  <configuration>
-	    <lifecycleMappingMetadata>
-	      <pluginExecutions>
-		<pluginExecution>
-		  <pluginExecutionFilter>
-		    <groupId>
-		      org.apache.maven.plugins
-		    </groupId>
-		    <artifactId>
-		      maven-dependency-plugin
-		    </artifactId>
-		    <versionRange>[2.1,)</versionRange>
-		    <goals>
-		      <goal>copy-dependencies</goal>
-		    </goals>
-		  </pluginExecutionFilter>
-		  <action>
-		    <ignore></ignore>
-		  </action>
-		</pluginExecution>
-	      </pluginExecutions>
-	    </lifecycleMappingMetadata>
-	  </configuration>
-	</plugin>
-      </plugins>
-    </pluginManagement>
-  </build>
 
   <dependencies>
     <dependency>
       <groupId>com.yahoo.omid</groupId>
       <artifactId>commit-table</artifactId>
-      <version>2.0-SNAPSHOT</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.jboss.netty</groupId>
       <artifactId>netty</artifactId>
-      <version>3.2.6.Final</version>
+      <version>${netty.version}</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>commons-configuration</groupId>
       <artifactId>commons-configuration</artifactId>
-      <version>1.10</version>
+      <version>${commons.conf.version}</version>
     </dependency>
     <dependency>
       <groupId>com.codahale.metrics</groupId>
       <artifactId>metrics-core</artifactId>
-      <version>3.0.1</version>
+      <version>${metrics.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>14.0</version>
+      <version>${guava.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
-      <version>2.4.1</version>
+      <version>${protobuf.version}</version>
       <scope>compile</scope>
     </dependency>
   </dependencies>

@@ -12,42 +12,20 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.yahoo.omid</groupId>
+    <artifactId>omid</artifactId>
+    <version>2.0-SNAPSHOT</version>
+  </parent>
+
   <groupId>com.yahoo.omid</groupId>
   <artifactId>tso-server</artifactId>
   <packaging>jar</packaging>
   <version>2.0-SNAPSHOT</version>
   <name>Omid TSO Server</name>
-  <url>http://maven.apache.org</url>
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
 
   <build>
     <plugins>
-      <plugin>
-	<groupId>org.apache.maven.plugins</groupId>
-	<artifactId>maven-surefire-plugin</artifactId>
-	<version>2.9</version>
-	<configuration>
-	  <argLine>-Xmx1G</argLine>
-	  <forkMode>pertest</forkMode>
-	  <argLine>-Djava.library.path=${basedir}/lib</argLine>
-	  <redirectTestOutputToFile>true</redirectTestOutputToFile>
-	</configuration>
-      </plugin>
-      <plugin>
-	<artifactId>maven-compiler-plugin</artifactId>
-	<version>3.1</version>
-	<configuration>
-	  <source>1.6</source>
-	  <target>1.6</target>
-          <compilerArguments>
-	    <Werror />
-	    <Xlint:deprecation />
-	    <Xlint:unchecked />
-	  </compilerArguments>
-	</configuration>
-      </plugin>
       <plugin>
 	<artifactId>maven-dependency-plugin</artifactId>
 	<executions>
@@ -72,163 +50,86 @@
 	  </descriptors>
 	</configuration>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>2.2</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
-    <pluginManagement>
-      <plugins>
-	<!--This plugin's configuration is used to store Eclipse m2e settings 
-	    only. It has no influence on the Maven build itself. -->
-	<plugin>
-	  <groupId>org.eclipse.m2e</groupId>
-	  <artifactId>lifecycle-mapping</artifactId>
-	  <version>1.0.0</version>
-	  <configuration>
-	    <lifecycleMappingMetadata>
-	      <pluginExecutions>
-		<pluginExecution>
-		  <pluginExecutionFilter>
-		    <groupId>
-		      org.apache.maven.plugins
-		    </groupId>
-		    <artifactId>
-		      maven-dependency-plugin
-		    </artifactId>
-		    <versionRange>[2.1,)</versionRange>
-		    <goals>
-		      <goal>copy-dependencies</goal>
-		    </goals>
-		  </pluginExecutionFilter>
-		  <action>
-		    <ignore></ignore>
-		  </action>
-		</pluginExecution>
-	      </pluginExecutions>
-	    </lifecycleMappingMetadata>
-	  </configuration>
-	</plugin>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-jar-plugin</artifactId>
-          <version>2.2</version>
-          <executions>
-            <execution>
-              <goals>
-                <goal>test-jar</goal>
-              </goals>
-            </execution>
-          </executions>
-        </plugin>
-      </plugins>
-    </pluginManagement>
   </build>
   <dependencies>
     <dependency>
       <groupId>com.yahoo.omid</groupId>
       <artifactId>tso-client</artifactId>
-      <version>2.0-SNAPSHOT</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>com.yahoo.omid</groupId>
       <artifactId>commit-table</artifactId>
-      <version>2.0-SNAPSHOT</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.8.2</version>
+      <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>
-      <version>1.2.14</version>
+      <version>${log4j.version}</version>
     </dependency>
     <dependency>
       <groupId>org.jboss.netty</groupId>
       <artifactId>netty</artifactId>
-      <version>3.2.6.Final</version>
+      <version>${netty.version}</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.beust</groupId>
       <artifactId>jcommander</artifactId>
-      <version>1.35</version>
+      <version>${jcommander.version}</version>
       <type>jar</type>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.codahale.metrics</groupId>
       <artifactId>metrics-core</artifactId>
-      <version>3.0.1</version>
+      <version>${metrics.version}</version>
     </dependency>
     <dependency>
       <groupId>com.codahale.metrics</groupId>
       <artifactId>metrics-graphite</artifactId>
-      <version>3.0.1</version>
+      <version>${metrics.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>14.0</version>
+      <version>${guava.version}</version>
     </dependency>
     <dependency>
       <groupId>com.lmax</groupId>
       <artifactId>disruptor</artifactId>
-      <version>3.2.0</version>
+      <version>${disruptor.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
-      <version>2.4.1</version>
+      <version>${protobuf.version}</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-all</artifactId>
-      <version>1.9.5</version>
+      <version>${mockito.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
-  <profiles>
-    <profile>
-      <id>protobuf</id>
-      <build>
-        <plugins>
-          <plugin>
-            <artifactId>maven-antrun-plugin</artifactId>
-            <executions>
-              <execution>
-                <phase>generate-sources</phase>
-                <id>default-cli</id>
-                <configuration>
-                  <target>
-                    <exec executable="protoc" failonerror="true">
-                      <arg value="--java_out=src/main/java" />
-                      <arg value="src/main/proto/TSOProto.proto" />
-                    </exec>
-                  </target>
-                </configuration>
-                <goals>
-                  <goal>run</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-    <profile>
-      <id>consoleTestOutput</id>
-      <build>
-	<plugins>
-	  <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-surefire-plugin</artifactId>
-            <configuration>
-	      <redirectTestOutputToFile>false</redirectTestOutputToFile>
-            </configuration>
-	  </plugin>
-	</plugins>
-      </build>
-    </profile>
-  </profiles>
 </project>
