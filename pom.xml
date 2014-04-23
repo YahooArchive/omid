@@ -34,6 +34,7 @@
     <metrics.version>3.0.1</metrics.version>
     <jcommander.version>1.35</jcommander.version>
     <commons.conf.version>1.10</commons.conf.version>
+    <clover.version>3.3.0</clover.version>
   </properties>
 
   <modules>
@@ -120,6 +121,24 @@
             </configuration>
 	  </plugin>
 	</plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>clover</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>com.atlassian.maven.plugins</groupId>
+            <artifactId>maven-clover2-plugin</artifactId>
+            <version>${clover.version}</version>
+            <configuration>
+              <targetPercentage>${clover.coverage.percent}</targetPercentage>
+              <generateHtml>true</generateHtml>
+              <generateXml>true</generateXml>
+              <baseDir>${project.basedir}</baseDir>
+            </configuration>
+          </plugin>
+        </plugins>
       </build>
     </profile>
   </profiles>

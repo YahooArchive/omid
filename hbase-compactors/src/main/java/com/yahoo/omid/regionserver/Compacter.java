@@ -35,6 +35,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.client.ColumnWrapper;
 import com.yahoo.omid.tso.messages.MinimumTimestamp;
 
+
 /**
  * Garbage collector for stale data: triggered upon HBase compactions,
  * it removes data from uncommitted transactions older than the
