@@ -25,7 +25,7 @@
     <hadoop.version>1.0.4</hadoop.version>
     <guava.version>14.0</guava.version>
     <junit.version>4.8.2</junit.version>
-    <slf4j.version></slf4j.version>
+    <slf4j.version>1.7.7</slf4j.version>
     <log4j.version>1.2.14</log4j.version>
     <netty.version>3.2.6.Final</netty.version>
     <protobuf.version>2.4.1</protobuf.version>
