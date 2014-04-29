@@ -24,6 +24,9 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ExecutionException;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.HTable;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.AdaptiveReceiveBufferSizePredictorFactory;
 import org.jboss.netty.channel.Channel;
@@ -47,6 +50,7 @@ import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.DelayNullCommitTable;
 import com.yahoo.omid.metrics.MetricsUtils;
 import com.yahoo.omid.tso.TimestampOracle.TimestampStorage;
+import com.yahoo.omid.tso.hbase.HBaseTimestampStorage;
 
 import static com.yahoo.omid.tso.TimestampOracle.InMemoryTimestampStorage;
 
@@ -59,27 +63,41 @@ import com.lmax.disruptor.*;
 public class TSOServer implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(TSOServer.class);
 
-    private TSOServerConfig config;
-    private CommitTable commitTable;
+    private final TSOServerConfig config;
+    private final CommitTable commitTable;
+    private final TimestampStorage timestampStorage;
+    
     private boolean finish = false;
     private final Object lock = new Object();
 
-    public TSOServer(TSOServerConfig config, CommitTable commitTable) {
+
+    public TSOServer(TSOServerConfig config, CommitTable commitTable, TimestampStorage timestampStorage) {
         this.config = config;
         this.commitTable = commitTable;
+        this.timestampStorage = timestampStorage;
     }
 
     public static void main(String[] args) throws Exception {
         TSOServerConfig config = TSOServerConfig.parseConfig(args);
-
-        new TSOServer(config, new DelayNullCommitTable(1, TimeUnit.SECONDS)).run();
+        
+        CommitTable commitTable;
+        TimestampStorage timestampStorage;
+        if (config.isHBase()) {
+            commitTable = null;// new HBaseCommitTable(1, TimeUnit.SECONDS);
+            Configuration hbaseConfig = HBaseConfiguration.create();
+            HTable timestampTable = new HTable(hbaseConfig , config.getHBaseTimestampTable());
+            timestampStorage = new HBaseTimestampStorage(timestampTable);
+        } else {
+            commitTable = new DelayNullCommitTable(1, TimeUnit.SECONDS);
+            timestampStorage = new InMemoryTimestampStorage();
+        }
+        new TSOServer(config, commitTable, timestampStorage).run();
     }
 
     @Override
     public void run() {
         MetricRegistry metrics = MetricsUtils.initMetrics(config.getMetrics());
 
-        TimestampStorage timestampStorage = new InMemoryTimestampStorage();
         TimestampOracle timestampOracle;
         try {
             timestampOracle = new TimestampOracle(metrics, timestampStorage);

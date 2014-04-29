@@ -92,9 +92,8 @@ public class TSOTestBase {
     public void setupTSO() throws Exception {
         LOG.info("Starting TSO");
         CommitTable commitTable = new InMemoryCommitTable();
-        tso = new TSOServer(TSOServerConfig.configFactory(1234, 0, recoveryEnabled(),
-                                    4, 2, new String("localhost:2181"), 1000, 1000),
-                            commitTable);
+        tso = new TSOServer(TSOServerConfig.configFactory(1234, 1000),
+                            commitTable, new TimestampOracle.InMemoryTimestampStorage());
 
         tsoExecutor = Executors.newSingleThreadExecutor(
                 new ThreadFactoryBuilder().setNameFormat("tsomain-%d").build());
