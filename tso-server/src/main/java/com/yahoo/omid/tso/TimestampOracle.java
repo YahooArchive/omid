@@ -16,17 +16,15 @@
 
 package com.yahoo.omid.tso;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
+import static com.codahale.metrics.MetricRegistry.name;
+
 import java.io.IOException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.MetricRegistry;
 
 /**
  * The Timestamp Oracle that gives monotonically increasing timestamps
@@ -39,86 +37,74 @@ public class TimestampOracle {
 
     private static final Logger LOG = LoggerFactory.getLogger(TimestampOracle.class);
 
+    public interface TimestampStorage {
+
+        public void updateMaxTimestamp(long previousMaxTimestamp, long newMaxTimestamp) throws IOException;
+
+        public long getMaxTimestamp() throws IOException;
+    }
+
+    public static class InMemoryTimestampStorage implements TimestampStorage {
+
+        long maxTimestamp = 0;
+
+        @Override
+        public void updateMaxTimestamp(long previousMaxTimestamp, long nextMaxTimestamp) {
+            maxTimestamp = nextMaxTimestamp;
+        }
+
+        @Override
+        public long getMaxTimestamp() {
+            return maxTimestamp;
+        }
+
+    }
 
     private static final long TIMESTAMP_BATCH = 100000;
 
-    private long maxTimestamp = 1;
+    private long lastTimestamp;
 
-    /**
-     * the last returned timestamp
-     */
-    private long last;
-    private long first;
+    private long maxTimestamp;
 
-    private boolean enabled;    
+    private TimestampStorage tsStorage;    
 
     /**
      * Must be called holding an exclusive lock
      * 
      * return the next timestamp
      */
-    public long next(PersistenceProcessor wal) throws IOException {
-        last++;
-        if (last == maxTimestamp) {
+    public long next() throws IOException {
+        lastTimestamp++;
+        if (lastTimestamp == maxTimestamp) {
+            long previousMaxTimestamp = maxTimestamp;
             maxTimestamp += TIMESTAMP_BATCH;
-            // FIXMEwal.logEvent(LoggerProtocol.TIMESTAMPORACLE, maxTimestamp);
-            /*if (LOG.isTraceEnabled()) {
-               LOG.trace("Logging TimestampOracle " + maxTimestamp);
-               }*/
+            tsStorage.updateMaxTimestamp(previousMaxTimestamp, maxTimestamp);
         }
-        /*if(LOG.isTraceEnabled()){
-            LOG.trace("Next timestamp: " + last);
-            }*/
-        
-        return last;
+
+        return lastTimestamp;
     }
 
-    public long get() {
-        return last;
+    public long getLast() {
+        return lastTimestamp;
     }
-
-    public long first() {
-        return first;
-    }
-
-    //private static final String BACKUP = "/tmp/tso-persist.backup";
-    //private static final String PERSIST = "/tmp/tso-persist.txt";
-
     
     /**
      * Constructor
      */
-    public TimestampOracle(){
-        this.enabled = false;
-        this.last = 0;
-    }
-    
-    /**
-     * Starts from scratch.
-     */
-    public void initialize(){
-       this.enabled = true;
-    }
-    
-    /**
-     * Starts with a given timestamp.
-     * 
-     * @param timestamp
-     */
-    public void initialize(long timestamp){
-        this.last = this.first = Math.max(this.last, timestamp + TIMESTAMP_BATCH);
-        LOG.info("Initializing timestamp oracle with timestamp " + this.last);
-        maxTimestamp = this.first + 1; // max timestamp will be persisted
-        LOG.info("First: " + this.first + ", Last: " + this.last);
-        initialize();
-    }
-
-    public void stop() {
-        this.enabled = false;
+    public TimestampOracle(MetricRegistry metrics, TimestampStorage tsStorage) throws IOException {
+        this.tsStorage = tsStorage;
+        this.lastTimestamp = this.maxTimestamp = tsStorage.getMaxTimestamp();
+        metrics.register(name("tso", "maxTimestamp"), new Gauge<Long>() {
+            @Override
+            public Long getValue() {
+                return maxTimestamp;
+            }
+        });
+        LOG.info("Initializing timestamp oracle with timestamp {}", this.lastTimestamp);
     }
 
     @Override
     public String toString() {
-        return "TimestampOracle: " + last;
+        return String.format("TimestampOracle -> LastTimestamp: %d, MaxTimestamp: %d", lastTimestamp, maxTimestamp);
     }
 }

@@ -5,28 +5,36 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
 import static org.junit.Assert.assertTrue;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+
 import com.google.common.collect.Lists;
+import com.yahoo.omid.tso.TimestampOracle.TimestampStorage;
 
 import org.jboss.netty.channel.Channel;
 
 import com.codahale.metrics.MetricRegistry;
 
 import static org.mockito.Mockito.*;
+
 import org.mockito.ArgumentCaptor;
 
 public class TestRequestProcessor {
+
     private static final Logger LOG = LoggerFactory.getLogger(TestRequestProcessor.class);
+
+    private MetricRegistry metrics = new MetricRegistry();
 
     @Test(timeout=10000)
     public void testTimestamp() throws Exception {
         PersistenceProcessor persist = mock(PersistenceProcessor.class);
-        RequestProcessor proc = new RequestProcessorImpl(new MetricRegistry(),
-                                                         new TimestampOracle(), persist, 1000);
+        TimestampOracle timestampOracle = new TimestampOracle(metrics, new TimestampOracle.InMemoryTimestampStorage());
+        RequestProcessor proc = new RequestProcessorImpl(metrics, timestampOracle, persist, 1000);
 
         proc.timestampRequest(null);
         ArgumentCaptor<Long> firstTScapture = ArgumentCaptor.forClass(Long.class);
@@ -46,8 +54,8 @@ public class TestRequestProcessor {
         List<Long> rows = Lists.newArrayList(1L, 20L, 203L);
 
         PersistenceProcessor persist = mock(PersistenceProcessor.class);
-        RequestProcessor proc = new RequestProcessorImpl(new MetricRegistry(),
-                                                         new TimestampOracle(), persist, 1000);
+        TimestampOracle timestampOracle = new TimestampOracle(metrics, new TimestampOracle.InMemoryTimestampStorage());
+        RequestProcessor proc = new RequestProcessorImpl(metrics, timestampOracle, persist, 1000);
         proc.timestampRequest(null);
         ArgumentCaptor<Long> TScapture = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(1)).persistTimestamp(

@@ -40,7 +40,7 @@ class RequestProcessorImpl
                          PersistenceProcessor persistProc, int conflictMapSize) {
         this.persistProc = persistProc;
         this.timestampOracle = timestampOracle;
-        this.lowWatermark = timestampOracle.first();
+        this.lowWatermark = timestampOracle.getLast();
 
         this.hashmap = new CommitHashMap(conflictMapSize, lowWatermark);
 
@@ -91,7 +91,7 @@ class RequestProcessorImpl
         long timestamp;
 
         try {
-            timestamp = timestampOracle.next(persistProc);
+            timestamp = timestampOracle.next();
         } catch (IOException e) {
             LOG.error("Error getting timestamp", e);
             return;
@@ -106,10 +106,7 @@ class RequestProcessorImpl
         
         int numRows = 0;
         // 0. check if it should abort
-        if (startTimestamp < timestampOracle.first()) {
-            committed = false;
-            LOG.warn("Aborting transaction after restarting TSO");
-        } else if (startTimestamp <= lowWatermark) {
+        if (startTimestamp <= lowWatermark) {
             committed = false;
         } else {
             // 1. check the write-write conflicts
@@ -128,7 +125,7 @@ class RequestProcessorImpl
         if (committed) {
             // 2. commit
             try {
-                commitTimestamp = timestampOracle.next(persistProc);
+                commitTimestamp = timestampOracle.next();
 
                 if (numRows > 0) {
                     long newLowWatermark = lowWatermark;

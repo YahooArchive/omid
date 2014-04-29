@@ -16,6 +16,7 @@
 
 package com.yahoo.omid.tso;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
@@ -41,14 +42,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-
 import com.codahale.metrics.MetricRegistry;
-
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.DelayNullCommitTable;
 import com.yahoo.omid.metrics.MetricsUtils;
+import com.yahoo.omid.tso.TimestampOracle.TimestampStorage;
+
+import static com.yahoo.omid.tso.TimestampOracle.InMemoryTimestampStorage;
 
 import com.lmax.disruptor.*;
+
 
 /**
  * TSO Server
@@ -76,13 +79,20 @@ public class TSOServer implements Runnable {
     public void run() {
         MetricRegistry metrics = MetricsUtils.initMetrics(config.getMetrics());
 
-        TimestampOracle timestampOracle = new TimestampOracle();
-        timestampOracle.initialize(0L);
+        TimestampStorage timestampStorage = new InMemoryTimestampStorage();
+        TimestampOracle timestampOracle;
+        try {
+            timestampOracle = new TimestampOracle(metrics, timestampStorage);
+        } catch (IOException e) {
+            LOG.error("Can't initialize timestamp oracle", e);
+            throw new IllegalStateException("Cannot run without a timestamp oracle");
+        }
 
         CommitTable.Writer writer;
         try {
             writer = commitTable.getWriter().get();
         } catch (ExecutionException ee) {
+            LOG.error("Can't get the writer for the commit table", ee);
             throw new IllegalStateException("Cannot run without a committable");
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
