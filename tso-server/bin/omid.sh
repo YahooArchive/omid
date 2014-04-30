@@ -57,8 +57,8 @@ tranhbase() {
     exec java -cp $CLASSPATH org.apache.hadoop.hbase.LocalHBaseCluster 
 }
 
-testtable() {
-    exec java -cp $CLASSPATH:../target/test-classes com.yahoo.omid.TestTable
+createHBaseCommitTable() {
+    exec java -cp $CLASSPATH com.yahoo.omid.committable.hbase.CreateTable $@
 }
 
 usage() {
@@ -68,7 +68,7 @@ usage() {
     echo "  tsobench      Runs a simple benchmark of the TSO."
     echo "  bktest        Starts test bookkeeper ensemble. Starts zookeeper also."
     echo "  tran-hbase    Starts hbase with transaction support."
-    echo "  test-table    Creates test table"
+    echo "  create-hbase-commit-table     Creates the hbase commit table."
 }
 
 # if no args specified, show usage
@@ -88,8 +88,8 @@ elif [ "$COMMAND" = "bktest" ]; then
     bktest $@;
 elif [ "$COMMAND" = "tran-hbase" ]; then
     tranhbase $@;
-elif [ "$COMMAND" = "test-table" ]; then
-    testtable $@;
+elif [ "$COMMAND" = "create-hbase-commit-table" ]; then
+    createHBaseCommitTable $@;
 else
     usage;
 fi

@@ -19,6 +19,7 @@ package com.yahoo.omid.tso;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.IVariableArity;
+import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -58,7 +59,7 @@ public class TSOServerConfig implements IVariableArity {
     private String hbaseTimestampTable = "OMID_TIMESTAMP";
     
     @Parameter(names = "-hbaseCommitTable", description = "HBase commit table name", required = false)
-    private String hbaseCommitTable = "OMID_COMMIT_TABLE";
+    private String hbaseCommitTable = HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME;
 
     @Parameter(names = "-port", description = "Port reserved by the Status Oracle", required = true)
     private int port;
