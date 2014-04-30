@@ -41,11 +41,11 @@ public class TestReadAlgorithm extends TSOTestBase {
         }
         long tr4 = client2.createTransaction().get();
 
-        assertNull("tr3 didn't commit", client2.getCommitTimestamp(tr3).get());
+        assertFalse("tr3 didn't commit", client2.getCommitTimestamp(tr3).get().isPresent());
         assertTrue("txn committed after start timestamp",
-                   client2.getCommitTimestamp(tr1).get() > tr2);
+                   (long) client2.getCommitTimestamp(tr1).get().get() > tr2);
         assertTrue("txn committed before start timestamp",
-                   client2.getCommitTimestamp(tr1).get() < tr4);
+                   (long) client2.getCommitTimestamp(tr1).get().get() < tr4);
    }
    
 }

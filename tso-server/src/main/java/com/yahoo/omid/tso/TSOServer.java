@@ -48,6 +48,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.codahale.metrics.MetricRegistry;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.DelayNullCommitTable;
+import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.metrics.MetricsUtils;
 import com.yahoo.omid.tso.TimestampOracle.TimestampStorage;
 import com.yahoo.omid.tso.hbase.HBaseTimestampStorage;
@@ -83,10 +84,11 @@ public class TSOServer implements Runnable {
         CommitTable commitTable;
         TimestampStorage timestampStorage;
         if (config.isHBase()) {
-            commitTable = null;// new HBaseCommitTable(1, TimeUnit.SECONDS);
             Configuration hbaseConfig = HBaseConfiguration.create();
-            HTable timestampTable = new HTable(hbaseConfig , config.getHBaseTimestampTable());
-            timestampStorage = new HBaseTimestampStorage(timestampTable);
+            HTable commitHTable = new HTable(hbaseConfig , config.getHBaseCommitTable());
+            commitTable = new HBaseCommitTable(commitHTable);
+            HTable timestampHTable = new HTable(hbaseConfig , config.getHBaseTimestampTable());
+            timestampStorage = new HBaseTimestampStorage(timestampHTable);
         } else {
             commitTable = new DelayNullCommitTable(1, TimeUnit.SECONDS);
             timestampStorage = new InMemoryTimestampStorage();

@@ -56,6 +56,9 @@ public class TSOServerConfig implements IVariableArity {
     
     @Parameter(names = "-hbaseTimestampTable", description = "HBase timestamp table name", required = false)
     private String hbaseTimestampTable = "OMID_TIMESTAMP";
+    
+    @Parameter(names = "-hbaseCommitTable", description = "HBase commit table name", required = false)
+    private String hbaseCommitTable = "OMID_COMMIT_TABLE";
 
     @Parameter(names = "-port", description = "Port reserved by the Status Oracle", required = true)
     private int port;
@@ -78,6 +81,10 @@ public class TSOServerConfig implements IVariableArity {
     
     public String getHBaseTimestampTable() {
         return hbaseTimestampTable;
+    }
+    
+    public String getHBaseCommitTable() {
+        return hbaseCommitTable;
     }
 
     public int getPort() {

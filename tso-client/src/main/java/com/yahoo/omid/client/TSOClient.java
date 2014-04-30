@@ -27,7 +27,6 @@ import java.util.concurrent.ScheduledExecutorService;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.BaseConfiguration;
-
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelPipeline;
@@ -40,12 +39,11 @@ import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-
 import com.yahoo.omid.tso.RowKey;
 import com.yahoo.omid.proto.TSOProto;
 import com.yahoo.omid.committable.CommitTable;
@@ -61,7 +59,6 @@ import com.yahoo.omid.util.StateMachine.Event;
 import com.yahoo.omid.util.StateMachine.Fsm;
 import com.yahoo.omid.util.StateMachine.FsmImpl;
 import com.yahoo.omid.util.StateMachine.UserEvent;
-
 import com.codahale.metrics.MetricRegistry;
 
 /**
@@ -205,8 +202,8 @@ public class TSOClient {
         return new ForwardingTSOFuture<Long>(request);
     }
 
-    public TSOFuture<Long> getCommitTimestamp(long startTimestamp) {
-        return new ForwardingTSOFuture<Long>(
+    public TSOFuture<Optional<Long>> getCommitTimestamp(long startTimestamp) {
+        return new ForwardingTSOFuture<Optional<Long>>(
                 commitTableClient.getCommitTimestamp(startTimestamp));
     }
 

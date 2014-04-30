@@ -18,6 +18,7 @@
 package com.yahoo.omid.transaction;
 
 import java.io.IOException;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -27,6 +28,7 @@ import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
@@ -46,9 +48,9 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Optional;
 import com.yahoo.omid.client.ColumnWrapper;
 import com.yahoo.omid.client.RowKeyFamily;
-
 /**
  * Provides transactional methods for accessing and modifying a given snapshot
  * of data identified by an opaque {@link Transaction} object.
@@ -305,11 +307,10 @@ public class TTable {
 
             versionsProcessed++;
 
-            final Long commitTimestamp;
+            final Optional<Long> commitTimestamp;
             try {
-                LOG.info("tsoclient {}", transaction.tsoclient);
-                java.util.concurrent.Future<Long> f = transaction.tsoclient.getCommitTimestamp(kv.getTimestamp());
-                LOG.info("future {}", f);
+                Future<Optional<Long>> f = transaction.tsoclient.getCommitTimestamp(kv
+                        .getTimestamp());
                 commitTimestamp = f.get();
             } catch (ExecutionException ee) {
                 throw new IOException("Error reading commit timestamp", ee.getCause());
@@ -318,8 +319,9 @@ public class TTable {
                 throw new IOException("Interrupted reading commit timestamp", ie);
             }
             if (kv.getTimestamp() == startTimestamp
-                || (commitTimestamp != null
-                    && commitTimestamp < startTimestamp)) {
+                    || (commitTimestamp.isPresent()
+                        && commitTimestamp.get() < startTimestamp)) {
+
                 LOG.trace("Kv {} is valid", kv);
                 // Valid read, add it to result unless it's a delete
                 if (kv.getValueLength() > 0) {

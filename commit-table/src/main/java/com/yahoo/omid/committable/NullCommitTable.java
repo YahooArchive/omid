@@ -1,5 +1,6 @@
 package com.yahoo.omid.committable;
 
+import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -34,7 +35,7 @@ public class NullCommitTable implements CommitTable {
 
     public static class Client implements CommitTable.Client {
         @Override
-        public ListenableFuture<Long> getCommitTimestamp(long startTimestamp) {
+        public ListenableFuture<Optional<Long>> getCommitTimestamp(long startTimestamp) {
             throw new UnsupportedOperationException();
         }
 

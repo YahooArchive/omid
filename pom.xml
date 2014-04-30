@@ -43,6 +43,7 @@
     <module>commit-table</module>
     <module>tso-client</module>
     <module>tso-server</module>
+    <module>hbase-commit-table</module>
   </modules>
 
   <build>

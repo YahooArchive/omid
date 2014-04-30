@@ -1,5 +1,8 @@
 package com.yahoo.omid.committable;
 
+import java.io.IOException;
+
+import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ListenableFuture;
 
 public interface CommitTable {
@@ -7,12 +10,12 @@ public interface CommitTable {
     ListenableFuture<Client> getClient();
 
     public interface Writer {
-        void addCommittedTransaction(long startTimestamp, long commitTimestamp);
+        void addCommittedTransaction(long startTimestamp, long commitTimestamp) throws IOException;
         ListenableFuture<Void> flush();
     }
 
     public interface Client {
-        ListenableFuture<Long> getCommitTimestamp(long startTimestamp);
+        ListenableFuture<Optional<Long>> getCommitTimestamp(long startTimestamp);
         ListenableFuture<Void> completeTransaction(long startTimestamp);
     }
 }

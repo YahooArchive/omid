@@ -107,6 +107,7 @@ class PersistenceProcessorImpl
         
         switch (event.getType()) {
         case COMMIT:
+            // TODO: What happens when the IOException is thrown?
             writer.addCommittedTransaction(event.getStartTimestamp(), event.getCommitTimestamp());
             curBatch.addCommit(event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel());
             break;
