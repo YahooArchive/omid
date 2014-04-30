@@ -94,7 +94,7 @@ public class HBaseCommitTableTest {
             LOG.error("Error tearing down", e);
         }
     }
-    
+
     @Test
     public void testBasicBehaviour() throws Throwable {
         HTable table = new HTable(hbaseConf, TEST_TABLE);
@@ -109,38 +109,38 @@ public class HBaseCommitTableTest {
         assertEquals("Rows should be 0!", 0, rowCount());
 
         // Test the successful creation of 1000 txs in the table
-        for(int i = 0; i < 1000; i++) {
-            writer.addCommittedTransaction(i, i+1);
+        for (int i = 0; i < 1000; i++) {
+            writer.addCommittedTransaction(i, i + 1);
         }
         writer.flush().get();
         assertEquals("Rows should be 1000!", 1000, rowCount());
 
         // Test the we get the right commit timestamps for each previously inserted tx
-        for(long i = 0; i < 1000; i++) {
+        for (long i = 0; i < 1000; i++) {
             ListenableFuture<Optional<Long>> ctf = client.getCommitTimestamp(i);
             Optional<Long> optional = ctf.get();
             Long ct = optional.get();
             assertEquals("Commit timestamp should be " + (i + 1), (i + 1), (long) ct);
         }
         assertEquals("Rows should be 1000!", 1000, rowCount());
-        
+
         // Test the successful deletion of the 1000 txs
-        for(long i = 0; i < 1000; i++) {
+        for (long i = 0; i < 1000; i++) {
             client.completeTransaction(i).get();
-        }        
+        }
         assertEquals("Rows should be 0!", 0, rowCount());
-        
+
         // Test we don't get a commit timestamp for a non-existent transaction id in the table
         ListenableFuture<Optional<Long>> ctf = client.getCommitTimestamp(0);
         Optional<Long> optional = ctf.get();
         assertFalse("Commit timestamp should not be present", optional.isPresent());
-        
+
     }
 
     private static long rowCount() throws Throwable {
-	Scan scan = new Scan();
-	scan.addFamily(HBaseCommitTable.COMMIT_TABLE_FAMILY);
-	return aggregationClient.rowCount(Bytes.toBytes(TEST_TABLE), null, scan);
+        Scan scan = new Scan();
+        scan.addFamily(HBaseCommitTable.COMMIT_TABLE_FAMILY);
+        return aggregationClient.rowCount(Bytes.toBytes(TEST_TABLE), null, scan);
     }
-    
+
 }
