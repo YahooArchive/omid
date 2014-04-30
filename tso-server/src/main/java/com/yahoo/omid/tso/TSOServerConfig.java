@@ -16,13 +16,15 @@
 
 package com.yahoo.omid.tso;
 
+import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.beust.jcommander.IVariableArity;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
-import com.beust.jcommander.IVariableArity;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
-
-import java.util.List;
-import java.util.ArrayList;
 
 /**
  * Holds the configuration parameters of a TSO server instance.
@@ -56,7 +58,7 @@ public class TSOServerConfig implements IVariableArity {
     private boolean hbase = false;
     
     @Parameter(names = "-hbaseTimestampTable", description = "HBase timestamp table name", required = false)
-    private String hbaseTimestampTable = "OMID_TIMESTAMP";
+    private String hbaseTimestampTable = TIMESTAMP_TABLE_DEFAULT_NAME;
     
     @Parameter(names = "-hbaseCommitTable", description = "HBase commit table name", required = false)
     private String hbaseCommitTable = HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME;

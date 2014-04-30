@@ -61,6 +61,10 @@ createHBaseCommitTable() {
     exec java -cp $CLASSPATH com.yahoo.omid.committable.hbase.CreateTable $@
 }
 
+createHBaseTimestampTable() {
+    exec java -cp $CLASSPATH com.yahoo.omid.tso.hbase.CreateTable $@
+}
+
 usage() {
     echo "Usage: omid.sh <command>"
     echo "where <command> is one of:"
@@ -69,6 +73,7 @@ usage() {
     echo "  bktest        Starts test bookkeeper ensemble. Starts zookeeper also."
     echo "  tran-hbase    Starts hbase with transaction support."
     echo "  create-hbase-commit-table     Creates the hbase commit table."
+    echo "  create-hbase-timestamp-table  Creates the hbase timestamp table."
 }
 
 # if no args specified, show usage
@@ -90,6 +95,8 @@ elif [ "$COMMAND" = "tran-hbase" ]; then
     tranhbase $@;
 elif [ "$COMMAND" = "create-hbase-commit-table" ]; then
     createHBaseCommitTable $@;
+elif [ "$COMMAND" = "create-hbase-timestamp-table" ]; then
+    createHBaseTimestampTable $@;
 else
     usage;
 fi
