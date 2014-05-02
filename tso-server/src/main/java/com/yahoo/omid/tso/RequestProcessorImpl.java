@@ -167,6 +167,7 @@ class RequestProcessorImpl
             e.channel = c;
         }
 
+        // TODO Rename rows to cells
         static void makeCommitRequest(RequestEvent e,
                                       long startTimestamp, Collection<Long> rows, Channel c) {
             e.type = Type.COMMIT;

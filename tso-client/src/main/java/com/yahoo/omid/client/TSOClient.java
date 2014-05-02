@@ -22,6 +22,7 @@ import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -44,7 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.tso.RowKey;
+import com.yahoo.omid.tso.CellId;
 import com.yahoo.omid.proto.TSOProto;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.NullCommitTable;
@@ -189,12 +190,12 @@ public class TSOClient {
         return new ForwardingTSOFuture<Long>(request);
     }
 
-    public TSOFuture<Long> commit(long transactionId, RowKey[] rows) {
+    public TSOFuture<Long> commit(long transactionId, Set<? extends CellId> cells) {
         TSOProto.Request.Builder builder = TSOProto.Request.newBuilder();
         TSOProto.CommitRequest.Builder commitbuilder = TSOProto.CommitRequest.newBuilder();
         commitbuilder.setStartTimestamp(transactionId);
-        for (RowKey r : rows) {
-            commitbuilder.addRowHash(r.hashCode());
+        for (CellId cell : cells) {
+            commitbuilder.addCellId(cell.getCellId());
         }
         builder.setCommitRequest(commitbuilder.build());
         RequestEvent request = new RequestEvent(builder.build());

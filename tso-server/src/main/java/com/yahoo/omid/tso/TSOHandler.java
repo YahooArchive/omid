@@ -85,7 +85,7 @@ public class TSOHandler extends SimpleChannelHandler {
             } else if (request.hasCommitRequest()) {
                 TSOProto.CommitRequest cr = request.getCommitRequest();
                 requestProcessor.commitRequest(cr.getStartTimestamp(),
-                                               cr.getRowHashList(),
+                                               cr.getCellIdList(),
                                                ctx.getChannel());
             } else {
                 LOG.error("Invalid request {}", request);

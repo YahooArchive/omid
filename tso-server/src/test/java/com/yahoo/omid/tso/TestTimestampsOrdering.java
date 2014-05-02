@@ -21,7 +21,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.yahoo.omid.tso.RowKey;
+import com.google.common.collect.Sets;
 
 public class TestTimestampsOrdering extends TSOTestBase {
 
@@ -34,10 +34,10 @@ public class TestTimestampsOrdering extends TSOTestBase {
         long tr2 = client.createTransaction().get();
         assertEquals("Should grow monotonically", ++timestamp, tr2);
 
-        long cr1 = client.commit(tr2, new RowKey[] { r1 }).get();
+        long cr1 = client.commit(tr2, Sets.newHashSet(c1)).get();
         assertEquals("Should grow monotonically", ++timestamp, cr1);
 
-        long cr2 = client.commit(tr1, new RowKey[] { r2 }).get();
+        long cr2 = client.commit(tr1, Sets.newHashSet(c2)).get();
         assertEquals("Should grow monotonically", ++timestamp, cr2);
 
         long tr3 = client.createTransaction().get();

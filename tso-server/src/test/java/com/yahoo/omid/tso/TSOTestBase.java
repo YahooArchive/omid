@@ -22,7 +22,6 @@ import java.util.concurrent.Executors;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.BaseConfiguration;
-
 import org.jboss.netty.channel.ChannelFactory;
 import org.jboss.netty.channel.group.ChannelGroup;
 import org.jboss.netty.channel.group.DefaultChannelGroup;
@@ -35,13 +34,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.InMemoryCommitTable;
 import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.client.TSOFuture;
 import com.yahoo.omid.tso.util.ClientHandler;
+import com.yahoo.omid.tso.util.DummyCellIdImpl;
 import com.yahoo.omid.tso.util.TransactionClient;
 
 public class TSOTestBase {
@@ -61,8 +60,8 @@ public class TSOTestBase {
     private static TSOServer tso;
    
 
-    final static public RowKey r1 = new RowKey(new byte[] { 0xd, 0xe, 0xa, 0xd }, new byte[] { 0xb, 0xe, 0xe, 0xf });
-    final static public RowKey r2 = new RowKey(new byte[] { 0xb, 0xa, 0xa, 0xd }, new byte[] { 0xc, 0xa, 0xf, 0xe });
+    final static public CellId c1 = new DummyCellIdImpl(0xdeadbeefL);
+    final static public CellId c2 = new DummyCellIdImpl(0xfeedcafeL);
 
     public static void setupClient(CommitTable.Client commitTable) throws IOException {
 

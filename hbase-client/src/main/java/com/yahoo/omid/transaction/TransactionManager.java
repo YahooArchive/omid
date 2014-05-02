@@ -37,7 +37,6 @@ import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.client.TSOClient.AbortException;
-import com.yahoo.omid.client.RowKeyFamily;
 import com.yahoo.omid.transaction.Transaction.Status;
 
 /**
@@ -156,7 +155,7 @@ public class TransactionManager {
         }
 
         Future<Long> commit = tsoclient.commit(transaction.getStartTimestamp(),
-                                               transaction.getRows());
+                                               transaction.getCells());
         try {
             long commitTs =  commit.get(20, TimeUnit.SECONDS);
             transaction.setStatus(Status.COMMITTED);
@@ -215,49 +214,15 @@ public class TransactionManager {
         transaction.setStatus(Status.ABORTED);
 
         Map<byte[], List<Delete>> deleteBatches = new HashMap<byte[], List<Delete>>();
-        for (final RowKeyFamily rowkey : transaction.getRows()) {
-            List<Delete> batch = deleteBatches.get(rowkey.getTable());
-            if (batch == null) {
-                batch = new ArrayList<Delete>();
-                deleteBatches.put(rowkey.getTable(), batch);
-            }
-            Delete delete = new Delete(rowkey.getRow());
-            for (Entry<byte[], List<KeyValue>> entry : rowkey.getFamilies().entrySet()) {
-                for (KeyValue kv : entry.getValue()) {
-                    delete.deleteColumn(entry.getKey(), kv.getQualifier(), transaction.getStartTimestamp());
-                }
-            }
-            batch.add(delete);
-        }
-        
-        boolean cleanupFailed = false;
-        List<HTableInterface> tablesToFlush = new ArrayList<HTableInterface>();
-        for (final Entry<byte[], List<Delete>> entry : deleteBatches.entrySet()) {
+        for (final HBaseCellIdImpl cell : transaction.getCells()) {
+            Delete delete = new Delete(cell.getRow());
+            delete.deleteColumn(cell.getFamily(), cell.getQualifier(), transaction.getStartTimestamp());
             try {
-                HTableInterface table = tableCache.get(entry.getKey());
-                if (table == null) {
-                    table = hTableFactory.create(conf, entry.getKey());
-                    table.setAutoFlush(false, true);
-                    tableCache.put(entry.getKey(), table);
-                }
-                table.delete(entry.getValue());
-                tablesToFlush.add(table);
-            } catch (IOException ioe) {
-                cleanupFailed = true;
-            }
-        }
-        for (HTableInterface table : tablesToFlush) {
-            try {
-                table.flushCommits();
+                cell.getTable().delete(delete);
             } catch (IOException e) {
-                cleanupFailed = true;
+                LOG.warn("Failed cleanup cell {} for Tx {}", new Object[] { cell, transaction, e });
             }
         }
-        
-        if (cleanupFailed) {
-            LOG.warn("Cleanup failed, some values not deleted");
-            // we can't notify the TSO of completion
-            return;
-        }
+
     }
 }

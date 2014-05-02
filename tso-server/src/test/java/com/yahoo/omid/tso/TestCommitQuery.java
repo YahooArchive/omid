@@ -21,6 +21,8 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 
+import com.google.common.collect.Sets;
+
 
 public class TestCommitQuery extends TSOTestBase {
 
@@ -32,7 +34,7 @@ public class TestCommitQuery extends TSOTestBase {
 
         assertFalse("tr1 isn't committed", client.getCommitTimestamp(tr1).get().isPresent());
 
-        long cr1 = client.commit(tr1, new RowKey[] { r1 }).get();
+        long cr1 = client.commit(tr1, Sets.newHashSet(c1)).get();
         assertTrue("commit timestamp should be higher than start timestamp", cr1 > tr1);
 
         Long cq2 = client2.getCommitTimestamp(tr1).get().get();

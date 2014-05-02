@@ -858,10 +858,10 @@ public final class TSOProto {
     boolean hasStartTimestamp();
     long getStartTimestamp();
     
-    // repeated int64 rowHash = 2;
-    java.util.List<java.lang.Long> getRowHashList();
-    int getRowHashCount();
-    long getRowHash(int index);
+    // repeated int64 cellId = 2;
+    java.util.List<java.lang.Long> getCellIdList();
+    int getCellIdCount();
+    long getCellId(int index);
   }
   public static final class CommitRequest extends
       com.google.protobuf.GeneratedMessage
@@ -902,23 +902,23 @@ public final class TSOProto {
       return startTimestamp_;
     }
     
-    // repeated int64 rowHash = 2;
-    public static final int ROWHASH_FIELD_NUMBER = 2;
-    private java.util.List<java.lang.Long> rowHash_;
+    // repeated int64 cellId = 2;
+    public static final int CELLID_FIELD_NUMBER = 2;
+    private java.util.List<java.lang.Long> cellId_;
     public java.util.List<java.lang.Long>
-        getRowHashList() {
-      return rowHash_;
+        getCellIdList() {
+      return cellId_;
     }
-    public int getRowHashCount() {
-      return rowHash_.size();
+    public int getCellIdCount() {
+      return cellId_.size();
     }
-    public long getRowHash(int index) {
-      return rowHash_.get(index);
+    public long getCellId(int index) {
+      return cellId_.get(index);
     }
     
     private void initFields() {
       startTimestamp_ = 0L;
-      rowHash_ = java.util.Collections.emptyList();;
+      cellId_ = java.util.Collections.emptyList();;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -935,8 +935,8 @@ public final class TSOProto {
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         output.writeInt64(1, startTimestamp_);
       }
-      for (int i = 0; i < rowHash_.size(); i++) {
-        output.writeInt64(2, rowHash_.get(i));
+      for (int i = 0; i < cellId_.size(); i++) {
+        output.writeInt64(2, cellId_.get(i));
       }
       getUnknownFields().writeTo(output);
     }
@@ -953,12 +953,12 @@ public final class TSOProto {
       }
       {
         int dataSize = 0;
-        for (int i = 0; i < rowHash_.size(); i++) {
+        for (int i = 0; i < cellId_.size(); i++) {
           dataSize += com.google.protobuf.CodedOutputStream
-            .computeInt64SizeNoTag(rowHash_.get(i));
+            .computeInt64SizeNoTag(cellId_.get(i));
         }
         size += dataSize;
-        size += 1 * getRowHashList().size();
+        size += 1 * getCellIdList().size();
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -1086,7 +1086,7 @@ public final class TSOProto {
         super.clear();
         startTimestamp_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000001);
-        rowHash_ = java.util.Collections.emptyList();;
+        cellId_ = java.util.Collections.emptyList();;
         bitField0_ = (bitField0_ & ~0x00000002);
         return this;
       }
@@ -1131,10 +1131,10 @@ public final class TSOProto {
         }
         result.startTimestamp_ = startTimestamp_;
         if (((bitField0_ & 0x00000002) == 0x00000002)) {
-          rowHash_ = java.util.Collections.unmodifiableList(rowHash_);
+          cellId_ = java.util.Collections.unmodifiableList(cellId_);
           bitField0_ = (bitField0_ & ~0x00000002);
         }
-        result.rowHash_ = rowHash_;
+        result.cellId_ = cellId_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -1154,13 +1154,13 @@ public final class TSOProto {
         if (other.hasStartTimestamp()) {
           setStartTimestamp(other.getStartTimestamp());
         }
-        if (!other.rowHash_.isEmpty()) {
-          if (rowHash_.isEmpty()) {
-            rowHash_ = other.rowHash_;
+        if (!other.cellId_.isEmpty()) {
+          if (cellId_.isEmpty()) {
+            cellId_ = other.cellId_;
             bitField0_ = (bitField0_ & ~0x00000002);
           } else {
-            ensureRowHashIsMutable();
-            rowHash_.addAll(other.rowHash_);
+            ensureCellIdIsMutable();
+            cellId_.addAll(other.cellId_);
           }
           onChanged();
         }
@@ -1201,15 +1201,15 @@ public final class TSOProto {
               break;
             }
             case 16: {
-              ensureRowHashIsMutable();
-              rowHash_.add(input.readInt64());
+              ensureCellIdIsMutable();
+              cellId_.add(input.readInt64());
               break;
             }
             case 18: {
               int length = input.readRawVarint32();
               int limit = input.pushLimit(length);
               while (input.getBytesUntilLimit() > 0) {
-                addRowHash(input.readInt64());
+                addCellId(input.readInt64());
               }
               input.popLimit(limit);
               break;
@@ -1241,46 +1241,46 @@ public final class TSOProto {
         return this;
       }
       
-      // repeated int64 rowHash = 2;
-      private java.util.List<java.lang.Long> rowHash_ = java.util.Collections.emptyList();;
-      private void ensureRowHashIsMutable() {
+      // repeated int64 cellId = 2;
+      private java.util.List<java.lang.Long> cellId_ = java.util.Collections.emptyList();;
+      private void ensureCellIdIsMutable() {
         if (!((bitField0_ & 0x00000002) == 0x00000002)) {
-          rowHash_ = new java.util.ArrayList<java.lang.Long>(rowHash_);
+          cellId_ = new java.util.ArrayList<java.lang.Long>(cellId_);
           bitField0_ |= 0x00000002;
          }
       }
       public java.util.List<java.lang.Long>
-          getRowHashList() {
-        return java.util.Collections.unmodifiableList(rowHash_);
+          getCellIdList() {
+        return java.util.Collections.unmodifiableList(cellId_);
       }
-      public int getRowHashCount() {
-        return rowHash_.size();
+      public int getCellIdCount() {
+        return cellId_.size();
       }
-      public long getRowHash(int index) {
-        return rowHash_.get(index);
+      public long getCellId(int index) {
+        return cellId_.get(index);
       }
-      public Builder setRowHash(
+      public Builder setCellId(
           int index, long value) {
-        ensureRowHashIsMutable();
-        rowHash_.set(index, value);
+        ensureCellIdIsMutable();
+        cellId_.set(index, value);
         onChanged();
         return this;
       }
-      public Builder addRowHash(long value) {
-        ensureRowHashIsMutable();
-        rowHash_.add(value);
+      public Builder addCellId(long value) {
+        ensureCellIdIsMutable();
+        cellId_.add(value);
         onChanged();
         return this;
       }
-      public Builder addAllRowHash(
+      public Builder addAllCellId(
           java.lang.Iterable<? extends java.lang.Long> values) {
-        ensureRowHashIsMutable();
-        super.addAll(values, rowHash_);
+        ensureCellIdIsMutable();
+        super.addAll(values, cellId_);
         onChanged();
         return this;
       }
-      public Builder clearRowHash() {
-        rowHash_ = java.util.Collections.emptyList();;
+      public Builder clearCellId() {
+        cellId_ = java.util.Collections.emptyList();;
         bitField0_ = (bitField0_ & ~0x00000002);
         onChanged();
         return this;
@@ -2696,15 +2696,15 @@ public final class TSOProto {
       "\n\035src/main/proto/TSOProto.proto\"]\n\007Reque" +
       "st\022+\n\020timestampRequest\030\001 \001(\0132\021.Timestamp" +
       "Request\022%\n\rcommitRequest\030\002 \001(\0132\016.CommitR" +
-      "equest\"\022\n\020TimestampRequest\"8\n\rCommitRequ" +
-      "est\022\026\n\016startTimestamp\030\001 \001(\003\022\017\n\007rowHash\030\002" +
-      " \003(\003\"b\n\010Response\022-\n\021timestampResponse\030\001 " +
-      "\001(\0132\022.TimestampResponse\022\'\n\016commitRespons" +
-      "e\030\002 \001(\0132\017.CommitResponse\"+\n\021TimestampRes" +
-      "ponse\022\026\n\016startTimestamp\030\001 \001(\003\"R\n\016CommitR" +
-      "esponse\022\017\n\007aborted\030\001 \001(\010\022\026\n\016startTimesta",
-      "mp\030\002 \001(\003\022\027\n\017commitTimestamp\030\003 \001(\003B\030\n\024com" +
-      ".yahoo.omid.protoH\001"
+      "equest\"\022\n\020TimestampRequest\"7\n\rCommitRequ" +
+      "est\022\026\n\016startTimestamp\030\001 \001(\003\022\016\n\006cellId\030\002 " +
+      "\003(\003\"b\n\010Response\022-\n\021timestampResponse\030\001 \001" +
+      "(\0132\022.TimestampResponse\022\'\n\016commitResponse" +
+      "\030\002 \001(\0132\017.CommitResponse\"+\n\021TimestampResp" +
+      "onse\022\026\n\016startTimestamp\030\001 \001(\003\"R\n\016CommitRe" +
+      "sponse\022\017\n\007aborted\030\001 \001(\010\022\026\n\016startTimestam",
+      "p\030\002 \001(\003\022\027\n\017commitTimestamp\030\003 \001(\003B\030\n\024com." +
+      "yahoo.omid.protoH\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -2732,7 +2732,7 @@ public final class TSOProto {
           internal_static_CommitRequest_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_CommitRequest_descriptor,
-              new java.lang.String[] { "StartTimestamp", "RowHash", },
+              new java.lang.String[] { "StartTimestamp", "CellId", },
               com.yahoo.omid.proto.TSOProto.CommitRequest.class,
               com.yahoo.omid.proto.TSOProto.CommitRequest.Builder.class);
           internal_static_Response_descriptor =

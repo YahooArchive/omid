@@ -17,6 +17,8 @@
 package com.yahoo.omid.tso;
 
 import static org.junit.Assert.*;
+
+import com.google.common.collect.Sets;
 import com.yahoo.omid.client.TSOClient.AbortException;
 
 import java.util.concurrent.ExecutionException;
@@ -32,9 +34,9 @@ public class TestReadAlgorithm extends TSOTestBase {
         long tr2 = client.createTransaction().get();
         long tr3 = client.createTransaction().get();
 
-        long cr1 = client.commit(tr1, new RowKey[] { r1 }).get();
+        long cr1 = client.commit(tr1, Sets.newHashSet(c1)).get();
         try {
-            long cr2 = client.commit(tr3, new RowKey[] { r1, r2 }).get();
+            long cr2 = client.commit(tr3, Sets.newHashSet(c1, c2)).get();
             fail("Second commit should fail");
         } catch (ExecutionException ee) {
             assertEquals("Should have aborted", ee.getCause().getClass(), AbortException.class);

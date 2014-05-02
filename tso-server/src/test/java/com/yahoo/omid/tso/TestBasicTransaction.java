@@ -16,17 +16,15 @@
 
 package com.yahoo.omid.tso;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
-import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 
 import org.junit.Test;
 
-import com.yahoo.omid.client.TSOClient;
-import com.yahoo.omid.client.TSOFuture;
+import com.google.common.collect.Sets;
 import com.yahoo.omid.client.TSOClient.AbortException;
-
-import java.util.concurrent.ExecutionException;
 
 public class TestBasicTransaction extends TSOTestBase {
 
@@ -35,10 +33,10 @@ public class TestBasicTransaction extends TSOTestBase {
         long tr1 = client.createTransaction().get();
         long tr2 = client.createTransaction().get();
 
-        long cr1 = client.commit(tr1, new RowKey[] { r1 }).get();
+        long cr1 = client.commit(tr1, Sets.newHashSet(c1)).get();
 
         try {
-            long cr2 = client.commit(tr2, new RowKey[] { r1, r2 }).get();
+            long cr2 = client.commit(tr2, Sets.newHashSet(c1, c2)).get();
             fail("Shouldn't have committed");
         } catch (ExecutionException ee) {
             assertEquals("Should have aborted", ee.getCause().getClass(), AbortException.class);

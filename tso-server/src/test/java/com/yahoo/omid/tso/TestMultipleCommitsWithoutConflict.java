@@ -21,23 +21,25 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import com.google.common.collect.Sets;
+
 
 public class TestMultipleCommitsWithoutConflict extends TSOTestBase {
 
     @Test(timeout=10000)
     public void testMultipleCommitsWithoutConflict() throws Exception {
         long tr1 = client.createTransaction().get();
-        long cr1 = client.commit(tr1, new RowKey[] { r1 }).get();
+        long cr1 = client.commit(tr1, Sets.newHashSet(c1)).get();
         assertTrue("commit ts must be greater than start ts", cr1 > tr1);
 
         long tr2 = client.createTransaction().get();
         assertTrue("ts should grow monotonically", tr2 > cr1);
 
-        long cr2 = client.commit(tr2, new RowKey[] { r1, r2 }).get();
+        long cr2 = client.commit(tr2, Sets.newHashSet(c1, c2)).get();
         assertTrue("commit ts must be greater than start ts", cr2 > tr2);
 
         long tr3 = client.createTransaction().get();
-        long cr3 = client.commit(tr3, new RowKey[] { r2 }).get();
+        long cr3 = client.commit(tr3, Sets.newHashSet(c2)).get();
         assertTrue("commit ts must be greater than start ts", cr3 > tr3);
     }
 }

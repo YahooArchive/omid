@@ -22,7 +22,6 @@ import java.util.Set;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
 
-import com.yahoo.omid.client.RowKeyFamily;
 import com.yahoo.omid.client.TSOClient;
 
 /**
@@ -39,18 +38,16 @@ public class Transaction {
     private boolean rollbackOnly;
     private long startTimestamp;
     private long commitTimestamp;
-    private Set<RowKeyFamily> rows;
-    private Set<HTableInterface> writtenTables;
+    private Set<HBaseCellIdImpl> cells;
     private Status status = Status.RUNNING;
 
     TSOClient tsoclient;
 
     Transaction(long startTimestamp, TSOClient client) {
-        this.rows = new HashSet<RowKeyFamily>();
+        this.cells = new HashSet<HBaseCellIdImpl>();
         this.startTimestamp = startTimestamp;
         this.commitTimestamp = 0;
         this.tsoclient = client;
-        this.writtenTables = new HashSet<HTableInterface>();
     }
 
     public long getStartTimestamp() {
@@ -77,20 +74,20 @@ public class Transaction {
         this.commitTimestamp = commitTimestamp;
     }
 
-    RowKeyFamily[] getRows() {
-        return rows.toArray(new RowKeyFamily[0]);
+    Set<HBaseCellIdImpl> getCells() {
+        return cells;
     }
 
-    void addRow(RowKeyFamily row) {
-        rows.add(row);
-    }
-
-    void addWrittenTable(HTableInterface table) {
-        writtenTables.add(table);
+    void addCell(HBaseCellIdImpl cell) {
+        cells.add(cell);
     }
 
     Set<HTableInterface> getWrittenTables() {
-        return writtenTables;
+        Set<HTableInterface> tables = new HashSet<HTableInterface>();
+        for (HBaseCellIdImpl cell : cells) {
+            tables.add(cell.getTable());
+        }
+        return tables;
     }
 
     public Status getStatus() {

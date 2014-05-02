@@ -16,42 +16,34 @@
 
 package com.yahoo.omid.tso.util;
 
+import static com.codahale.metrics.MetricRegistry.name;
+
 import java.io.IOException;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.configuration.Configuration;
 import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelFuture;
-import org.jboss.netty.channel.ChannelFutureListener;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelStateEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-
 import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.client.TSOFuture;
-
-import com.yahoo.omid.tso.RowKey;
-
-import com.codahale.metrics.MetricRegistry;
-import static com.codahale.metrics.MetricRegistry.name;
-import com.codahale.metrics.Timer;
-import com.codahale.metrics.Counter;
+import com.yahoo.omid.tso.CellId;
 
 /**
  * Example of ChannelHandler for the Transaction Client
@@ -60,21 +52,20 @@ import com.codahale.metrics.Counter;
  * 
  */
 public class ClientHandler {
-    
+
     public enum RowDistribution {
-        
-        UNIFORM,ZIPFIAN
+
+        UNIFORM, ZIPFIAN
     }
 
     static int threadCounter = 0;
     private int threadId = threadCounter++;
 
     private IntegerGenerator intGenerator;
-   
+
     private CountDownLatch signalInitialized = new CountDownLatch(1);
 
     private static final Logger LOG = LoggerFactory.getLogger(ClientHandler.class);
-
 
     /**
      * Maximum number of modified rows in each transaction
@@ -112,8 +103,6 @@ public class ClientHandler {
      */
     private int outstandingTransactions = 0;
 
-
-
     private java.util.Random rnd;
     /**
      * Start date
@@ -133,11 +122,11 @@ public class ClientHandler {
     /*
      * For statistial purposes
      */
-    public ConcurrentHashMap<Long, Long> wallClockTime = new ConcurrentHashMap<Long, Long>(); 
+    public ConcurrentHashMap<Long, Long> wallClockTime = new ConcurrentHashMap<Long, Long>();
 
     public long totalNanoTime = 0;
     public long totalTx = 0;
-   
+
     private Channel channel;
 
     private float percentReads;
@@ -158,9 +147,8 @@ public class ClientHandler {
      * @param inflight
      * @throws IOException
      */
-    public ClientHandler(Configuration conf, MetricRegistry metrics,
-                         int runFor, long nbMessage, int inflight, int commitDelay,
-                         float percentReads, int maxTxSize, IntegerGenerator intGenerator) throws IOException {
+    public ClientHandler(Configuration conf, MetricRegistry metrics, int runFor, long nbMessage, int inflight,
+            int commitDelay, float percentReads, int maxTxSize, IntegerGenerator intGenerator) throws IOException {
         if (nbMessage < 0) {
             throw new IllegalArgumentException("nbMessage: " + nbMessage);
         }
@@ -175,34 +163,33 @@ public class ClientHandler {
         this.signalInitialized.countDown();
         this.outstanding = new Semaphore(this.maxInFlight);
 
-        String name = "thread-"+threadId;
+        String name = "thread-" + threadId;
         timestampTimer = metrics.timer(name("TSOClient", name, "timestamp"));
         commitTimer = metrics.timer(name("TSOClient", name, "commit"));
         abortTimer = metrics.timer(name("TSOClient", name, "abort"));
         errorCounter = metrics.counter(name("TSOClient", name, "errors"));
 
-        client = TSOClient.newBuilder()
-            .withConfiguration(conf).withMetrics(metrics).build();
+        client = TSOClient.newBuilder().withConfiguration(conf).withMetrics(metrics).build();
 
         long seed = System.currentTimeMillis();
         seed *= threadId;// to make it channel dependent
         rnd = new java.util.Random(seed);
 
         executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        while (true) {
-                            outstanding.acquire();
-                            long start = System.nanoTime();
-                            final TSOFuture<Long> f = client.createTransaction();
-                            f.addListener(new TimestampListener(f, start), executor);
-                        }
-                    } catch (InterruptedException ie) {
-                        // normal, ignore, we're shutting down
+            @Override
+            public void run() {
+                try {
+                    while (true) {
+                        outstanding.acquire();
+                        long start = System.nanoTime();
+                        final TSOFuture<Long> f = client.createTransaction();
+                        f.addListener(new TimestampListener(f, start), executor);
                     }
+                } catch (InterruptedException ie) {
+                    // normal, ignore, we're shutting down
                 }
-            });
+            }
+        });
     }
 
     class TimestampListener implements Runnable {
@@ -218,9 +205,8 @@ public class ClientHandler {
         public void run() {
             try {
                 long timestamp = f.get();
-                timestampTimer.update(System.nanoTime()-start, TimeUnit.NANOSECONDS);
-                executor.schedule(new DeferredListener(timestamp),
-                        commitDelay, TimeUnit.MILLISECONDS);
+                timestampTimer.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
+                executor.schedule(new DeferredListener(timestamp), commitDelay, TimeUnit.MILLISECONDS);
             } catch (Exception e) {
                 errorCounter.inc();
             }
@@ -239,17 +225,12 @@ public class ClientHandler {
             boolean readOnly = (rnd.nextFloat() * 100) < percentReads;
 
             int size = readOnly ? 0 : rnd.nextInt(maxTxSize);
-            final RowKey [] rows = new RowKey[size];
-            for (byte i = 0; i < rows.length; i++) {
-                long l = intGenerator.nextInt();
-                byte[] b = new byte[8];
-                for (int iii = 0; iii < 8; iii++) {
-                    b[7 - iii] = (byte) (l >>> (iii * 8));
-                }
-                byte[] tableId = new byte[8];
-                rows[i] = new RowKey(b, tableId);
+            final Set<CellId> cells = new HashSet<CellId>();
+            for (byte i = 0; i < size; i++) {
+                long l = intGenerator.nextInt();                
+                cells.add(new DummyCellIdImpl(l));
             }
-            final TSOFuture<Long> f = client.commit(txnid, rows);
+            final TSOFuture<Long> f = client.commit(txnid, cells);
             f.addListener(new CommitListener(f, System.nanoTime()), executor);
         }
     }
@@ -267,33 +248,33 @@ public class ClientHandler {
         public void run() {
             try {
                 f.get();
-                commitTimer.update(System.nanoTime()-start, TimeUnit.NANOSECONDS);
+                commitTimer.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
             } catch (ExecutionException e) {
-                abortTimer.update(System.nanoTime()-start, TimeUnit.NANOSECONDS);
+                abortTimer.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
             } catch (Exception e) {
                 errorCounter.inc();
             }
             outstanding.release();
         }
     }
-            
+
     void shutdown() {
     }
 
-    private ScheduledExecutorService executor = Executors.newScheduledThreadPool(2,
-            new ThreadFactoryBuilder()
-            .setNameFormat("client-thread-" + threadId + "-%d")
-            .setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
-                    @Override
-                    public void uncaughtException(Thread t, Throwable e) {
-                        LOG.error("Thread {} threw exception", t, e);
-                    }
-                }).build());
+    private ScheduledExecutorService executor = Executors.newScheduledThreadPool(
+            2,
+            new ThreadFactoryBuilder().setNameFormat("client-thread-" + threadId + "-%d")
+                    .setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+                        @Override
+                        public void uncaughtException(Thread t, Throwable e) {
+                            LOG.error("Thread {} threw exception", t, e);
+                        }
+                    }).build());
 
     private long totalCommitRequestSent;// just to keep the total number of
     // commitreqeusts sent
     private int QUERY_RATE = 100;// send a query after this number of commit
     // requests
 
-
 }
+

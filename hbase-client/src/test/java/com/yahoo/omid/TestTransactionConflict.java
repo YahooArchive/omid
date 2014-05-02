@@ -18,6 +18,7 @@ package com.yahoo.omid;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -69,14 +70,11 @@ public class TestTransactionConflict extends OmidTestBase {
 
         tm.commit(t2);
 
-        boolean aborted = false;
         try {
             tm.commit(t1);
-            assertTrue("Transaction commited successfully", false);
+            fail("Transaction should not commit successfully");
         } catch (RollbackException e) {
-            aborted = true;
         }
-        assertTrue("Transaction didn't raise exception", aborted);
     }
 
     @Test
@@ -276,4 +274,31 @@ public class TestTransactionConflict extends OmidTestBase {
             throw e;
         }
     }
+
+    @Test
+    public void testMultipleCellChangesOnSameRow() throws Exception {
+        TransactionManager tm = newTransactionManager();
+        TTable tt = new TTable(hbaseConf, TEST_TABLE);
+
+        Transaction t1 = tm.begin();
+        Transaction t2 = tm.begin();
+        LOG.info("Transactions created " + t1 + " " + t2);
+
+        byte[] row = Bytes.toBytes("row");
+        byte[] fam = Bytes.toBytes(TEST_FAMILY);
+        byte[] col1 = Bytes.toBytes("testdata1");
+        byte[] col2 = Bytes.toBytes("testdata2");
+        byte[] data = Bytes.toBytes("testWrite-1");
+
+        Put p2 = new Put(row);
+        p2.add(fam, col1, data);
+        tt.put(t2, p2);
+        tm.commit(t2);
+
+        Put p1 = new Put(row);
+        p1.add(fam, col2, data);
+        tt.put(t1, p1);
+        tm.commit(t1);
+    }
+
 }

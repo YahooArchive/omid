@@ -18,7 +18,6 @@
 package com.yahoo.omid.transaction;
 
 import java.io.IOException;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -49,8 +48,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
-import com.yahoo.omid.client.ColumnWrapper;
-import com.yahoo.omid.client.RowKeyFamily;
 /**
  * Provides transactional methods for accessing and modifying a given snapshot
  * of data identified by an opaque {@link Transaction} object.
@@ -153,6 +150,7 @@ public class TTable {
                 switch (KeyValue.Type.codeToType(kv.getType())) {
                 case DeleteColumn:
                     deleteP.add(kv.getFamily(), kv.getQualifier(), startTimestamp, null);
+                    transaction.addCell(new HBaseCellIdImpl(table, delete.getRow(), kv.getFamily(), kv.getQualifier()));
                     break;
                 case DeleteFamily:
                     deleteG.addFamily(kv.getFamily());
@@ -161,6 +159,8 @@ public class TTable {
                 case Delete:
                     if (kv.getTimestamp() == HConstants.LATEST_TIMESTAMP) {
                         deleteP.add(kv.getFamily(), kv.getQualifier(), startTimestamp, null);
+                        transaction.addCell(new HBaseCellIdImpl(table, delete.getRow(),
+                                kv.getFamily(), kv.getQualifier()));
                         break;
                     } else {
                         throw new UnsupportedOperationException(
@@ -180,13 +180,11 @@ public class TTable {
                     for (Entry<byte[], NavigableMap<Long, byte[]>> entryQ : entryF.getValue().entrySet()) {
                         byte[] qualifier = entryQ.getKey();
                         deleteP.add(family, qualifier, null);
+                        transaction.addCell(new HBaseCellIdImpl(table, delete.getRow(), family, qualifier));
                     }
                 }
             }
         }
-
-        transaction.addRow(new RowKeyFamily(delete.getRow(), getTableName(), deleteP.getFamilyMap()));
-        transaction.addWrittenTable(table);
 
         table.put(deleteP);
     }
@@ -211,11 +209,9 @@ public class TTable {
         for (List<KeyValue> kvl : kvs.values()) {
             for (KeyValue kv : kvl) {
                 tsput.add(new KeyValue(kv.getRow(), kv.getFamily(), kv.getQualifier(), startTimestamp, kv.getValue()));
+                transaction.addCell(new HBaseCellIdImpl(table, kv.getRow(), kv.getFamily(), kv.getQualifier()));
             }
         }
-
-        transaction.addRow(new RowKeyFamily(tsput.getRow(), getTableName(), tsput.getFamilyMap()));
-        transaction.addWrittenTable(table);
 
         table.put(tsput);
     }

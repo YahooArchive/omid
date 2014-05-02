@@ -1,4 +1,4 @@
-package com.yahoo.omid.client;
+package com.yahoo.omid.transaction;
 
 import java.util.Arrays;
 

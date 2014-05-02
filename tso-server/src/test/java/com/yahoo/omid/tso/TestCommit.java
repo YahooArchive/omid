@@ -21,12 +21,14 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import com.google.common.collect.Sets;
+
 public class TestCommit extends TSOTestBase {
    
     @Test(timeout=10000)
     public void testCommit() throws Exception {
         Long tr1 = client.createTransaction().get();
-        Long cr1 = client.commit(tr1, new RowKey[] {}).get();
+        Long cr1 = client.commit(tr1, Sets.<CellId>newHashSet()).get();
         assertTrue(cr1 > tr1);
    }
    
