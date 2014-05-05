@@ -20,6 +20,7 @@ package com.yahoo.omid.transaction;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +34,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.ClientScanner;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
@@ -113,6 +113,7 @@ public class TTable {
             } else {
                 for (byte[] qualifier : qualifiers) {
                     tsget.addColumn(family, qualifier);
+                    tsget.addColumn(family, TransactionManager.addShadowCellSuffix(qualifier));
                 }
             }
         }
@@ -231,6 +232,17 @@ public class TTable {
         Scan tsscan = new Scan(scan);
         tsscan.setMaxVersions((int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
         tsscan.setTimeRange(0, transaction.getStartTimestamp() + 1);
+        Map<byte[], NavigableSet<byte[]>> kvs = tsscan.getFamilyMap();
+        for (Map.Entry<byte[], NavigableSet<byte[]>> entry : kvs.entrySet()) {
+            byte[] family = entry.getKey();
+            NavigableSet<byte[]> qualifiers = entry.getValue();
+            if (qualifiers == null) {
+                continue;
+            }
+            for (byte[] qualifier : qualifiers) {
+                tsscan.addColumn(family, TransactionManager.addShadowCellSuffix(qualifier));
+            }
+        }
         TransactionalClientScanner scanner = new TransactionalClientScanner(transaction,
                 tsscan, (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
         return scanner;
@@ -251,12 +263,13 @@ public class TTable {
      * @return Filtered KVs belonging to the transaction snapshot
      * @throws IOException
      */
-    private List<KeyValue> filter(Transaction transaction, List<KeyValue> kvs, int localVersions)
+    List<KeyValue> filter(Transaction transaction, List<KeyValue> kvs, int localVersions)
             throws IOException {
         final int requestVersions = localVersions * 2 + CACHE_VERSIONS_OVERHEAD;
         if (kvs == null) {
             return Collections.emptyList();
         }
+
         LOG.trace("Filtering kvs={} for transaction={}", kvs, transaction);
 
         long startTimestamp = transaction.getStartTimestamp();
@@ -271,7 +284,17 @@ public class TTable {
         int versionsProcessed = 0;
         Get pendingGet = null;
 
+        Map<Long, Long> commitCache = new HashMap<Long, Long>();
         for (KeyValue kv : kvs) {
+            if (TransactionManager.isShadowCell(kv.getQualifier())) {
+                commitCache.put(kv.getTimestamp(), Bytes.toLong(kv.getValue()));
+            }
+        }
+
+        for (KeyValue kv : kvs) {
+            if (TransactionManager.isShadowCell(kv.getQualifier())) {
+                continue;
+            }
             LOG.trace("Processing kv {}", kv);
             ColumnWrapper currentColumn = new ColumnWrapper(kv.getFamily(), kv.getQualifier());
             if (!currentColumn.equals(lastColumn)) {
@@ -290,6 +313,7 @@ public class TTable {
                 validRead = false;
                 pendingGet = new Get(kv.getRow());
                 pendingGet.addColumn(kv.getFamily(), kv.getQualifier());
+                pendingGet.addColumn(kv.getFamily(), TransactionManager.addShadowCellSuffix(kv.getQualifier()));
                 pendingGet.setMaxVersions(requestVersions);
                 versionsProcessed = 0;
                 oldestUncommittedTS = Long.MAX_VALUE;
@@ -303,16 +327,16 @@ public class TTable {
 
             versionsProcessed++;
 
-            final Optional<Long> commitTimestamp;
-            try {
-                Future<Optional<Long>> f = transaction.tsoclient.getCommitTimestamp(kv
-                        .getTimestamp());
-                commitTimestamp = f.get();
-            } catch (ExecutionException ee) {
-                throw new IOException("Error reading commit timestamp", ee.getCause());
-            } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
-                throw new IOException("Interrupted reading commit timestamp", ie);
+            Optional<Long> commitTimestamp = Optional.absent();
+            if (kv.getTimestamp() != startTimestamp) {
+                try {
+                    commitTimestamp = checkAndGetCommitTimestamp(transaction, kv, commitCache);
+                } catch (ExecutionException ee) {
+                    throw new IOException("Error reading commit timestamp", ee.getCause());
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Interrupted reading commit timestamp", ie);
+                }
             }
             if (kv.getTimestamp() == startTimestamp
                     || (commitTimestamp.isPresent()
@@ -321,7 +345,7 @@ public class TTable {
                 LOG.trace("Kv {} is valid", kv);
                 // Valid read, add it to result unless it's a delete
                 if (kv.getValueLength() > 0) {
-                    LOG.trace("Kv is a delete");
+                    LOG.trace("Kv is not a delete");
                     filtered.add(kv);
                 }
                 validRead = true;
@@ -351,6 +375,30 @@ public class TTable {
         Collections.sort(filtered, KeyValue.COMPARATOR);
         LOG.trace("Result: {}", filtered);
         return filtered;
+    }
+
+    private Optional<Long> checkAndGetCommitTimestamp(Transaction transaction, KeyValue kv, Map<Long, Long> commitCache)
+            throws InterruptedException, ExecutionException, IOException {
+        long startTimestamp = kv.getTimestamp();
+        if (commitCache.containsKey(startTimestamp)) {
+            return Optional.of(startTimestamp);
+        }
+        Future<Optional<Long>> f = transaction.tsoclient.getCommitTimestamp(startTimestamp);
+        Optional<Long> commitTimestamp = f.get();
+        if (commitTimestamp.isPresent()) {
+            return commitTimestamp;
+        }
+        Get get = new Get(kv.getRow());
+        byte[] family = kv.getFamily();
+        byte[] shadowCellQualifier = TransactionManager.addShadowCellSuffix(kv.getQualifier());
+        get.addColumn(family, shadowCellQualifier);
+        get.setMaxVersions(1);
+        get.setTimeStamp(startTimestamp);
+        Result result = table.get(get);
+        if (result.containsColumn(family, shadowCellQualifier)) {
+            return Optional.of(Bytes.toLong(result.getValue(family, shadowCellQualifier)));
+        }
+        return Optional.absent();
     }
 
     protected class TransactionalClientScanner implements ResultScanner {

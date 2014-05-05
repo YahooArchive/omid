@@ -136,13 +136,14 @@ public class TestTransactionConflict extends OmidTestBase {
         }
         assertTrue("Transaction didn't raise exception", aborted);
 
-        ResultScanner rs = tt2.getHTable().getScanner(Bytes.toBytes(TEST_FAMILY));
+        ResultScanner rs = tt2.getHTable().getScanner(fam, col);
+
         int count = 0;
         Result r;
         while ((r = rs.next()) != null) {
             count += r.size();
         }
-        assertEquals(1, count);
+        assertEquals("Should have cell", 1, count);
     }
 
     @Test
@@ -167,6 +168,7 @@ public class TestTransactionConflict extends OmidTestBase {
         tt.put(t1, p);
 
         Get g = new Get(row).setMaxVersions();
+        g.addColumn(fam, col);
         Result r = tt.getHTable().get(g);
         assertEquals("Unexpected size for read.", 1, r.size());
         assertTrue("Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)),

@@ -19,8 +19,6 @@ package com.yahoo.omid;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import com.yahoo.omid.transaction.TransactionManager;
 
@@ -54,18 +52,22 @@ public class OmidTestBase {
     private static HBaseTestingUtility testutil;
     private static MiniHBaseCluster hbasecluster;
     protected static Configuration hbaseConf;
-   
+
     protected static final String TEST_TABLE = "test";
     protected static final String TEST_FAMILY = "data";
 
-    @BeforeClass 
+    protected TSOTestBase getTSO() {
+        return tso;
+    }
+
+    @BeforeClass
     public static void setupOmid() throws Exception {
         LOG.info("Setting up OmidTestBase...");
-	    
+
         // TSO Setup
         tso = new TSOTestBase();
         tso.setupTSO();
-      
+
         // HBase setup
         hbaseConf = HBaseConfiguration.create();
         hbaseConf.setInt("hbase.hregion.memstore.flush.size", 100*1024);
@@ -95,7 +97,7 @@ public class OmidTestBase {
             throw new FileNotFoundException("Failed to delete file: " + f);
     }
 
-    TransactionManager newTransactionManager() throws IOException {
+    protected TransactionManager newTransactionManager() throws IOException {
         return TransactionManager.newBuilder()
             .withConfiguration(hbaseConf).withTSOClient(tso.getClient()).build();
     }
@@ -167,7 +169,7 @@ public class OmidTestBase {
             Get g = new Get(row).setMaxVersions(1);
             Result r = t.get(g);
             KeyValue kv = r.getColumnLatest(fam, col);
-         
+
             if (LOG.isTraceEnabled()) {
                 LOG.trace("Value for " + Bytes.toString(table) + ":" 
                           + Bytes.toString(row) + ":" + Bytes.toString(fam) 

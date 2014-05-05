@@ -24,12 +24,8 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.jboss.netty.channel.ChannelFactory;
 import org.jboss.netty.channel.group.ChannelGroup;
-import org.jboss.netty.channel.group.DefaultChannelGroup;
-import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,10 +34,7 @@ import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.InMemoryCommitTable;
 import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.client.TSOClient;
-import com.yahoo.omid.client.TSOFuture;
-import com.yahoo.omid.tso.util.ClientHandler;
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
-import com.yahoo.omid.tso.util.TransactionClient;
 
 public class TSOTestBase {
     private static final Logger LOG = LoggerFactory.getLogger(TSOTestBase.class);
@@ -50,7 +43,8 @@ public class TSOTestBase {
     //private static Thread tsothread;
     private static ExecutorService bkExecutor;
     private static ExecutorService tsoExecutor;
-   
+
+    protected static Configuration clientConf = new BaseConfiguration();
     protected static TSOClient client;
     protected static TSOClient client2;
 
@@ -58,29 +52,36 @@ public class TSOTestBase {
     private static ChannelFactory channelFactory;
 
     private static TSOServer tso;
-   
+    private static CommitTable commitTable = new InMemoryCommitTable();
+
 
     final static public CellId c1 = new DummyCellIdImpl(0xdeadbeefL);
     final static public CellId c2 = new DummyCellIdImpl(0xfeedcafeL);
 
     public static void setupClient(CommitTable.Client commitTable) throws IOException {
 
-        // *** Start the Netty configuration ***
-        Configuration conf = new BaseConfiguration();
-        conf.setProperty("tso.host", "localhost");
-        conf.setProperty("tso.port", 1234);
+        clientConf.setProperty("tso.host", "localhost");
+        clientConf.setProperty("tso.port", 1234);
 
         // Create the associated Handler
-        client = TSOClient.newBuilder().withConfiguration(conf)
+        client = TSOClient.newBuilder().withConfiguration(clientConf)
             .withCommitTableClient(commitTable).build();
 
-        client2 = TSOClient.newBuilder().withConfiguration(conf)
+        client2 = TSOClient.newBuilder().withConfiguration(clientConf)
             .withCommitTableClient(commitTable).build();
 
     }
 
     public TSOClient getClient() {
         return client;
+    }
+
+    public Configuration getClientConfiguration() {
+        return clientConf;
+    }
+
+    public CommitTable getCommitTable() {
+        return commitTable;
     }
 
     public static void teardownClient() {
@@ -90,7 +91,6 @@ public class TSOTestBase {
     @Before
     public void setupTSO() throws Exception {
         LOG.info("Starting TSO");
-        CommitTable commitTable = new InMemoryCommitTable();
         tso = new TSOServer(TSOServerConfig.configFactory(1234, 1000),
                             commitTable, new TimestampOracle.InMemoryTimestampStorage());
 
@@ -99,15 +99,15 @@ public class TSOTestBase {
         tsoExecutor.execute(tso);
         TestUtils.waitForSocketListening("localhost", 1234, 100);
         LOG.info("Finished loading TSO");
-      
+
         Thread.currentThread().setName("JUnit Thread");
-      
+
         setupClient(commitTable.getClient().get());
     }
-   
+
     @After
     public void teardownTSO() throws Exception {
-        
+
         // IKFIXME      clientHandler.sendMessage(new TimestampRequest());
         // while (!(clientHandler.receiveMessage() instanceof TimestampResponse))
         //    ; // Do nothing
@@ -118,7 +118,7 @@ public class TSOTestBase {
         //    ; // Do nothing
         // secondClientHandler.clearMessages();
         // secondClientHandler.setAutoFullAbort(true);
-      
+
         tso.stop();
         if (tsoExecutor != null) {
             tsoExecutor.shutdownNow();
@@ -126,7 +126,7 @@ public class TSOTestBase {
         tso = null;
 
         TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
-        
+
     }
 
     protected boolean recoveryEnabled() {

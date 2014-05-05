@@ -17,24 +17,24 @@
 package com.yahoo.omid.transaction;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Future;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Charsets;
 import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.client.TSOClient.AbortException;
 import com.yahoo.omid.transaction.Transaction.Status;
@@ -46,7 +46,9 @@ import com.yahoo.omid.transaction.Transaction.Status;
  * 
  */
 public class TransactionManager {
-    
+
+    private static final byte[] SHADOW_CELL_SUFFIX = ":OMID_CTS".getBytes(Charsets.UTF_8);
+
     private static final Logger LOG = LoggerFactory.getLogger(TransactionManager.class);
 
     private TSOClient tsoclient = null;
@@ -172,6 +174,40 @@ public class TransactionManager {
             Thread.currentThread().interrupt();
             throw new TransactionException("Interrupted committing transaction", ie);
         }
+        postCommit(transaction);
+    }
+
+    void postCommit(Transaction transaction) {
+        Set<HBaseCellIdImpl> cells = transaction.getCells();
+
+        boolean failureOccurred = false;
+
+        // Add shadow cells
+        for(HBaseCellIdImpl cell : cells) {
+            Put put = new Put(cell.getRow());
+            put.add(cell.getFamily(), addShadowCellSuffix(cell.getQualifier()),
+                    transaction.getStartTimestamp(), Bytes.toBytes(transaction.getCommitTimestamp()));
+            try {
+                cell.getTable().put(put);
+            } catch (IOException e) {
+                failureOccurred = true;
+                LOG.warn("Failed inserting shadow cell {} for Tx {}", new Object[] { cell, transaction, e });
+            }
+        }
+        // Remove transaction from commit table in not failure occurred
+        if(!failureOccurred) {
+            tsoclient.completeTransaction(transaction.getStartTimestamp());
+        }
+
+    }
+
+    public static byte[] addShadowCellSuffix(byte[] qualifier) {
+        return com.google.common.primitives.Bytes.concat(qualifier, SHADOW_CELL_SUFFIX);
+    }
+
+    public static boolean isShadowCell(byte[] qualifier) {
+        int index = com.google.common.primitives.Bytes.indexOf(qualifier, SHADOW_CELL_SUFFIX);
+        return index >= 0 && index == (qualifier.length - SHADOW_CELL_SUFFIX.length);
     }
 
     /**
