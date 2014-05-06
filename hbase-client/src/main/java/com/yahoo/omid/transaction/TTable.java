@@ -265,7 +265,11 @@ public class TTable {
      */
     List<KeyValue> filter(Transaction transaction, List<KeyValue> kvs, int localVersions)
             throws IOException {
-        final int requestVersions = localVersions * 2 + CACHE_VERSIONS_OVERHEAD;
+        assert(localVersions >= 1);
+        int requestVersions = localVersions * 2 + CACHE_VERSIONS_OVERHEAD;
+        if (requestVersions < 1) {
+            requestVersions = localVersions;
+        }
         if (kvs == null) {
             return Collections.emptyList();
         }
