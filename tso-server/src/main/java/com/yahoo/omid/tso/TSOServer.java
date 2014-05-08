@@ -80,7 +80,12 @@ public class TSOServer implements Runnable {
 
     public static void main(String[] args) throws Exception {
         TSOServerConfig config = TSOServerConfig.parseConfig(args);
-        
+
+        if (config.hasHelpFlag()) {
+            config.usage();
+            return;
+        }
+
         CommitTable commitTable;
         TimestampStorage timestampStorage;
         if (config.isHBase()) {
@@ -141,6 +146,7 @@ public class TSOServer implements Runnable {
         bootstrap.setPipelineFactory(new TSOPipelineFactory(handler));
 
         // Add the parent channel to the group
+        LOG.info("TSO service binding to port {}", config.getPort());
         Channel channel = bootstrap.bind(new InetSocketAddress(config.getPort()));
         channelGroup.add(channel);
 

@@ -26,6 +26,8 @@ SCRIPTDIR=`dirname $0`
 cd $SCRIPTDIR;
 CLASSPATH=../conf
 
+. ../conf/omid-env.sh
+
 # for source release
 for j in ../target/tso*.jar; do
     CLASSPATH=$CLASSPATH:$j
@@ -40,21 +42,11 @@ for j in ../lib/*.jar; do
 done
 
 tso() {
-    exec java -Xmx8096m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.tso.TSOServer -port 1234 $@
+    exec java $JVM_FLAGS -cp $CLASSPATH com.yahoo.omid.tso.TSOServer @../conf/omid.conf $@
 }
 
 tsobench() {
-    exec java -Xmx1024m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.yahoo.omid.tso.util.TransactionClient $@
-}
-
-bktest() {
-    exec java -cp $CLASSPATH -Dlog4j.configuration=log4j.properties org.apache.bookkeeper.util.LocalBookKeeper 5
-}
-
-tranhbase() {
-    pwd
-    echo $CLASSPATH
-    exec java -cp $CLASSPATH org.apache.hadoop.hbase.LocalHBaseCluster 
+    exec java $JVM_FLAGS -cp $CLASSPATH com.yahoo.omid.tso.util.TransactionClient $@
 }
 
 createHBaseCommitTable() {
@@ -70,8 +62,6 @@ usage() {
     echo "where <command> is one of:"
     echo "  tso           Starts the timestamp oracle server."
     echo "  tsobench      Runs a simple benchmark of the TSO."
-    echo "  bktest        Starts test bookkeeper ensemble. Starts zookeeper also."
-    echo "  tran-hbase    Starts hbase with transaction support."
     echo "  create-hbase-commit-table     Creates the hbase commit table."
     echo "  create-hbase-timestamp-table  Creates the hbase timestamp table."
 }
@@ -89,16 +79,12 @@ if [ "$COMMAND" = "tso" ]; then
     tso $@;
 elif [ "$COMMAND" = "tsobench" ]; then
     tsobench $@;
-elif [ "$COMMAND" = "bktest" ]; then
-    bktest $@;
-elif [ "$COMMAND" = "tran-hbase" ]; then
-    tranhbase $@;
 elif [ "$COMMAND" = "create-hbase-commit-table" ]; then
     createHBaseCommitTable $@;
 elif [ "$COMMAND" = "create-hbase-timestamp-table" ]; then
     createHBaseTimestampTable $@;
 else
-    usage;
+    $COMMAND $@
 fi
 
 

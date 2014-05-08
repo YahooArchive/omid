@@ -70,6 +70,7 @@ public class TSOClient {
     private static final Logger LOG = LoggerFactory.getLogger(TSOClient.class);
     public static final String TSO_HOST_CONFKEY = "tso.host";
     public static final String TSO_PORT_CONFKEY = "tso.port";
+    public static final int DEFAULT_TSO_PORT = 54758;
 
     private ChannelFactory factory;
     private ClientBootstrap bootstrap;
@@ -147,7 +148,7 @@ public class TSOClient {
         int executorThreads = conf.getInt("tso.executor.threads", 3);
 
         String host = conf.getString(TSO_HOST_CONFKEY);
-        int port = conf.getInt(TSO_PORT_CONFKEY, 1234);
+        int port = conf.getInt(TSO_PORT_CONFKEY, DEFAULT_TSO_PORT);
         max_retries = conf.getInt("tso.max_retries", 100);
         retry_delay_ms = conf.getInt("tso.retry_delay_ms", 1000);
 
