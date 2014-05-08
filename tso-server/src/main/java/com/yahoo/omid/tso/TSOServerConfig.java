@@ -25,13 +25,24 @@ import com.beust.jcommander.IVariableArity;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
+import com.yahoo.omid.client.TSOClient;
 
 /**
  * Holds the configuration parameters of a TSO server instance.
  * 
  */
-public class TSOServerConfig implements IVariableArity {
+public class TSOServerConfig extends JCommander implements IVariableArity {
 
+    TSOServerConfig() {
+        this(new String[] {});
+    }
+
+    TSOServerConfig(String[] args) {
+        super();
+        addObject(this);
+        parse(args);
+        setProgramName(TSOServer.class.getName());
+    }
 
     // used for testing
     static public TSOServerConfig configFactory(int port, int maxItems) {
@@ -42,29 +53,23 @@ public class TSOServerConfig implements IVariableArity {
     }
 
     static public TSOServerConfig parseConfig(String args[]) {
-        TSOServerConfig config = new TSOServerConfig();
-
-        if (args.length == 0) {
-            new JCommander(config).usage();
-            System.exit(0);
-        }
-
-        new JCommander(config, args);
-
-        return config;
+        return new TSOServerConfig(args);
     }
 
-    @Parameter(names = "-hbase", description = "Enable HBase storage", required = false)
-    private boolean hbase = false;
+    @Parameter(names="-help", description = "Print command options and exit", help = true)
+    private boolean help = false;
     
-    @Parameter(names = "-hbaseTimestampTable", description = "HBase timestamp table name", required = false)
+    @Parameter(names = "-hbase", description = "Enable HBase storage")
+    private boolean hbase = false;
+
+    @Parameter(names = "-hbaseTimestampTable", description = "HBase timestamp table name")
     private String hbaseTimestampTable = TIMESTAMP_TABLE_DEFAULT_NAME;
     
-    @Parameter(names = "-hbaseCommitTable", description = "HBase commit table name", required = false)
+    @Parameter(names = "-hbaseCommitTable", description = "HBase commit table name")
     private String hbaseCommitTable = HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME;
 
-    @Parameter(names = "-port", description = "Port reserved by the Status Oracle", required = true)
-    private int port;
+    @Parameter(names = "-port", description = "Port reserved by the Status Oracle")
+    private int port = TSOClient.DEFAULT_TSO_PORT;
 
     @Parameter(names = "-metrics", description = "Metrics config", variableArity = true)
     private List<String> metrics = new ArrayList<String>();
@@ -75,9 +80,20 @@ public class TSOServerConfig implements IVariableArity {
     @Override
     public int processVariableArity(String optionName,
                                     String[] options) {
-        return options.length;
+        int i = 0;
+        for (String o: options) {
+            if (o.startsWith("-")) {
+                return i;
+            }
+            i++;
+        }
+        return i;
     }
     
+    public boolean hasHelpFlag() {
+        return help;
+    }
+
     public boolean isHBase() {
         return hbase;
     }
