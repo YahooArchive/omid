@@ -1,36 +1,23 @@
 package com.yahoo.omid.tso;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ArrayList;
-
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ExecutionException;
+
+import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.google.common.util.concurrent.ListenableFuture;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ArrayBlockingQueue;
 
 import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelHandlerContext;
 
 import com.yahoo.omid.committable.CommitTable;
-
-import com.lmax.disruptor.EventFactory;
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.*;
-
 import com.codahale.metrics.MetricRegistry;
+
 import static com.codahale.metrics.MetricRegistry.name;
+
 import com.codahale.metrics.Timer;
 import com.codahale.metrics.Histogram;
-import com.codahale.metrics.Gauge;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,35 +28,30 @@ class PersistenceProcessorImpl
     private static final Logger LOG = LoggerFactory.getLogger(PersistenceProcessor.class);
 
     final ReplyProcessor reply;
+    final CommitTable.Client commitTableClient;
     final CommitTable.Writer writer;
     final RingBuffer<PersistEvent> persistRing;
 
-    // should probably use a ringbuffer for this too
+    // TODO Make this configurable
     final static int MAX_BATCH_SIZE = 1000;
-    final static int BATCH_COUNT = 1000;
 
-    final BlockingQueue<Batch> batchPool = new ArrayBlockingQueue<Batch>(BATCH_COUNT);
-    Batch curBatch = null;
+    final Batch batch = new Batch();
 
     final Timer flushTimer;
     final Histogram batchSizeHistogram;
-    final ExecutorService callbackExec;
     long lastFlush = System.nanoTime();
     final static int BATCH_TIMEOUT_MS = 5;
 
     PersistenceProcessorImpl(MetricRegistry metrics,
-                             CommitTable.Writer writer, ReplyProcessor reply) {
+                             CommitTable commitTable, ReplyProcessor reply)
+                                     throws InterruptedException, ExecutionException {
+
+        this.commitTableClient = commitTable.getClient().get();
+        this.writer = commitTable.getWriter().get();
         this.reply = reply;
-        this.writer = writer;
 
         flushTimer = metrics.timer(name("tso", "persist", "flush"));
         batchSizeHistogram = metrics.histogram(name("tso", "persist", "batchsize"));
-        metrics.register(name("tso", "persist", "batchPool"), new Gauge<Integer>() {
-                    @Override
-                    public Integer getValue() {
-                        return batchPool.size();
-                    }
-            });
 
         // FIXME consider putting something more like a phased strategy here to avoid
         // all the syscalls
@@ -85,39 +67,58 @@ class PersistenceProcessorImpl
                 this);
         persistRing.addGatingSequences(persistProcessor.getSequence());
 
-        for (int i = 0; i < BATCH_COUNT; i++) {
-            batchPool.add(new Batch());
-        }
 
         ExecutorService persistExec = Executors.newSingleThreadExecutor(
                 new ThreadFactoryBuilder().setNameFormat("persist-%d").build());
         persistExec.submit(persistProcessor);
-
-        callbackExec = Executors.newSingleThreadExecutor(
-                new ThreadFactoryBuilder().setNameFormat("persist-cb-%d").build());        
     }
 
     @Override
     public void onEvent(final PersistEvent event, final long sequence, final boolean endOfBatch)
         throws Exception {
-
-        if (curBatch == null) {
-            curBatch = batchPool.take();
-        }
         
         switch (event.getType()) {
         case COMMIT:
             // TODO: What happens when the IOException is thrown?
             writer.addCommittedTransaction(event.getStartTimestamp(), event.getCommitTimestamp());
-            curBatch.addCommit(event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel());
+            batch.addCommit(event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel());
+            break;
+        case ABORT:
+            handleAbort(event.getStartTimestamp(), event.isRetry(), event.getChannel());
             break;
         case TIMESTAMP:
-            curBatch.addTimestamp(event.getStartTimestamp(), event.getChannel());
+            batch.addTimestamp(event.getStartTimestamp(), event.getChannel());
             break;
         }
 
-        if (curBatch.getNumEvents() >= MAX_BATCH_SIZE || endOfBatch) {
+        if (batch.getNumEvents() >= MAX_BATCH_SIZE || endOfBatch) {
             maybeFlushBatch();
+        }
+    }
+
+    private void handleAbort(long startTimestamp, boolean isRetry, Channel channel) {
+
+        if(!isRetry) {
+            reply.abortResponse(startTimestamp, channel);
+            return;
+        }
+
+        // 1) Force to flush so the whole batch hits disk
+        flush();
+        // 2) Check the commit table
+        final Optional<Long> commitTimestamp;
+        try {
+            commitTimestamp = commitTableClient.getCommitTimestamp(startTimestamp).get();
+            if(!commitTimestamp.isPresent()) {
+                reply.abortResponse(startTimestamp, channel);
+            } else {
+                reply.commitResponse(startTimestamp, commitTimestamp.get(), channel);
+            }
+        } catch (InterruptedException e) {
+            LOG.error("Interrupted reading from commit table");
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException e) {
+            LOG.error("Error reading from commit table", e);
         }
     }
 
@@ -132,22 +133,24 @@ class PersistenceProcessorImpl
      * or BATCH_TIMEOUT_MS milliseconds have elapsed since the last flush.
      */
     private void maybeFlushBatch() {
-        if (curBatch == null) {
-            return;
+        if (batch.isFull() || (System.nanoTime() - lastFlush) > TimeUnit.MILLISECONDS.toNanos(BATCH_TIMEOUT_MS)) {
+            flush();
         }
-        boolean flushNow = false;
-        if (curBatch.getNumEvents() >= MAX_BATCH_SIZE) {
-            flushNow = true;
-        } else if ((System.nanoTime() - lastFlush) > TimeUnit.MILLISECONDS.toNanos(BATCH_TIMEOUT_MS)) {
-            flushNow = true;
-        }
+    }
 
-        if (flushNow) {
-            lastFlush = System.nanoTime();
-            batchSizeHistogram.update(curBatch.getNumEvents());
-            ListenableFuture<Void> f = writer.flush();
-            f.addListener(new PersistedListener(f, curBatch, lastFlush), callbackExec);
-            curBatch = null;
+    private void flush() {
+        lastFlush = System.nanoTime();
+        batchSizeHistogram.update(batch.getNumEvents());
+        try {
+            writer.flush().get();
+            flushTimer.update((System.nanoTime() - lastFlush), TimeUnit.NANOSECONDS);
+            batch.sendRepliesAndReset(reply);
+        } catch (ExecutionException ee) {
+            LOG.error("Error persisting commit batch", ee.getCause());
+            panic();
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            LOG.error("Interrupted after persistence");
         }
     }
 
@@ -160,9 +163,11 @@ class PersistenceProcessorImpl
     }
     
     @Override
-    public void persistAbort(long startTimestamp, Channel c) {
-        // nothing is persisted for aborts
-        reply.abortResponse(startTimestamp, c);
+    public void persistAbort(long startTimestamp, boolean isRetry, Channel c) {
+        long seq = persistRing.next();
+        PersistEvent e = persistRing.get(seq);
+        PersistEvent.makePersistAbort(e, startTimestamp, isRetry, c);
+        persistRing.publish(seq);
     }
 
     @Override
@@ -179,39 +184,6 @@ class PersistenceProcessorImpl
         System.exit(-1);
     }
 
-    class PersistedListener implements Runnable {
-        ListenableFuture<Void> future;
-        Batch batch;
-        long startTime;
-
-        PersistedListener(ListenableFuture<Void> future, Batch batch, long startTime) {
-            this.future = future;
-            this.batch = batch;
-            this.startTime = startTime;
-        }
-
-        @Override
-        public void run() {
-            flushTimer.update(startTime, TimeUnit.NANOSECONDS);
-
-            try {
-                future.get();
-                batch.sendReplies(reply);
-
-                batch.reset();
-                batchPool.put(batch);
-            } catch (ExecutionException ee) {
-                LOG.error("Error persisting commit batch", ee.getCause());
-                panic();
-                return;
-            } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
-                LOG.error("Interrupted after persistence");
-                return;
-            }
-        }
-    }
-
     public final static class Batch {
         PersistEvent[] events = new PersistEvent[MAX_BATCH_SIZE];
         int numEvents;
@@ -223,8 +195,8 @@ class PersistenceProcessorImpl
             }
         }
 
-        void reset() {
-            numEvents = 0;
+        boolean isFull() {
+            return numEvents == MAX_BATCH_SIZE;
         }
 
         int getNumEvents() {
@@ -249,7 +221,7 @@ class PersistenceProcessorImpl
             PersistEvent.makePersistTimestamp(e, startTimestamp, c);
         }
 
-        void sendReplies(ReplyProcessor reply) {
+        void sendRepliesAndReset(ReplyProcessor reply) {
             for (int i = 0; i < numEvents; i++) {
                 PersistEvent e = events[i];
                 switch (e.getType()) {
@@ -259,19 +231,24 @@ class PersistenceProcessorImpl
                 case COMMIT:
                     reply.commitResponse(e.getStartTimestamp(), e.getCommitTimestamp(), e.getChannel());
                     break;
+                default:
+                    assert(false);
+                    break;
                 }
             }
             numEvents = 0;
         }
+
     }
 
     public final static class PersistEvent {
         enum Type {
-            TIMESTAMP, COMMIT
+            TIMESTAMP, COMMIT, ABORT
         }
         private Type type = null;
         private Channel channel = null;
 
+        private boolean isRetry = false;
         private long startTimestamp = 0;
         private long commitTimestamp = 0;
 
@@ -283,6 +260,14 @@ class PersistenceProcessorImpl
             e.channel = c;
         }
 
+        static void makePersistAbort(PersistEvent e, long startTimestamp,
+                boolean isRetry, Channel c) {
+            e.type = Type.ABORT;
+            e.startTimestamp = startTimestamp;
+            e.isRetry = isRetry;
+            e.channel = c;
+        }
+
         static void makePersistTimestamp(PersistEvent e, long startTimestamp, Channel c) {
             e.type = Type.TIMESTAMP;
             e.startTimestamp = startTimestamp;
@@ -291,6 +276,7 @@ class PersistenceProcessorImpl
 
         Type getType() { return type; }
         Channel getChannel() { return channel; }
+        boolean isRetry() { return isRetry; }
         long getStartTimestamp() { return startTimestamp; }
         long getCommitTimestamp() { return commitTimestamp; }
 

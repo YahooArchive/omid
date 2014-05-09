@@ -858,7 +858,11 @@ public final class TSOProto {
     boolean hasStartTimestamp();
     long getStartTimestamp();
     
-    // repeated int64 cellId = 2;
+    // optional bool isRetry = 2 [default = false];
+    boolean hasIsRetry();
+    boolean getIsRetry();
+    
+    // repeated int64 cellId = 3;
     java.util.List<java.lang.Long> getCellIdList();
     int getCellIdCount();
     long getCellId(int index);
@@ -902,8 +906,18 @@ public final class TSOProto {
       return startTimestamp_;
     }
     
-    // repeated int64 cellId = 2;
-    public static final int CELLID_FIELD_NUMBER = 2;
+    // optional bool isRetry = 2 [default = false];
+    public static final int ISRETRY_FIELD_NUMBER = 2;
+    private boolean isRetry_;
+    public boolean hasIsRetry() {
+      return ((bitField0_ & 0x00000002) == 0x00000002);
+    }
+    public boolean getIsRetry() {
+      return isRetry_;
+    }
+    
+    // repeated int64 cellId = 3;
+    public static final int CELLID_FIELD_NUMBER = 3;
     private java.util.List<java.lang.Long> cellId_;
     public java.util.List<java.lang.Long>
         getCellIdList() {
@@ -918,6 +932,7 @@ public final class TSOProto {
     
     private void initFields() {
       startTimestamp_ = 0L;
+      isRetry_ = false;
       cellId_ = java.util.Collections.emptyList();;
     }
     private byte memoizedIsInitialized = -1;
@@ -935,8 +950,11 @@ public final class TSOProto {
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         output.writeInt64(1, startTimestamp_);
       }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        output.writeBool(2, isRetry_);
+      }
       for (int i = 0; i < cellId_.size(); i++) {
-        output.writeInt64(2, cellId_.get(i));
+        output.writeInt64(3, cellId_.get(i));
       }
       getUnknownFields().writeTo(output);
     }
@@ -950,6 +968,10 @@ public final class TSOProto {
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
           .computeInt64Size(1, startTimestamp_);
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(2, isRetry_);
       }
       {
         int dataSize = 0;
@@ -1086,8 +1108,10 @@ public final class TSOProto {
         super.clear();
         startTimestamp_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000001);
-        cellId_ = java.util.Collections.emptyList();;
+        isRetry_ = false;
         bitField0_ = (bitField0_ & ~0x00000002);
+        cellId_ = java.util.Collections.emptyList();;
+        bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
       
@@ -1130,9 +1154,13 @@ public final class TSOProto {
           to_bitField0_ |= 0x00000001;
         }
         result.startTimestamp_ = startTimestamp_;
-        if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000002;
+        }
+        result.isRetry_ = isRetry_;
+        if (((bitField0_ & 0x00000004) == 0x00000004)) {
           cellId_ = java.util.Collections.unmodifiableList(cellId_);
-          bitField0_ = (bitField0_ & ~0x00000002);
+          bitField0_ = (bitField0_ & ~0x00000004);
         }
         result.cellId_ = cellId_;
         result.bitField0_ = to_bitField0_;
@@ -1154,10 +1182,13 @@ public final class TSOProto {
         if (other.hasStartTimestamp()) {
           setStartTimestamp(other.getStartTimestamp());
         }
+        if (other.hasIsRetry()) {
+          setIsRetry(other.getIsRetry());
+        }
         if (!other.cellId_.isEmpty()) {
           if (cellId_.isEmpty()) {
             cellId_ = other.cellId_;
-            bitField0_ = (bitField0_ & ~0x00000002);
+            bitField0_ = (bitField0_ & ~0x00000004);
           } else {
             ensureCellIdIsMutable();
             cellId_.addAll(other.cellId_);
@@ -1201,11 +1232,16 @@ public final class TSOProto {
               break;
             }
             case 16: {
+              bitField0_ |= 0x00000002;
+              isRetry_ = input.readBool();
+              break;
+            }
+            case 24: {
               ensureCellIdIsMutable();
               cellId_.add(input.readInt64());
               break;
             }
-            case 18: {
+            case 26: {
               int length = input.readRawVarint32();
               int limit = input.pushLimit(length);
               while (input.getBytesUntilLimit() > 0) {
@@ -1241,12 +1277,33 @@ public final class TSOProto {
         return this;
       }
       
-      // repeated int64 cellId = 2;
+      // optional bool isRetry = 2 [default = false];
+      private boolean isRetry_ ;
+      public boolean hasIsRetry() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      public boolean getIsRetry() {
+        return isRetry_;
+      }
+      public Builder setIsRetry(boolean value) {
+        bitField0_ |= 0x00000002;
+        isRetry_ = value;
+        onChanged();
+        return this;
+      }
+      public Builder clearIsRetry() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        isRetry_ = false;
+        onChanged();
+        return this;
+      }
+      
+      // repeated int64 cellId = 3;
       private java.util.List<java.lang.Long> cellId_ = java.util.Collections.emptyList();;
       private void ensureCellIdIsMutable() {
-        if (!((bitField0_ & 0x00000002) == 0x00000002)) {
+        if (!((bitField0_ & 0x00000004) == 0x00000004)) {
           cellId_ = new java.util.ArrayList<java.lang.Long>(cellId_);
-          bitField0_ |= 0x00000002;
+          bitField0_ |= 0x00000004;
          }
       }
       public java.util.List<java.lang.Long>
@@ -1281,7 +1338,7 @@ public final class TSOProto {
       }
       public Builder clearCellId() {
         cellId_ = java.util.Collections.emptyList();;
-        bitField0_ = (bitField0_ & ~0x00000002);
+        bitField0_ = (bitField0_ & ~0x00000004);
         onChanged();
         return this;
       }
@@ -2696,15 +2753,16 @@ public final class TSOProto {
       "\n\035src/main/proto/TSOProto.proto\"]\n\007Reque" +
       "st\022+\n\020timestampRequest\030\001 \001(\0132\021.Timestamp" +
       "Request\022%\n\rcommitRequest\030\002 \001(\0132\016.CommitR" +
-      "equest\"\022\n\020TimestampRequest\"7\n\rCommitRequ" +
-      "est\022\026\n\016startTimestamp\030\001 \001(\003\022\016\n\006cellId\030\002 " +
-      "\003(\003\"b\n\010Response\022-\n\021timestampResponse\030\001 \001" +
-      "(\0132\022.TimestampResponse\022\'\n\016commitResponse" +
-      "\030\002 \001(\0132\017.CommitResponse\"+\n\021TimestampResp" +
-      "onse\022\026\n\016startTimestamp\030\001 \001(\003\"R\n\016CommitRe" +
-      "sponse\022\017\n\007aborted\030\001 \001(\010\022\026\n\016startTimestam",
-      "p\030\002 \001(\003\022\027\n\017commitTimestamp\030\003 \001(\003B\030\n\024com." +
-      "yahoo.omid.protoH\001"
+      "equest\"\022\n\020TimestampRequest\"O\n\rCommitRequ" +
+      "est\022\026\n\016startTimestamp\030\001 \001(\003\022\026\n\007isRetry\030\002" +
+      " \001(\010:\005false\022\016\n\006cellId\030\003 \003(\003\"b\n\010Response\022" +
+      "-\n\021timestampResponse\030\001 \001(\0132\022.TimestampRe" +
+      "sponse\022\'\n\016commitResponse\030\002 \001(\0132\017.CommitR" +
+      "esponse\"+\n\021TimestampResponse\022\026\n\016startTim" +
+      "estamp\030\001 \001(\003\"R\n\016CommitResponse\022\017\n\007aborte",
+      "d\030\001 \001(\010\022\026\n\016startTimestamp\030\002 \001(\003\022\027\n\017commi" +
+      "tTimestamp\030\003 \001(\003B\030\n\024com.yahoo.omid.proto" +
+      "H\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -2732,7 +2790,7 @@ public final class TSOProto {
           internal_static_CommitRequest_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_CommitRequest_descriptor,
-              new java.lang.String[] { "StartTimestamp", "CellId", },
+              new java.lang.String[] { "StartTimestamp", "IsRetry", "CellId", },
               com.yahoo.omid.proto.TSOProto.CommitRequest.class,
               com.yahoo.omid.proto.TSOProto.CommitRequest.Builder.class);
           internal_static_Response_descriptor =

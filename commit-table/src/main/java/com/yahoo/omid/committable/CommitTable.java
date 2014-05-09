@@ -11,6 +11,7 @@ public interface CommitTable {
 
     public interface Writer {
         void addCommittedTransaction(long startTimestamp, long commitTimestamp) throws IOException;
+        // TODO Make this synchronous
         ListenableFuture<Void> flush();
     }
 

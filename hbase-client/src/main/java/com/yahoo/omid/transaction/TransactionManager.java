@@ -159,11 +159,9 @@ public class TransactionManager {
         Future<Long> commit = tsoclient.commit(transaction.getStartTimestamp(),
                                                transaction.getCells());
         try {
-            long commitTs =  commit.get(20, TimeUnit.SECONDS);
+            long commitTs = commit.get();
             transaction.setStatus(Status.COMMITTED);
             transaction.setCommitTimestamp(commitTs);
-        } catch (TimeoutException te) {
-            throw new TransactionException("Commit timed out");
         } catch (ExecutionException e) {
             if (e.getCause() instanceof AbortException) {
                 cleanup(transaction);

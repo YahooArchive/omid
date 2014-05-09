@@ -64,18 +64,23 @@ import com.lmax.disruptor.*;
 public class TSOServer implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(TSOServer.class);
 
+    private final MetricRegistry metrics;
+
+    private final TimestampOracle timestampOracle;
+
     private final TSOServerConfig config;
     private final CommitTable commitTable;
-    private final TimestampStorage timestampStorage;
     
     private boolean finish = false;
     private final Object lock = new Object();
 
 
-    public TSOServer(TSOServerConfig config, CommitTable commitTable, TimestampStorage timestampStorage) {
+
+    public TSOServer(TSOServerConfig config, MetricRegistry metrics, CommitTable commitTable, TimestampOracle timestampOracle) {
         this.config = config;
+        this.metrics = metrics;
+        this.timestampOracle = timestampOracle;
         this.commitTable = commitTable;
-        this.timestampStorage = timestampStorage;
     }
 
     public static void main(String[] args) throws Exception {
@@ -85,6 +90,8 @@ public class TSOServer implements Runnable {
             config.usage();
             return;
         }
+
+        MetricRegistry metrics = MetricsUtils.initMetrics(config.getMetrics());
 
         CommitTable commitTable;
         TimestampStorage timestampStorage;
@@ -98,34 +105,24 @@ public class TSOServer implements Runnable {
             commitTable = new DelayNullCommitTable(1, TimeUnit.SECONDS);
             timestampStorage = new InMemoryTimestampStorage();
         }
-        new TSOServer(config, commitTable, timestampStorage).run();
+        TimestampOracle timestampOracle = new TimestampOracle(metrics, timestampStorage);
+        new TSOServer(config, metrics, commitTable, timestampOracle).run();
     }
 
     @Override
     public void run() {
-        MetricRegistry metrics = MetricsUtils.initMetrics(config.getMetrics());
-
-        TimestampOracle timestampOracle;
-        try {
-            timestampOracle = new TimestampOracle(metrics, timestampStorage);
-        } catch (IOException e) {
-            LOG.error("Can't initialize timestamp oracle", e);
-            throw new IllegalStateException("Cannot run without a timestamp oracle");
-        }
-
-        CommitTable.Writer writer;
-        try {
-            writer = commitTable.getWriter().get();
-        } catch (ExecutionException ee) {
-            LOG.error("Can't get the writer for the commit table", ee);
-            throw new IllegalStateException("Cannot run without a committable");
-        } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted creating committable");
-        }
 
         ReplyProcessor replyProc = new ReplyProcessorImpl(metrics);
-        PersistenceProcessor persistProc = new PersistenceProcessorImpl(metrics, writer, replyProc);
+        PersistenceProcessor persistProc;
+        try {
+            persistProc = new PersistenceProcessorImpl(metrics, commitTable, replyProc);
+        } catch (ExecutionException ee) {
+            LOG.error("Can't build the persistence processor", ee);
+            throw new IllegalStateException("Cannot run without a persist processor");
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted creating persist processor");
+        }
         RequestProcessor reqProc = new RequestProcessorImpl(metrics, timestampOracle,
                 persistProc, config.getMaxItems());
 

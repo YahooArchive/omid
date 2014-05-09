@@ -6,5 +6,5 @@ import java.util.Collection;
 interface RequestProcessor
 {
     void timestampRequest(Channel c);
-    void commitRequest(long startTimestamp, Collection<Long> rows, Channel c);
+    void commitRequest(long startTimestamp, Collection<Long> rows, boolean isRetry, Channel c);
 }

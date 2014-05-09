@@ -62,10 +62,10 @@ public class TestRequestProcessor {
                 TScapture.capture(), any(Channel.class));
         long firstTS = TScapture.getValue();
 
-        proc.commitRequest(firstTS - 1, rows, null);
-        verify(persist, timeout(100).times(1)).persistAbort(eq(firstTS - 1), any(Channel.class));
+        proc.commitRequest(firstTS - 1, rows, false, null);
+        verify(persist, timeout(100).times(1)).persistAbort(eq(firstTS - 1), anyBoolean(), any(Channel.class));
 
-        proc.commitRequest(firstTS, rows, null);
+        proc.commitRequest(firstTS, rows, false, null);
         ArgumentCaptor<Long> commitTScapture = ArgumentCaptor.forClass(Long.class);
 
         verify(persist, timeout(100).times(1)).persistCommit(eq(firstTS), commitTScapture.capture(),
@@ -85,11 +85,11 @@ public class TestRequestProcessor {
                 TScapture.capture(), any(Channel.class));
         long thirdTS = TScapture.getValue();
 
-        proc.commitRequest(thirdTS, rows, null);
+        proc.commitRequest(thirdTS, rows, false, null);
         verify(persist, timeout(100).times(1)).persistCommit(eq(thirdTS), anyLong(),
                                                              any(Channel.class));
-        proc.commitRequest(secondTS, rows, null);
-        verify(persist, timeout(100).times(1)).persistAbort(eq(secondTS),
+        proc.commitRequest(secondTS, rows, false, null);
+        verify(persist, timeout(100).times(1)).persistAbort(eq(secondTS), anyBoolean(),
                                                             any(Channel.class));
     }
 }

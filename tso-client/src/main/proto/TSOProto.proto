@@ -10,7 +10,8 @@ message TimestampRequest {}
 
 message CommitRequest {
   optional int64 startTimestamp = 1;
-  repeated int64 cellId = 2;
+  optional bool isRetry = 2 [default = false];
+  repeated int64 cellId = 3;
 }
 
 message Response {

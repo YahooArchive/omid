@@ -67,7 +67,7 @@ class RequestProcessorImpl
         if (event.getType() == RequestEvent.Type.TIMESTAMP) {
             handleTimestamp(event.getChannel());
         } else if (event.getType() == RequestEvent.Type.COMMIT) {
-            handleCommit(event.getStartTimestamp(), event.rows(), event.getChannel());
+            handleCommit(event.getStartTimestamp(), event.rows(), event.isRetry(), event.getChannel());
         }
     }
 
@@ -80,10 +80,10 @@ class RequestProcessorImpl
     }
 
     @Override
-    public void commitRequest(long startTimestamp, Collection<Long> rows, Channel c) {
+    public void commitRequest(long startTimestamp, Collection<Long> rows, boolean isRetry, Channel c) {
         long seq = requestRing.next();
         RequestEvent e = requestRing.get(seq);
-        RequestEvent.makeCommitRequest(e, startTimestamp, rows, c);
+        RequestEvent.makeCommitRequest(e, startTimestamp, rows, isRetry, c);
         requestRing.publish(seq);
     }
     
@@ -100,7 +100,7 @@ class RequestProcessorImpl
         persistProc.persistTimestamp(timestamp, c);
     }
 
-    public long handleCommit(long startTimestamp, Iterable<Long> rows, Channel c) {
+    public long handleCommit(long startTimestamp, Iterable<Long> rows, boolean isRetry, Channel c) {
         boolean committed = false;
         long commitTimestamp = 0L;
         
@@ -114,7 +114,7 @@ class RequestProcessorImpl
             for (long r : rows) {
                 long value;
                 value = hashmap.getLatestWriteForRow(r);
-                if (value != 0 && value > startTimestamp) {
+                if (value != 0 && value >= startTimestamp) {
                     committed = false;
                     break;
                 }
@@ -142,7 +142,7 @@ class RequestProcessorImpl
                 LOG.error("Error committing", e);
             }
         } else { // add it to the aborted list
-            persistProc.persistAbort(startTimestamp, c);
+            persistProc.persistAbort(startTimestamp, isRetry, c);
         }
 
         return commitTimestamp;
@@ -155,6 +155,7 @@ class RequestProcessorImpl
         private Type type = null;
         private Channel channel = null;
 
+        private boolean isRetry = false;
         private long startTimestamp = 0;
         private long numRows = 0;
 
@@ -169,10 +170,11 @@ class RequestProcessorImpl
 
         // TODO Rename rows to cells
         static void makeCommitRequest(RequestEvent e,
-                                      long startTimestamp, Collection<Long> rows, Channel c) {
+                                      long startTimestamp, Collection<Long> rows, boolean isRetry, Channel c) {
             e.type = Type.COMMIT;
             e.channel = c;
             e.startTimestamp = startTimestamp;
+            e.isRetry = isRetry;
             if (rows.size() > 40) {
                 e.numRows = rows.size();
                 e.rowCollection = rows;
@@ -228,6 +230,10 @@ class RequestProcessorImpl
             return this;
         }
         
+        boolean isRetry() {
+            return isRetry;
+        }
+
         public final static EventFactory<RequestEvent> EVENT_FACTORY
             = new EventFactory<RequestEvent>()
         {

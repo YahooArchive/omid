@@ -56,6 +56,10 @@ public class StateMachine {
             state = initState;
         }
 
+        public State getState() {
+            return state;
+        }
+
         void setState(final State curState, final State newState) {
             if (curState != state) {
                 LOG.error("Tried to transition from {} to {}, but current state is {}",

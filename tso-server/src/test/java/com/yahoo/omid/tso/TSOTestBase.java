@@ -22,13 +22,12 @@ import java.util.concurrent.Executors;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.BaseConfiguration;
-import org.jboss.netty.channel.ChannelFactory;
-import org.jboss.netty.channel.group.ChannelGroup;
 import org.junit.After;
 import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.InMemoryCommitTable;
@@ -37,28 +36,25 @@ import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
 
 public class TSOTestBase {
+
     private static final Logger LOG = LoggerFactory.getLogger(TSOTestBase.class);
 
-    //private static Thread bkthread;
-    //private static Thread tsothread;
-    private static ExecutorService bkExecutor;
-    private static ExecutorService tsoExecutor;
+    private ExecutorService tsoExecutor;
 
-    protected static Configuration clientConf = new BaseConfiguration();
-    protected static TSOClient client;
-    protected static TSOClient client2;
+    protected Configuration clientConf = new BaseConfiguration();
+    protected TSOClient client;
+    protected TSOClient client2;
 
-    private static ChannelGroup channelGroup;
-    private static ChannelFactory channelFactory;
-
-    private static TSOServer tso;
-    private static CommitTable commitTable = new InMemoryCommitTable();
+    private TSOServer tso;
+    private boolean tsoPaused = false;
+    private volatile boolean isTsoBlockingRequest = false;
+    private CommitTable commitTable = new InMemoryCommitTable();
 
 
     final static public CellId c1 = new DummyCellIdImpl(0xdeadbeefL);
     final static public CellId c2 = new DummyCellIdImpl(0xfeedcafeL);
 
-    public static void setupClient(CommitTable.Client commitTable) throws IOException {
+    public void setupClient(CommitTable.Client commitTable) throws IOException {
 
         clientConf.setProperty("tso.host", "localhost");
         clientConf.setProperty("tso.port", 1234);
@@ -84,15 +80,53 @@ public class TSOTestBase {
         return commitTable;
     }
 
-    public static void teardownClient() {
-        // FIXME add client cleanup
+    public void teardownClient() throws Exception {
+        client.close().get();
+        client2.close().get();
+    }
+
+    public void pauseTSO() {
+        synchronized (this) {
+            tsoPaused = true;
+            this.notifyAll();
+        }
+    }
+
+    public void resumeTSO() {
+        synchronized (this) {
+            tsoPaused = false;
+            this.notifyAll();
+        }
+    }
+
+    public boolean isTsoBlockingRequest() {
+        return isTsoBlockingRequest;
     }
 
     @Before
     public void setupTSO() throws Exception {
         LOG.info("Starting TSO");
-        tso = new TSOServer(TSOServerConfig.configFactory(1234, 1000),
-                            commitTable, new TimestampOracle.InMemoryTimestampStorage());
+        MetricRegistry metrics = new MetricRegistry();
+        TimestampOracle timestampOracle = new TimestampOracle(metrics, new TimestampOracle.InMemoryTimestampStorage()) {
+            @Override
+            public long next() throws IOException {
+                while(tsoPaused) {
+                    isTsoBlockingRequest = true;
+                    synchronized (TSOTestBase.this) {
+                        try {
+                            TSOTestBase.this.wait();
+                        } catch (InterruptedException e) {
+                            LOG.error("Interrupted whilst paused");
+                            Thread.currentThread().interrupt();
+                        }
+                    }
+                }
+                isTsoBlockingRequest = false;
+                return super.next();
+            }
+        };
+        tso = new TSOServer(TSOServerConfig.configFactory(1234, 1000), metrics,
+                            commitTable, timestampOracle);
 
         tsoExecutor = Executors.newSingleThreadExecutor(
                 new ThreadFactoryBuilder().setNameFormat("tsomain-%d").build());
@@ -108,16 +142,7 @@ public class TSOTestBase {
     @After
     public void teardownTSO() throws Exception {
 
-        // IKFIXME      clientHandler.sendMessage(new TimestampRequest());
-        // while (!(clientHandler.receiveMessage() instanceof TimestampResponse))
-        //    ; // Do nothing
-        // clientHandler.clearMessages();
-        // clientHandler.setAutoFullAbort(true);
-        // secondClientHandler.sendMessage(new TimestampRequest());
-        // while (!(secondClientHandler.receiveMessage() instanceof TimestampResponse))
-        //    ; // Do nothing
-        // secondClientHandler.clearMessages();
-        // secondClientHandler.setAutoFullAbort(true);
+        teardownClient();
 
         tso.stop();
         if (tsoExecutor != null) {

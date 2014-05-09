@@ -24,7 +24,10 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.BaseConfiguration;
@@ -48,6 +51,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.tso.CellId;
 import com.yahoo.omid.proto.TSOProto;
 import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.CommitTable.Client;
 import com.yahoo.omid.committable.NullCommitTable;
 
 import org.jboss.netty.handler.codec.frame.LengthFieldBasedFrameDecoder;
@@ -70,19 +74,31 @@ public class TSOClient {
     private static final Logger LOG = LoggerFactory.getLogger(TSOClient.class);
     public static final String TSO_HOST_CONFKEY = "tso.host";
     public static final String TSO_PORT_CONFKEY = "tso.port";
+    public static final String REQUEST_MAX_RETRIES_CONFKEY = "request.max-retries";
+    public static final String REQUEST_TIMEOUT_IN_MS_CONFKEY = "request.timeout-ms";
     public static final int DEFAULT_TSO_PORT = 54758;
+    public static final int DEFAULT_TSO_MAX_REQUEST_RETRIES = 5;
+    public static final int DEFAULT_REQUEST_TIMEOUT_MS = 5000; // 5 secs
 
     private ChannelFactory factory;
     private ClientBootstrap bootstrap;
-    private Fsm fsm;
+    Fsm fsm;
 
-    private final int max_retries;
+    private final int requestTimeoutMs;
+    private final int requestMaxRetries;
     private final int retry_delay_ms; // ignored for now
     private final InetSocketAddress addr;
     private final MetricRegistry metrics;
     private final CommitTable.Client commitTableClient;
 
     public static class ConnectionException extends IOException {}
+
+    public static class ClosingException extends Exception {
+    }
+
+    public static class ServiceUnavailableException extends Exception {
+    }
+
     public static class AbortException extends Exception {}
 
     public static class Builder {
@@ -149,7 +165,8 @@ public class TSOClient {
 
         String host = conf.getString(TSO_HOST_CONFKEY);
         int port = conf.getInt(TSO_PORT_CONFKEY, DEFAULT_TSO_PORT);
-        max_retries = conf.getInt("tso.max_retries", 100);
+        requestTimeoutMs = conf.getInt(REQUEST_TIMEOUT_IN_MS_CONFKEY, DEFAULT_REQUEST_TIMEOUT_MS);
+        requestMaxRetries = conf.getInt(REQUEST_MAX_RETRIES_CONFKEY, DEFAULT_TSO_MAX_REQUEST_RETRIES);
         retry_delay_ms = conf.getInt("tso.retry_delay_ms", 1000);
 
         if (host == null) {
@@ -186,7 +203,7 @@ public class TSOClient {
         TSOProto.Request.Builder builder = TSOProto.Request.newBuilder();
         TSOProto.TimestampRequest.Builder tsreqBuilder = TSOProto.TimestampRequest.newBuilder();
         builder.setTimestampRequest(tsreqBuilder.build());
-        RequestEvent request = new RequestEvent(builder.build());
+        RequestEvent request = new RequestEvent(builder.build(), requestMaxRetries);
         fsm.sendEvent(request);
         return new ForwardingTSOFuture<Long>(request);
     }
@@ -199,7 +216,7 @@ public class TSOClient {
             commitbuilder.addCellId(cell.getCellId());
         }
         builder.setCommitRequest(commitbuilder.build());
-        RequestEvent request = new RequestEvent(builder.build());
+        RequestEvent request = new RequestEvent(builder.build(), requestMaxRetries);
         fsm.sendEvent(request);
         return new ForwardingTSOFuture<Long>(request);
     }
@@ -212,6 +229,12 @@ public class TSOClient {
     public TSOFuture<Void> completeTransaction(long startTimestamp) {
         return new ForwardingTSOFuture<Void>(
                 commitTableClient.completeTransaction(startTimestamp));
+    }
+
+    public TSOFuture<Void> close() {
+        CloseEvent closeEvent = new CloseEvent();
+        fsm.sendEvent(closeEvent);
+        return new ForwardingTSOFuture<Void>(closeEvent);
     }
 
     private static class ParamEvent<T> implements Event {
@@ -234,15 +257,47 @@ public class TSOClient {
     
     private static class CloseEvent extends UserEvent<Void> {}
     private static class ChannelClosedEvent implements Event {}
+
+    private static class TimestampRequestTimeoutEvent implements Event {
+    }
+
+    private static class CommitRequestTimeoutEvent implements Event {
+        final long startTimestamp;
+
+        public CommitRequestTimeoutEvent(long startTimestamp) {
+            this.startTimestamp = startTimestamp;
+        }
+
+        public long getStartTimestamp() {
+            return startTimestamp;
+        }
+    }
+
     private static class RequestEvent extends UserEvent<Long> {
-        final TSOProto.Request req;
-        RequestEvent(TSOProto.Request req) {
+        TSOProto.Request req;
+        int retriesLeft;
+
+        RequestEvent(TSOProto.Request req, int retriesLeft) {
             this.req = req;
+            this.retriesLeft = retriesLeft;
         }
 
         TSOProto.Request getRequest() {
             return req;
         }
+
+        void setRequest(TSOProto.Request request) {
+            this.req = request;
+        }
+
+        int getRetriesLeft() {
+            return retriesLeft;
+        }
+
+        void decrementRetries() {
+            retriesLeft--;
+        }
+
     }
 
     private static class ResponseEvent extends ParamEvent<TSOProto.Response> {
@@ -265,14 +320,14 @@ public class TSOClient {
         }
 
         DisconnectedState() {
-            this.retries = max_retries;
+            this.retries = requestMaxRetries;
         }
 
         @Override
         public State handleEvent(final Fsm fsm, Event e) {
             if (e instanceof RequestEvent) {
                 if (retries == 0) {
-                    LOG.error("Unable to connect after {} retries", max_retries);
+                    LOG.error("Unable to connect after {} retries", requestMaxRetries);
                     ((UserEvent)e).error(new ConnectionException());
                     return this;
                 }
@@ -320,10 +375,14 @@ public class TSOClient {
         }
     }
 
-    private class ConnectedState extends BaseState {
+    class ConnectedState extends BaseState {
         final Queue<RequestEvent> timestampRequests;
         final Map<Long, RequestEvent> commitRequests;
         final Channel channel;
+
+        final ScheduledExecutorService timeoutExecutor = Executors
+                .newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("tso-client-timeout")
+                        .build());
 
         ConnectedState(Channel channel) {
             this.channel = channel;
@@ -331,19 +390,31 @@ public class TSOClient {
             commitRequests = new HashMap<Long, RequestEvent>();
         }
 
-        private void sendRequest(RequestEvent request) {
+        private void sendRequest(final Fsm fsm, RequestEvent request) {
             TSOProto.Request req = request.getRequest();
 
+            final Event timeoutEvent;
             if (req.hasTimestampRequest()) {
                 timestampRequests.add(request);
+                timeoutEvent = new TimestampRequestTimeoutEvent();
             } else if (req.hasCommitRequest()) {
                 TSOProto.CommitRequest commitReq = req.getCommitRequest();
                 commitRequests.put(commitReq.getStartTimestamp(), request);
+                timeoutEvent = new CommitRequestTimeoutEvent(commitReq.getStartTimestamp());
             } else {
+                timeoutEvent = null;
                 request.error(new IllegalArgumentException("Unknown request type"));
                 return;
             }
             ChannelFuture f = channel.write(req);
+            timeoutExecutor.schedule(new Runnable() {
+
+                @Override
+                public void run() {
+                    fsm.sendEvent(timeoutEvent);
+                }
+
+            }, requestTimeoutMs, TimeUnit.MILLISECONDS);
             f.addListener(new ChannelFutureListener() {
                     public void operationComplete(ChannelFuture future) {
                         if (!future.isSuccess()) {
@@ -357,7 +428,7 @@ public class TSOClient {
             TSOProto.Response resp = response.getParam();
             if (resp.hasTimestampResponse()) {
                 if (timestampRequests.size() == 0) {
-                    LOG.warn("Received timestamp response when no requests outstanding");
+                    LOG.debug("Received timestamp response when no requests outstanding");
                     return;
                 }
                 RequestEvent e = timestampRequests.remove();
@@ -366,7 +437,7 @@ public class TSOClient {
                 long startTimestamp = resp.getCommitResponse().getStartTimestamp();
                 RequestEvent e = commitRequests.remove(startTimestamp);
                 if (e == null) {
-                    LOG.warn("Received commit response for request that doesn't exist."
+                    LOG.debug("Received commit response for request that doesn't exist."
                             + " Start timestamp: {}", startTimestamp);
                     return;
                 }
@@ -380,25 +451,74 @@ public class TSOClient {
 
         @Override
         public State handleEvent(Fsm fsm, Event e) {
-            if (e instanceof CloseEvent) {
-                fsm.deferUserEvent((CloseEvent)e);
+            if (e instanceof TimestampRequestTimeoutEvent) {
+                if (!timestampRequests.isEmpty()) {
+                    queueRetryOrError(fsm, timestampRequests.remove());
+                }
+                return this;
+            } else if (e instanceof CommitRequestTimeoutEvent) {
+                long startTimestamp = ((CommitRequestTimeoutEvent) e).getStartTimestamp();
+                if (commitRequests.containsKey(startTimestamp)) {
+                    queueRetryOrError(fsm, commitRequests.remove(startTimestamp));
+                }
+                return this;
+            } else if (e instanceof CloseEvent) {
+                timeoutExecutor.shutdownNow();
+                closeChannelAndErrorRequests();
+                fsm.deferUserEvent((CloseEvent) e);
                 return new ClosingState();
             } else if (e instanceof RequestEvent) {
-                sendRequest((RequestEvent)e);
+                sendRequest(fsm, (RequestEvent) e);
                 return this;
             } else if (e instanceof ResponseEvent) {
                 handleResponse((ResponseEvent)e);
                 return this;
             } else if (e instanceof ErrorEvent) {
-                for (RequestEvent r : timestampRequests) {
-                    r.error(new ConnectionException());
-                }
-                for (RequestEvent r : commitRequests.values()) {
-                    r.error(new ConnectionException());
-                }
+                timeoutExecutor.shutdownNow();
+                handleError(fsm);
                 return new ClosingState();
             } else {
                 return super.handleEvent(fsm, e);
+            }
+        }
+
+        private void handleError(Fsm fsm) {
+            while (timestampRequests.size() > 0) {
+                queueRetryOrError(fsm, timestampRequests.remove());
+            }
+            for (long l : commitRequests.keySet()) {
+                queueRetryOrError(fsm, commitRequests.remove(l));
+            }
+            channel.close();
+        }
+
+        private void queueRetryOrError(Fsm fsm, RequestEvent e) {
+            if (e.getRetriesLeft() > 0) {
+                e.decrementRetries();
+                if (e.getRequest().hasCommitRequest()) {
+                    TSOProto.CommitRequest commitRequest = e.getRequest().getCommitRequest();
+                    if (!commitRequest.getIsRetry()) { // Create a new retry for the commit request
+                        TSOProto.Request.Builder builder = TSOProto.Request.newBuilder();
+                        TSOProto.CommitRequest.Builder commitBuilder = TSOProto.CommitRequest.newBuilder();
+                        commitBuilder.mergeFrom(commitRequest);
+                        commitBuilder.setIsRetry(true);
+                        builder.setCommitRequest(commitBuilder.build());
+                        e.setRequest(builder.build());
+                    }
+                }
+                fsm.sendEvent(e);
+            } else {
+                e.error(new ServiceUnavailableException());
+            }
+        }
+
+        private void closeChannelAndErrorRequests() {
+            channel.close();
+            for (RequestEvent r : timestampRequests) {
+                r.error(new ClosingException());
+            }
+            for (RequestEvent r : commitRequests.values()) {
+                r.error(new ClosingException());
             }
         }
     }
@@ -406,7 +526,13 @@ public class TSOClient {
     private class ClosingState extends BaseState {
         @Override
         public State handleEvent(Fsm fsm, Event e) {
-            if (e instanceof UserEvent) {
+            if (e instanceof TimestampRequestTimeoutEvent
+                    || e instanceof CommitRequestTimeoutEvent
+                    || e instanceof ErrorEvent
+                    || e instanceof ResponseEvent) {
+                // Ignored. They will be retried or errored
+                return this;
+            } else if (e instanceof UserEvent) {
                 fsm.deferUserEvent((UserEvent)e);
                 return this;
             } else if (e instanceof ChannelClosedEvent) {
@@ -432,7 +558,7 @@ public class TSOClient {
         @Override
         public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e)
                 throws Exception {
-            fsm.sendEvent(new CloseEvent());
+            fsm.sendEvent(new ErrorEvent(new ConnectionException()));
         }
 
         @Override
@@ -456,4 +582,5 @@ public class TSOClient {
             fsm.sendEvent(new ErrorEvent(e.getCause()));
         }
     }
+
 }
