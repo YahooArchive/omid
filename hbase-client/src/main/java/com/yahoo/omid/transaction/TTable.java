@@ -19,6 +19,7 @@ package com.yahoo.omid.transaction;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -61,6 +62,8 @@ public class TTable {
     public static long elementsRead = 0;
     public static long extraGetsPerformed = 0;
     public static double extraVersionsAvg = 3;
+
+    public static byte[] DELETE_TOMBSTONE = Bytes.toBytes("__OMID_TOMBSTONE__");;
 
     /** We always ask for CACHE_VERSIONS_OVERHEAD extra versions */
     private static int CACHE_VERSIONS_OVERHEAD = 3;
@@ -150,7 +153,7 @@ public class TTable {
             for (KeyValue kv : kvl) {
                 switch (KeyValue.Type.codeToType(kv.getType())) {
                 case DeleteColumn:
-                    deleteP.add(kv.getFamily(), kv.getQualifier(), startTimestamp, null);
+                    deleteP.add(kv.getFamily(), kv.getQualifier(), startTimestamp, DELETE_TOMBSTONE);
                     transaction.addCell(new HBaseCellIdImpl(table, delete.getRow(), kv.getFamily(), kv.getQualifier()));
                     break;
                 case DeleteFamily:
@@ -159,7 +162,7 @@ public class TTable {
                     break;
                 case Delete:
                     if (kv.getTimestamp() == HConstants.LATEST_TIMESTAMP) {
-                        deleteP.add(kv.getFamily(), kv.getQualifier(), startTimestamp, null);
+                        deleteP.add(kv.getFamily(), kv.getQualifier(), startTimestamp, DELETE_TOMBSTONE);
                         transaction.addCell(new HBaseCellIdImpl(table, delete.getRow(),
                                 kv.getFamily(), kv.getQualifier()));
                         break;
@@ -180,7 +183,7 @@ public class TTable {
                     byte[] family = entryF.getKey();
                     for (Entry<byte[], NavigableMap<Long, byte[]>> entryQ : entryF.getValue().entrySet()) {
                         byte[] qualifier = entryQ.getKey();
-                        deleteP.add(family, qualifier, null);
+                        deleteP.add(family, qualifier, DELETE_TOMBSTONE);
                         transaction.addCell(new HBaseCellIdImpl(table, delete.getRow(), family, qualifier));
                     }
                 }
@@ -348,7 +351,7 @@ public class TTable {
 
                 LOG.trace("Kv {} is valid", kv);
                 // Valid read, add it to result unless it's a delete
-                if (kv.getValueLength() > 0) {
+                if (!Arrays.equals(kv.getValue(), DELETE_TOMBSTONE)) {
                     LOG.trace("Kv is not a delete");
                     filtered.add(kv);
                 }

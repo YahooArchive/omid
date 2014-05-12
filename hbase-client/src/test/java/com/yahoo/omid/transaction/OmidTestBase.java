@@ -55,6 +55,7 @@ public class OmidTestBase {
 
     protected static final String TEST_TABLE = "test";
     protected static final String TEST_FAMILY = "data";
+    protected static final String TEST_FAMILY2 = "data2";
 
     protected TSOTestBase getTSO() {
         return tso;
@@ -120,8 +121,11 @@ public class OmidTestBase {
         if (!admin.tableExists(TEST_TABLE)) {
             HTableDescriptor desc = new HTableDescriptor(TEST_TABLE);
             HColumnDescriptor datafam = new HColumnDescriptor(TEST_FAMILY);
+            HColumnDescriptor datafam2 = new HColumnDescriptor(TEST_FAMILY2);
             datafam.setMaxVersions(Integer.MAX_VALUE);
+            datafam2.setMaxVersions(Integer.MAX_VALUE);
             desc.addFamily(datafam);
+            desc.addFamily(datafam2);
 
             admin.createTable(desc);
         }
