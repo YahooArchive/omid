@@ -14,7 +14,7 @@
  * limitations under the License. See accompanying LICENSE file.
  */
 
-package com.yahoo.omid;
+package com.yahoo.omid.transaction;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;

@@ -30,7 +30,6 @@ import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.yahoo.omid.OmidTestBase;
 import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.committable.CommitTable;
 

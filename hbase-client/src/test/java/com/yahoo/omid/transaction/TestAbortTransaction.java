@@ -1,4 +1,4 @@
-package com.yahoo.omid;
+package com.yahoo.omid.transaction;
 
 import static org.junit.Assert.assertTrue;
 

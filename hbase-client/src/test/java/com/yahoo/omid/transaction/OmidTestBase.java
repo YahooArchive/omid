@@ -14,7 +14,7 @@
  * limitations under the License. See accompanying LICENSE file.
  */
 
-package com.yahoo.omid;
+package com.yahoo.omid.transaction;
 
 import java.io.File;
 import java.io.FileNotFoundException;
