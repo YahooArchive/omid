@@ -130,13 +130,36 @@ public class HBaseCommitTable implements CommitTable {
      * This method allows to spread the start timestamp into different regions in HBase in order to avoid hotspot
      * regions
      */
-    private static byte[] startTimestampToKey(long startTimestamp) throws IOException {
-        long reversedStartTimestamp = Long.reverse(startTimestamp);
-        byte[] bytes = new byte[CodedOutputStream.computeSFixed64SizeNoTag(reversedStartTimestamp)];
-        CodedOutputStream cos = CodedOutputStream.newInstance(bytes);
-        cos.writeSFixed64NoTag(reversedStartTimestamp);
-        cos.flush();
+    static byte[] startTimestampToKey(long startTimestamp) {
+        assert (startTimestamp >= 0 && startTimestamp <= Long.MAX_VALUE);
+        // 1) Reverse the timestamp to better spread
+        long reversedStartTimestamp = Long.reverse(startTimestamp | Long.MIN_VALUE);
+        // 2) Convert to a byte array with big endian format
+        byte[] bytes = new byte[8];
+        bytes[0] = (byte) ((reversedStartTimestamp >> 56) & 0xFF);
+        bytes[1] = (byte) ((reversedStartTimestamp >> 48) & 0xFF);
+        bytes[2] = (byte) ((reversedStartTimestamp >> 40) & 0xFF);
+        bytes[3] = (byte) ((reversedStartTimestamp >> 32) & 0xFF);
+        bytes[4] = (byte) ((reversedStartTimestamp >> 24) & 0xFF);
+        bytes[5] = (byte) ((reversedStartTimestamp >> 16) & 0xFF);
+        bytes[6] = (byte) ((reversedStartTimestamp >> 8) & 0xFF);
+        bytes[7] = (byte) ((reversedStartTimestamp) & 0xFE);
         return bytes;
+    }
+
+    static long keyToStartTimestamp(byte[] key) {
+        assert (key.length == 8);
+        // 1) Convert from big endian each byte
+        long startTimestamp = ((long) key[0] & 0xFF) << 56
+                        | ((long) key[1] & 0xFF) << 48
+                        | ((long) key[2] & 0xFF) << 40
+                        | ((long) key[3] & 0xFF) << 32
+                        | ((long) key[4] & 0xFF) << 24
+                        | ((long) key[5] & 0xFF) << 16
+                        | ((long) key[6] & 0xFF) << 8
+                        | ((long) key[7] & 0xFF);
+        // 2) Reverse to obtain the original value
+        return Long.reverse(startTimestamp);
     }
 
     private static byte[] encodeCommitTimestamp(long startTimestamp, long commitTimestamp) throws IOException {
