@@ -43,6 +43,7 @@ import com.codahale.metrics.Timer;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.client.TSOFuture;
+import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.tso.CellId;
 
 /**
@@ -147,8 +148,9 @@ public class ClientHandler {
      * @param inflight
      * @throws IOException
      */
-    public ClientHandler(Configuration conf, MetricRegistry metrics, int runFor, long nbMessage, int inflight,
-            int commitDelay, float percentReads, int maxTxSize, IntegerGenerator intGenerator) throws IOException {
+    public ClientHandler(Configuration conf, CommitTable.Client commitTableClient, MetricRegistry metrics, int runFor, 
+            long nbMessage, int inflight, int commitDelay, float percentReads, int maxTxSize, 
+            IntegerGenerator intGenerator) throws IOException {
         if (nbMessage < 0) {
             throw new IllegalArgumentException("nbMessage: " + nbMessage);
         }
@@ -169,7 +171,9 @@ public class ClientHandler {
         abortTimer = metrics.timer(name("TSOClient", name, "abort"));
         errorCounter = metrics.counter(name("TSOClient", name, "errors"));
 
-        client = TSOClient.newBuilder().withConfiguration(conf).withMetrics(metrics).build();
+        client = TSOClient.newBuilder()
+                .withConfiguration(conf).withMetrics(metrics)
+                .withCommitTableClient(commitTableClient).build();
 
         long seed = System.currentTimeMillis();
         seed *= threadId;// to make it channel dependent
@@ -187,6 +191,7 @@ public class ClientHandler {
                     }
                 } catch (InterruptedException ie) {
                     // normal, ignore, we're shutting down
+                    Thread.currentThread().interrupt();
                 }
             }
         });
@@ -231,15 +236,17 @@ public class ClientHandler {
                 cells.add(new DummyCellIdImpl(l));
             }
             final TSOFuture<Long> f = client.commit(txnid, cells);
-            f.addListener(new CommitListener(f, System.nanoTime()), executor);
+            f.addListener(new CommitListener(txnid, f, System.nanoTime()), executor);
         }
     }
 
     class CommitListener implements Runnable {
-        TSOFuture<Long> f;
+        final long txnId;
         final long start;
+        TSOFuture<Long> f;
 
-        CommitListener(TSOFuture<Long> f, long start) {
+        CommitListener(long txnId, TSOFuture<Long> f, long start) {
+            this.txnId = txnId;
             this.f = f;
             this.start = start;
         }
@@ -248,6 +255,7 @@ public class ClientHandler {
         public void run() {
             try {
                 f.get();
+                client.completeTransaction(txnId);
                 commitTimer.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
             } catch (ExecutionException e) {
                 abortTimer.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);

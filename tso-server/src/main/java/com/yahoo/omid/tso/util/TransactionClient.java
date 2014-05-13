@@ -17,19 +17,21 @@
 package com.yahoo.omid.tso.util;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
-
 import java.util.concurrent.TimeUnit;
+
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.BaseConfiguration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.HTable;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.NullCommitTable;
+import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.tso.util.ClientHandler.RowDistribution;
-
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Slf4jReporter;
 
@@ -38,15 +40,13 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Simple Transaction Client using Serialization
- * @author maysam
- *
  */
 public class TransactionClient {
 
+    private static final Logger LOG = LoggerFactory.getLogger(TransactionClient.class);
+
     public static void main(String[] args) throws Exception {
-
-        // *** Start the Netty configuration ***
-
+        
         final Config config = Config.parseConfig(args);
         List<ClientHandler> handlers = new ArrayList<ClientHandler>();
 
@@ -54,17 +54,18 @@ public class TransactionClient {
         conf.setProperty("tso.host", config.tsoHost);
         conf.setProperty("tso.port", config.tsoPort);
         
-        System.out.println("Starting " + config.nbClients + " clients with the following configuration:");
-        System.out.println("PARAM MAX_ROW: " + config.maxTxSize);
+        LOG.info("Starting {} clients with the following configuration:", config.nbClients);
+        LOG.info("PARAM MAX_ROW: {}", config.maxTxSize);
         
         float readPercentage = config.readproportion==-1?config.percentReads:(config.readproportion * 100);
         
-        System.out.println("readPercent " + config.percentReads);
+        LOG.info("readPercent {}", config.percentReads);
         
         RowDistribution rowDistribution = RowDistribution.valueOf(config.requestDistribution.toUpperCase());
         IntegerGenerator[] intGenerators = new IntegerGenerator[config.nbClients];
         
-        System.out.println("Initializing row ids generators for distribution ["+config.requestDistribution + "] (that may take a while)");
+        LOG.info("Initializing cell id generators for distribution [{}] (that may take a while)",
+                config.requestDistribution);
 
         // zipfian generator takes a while to initialize. Do that first
         for(int i = 0; i < intGenerators.length; ++i) {
@@ -95,9 +96,21 @@ public class TransactionClient {
             .build();
         reporter.start(10, TimeUnit.SECONDS);
 
+        
+        
         for(int i = 0; i < config.nbClients; ++i) {
+            CommitTable commitTable;
+            if (config.isHBase()) {
+                org.apache.hadoop.conf.Configuration hbaseConfig = HBaseConfiguration.create();
+                HTable commitHTable = new HTable(hbaseConfig , config.getHBaseCommitTable());
+                commitTable = new HBaseCommitTable(commitHTable);
+            } else {
+                commitTable = new NullCommitTable();
+            }
             // Create the associated Handler
-            ClientHandler handler = new ClientHandler(conf, metrics,
+            ClientHandler handler = new ClientHandler(conf,
+                                                      commitTable.getClient().get(),
+                                                      metrics,
                                                       config.runFor, config.nbMessages,
                                                       config.maxInFlight, config.commitDelay,
                                                       readPercentage, config.maxTxSize,
@@ -113,11 +126,7 @@ public class TransactionClient {
             handler.shutdown();
         }
         
-        System.out.println("\n**********\nBenchmark complete - please check the metrics from individual client threads in the console / log");
-
-        // NOTE: for simplicity we don't properly close netty channels or release resources in this example. 
-        
-        System.exit(0);
+        LOG.info("Benchmark complete - please check the metrics from individual clients in the log");
     }
     
     
@@ -172,5 +181,18 @@ public class TransactionClient {
         @Parameter(names="-requestDistribution", description="Request distribution (how to pick rows) {uniform|zipfian}"  )
         String requestDistribution = "uniform";
         
+        @Parameter(names = "-hbase", description = "Enable HBase storage")
+        private boolean hbase = false;
+
+        @Parameter(names = "-hbaseCommitTable", description = "HBase commit table name")
+        private String hbaseCommitTable = HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME;
+        
+        public boolean isHBase() {
+            return hbase;
+        }
+        
+        public String getHBaseCommitTable() {
+            return hbaseCommitTable;
+        }
     }
 }
