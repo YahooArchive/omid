@@ -42,13 +42,6 @@ public class TestBasicTransaction extends TSOTestBase {
             assertEquals("Should have aborted", ee.getCause().getClass(), AbortException.class);
         }
 
-        // TODO fix this. Commiting an already committed value (either failed or commited) should fail
-        // FIXME to do this.
-        //      clientHandler.sendMessage(new CommitRequest(tr1.timestamp, new RowKey[] { r2 }));
-        //      messageReceived = clientHandler.receiveMessage();
-        //      assertThat(messageReceived, is(CommitResponse.class));
-        //      CommitResponse cr3 = (CommitResponse) messageReceived;
-        //      assertFalse(cr3.committed);
     }
 
 }
