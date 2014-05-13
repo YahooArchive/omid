@@ -115,7 +115,7 @@ public class TSOServer implements Runnable {
         ReplyProcessor replyProc = new ReplyProcessorImpl(metrics);
         PersistenceProcessor persistProc;
         try {
-            persistProc = new PersistenceProcessorImpl(metrics, commitTable, replyProc);
+            persistProc = new PersistenceProcessorImpl(metrics, commitTable, replyProc, config.getMaxBatchSize());
         } catch (ExecutionException ee) {
             LOG.error("Can't build the persistence processor", ee);
             throw new IllegalStateException("Cannot run without a persist processor");

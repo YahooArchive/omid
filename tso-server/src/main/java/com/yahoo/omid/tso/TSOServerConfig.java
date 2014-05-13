@@ -77,6 +77,9 @@ public class TSOServerConfig extends JCommander implements IVariableArity {
     @Parameter(names = "-maxItems", description = "Maximum number of items in the TSO (will determine the 'low watermark')")
     private int maxItems = 1000000;
 
+    @Parameter(names = "-maxBatchSize", description = "Maximum size in each persisted batch of commits")
+    private int maxBatchSize = 10000;
+
     @Override
     public int processVariableArity(String optionName,
                                     String[] options) {
@@ -116,6 +119,10 @@ public class TSOServerConfig extends JCommander implements IVariableArity {
 
     public int getMaxItems() {
         return maxItems;
+    }
+
+    public int getMaxBatchSize() {
+        return maxBatchSize;
     }
 
 }

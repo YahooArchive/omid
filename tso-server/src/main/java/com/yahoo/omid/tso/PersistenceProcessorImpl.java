@@ -32,10 +32,9 @@ class PersistenceProcessorImpl
     final CommitTable.Writer writer;
     final RingBuffer<PersistEvent> persistRing;
 
-    // TODO Make this configurable
-    final static int MAX_BATCH_SIZE = 1000;
+    final int maxBatchSize;
 
-    final Batch batch = new Batch();
+    final Batch batch;
 
     final Timer flushTimer;
     final Histogram batchSizeHistogram;
@@ -43,12 +42,15 @@ class PersistenceProcessorImpl
     final static int BATCH_TIMEOUT_MS = 5;
 
     PersistenceProcessorImpl(MetricRegistry metrics,
-                             CommitTable commitTable, ReplyProcessor reply)
+                             CommitTable commitTable, ReplyProcessor reply, int maxBatchSize)
                                      throws InterruptedException, ExecutionException {
 
         this.commitTableClient = commitTable.getClient().get();
         this.writer = commitTable.getWriter().get();
         this.reply = reply;
+        this.maxBatchSize = maxBatchSize;
+        
+        batch = new Batch(maxBatchSize);
 
         flushTimer = metrics.timer(name("tso", "persist", "flush"));
         batchSizeHistogram = metrics.histogram(name("tso", "persist", "batchsize"));
@@ -91,7 +93,7 @@ class PersistenceProcessorImpl
             break;
         }
 
-        if (batch.getNumEvents() >= MAX_BATCH_SIZE || endOfBatch) {
+        if (batch.isFull() || endOfBatch) {
             maybeFlushBatch();
         }
     }
@@ -185,18 +187,22 @@ class PersistenceProcessorImpl
     }
 
     public final static class Batch {
-        PersistEvent[] events = new PersistEvent[MAX_BATCH_SIZE];
+        final PersistEvent[] events;
+        final int maxBatchSize;
         int numEvents;
 
-        Batch() {
+        Batch(int maxBatchSize) {
+            assert(maxBatchSize > 0);
+            this.maxBatchSize = maxBatchSize;
+            events = new PersistEvent[maxBatchSize];
             numEvents = 0;
-            for (int i = 0; i < MAX_BATCH_SIZE; i++) {
+            for (int i = 0; i < maxBatchSize; i++) {
                 events[i] = new PersistEvent();
             }
         }
 
         boolean isFull() {
-            return numEvents == MAX_BATCH_SIZE;
+            return numEvents == maxBatchSize;
         }
 
         int getNumEvents() {
@@ -205,7 +211,7 @@ class PersistenceProcessorImpl
 
         void addCommit(long startTimestamp, long commitTimestamp, Channel c) {
             int index = numEvents++;
-            if (numEvents > MAX_BATCH_SIZE) {
+            if (numEvents > maxBatchSize) {
                 throw new IllegalStateException("batch full");
             }
             PersistEvent e = events[index];
@@ -214,7 +220,7 @@ class PersistenceProcessorImpl
 
         void addTimestamp(long startTimestamp, Channel c) {
             int index = numEvents++;
-            if (numEvents > MAX_BATCH_SIZE) {
+            if (numEvents > maxBatchSize) {
                 throw new IllegalStateException("batch full");
             }
             PersistEvent e = events[index];
