@@ -202,6 +202,7 @@ class PersistenceProcessorImpl
         }
 
         boolean isFull() {
+            assert(numEvents <= maxBatchSize);
             return numEvents == maxBatchSize;
         }
 
@@ -210,19 +211,19 @@ class PersistenceProcessorImpl
         }
 
         void addCommit(long startTimestamp, long commitTimestamp, Channel c) {
-            int index = numEvents++;
-            if (numEvents > maxBatchSize) {
+            if (isFull()) {
                 throw new IllegalStateException("batch full");
             }
+            int index = numEvents++;
             PersistEvent e = events[index];
             PersistEvent.makePersistCommit(e, startTimestamp, commitTimestamp, c);
         }
 
         void addTimestamp(long startTimestamp, Channel c) {
-            int index = numEvents++;
-            if (numEvents > maxBatchSize) {
+            if (isFull()) {
                 throw new IllegalStateException("batch full");
             }
+            int index = numEvents++;
             PersistEvent e = events[index];
             PersistEvent.makePersistTimestamp(e, startTimestamp, c);
         }
