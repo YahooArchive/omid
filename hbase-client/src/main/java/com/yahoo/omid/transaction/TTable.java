@@ -388,7 +388,7 @@ public class TTable {
             throws InterruptedException, ExecutionException, IOException {
         long startTimestamp = kv.getTimestamp();
         if (commitCache.containsKey(startTimestamp)) {
-            return Optional.of(startTimestamp);
+            return Optional.of(commitCache.get(startTimestamp));
         }
         Future<Optional<Long>> f = transaction.tsoclient.getCommitTimestamp(startTimestamp);
         Optional<Long> commitTimestamp = f.get();
