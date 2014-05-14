@@ -162,7 +162,7 @@ public class TestShadowCells extends OmidTestBase {
                             postCommitEnd.await();
                             return (List<KeyValue>) invocation.callRealMethod();
                         }
-                    }).when(table).filter(any(Transaction.class), Matchers.<List<KeyValue>> any(), anyInt());
+                    }).when(table).filterKeyValuesForSnapshot(Matchers.<List<KeyValue>> any(), any(Transaction.class), anyInt());
 
                     TransactionManager tm = newTransactionManager();
                     if (hasShadowCell(table, row, family, qualifier, t1.getStartTimestamp())) {

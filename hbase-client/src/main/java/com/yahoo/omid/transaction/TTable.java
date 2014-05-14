@@ -45,6 +45,7 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.http.annotation.ThreadSafe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +71,7 @@ public class TTable {
     /** Average number of versions needed to reach the right snapshot */
     public double versionsAvg = 3;
     /** How fast do we adapt the average */
-    private static final double alpha = 0.975;
+    private static final double ALPHA = 0.975;
 
     private HTableInterface table;
 
@@ -125,10 +126,13 @@ public class TTable {
 
         // Return the KVs that belong to the transaction snapshot, ask for more
         // versions if needed
-        List<KeyValue> rawResult = table.get(tsget).list();
-        List<KeyValue> filtered = filter(transaction, rawResult, requestedVersions);
+        Result result = table.get(tsget);
+        List<KeyValue> filteredKeyValues = Collections.emptyList();
+        if (!result.isEmpty()) {
+            filteredKeyValues = filterKeyValuesForSnapshot(result.list(), transaction, requestedVersions);
+        }
         
-        return new Result(filtered);
+        return new Result(filteredKeyValues);
     }
 
     /**
@@ -251,137 +255,180 @@ public class TTable {
         return scanner;
     }
 
+    @ThreadSafe
+    static class IterableColumn implements Iterable<List<KeyValue>> {
+
+        @ThreadSafe
+        class ColumnIterator implements Iterator<List<KeyValue>> {
+
+            private final Iterator<ColumnWrapper> listIterator = columnList.listIterator();
+
+            @Override
+            public boolean hasNext() {
+                return listIterator.hasNext();
+            }
+
+            @Override
+            public List<KeyValue> next() {
+                ColumnWrapper columnWrapper = listIterator.next();
+                return columns.get(columnWrapper);
+            }
+
+            @Override
+            public void remove() {
+                // Not Implemented
+            }
+
+        }
+
+        private final Map<ColumnWrapper, List<KeyValue>> columns = new HashMap<ColumnWrapper, List<KeyValue>>();
+        private final List<ColumnWrapper> columnList = new ArrayList<ColumnWrapper>();
+
+        public IterableColumn(List<KeyValue> keyValues) {
+            for (KeyValue kv : keyValues) {
+                if (TransactionManager.isShadowCell(kv.getQualifier())) {
+                    continue;
+                }
+                ColumnWrapper currentColumn = new ColumnWrapper(kv.getFamily(), kv.getQualifier());
+                if (!columns.containsKey(currentColumn)) {
+                    columns.put(currentColumn, new ArrayList<KeyValue>(Arrays.asList(kv)));
+                    columnList.add(currentColumn);
+                } else {
+                    List<KeyValue> columnKeyValues = columns.get(currentColumn);
+                    columnKeyValues.add(kv);
+                }
+            }
+
+        }
+
+        @Override
+        public Iterator<List<KeyValue>> iterator() {
+            return new ColumnIterator();
+        }
+
+    }
+
     /**
      * Filters the raw results returned from HBase and returns only those
      * belonging to the current snapshot, as defined by the transaction
      * object. If the raw results don't contain enough information for a
      * particular qualifier, it will request more versions from HBase.
      *
+     * @param rawKeyValues
+     *            Raw KVs that we are going to filter
      * @param transaction
      *            Defines the current snapshot
-     * @param kvs
-     *            Raw KVs that we are going to filter
-     * @param localVersions
+     * @param versionsToRequest
      *            Number of versions requested from hbase
      * @return Filtered KVs belonging to the transaction snapshot
      * @throws IOException
      */
-    List<KeyValue> filter(Transaction transaction, List<KeyValue> kvs, int localVersions)
-            throws IOException {
-        assert(localVersions >= 1);
-        int requestVersions = localVersions * 2 + CACHE_VERSIONS_OVERHEAD;
-        if (requestVersions < 1) {
-            requestVersions = localVersions;
-        }
-        if (kvs == null) {
-            return Collections.emptyList();
+    List<KeyValue> filterKeyValuesForSnapshot(List<KeyValue> rawKeyValues, Transaction transaction,
+            int versionsToRequest) throws IOException {
+
+        assert (rawKeyValues != null && transaction != null && versionsToRequest >= 1);
+
+        List<KeyValue> keyValuesInSnapshot = new ArrayList<KeyValue>();
+        List<Get> pendingGetsList = new ArrayList<Get>();
+
+        int numberOfVersionsToFetch = versionsToRequest * 2 + CACHE_VERSIONS_OVERHEAD;
+
+        Map<Long, Long> commitCache = buildCommitCache(rawKeyValues);
+
+        for (List<KeyValue> columnKeyValues : new IterableColumn(rawKeyValues)) {
+            int versionsProcessed = 0;
+            boolean snapshotValueFound = false;
+            KeyValue oldestKV = null;
+            for (KeyValue kv : columnKeyValues) {
+                if (isKeyValueInSnapshot(kv, transaction, commitCache)) {
+                    if (!Arrays.equals(kv.getValue(), DELETE_TOMBSTONE)) {
+                        keyValuesInSnapshot.add(kv);
+                    }
+                    snapshotValueFound = true;
+                    break;
+                }
+                oldestKV = kv;
+                versionsProcessed++;
+            }
+            if (!snapshotValueFound) {
+                assert (oldestKV != null);
+                Get pendingGet = createPendingGet(oldestKV, numberOfVersionsToFetch);
+                pendingGetsList.add(pendingGet);
+            }
+            updateAvgNumberOfVersionsToFetchFromHBase(versionsProcessed);
         }
 
-        LOG.trace("Filtering kvs={} for transaction={}", kvs, transaction);
+        if (!pendingGetsList.isEmpty()) {
+            Result[] pendingGetsResults = table.get(pendingGetsList);
+            for (Result pendingGetResult : pendingGetsResults) {
+                if (!pendingGetResult.isEmpty()) {
+                    keyValuesInSnapshot.addAll(
+                            filterKeyValuesForSnapshot(pendingGetResult.list(), transaction, numberOfVersionsToFetch));
+                }
+            }
+        }
 
-        long startTimestamp = transaction.getStartTimestamp();
-        // Filtered kvs
-        List<KeyValue> filtered = new ArrayList<KeyValue>();
-        // Map from column to older uncommitted timestamp
-        List<Get> pendingGets = new ArrayList<Get>();
-        ColumnWrapper lastColumn = new ColumnWrapper(null, null);
-        long oldestUncommittedTS = Long.MAX_VALUE;
-        boolean validRead = true;
-        // Number of versions needed to reach a committed value
-        int versionsProcessed = 0;
-        Get pendingGet = null;
+        Collections.sort(keyValuesInSnapshot, KeyValue.COMPARATOR);
+
+        assert (keyValuesInSnapshot.size() <= rawKeyValues.size());
+        return keyValuesInSnapshot;
+    }
+
+    private Map<Long, Long> buildCommitCache(List<KeyValue> rawKeyValues) {
 
         Map<Long, Long> commitCache = new HashMap<Long, Long>();
-        for (KeyValue kv : kvs) {
+
+        for (KeyValue kv : rawKeyValues) {
             if (TransactionManager.isShadowCell(kv.getQualifier())) {
                 commitCache.put(kv.getTimestamp(), Bytes.toLong(kv.getValue()));
             }
         }
 
-        for (KeyValue kv : kvs) {
-            if (TransactionManager.isShadowCell(kv.getQualifier())) {
-                continue;
-            }
-            LOG.trace("Processing kv {}", kv);
-            ColumnWrapper currentColumn = new ColumnWrapper(kv.getFamily(), kv.getQualifier());
-            if (!currentColumn.equals(lastColumn)) {
-                if (LOG.isTraceEnabled()) {
-                    LOG.trace("We got a new column, reset stuff", kv);
-                    LOG.trace("valid {} versionsProcessed {} localversions {}",
-                            new Object[] { validRead, versionsProcessed, localVersions });
-                }
-                // New column, if we didn't read a committed value for last one,
-                // add it to pending
-                if (!validRead) {
-                    pendingGet.setTimeRange(0, oldestUncommittedTS);
-                    pendingGets.add(pendingGet);
-                    LOG.trace("Adding pending get {}", pendingGet);
-                }
-                validRead = false;
-                pendingGet = new Get(kv.getRow());
-                pendingGet.addColumn(kv.getFamily(), kv.getQualifier());
-                pendingGet.addColumn(kv.getFamily(), TransactionManager.addShadowCellSuffix(kv.getQualifier()));
-                pendingGet.setMaxVersions(requestVersions);
-                versionsProcessed = 0;
-                oldestUncommittedTS = Long.MAX_VALUE;
-                lastColumn = currentColumn;
-            }
-            if (validRead) {
-                LOG.trace("We alred have a valid read, ignore {}", kv);
-                // If we already have a committed value for this column, skip kv
-                continue;
-            }
+        return commitCache;
+    }
 
-            versionsProcessed++;
+    private boolean isKeyValueInSnapshot(KeyValue kv, Transaction transaction, Map<Long, Long> commitCache)
+            throws IOException {
 
-            Optional<Long> commitTimestamp = Optional.absent();
-            if (kv.getTimestamp() != startTimestamp) {
-                try {
-                    commitTimestamp = checkAndGetCommitTimestamp(transaction, kv, commitCache);
-                } catch (ExecutionException ee) {
-                    throw new IOException("Error reading commit timestamp", ee.getCause());
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new IOException("Interrupted reading commit timestamp", ie);
-                }
-            }
-            if (kv.getTimestamp() == startTimestamp
-                    || (commitTimestamp.isPresent()
-                        && commitTimestamp.get() < startTimestamp)) {
+        long startTimestamp = transaction.getStartTimestamp();
 
-                LOG.trace("Kv {} is valid", kv);
-                // Valid read, add it to result unless it's a delete
-                if (!Arrays.equals(kv.getValue(), DELETE_TOMBSTONE)) {
-                    LOG.trace("Kv is not a delete");
-                    filtered.add(kv);
-                }
-                validRead = true;
-                // Update versionsAvg: increase it quickly, decrease it slowly
-                versionsAvg = versionsProcessed > versionsAvg ? versionsProcessed : alpha * versionsAvg + (1 - alpha)
-                        * versionsProcessed;
-                LOG.trace("Updateded versionsAvg to {}", versionsAvg);
-            } else {
-                // Uncomitted, keep track of oldest uncommitted timestamp
-                oldestUncommittedTS = Math.min(oldestUncommittedTS, kv.getTimestamp());
-                LOG.trace("KV {} is not valid, oldestUncommittedTS = {}", kv, oldestUncommittedTS);
-            }
+        if (kv.getTimestamp() == startTimestamp) {
+            return true;
         }
-        if (!validRead) {
-            pendingGet.setTimeRange(0, oldestUncommittedTS);
-            pendingGets.add(pendingGet);
-            LOG.trace("Adding pending get {}", pendingGet);
+
+        Optional<Long> commitTimestamp = Optional.absent();
+        try {
+            commitTimestamp = checkAndGetCommitTimestamp(transaction, kv, commitCache);
+        } catch (ExecutionException ee) {
+            throw new IOException("Error reading commit timestamp", ee.getCause());
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted reading commit timestamp", ie);
         }
-        LOG.trace("Pending gets: {}", pendingGets);
-        // If we have pending columns, request (and filter recursively) them
-        if (!pendingGets.isEmpty()) {
-            Result[] results = table.get(pendingGets);
-            for (Result r : results) {
-                filtered.addAll(filter(transaction, r.list(), requestVersions));
-            }
+
+        return commitTimestamp.isPresent() && commitTimestamp.get() < startTimestamp;
+    }
+
+    private Get createPendingGet(KeyValue kv, int versionCount) throws IOException {
+
+        Get pendingGet = new Get(kv.getRow());
+        pendingGet.addColumn(kv.getFamily(), kv.getQualifier());
+        pendingGet.addColumn(kv.getFamily(), TransactionManager.addShadowCellSuffix(kv.getQualifier()));
+        pendingGet.setMaxVersions(versionCount);
+        pendingGet.setTimeRange(0, kv.getTimestamp());
+
+        return pendingGet;
+    }
+
+    // TODO Try to avoid to use the versionsAvg gloval attribute in here
+    private void updateAvgNumberOfVersionsToFetchFromHBase(int versionsProcessed) {
+
+        if (versionsProcessed > versionsAvg) {
+            versionsAvg = versionsProcessed;
+        } else {
+            versionsAvg = ALPHA * versionsAvg + (1 - ALPHA) * versionsProcessed;
         }
-        Collections.sort(filtered, KeyValue.COMPARATOR);
-        LOG.trace("Result: {}", filtered);
-        return filtered;
+
     }
 
     private Optional<Long> checkAndGetCommitTimestamp(Transaction transaction, KeyValue kv, Map<Long, Long> commitCache)
@@ -429,7 +476,9 @@ public class TTable {
                 if (result == null) {
                     return null;
                 }
-                filteredResult = filter(state, result.list(), maxVersions);
+                if (!result.isEmpty()) {
+                    filteredResult = filterKeyValuesForSnapshot(result.list(), state, maxVersions);
+                }
             }
             return new Result(filteredResult);
         }
