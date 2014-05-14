@@ -16,6 +16,7 @@
 
 package com.yahoo.omid.transaction;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -36,13 +37,33 @@ import com.yahoo.omid.transaction.TransactionManager;
 
 public class TestReadPath extends OmidTestBase {
 
+    final byte[] family = Bytes.toBytes(TEST_FAMILY);
+    final byte[] row = Bytes.toBytes("row");
+    final byte[] col = Bytes.toBytes("col1");
+    final byte[] data = Bytes.toBytes("data");
+    final byte[] uncommitted = Bytes.toBytes("uncommitted");
+
+    @Test
+    public void testReadInterleaved() throws Exception {
+        TransactionManager tm = newTransactionManager();
+        TTable table = new TTable(hbaseConf, TEST_TABLE);
+
+        // Put some data on the DB
+        Transaction t1 = tm.begin();
+        Transaction t2 = tm.begin();
+
+        Put put = new Put(row);
+        put.add(family, col, data);
+        table.put(t1, put);
+        tm.commit(t1);
+
+        Get get = new Get(row);
+        Result result = table.get(t2, get);
+        assertFalse("Should be unable to read column", result.containsColumn(family, col));
+    }
+
     @Test
     public void testReadWithSeveralUncommitted() throws Exception {
-        byte[] family = Bytes.toBytes(TEST_FAMILY);
-        byte[] row = Bytes.toBytes("row");
-        byte[] col = Bytes.toBytes("col1");
-        byte[] data = Bytes.toBytes("data");
-        byte[] uncommitted = Bytes.toBytes("uncommitted");
         TransactionManager tm = newTransactionManager();
         TTable table = new TTable(hbaseConf, TEST_TABLE);
         
