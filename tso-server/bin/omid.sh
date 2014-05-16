@@ -84,7 +84,7 @@ elif [ "$COMMAND" = "create-hbase-commit-table" ]; then
 elif [ "$COMMAND" = "create-hbase-timestamp-table" ]; then
     createHBaseTimestampTable $@;
 else
-    $COMMAND $@
+    exec java -cp $CLASSPATH $COMMAND $@
 fi
 
 
