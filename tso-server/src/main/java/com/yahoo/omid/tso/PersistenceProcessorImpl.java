@@ -17,6 +17,7 @@ import com.codahale.metrics.MetricRegistry;
 import static com.codahale.metrics.MetricRegistry.name;
 
 import com.codahale.metrics.Timer;
+import com.codahale.metrics.Meter;
 import com.codahale.metrics.Histogram;
 
 import org.slf4j.Logger;
@@ -38,8 +39,9 @@ class PersistenceProcessorImpl
 
     final Timer flushTimer;
     final Histogram batchSizeHistogram;
+    final Meter timeoutMeter;
     long lastFlush = System.nanoTime();
-    final static int BATCH_TIMEOUT_MS = 5;
+    final static int BATCH_TIMEOUT_MS = 100;
 
     PersistenceProcessorImpl(MetricRegistry metrics,
                              CommitTable commitTable, ReplyProcessor reply, int maxBatchSize)
@@ -54,6 +56,7 @@ class PersistenceProcessorImpl
 
         flushTimer = metrics.timer(name("tso", "persist", "flush"));
         batchSizeHistogram = metrics.histogram(name("tso", "persist", "batchsize"));
+        timeoutMeter = metrics.meter(name("tso", "persist", "timeout"));
 
         // FIXME consider putting something more like a phased strategy here to avoid
         // all the syscalls
@@ -61,7 +64,7 @@ class PersistenceProcessorImpl
             = new TimeoutBlockingWaitStrategy(BATCH_TIMEOUT_MS, TimeUnit.MILLISECONDS);
 
         persistRing = RingBuffer.<PersistEvent>createSingleProducer(
-                PersistEvent.EVENT_FACTORY, 1<<12, timeoutStrategy);
+                PersistEvent.EVENT_FACTORY, 1<<20, timeoutStrategy); // 2^20 entries in ringbuffer
         SequenceBarrier persistSequenceBarrier = persistRing.newBarrier();
         BatchEventProcessor<PersistEvent> persistProcessor = new BatchEventProcessor<PersistEvent>(
                 persistRing,
@@ -127,6 +130,7 @@ class PersistenceProcessorImpl
     // no event has been received in the timeout period
     @Override
     public void onTimeout(final long sequence) {
+        timeoutMeter.mark();
         maybeFlushBatch();
     }
 
