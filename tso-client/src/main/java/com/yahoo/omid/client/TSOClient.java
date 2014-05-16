@@ -407,14 +407,14 @@ public class TSOClient {
                 return;
             }
             ChannelFuture f = channel.write(req);
-            timeoutExecutor.schedule(new Runnable() {
-
-                @Override
-                public void run() {
-                    fsm.sendEvent(timeoutEvent);
-                }
-
-            }, requestTimeoutMs, TimeUnit.MILLISECONDS);
+            if (requestTimeoutMs > 0) {
+                timeoutExecutor.schedule(new Runnable() {
+                        @Override
+                        public void run() {
+                            fsm.sendEvent(timeoutEvent);
+                        }
+                    }, requestTimeoutMs, TimeUnit.MILLISECONDS);
+            }
             f.addListener(new ChannelFutureListener() {
                     public void operationComplete(ChannelFuture future) {
                         if (!future.isSuccess()) {

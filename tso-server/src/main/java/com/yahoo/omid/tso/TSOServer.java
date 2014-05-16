@@ -47,7 +47,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.codahale.metrics.MetricRegistry;
 import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.committable.DelayNullCommitTable;
+import com.yahoo.omid.committable.NullCommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.metrics.MetricsUtils;
 import com.yahoo.omid.tso.TimestampOracle.TimestampStorage;
@@ -102,7 +102,7 @@ public class TSOServer implements Runnable {
             HTable timestampHTable = new HTable(hbaseConfig , config.getHBaseTimestampTable());
             timestampStorage = new HBaseTimestampStorage(timestampHTable);
         } else {
-            commitTable = new DelayNullCommitTable(1, TimeUnit.SECONDS);
+            commitTable = new NullCommitTable();
             timestampStorage = new InMemoryTimestampStorage();
         }
         TimestampOracle timestampOracle = new TimestampOracle(metrics, timestampStorage);

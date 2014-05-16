@@ -53,6 +53,7 @@ public class TransactionClient {
         Configuration conf = new BaseConfiguration();
         conf.setProperty("tso.host", config.tsoHost);
         conf.setProperty("tso.port", config.tsoPort);
+        conf.setProperty("request.timeout-ms", -1);
         
         LOG.info("Starting {} clients with the following configuration:", config.nbClients);
         LOG.info("PARAM MAX_ROW: {}", config.maxTxSize);
@@ -102,7 +103,7 @@ public class TransactionClient {
             CommitTable commitTable;
             if (config.isHBase()) {
                 org.apache.hadoop.conf.Configuration hbaseConfig = HBaseConfiguration.create();
-                HTable commitHTable = new HTable(hbaseConfig , config.getHBaseCommitTable());
+                HTable commitHTable = new HTable(hbaseConfig, config.getHBaseCommitTable());
                 commitTable = new HBaseCommitTable(commitHTable);
             } else {
                 commitTable = new NullCommitTable();
