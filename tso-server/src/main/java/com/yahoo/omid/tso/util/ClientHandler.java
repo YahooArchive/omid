@@ -214,6 +214,7 @@ public class ClientHandler {
                 executor.schedule(new DeferredListener(timestamp), commitDelay, TimeUnit.MILLISECONDS);
             } catch (Exception e) {
                 errorCounter.inc();
+                outstanding.release();
             }
         }
     }
@@ -261,8 +262,9 @@ public class ClientHandler {
                 abortTimer.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
             } catch (Exception e) {
                 errorCounter.inc();
+            } finally {
+                outstanding.release();
             }
-            outstanding.release();
         }
     }
 
