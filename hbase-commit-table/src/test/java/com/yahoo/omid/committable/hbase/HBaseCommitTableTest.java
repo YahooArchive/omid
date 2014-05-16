@@ -2,9 +2,6 @@ package com.yahoo.omid.committable.hbase;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.fail;
-
-import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -93,6 +90,21 @@ public class HBaseCommitTableTest {
         } catch (Exception e) {
             LOG.error("Error tearing down", e);
         }
+    }
+
+    @Test
+    public void testCreateTable() throws Throwable {
+        HBaseAdmin admin = testutil.getHBaseAdmin();
+
+        String tableName = "Table_with_single_region";
+        CreateTable.createTable(hbaseConf, tableName, 1);
+        int numRegions = admin.getTableRegions(Bytes.toBytes(tableName)).size();
+        assertEquals("Should have only 1 region", 1, numRegions);
+
+        tableName = "Table_with_multiple_region";
+        CreateTable.createTable(hbaseConf, tableName, 60);
+        numRegions = admin.getTableRegions(Bytes.toBytes(tableName)).size();
+        assertEquals("Should have 60 regions", 60, numRegions);
     }
 
     @Test

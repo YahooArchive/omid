@@ -47,7 +47,7 @@ public class HBaseCommitTable implements CommitTable {
 
 
     public HBaseCommitTable(HTable table) {
-        this(table, new BucketKeyGenerator());
+        this(table, defaultKeyGenerator());
     }
 
     private HBaseCommitTable(HTable table, KeyGenerator keygen) {
@@ -172,6 +172,10 @@ public class HBaseCommitTable implements CommitTable {
     interface KeyGenerator {
         byte[] startTimestampToKey(long startTimestamp) throws IOException;
         long keyToStartTimestamp(byte[] key) throws IOException;
+    }
+
+    static KeyGenerator defaultKeyGenerator() {
+        return new BucketKeyGenerator();
     }
 
     /**
