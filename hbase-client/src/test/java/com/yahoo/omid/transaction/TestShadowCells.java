@@ -117,6 +117,61 @@ public class TestShadowCells extends OmidTestBase {
         verify(commitTableClient, times(1)).getCommitTimestamp(anyLong());
     }
 
+    @Test
+    public void testShadowCellIsHealedAfterCommitCrash() throws Exception {
+        CommitTable.Client commitTableClient = spy(getTSO().getCommitTable().getClient().get());
+
+        TSOClient client = TSOClient.newBuilder().withConfiguration(getTSO().getClientConfiguration())
+                .withCommitTableClient(commitTableClient).build();
+        TransactionManager tm = spy(TransactionManager.newBuilder()
+                .withConfiguration(hbaseConf).withTSOClient(client).build());
+        doNothing().when(tm).postCommit(any(Transaction.class));
+
+        TTable table = new TTable(hbaseConf, TEST_TABLE);
+
+        Transaction t1 = tm.begin();
+
+        // Test shadow cell are created properly
+        Put put = new Put(row);
+        put.add(family, qualifier, data1);
+        table.put(t1, put);
+        tm.commit(t1);
+
+        assertTrue("Cell should be there",
+                hasCell(table, row, family, qualifier, t1.getStartTimestamp()));
+        assertFalse("Shadow cell should not be there",
+                hasShadowCell(table, row, family, qualifier, t1.getStartTimestamp()));
+
+        Transaction t2 = tm.begin();
+        Get get = new Get(row);
+        get.addColumn(family, qualifier);
+
+        // This get should heal the shadow cell
+        Result getResult = table.get(t2, get);
+        assertTrue("Values should be the same", Arrays.equals(data1, getResult.getValue(family, qualifier)));
+        verify(commitTableClient, times(1)).getCommitTimestamp(anyLong());
+
+        // Allow the healer thread to put the shadow cell back
+        table.shadowCellHealerExecutor.submit(new Runnable() {
+            @Override
+            public void run() {
+
+            }
+        }).get();
+
+        assertTrue("Cell should be there",
+                hasCell(table, row, family, qualifier, t1.getStartTimestamp()));
+        assertTrue("Shadow cell should be there after being healed",
+                hasShadowCell(table, row, family, qualifier, t1.getStartTimestamp()));
+
+        // As the shadow cell is healed, this get shouldn't have to hit the storage,
+        // so the number of invocations to commitTableClient.getCommitTimestamp()
+        // should remain the same
+        getResult = table.get(t2, get);
+        assertTrue("Values should be the same", Arrays.equals(data1, getResult.getValue(family, qualifier)));
+        verify(commitTableClient, times(1)).getCommitTimestamp(anyLong());
+    }
+
     @Test(timeout = 60000)
     public void testRaceConditionBetweenReaderAndWriterThreads() throws Exception {
         final CountDownLatch readAfterCommit = new CountDownLatch(1);

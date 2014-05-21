@@ -29,7 +29,11 @@ import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
@@ -51,6 +55,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 /**
  * Provides transactional methods for accessing and modifying a given snapshot
  * of data identified by an opaque {@link Transaction} object.
@@ -74,6 +80,36 @@ public class TTable {
     /** How fast do we adapt the average */
     private static final double ALPHA = 0.975;
 
+    private final HTableInterface healerTable;
+
+    private class ShadowCellsHealerTask implements Runnable {
+
+        private final KeyValue kv;
+        private final long commitTimestamp;
+
+        public ShadowCellsHealerTask(KeyValue kv, long commitTimestamp) {
+            this.kv = kv;
+            this.commitTimestamp = commitTimestamp;
+        }
+
+        @Override
+        public void run() {
+            Put put = new Put(kv.getRow());
+            byte[] family = kv.getFamily();
+            byte[] shadowCellQualifier = TransactionManager.addShadowCellSuffix(kv.getQualifier());
+            put.add(family, shadowCellQualifier, kv.getTimestamp(), Bytes.toBytes(commitTimestamp));
+            try {
+                healerTable.put(put);
+            } catch (IOException e) {
+                LOG.warn("Failed healing shadow cell for kv {}", kv, e);
+            }
+        }
+
+    }
+
+    ExecutorService shadowCellHealerExecutor = Executors.newSingleThreadExecutor(
+            new ThreadFactoryBuilder().setNameFormat("sc-healer-%d").build());
+
     private HTableInterface table;
 
     public TTable(Configuration conf, byte[] tableName) throws IOException {
@@ -84,8 +120,9 @@ public class TTable {
         this(conf, Bytes.toBytes(tableName));
     }
 
-    public TTable(HTableInterface hTable) {
+    public TTable(HTableInterface hTable) throws IOException {
         table = hTable;
+        healerTable = new HTable(table.getConfiguration(), table.getTableName());
     }
 
     /**
@@ -455,6 +492,12 @@ public class TTable {
         Future<Optional<Long>> f = transaction.tsoclient.getCommitTimestamp(startTimestamp);
         Optional<Long> commitTimestamp = f.get();
         if (commitTimestamp.isPresent()) {
+            // If the commit timestamp is found in the persisted commit table,
+            // that means the writing process of the shadow cell in the post
+            // commit phase of the client probably failed, so we heal the shadow
+            // cell with the right commit timestamp for avoiding further reads to
+            // hit the storage
+            healShadowCell(kv, commitTimestamp.get());
             return commitTimestamp;
         }
         Get get = new Get(kv.getRow());
@@ -468,6 +511,11 @@ public class TTable {
             return Optional.of(Bytes.toLong(result.getValue(family, shadowCellQualifier)));
         }
         return Optional.absent();
+    }
+
+    void healShadowCell(KeyValue kv, long commitTimestamp) {
+        Runnable shadowCellHealerTask = new ShadowCellsHealerTask(kv, commitTimestamp);
+        shadowCellHealerExecutor.execute(shadowCellHealerTask);
     }
 
     protected class TransactionalClientScanner implements ResultScanner {
@@ -719,6 +767,16 @@ public class TTable {
      */
     public void close() throws IOException {
         table.close();
+        shadowCellHealerExecutor.shutdown();
+        try {
+            if (!shadowCellHealerExecutor.awaitTermination(10, TimeUnit.SECONDS)) {
+                LOG.error("Healer executor did not finish in 10s");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException(e);
+        }
+        healerTable.close();
     }
 
     /**
