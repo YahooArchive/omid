@@ -5,7 +5,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ExecutionException;
 
-import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import org.jboss.netty.channel.Channel;
@@ -26,9 +25,11 @@ import org.slf4j.LoggerFactory;
 class PersistenceProcessorImpl
     implements EventHandler<PersistenceProcessorImpl.PersistEvent>,
                PersistenceProcessor, TimeoutHandler {
+    
     private static final Logger LOG = LoggerFactory.getLogger(PersistenceProcessor.class);
 
     final ReplyProcessor reply;
+    final RetryProcessor retryProc;
     final CommitTable.Client commitTableClient;
     final CommitTable.Writer writer;
     final RingBuffer<PersistEvent> persistRing;
@@ -43,13 +44,14 @@ class PersistenceProcessorImpl
     long lastFlush = System.nanoTime();
     final static int BATCH_TIMEOUT_MS = 100;
 
-    PersistenceProcessorImpl(MetricRegistry metrics,
-                             CommitTable commitTable, ReplyProcessor reply, int maxBatchSize)
+    PersistenceProcessorImpl(MetricRegistry metrics, CommitTable commitTable,
+                             ReplyProcessor reply, RetryProcessor retryProc, int maxBatchSize)
                                      throws InterruptedException, ExecutionException {
 
         this.commitTableClient = commitTable.getClient().get();
         this.writer = commitTable.getWriter().get();
         this.reply = reply;
+        this.retryProc = retryProc;
         this.maxBatchSize = maxBatchSize;
         
         batch = new Batch(maxBatchSize);
@@ -89,7 +91,7 @@ class PersistenceProcessorImpl
             batch.addCommit(event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel());
             break;
         case ABORT:
-            handleAbort(event.getStartTimestamp(), event.isRetry(), event.getChannel());
+            sendAbortOrIdentifyFalsePositive(event.getStartTimestamp(), event.isRetry(), event.getChannel());
             break;
         case TIMESTAMP:
             batch.addTimestamp(event.getStartTimestamp(), event.getChannel());
@@ -101,30 +103,20 @@ class PersistenceProcessorImpl
         }
     }
 
-    private void handleAbort(long startTimestamp, boolean isRetry, Channel channel) {
+    private void sendAbortOrIdentifyFalsePositive(long startTimestamp, boolean isRetry, Channel channel) {
 
         if(!isRetry) {
             reply.abortResponse(startTimestamp, channel);
             return;
         }
 
-        // 1) Force to flush so the whole batch hits disk
-        flush();
-        // 2) Check the commit table
-        final Optional<Long> commitTimestamp;
-        try {
-            commitTimestamp = commitTableClient.getCommitTimestamp(startTimestamp).get();
-            if(!commitTimestamp.isPresent()) {
-                reply.abortResponse(startTimestamp, channel);
-            } else {
-                reply.commitResponse(startTimestamp, commitTimestamp.get(), channel);
-            }
-        } catch (InterruptedException e) {
-            LOG.error("Interrupted reading from commit table");
-            Thread.currentThread().interrupt();
-        } catch (ExecutionException e) {
-            LOG.error("Error reading from commit table", e);
-        }
+        // If is a retry, we must check if it is a already committed request abort.
+        // This can happen because a client could have missed the reply, so it 
+        // retried the request after a timeout. So we added to the batch and when 
+        // it's flushed we'll add events to the retry processor in order to check
+        // for false positive aborts. It needs to be done after the flush in case
+        // the commit has occurred but it hasn't been persisted yet.
+        batch.addUndecidedRetriedRequest(startTimestamp, channel);
     }
 
     // no event has been received in the timeout period
@@ -150,7 +142,7 @@ class PersistenceProcessorImpl
         try {
             writer.flush().get();
             flushTimer.update((System.nanoTime() - lastFlush), TimeUnit.NANOSECONDS);
-            batch.sendRepliesAndReset(reply);
+            batch.sendRepliesAndReset(reply, retryProc);
         } catch (ExecutionException ee) {
             LOG.error("Error persisting commit batch", ee.getCause());
             panic();
@@ -222,6 +214,17 @@ class PersistenceProcessorImpl
             PersistEvent e = events[index];
             PersistEvent.makePersistCommit(e, startTimestamp, commitTimestamp, c);
         }
+        
+        void addUndecidedRetriedRequest(long startTimestamp, Channel c) {
+            if (isFull()) {
+                throw new IllegalStateException("batch full");
+            }
+            int index = numEvents++;
+            PersistEvent e = events[index];
+            // We mark the event as an ABORT retry to identify the events to send
+            // to the retry processor
+            PersistEvent.makePersistAbort(e, startTimestamp, true, c);
+        }
 
         void addTimestamp(long startTimestamp, Channel c) {
             if (isFull()) {
@@ -232,7 +235,7 @@ class PersistenceProcessorImpl
             PersistEvent.makePersistTimestamp(e, startTimestamp, c);
         }
 
-        void sendRepliesAndReset(ReplyProcessor reply) {
+        void sendRepliesAndReset(ReplyProcessor reply, RetryProcessor retryProc) {
             for (int i = 0; i < numEvents; i++) {
                 PersistEvent e = events[i];
                 switch (e.getType()) {
@@ -241,6 +244,14 @@ class PersistenceProcessorImpl
                     break;
                 case COMMIT:
                     reply.commitResponse(e.getStartTimestamp(), e.getCommitTimestamp(), e.getChannel());
+                    break;
+                case ABORT:
+                    if(e.isRetry()) {
+                        retryProc.disambiguateRetryRequestHeuristically(e.getStartTimestamp(), e.getChannel());
+                    } else {
+                        LOG.error("We should not be receiving non-retried aborted requests in here");
+                        assert(false);
+                    }
                     break;
                 default:
                     assert(false);

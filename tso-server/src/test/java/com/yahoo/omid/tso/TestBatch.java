@@ -20,6 +20,7 @@ public class TestBatch {
         // Required mocks
         Channel channel = Mockito.mock(Channel.class);
         ReplyProcessor replyProcessor = Mockito.mock(ReplyProcessor.class);
+        RetryProcessor retryProcessor = Mockito.mock(RetryProcessor.class);
 
         // The batch element to test
         PersistenceProcessorImpl.Batch batch = new PersistenceProcessorImpl.Batch(BATCH_SIZE);
@@ -54,7 +55,7 @@ public class TestBatch {
         }
 
         // Test that sending replies empties the batch
-        batch.sendRepliesAndReset(replyProcessor);
+        batch.sendRepliesAndReset(replyProcessor, retryProcessor);
         assertFalse("Batch shouldn't be full", batch.isFull());
         assertEquals("Num events should be 0", 0, batch.getNumEvents());
 
