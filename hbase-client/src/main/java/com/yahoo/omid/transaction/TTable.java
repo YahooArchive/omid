@@ -39,6 +39,7 @@ import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -101,6 +102,9 @@ public class TTable {
      *             if a remote or network exception occurs.
      */
     public Result get(Transaction transaction, final Get get) throws IOException {
+
+        throwExceptionIfOpSetsTimerange(get);
+
         final int requestedVersions = (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD);
         final long readTimestamp = transaction.getStartTimestamp();
         final Get tsget = new Get(get.getRow());
@@ -144,6 +148,9 @@ public class TTable {
      *             if a remote or network exception occurs.
      */
     public void delete(Transaction transaction, Delete delete) throws IOException {
+
+        throwExceptionIfOpSetsTimerange(delete);
+
         final long startTimestamp = transaction.getStartTimestamp();
         boolean issueGet = false;
 
@@ -155,6 +162,7 @@ public class TTable {
         }
         for (List<KeyValue> kvl : fmap.values()) {
             for (KeyValue kv : kvl) {
+                throwExceptionIfTimestampSet(kv);
                 switch (KeyValue.Type.codeToType(kv.getType())) {
                 case DeleteColumn:
                     deleteP.add(kv.getFamily(), kv.getQualifier(), startTimestamp, DELETE_TOMBSTONE);
@@ -210,12 +218,16 @@ public class TTable {
      * @since 0.20.0
      */
     public void put(Transaction transaction, Put put) throws IOException {
+
+        throwExceptionIfOpSetsTimerange(put);
+
         final long startTimestamp = transaction.getStartTimestamp();
         // create put with correct ts
         final Put tsput = new Put(put.getRow(), startTimestamp);
         Map<byte[], List<KeyValue>> kvs = put.getFamilyMap();
         for (List<KeyValue> kvl : kvs.values()) {
             for (KeyValue kv : kvl) {
+                throwExceptionIfTimestampSet(kv);
                 tsput.add(new KeyValue(kv.getRow(), kv.getFamily(), kv.getQualifier(), startTimestamp, kv.getValue()));
                 transaction.addCell(new HBaseCellIdImpl(table, kv.getRow(), kv.getFamily(), kv.getQualifier()));
             }
@@ -236,6 +248,9 @@ public class TTable {
      *             if a remote or network exception occurs.
      */
     public ResultScanner getScanner(Transaction transaction, Scan scan) throws IOException {
+
+        throwExceptionIfOpSetsTimerange(scan);
+
         Scan tsscan = new Scan(scan);
         tsscan.setMaxVersions((int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
         tsscan.setTimeRange(0, transaction.getStartTimestamp() + 1);
@@ -748,4 +763,42 @@ public class TTable {
     public void flushCommits() throws IOException{
         table.flushCommits();
     }
+
+    // ****************************************************************************************************************
+    //
+    // Helper methods
+    //
+    // ****************************************************************************************************************
+
+    private void throwExceptionIfOpSetsTimerange(Get getOperation) {
+        TimeRange tr = getOperation.getTimeRange();
+        checkTimerangeIsSetToDefaultValuesOrThrowException(tr);
+    }
+
+    private void throwExceptionIfOpSetsTimerange(Scan scanOperation) {
+        TimeRange tr = scanOperation.getTimeRange();
+        checkTimerangeIsSetToDefaultValuesOrThrowException(tr);
+    }
+
+    private void checkTimerangeIsSetToDefaultValuesOrThrowException(TimeRange tr) {
+        if (tr.getMin() != 0L || tr.getMax() != Long.MAX_VALUE) {
+            throw new IllegalArgumentException(
+                    "Timestamp/timerange not allowed in transactional user operations");
+        }
+    }
+
+    private void throwExceptionIfOpSetsTimerange(Mutation userOperation) {
+        if (userOperation.getTimeStamp() != HConstants.LATEST_TIMESTAMP) {
+            throw new IllegalArgumentException(
+                    "Timestamp not allowed in transactional user operations");
+        }
+    }
+
+    private void throwExceptionIfTimestampSet(KeyValue keyValue) {
+        if (keyValue.getTimestamp() != HConstants.LATEST_TIMESTAMP) {
+            throw new IllegalArgumentException(
+                    "Timestamp not allowed in transactional user operations");
+        }
+    }
+
 }
