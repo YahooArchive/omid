@@ -1,5 +1,6 @@
 package com.yahoo.omid.committable;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 import com.google.common.base.Optional;
@@ -9,13 +10,13 @@ public interface CommitTable {
     ListenableFuture<Writer> getWriter();
     ListenableFuture<Client> getClient();
 
-    public interface Writer {
+    public interface Writer extends Closeable {
         void addCommittedTransaction(long startTimestamp, long commitTimestamp) throws IOException;
         // TODO Make this synchronous
         ListenableFuture<Void> flush();
     }
 
-    public interface Client {
+    public interface Client extends Closeable {
         ListenableFuture<Optional<Long>> getCommitTimestamp(long startTimestamp);
         ListenableFuture<Void> completeTransaction(long startTimestamp);
     }

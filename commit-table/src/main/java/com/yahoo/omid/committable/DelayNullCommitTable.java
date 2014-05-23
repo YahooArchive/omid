@@ -58,6 +58,9 @@ public class DelayNullCommitTable implements CommitTable {
 
             return f;
         }
+
+        @Override
+        public void close() {}
     }
 
     public class Client implements CommitTable.Client {
@@ -72,5 +75,8 @@ public class DelayNullCommitTable implements CommitTable {
             f.set(null);
             return f;
         }
+
+        @Override
+        public void close() {}
     }
 }

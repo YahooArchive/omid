@@ -31,6 +31,9 @@ public class NullCommitTable implements CommitTable {
             f.set(null);
             return f;
         }
+
+        @Override
+        public void close() {}
     }
 
     public static class Client implements CommitTable.Client {
@@ -45,5 +48,8 @@ public class NullCommitTable implements CommitTable {
             f.set(null);
             return f;
         }
+
+        @Override
+        public void close() {}
     }
 }

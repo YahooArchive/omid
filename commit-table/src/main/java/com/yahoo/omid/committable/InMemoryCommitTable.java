@@ -35,6 +35,9 @@ public class InMemoryCommitTable implements CommitTable {
             f.set(null);
             return f;
         }
+
+        @Override
+        public void close() {}
     }
 
     public class Client implements CommitTable.Client {
@@ -57,5 +60,8 @@ public class InMemoryCommitTable implements CommitTable {
             f.set(null);
             return f;
         }
+
+        @Override
+        public void close() {}
     }
 }

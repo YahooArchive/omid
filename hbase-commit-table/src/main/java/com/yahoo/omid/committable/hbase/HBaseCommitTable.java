@@ -3,7 +3,16 @@ package com.yahoo.omid.committable.hbase;
 import static com.google.common.base.Charsets.UTF_8;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 import java.net.InetSocketAddress;
 
 import org.apache.hadoop.hbase.client.Delete;
@@ -18,14 +27,13 @@ import org.slf4j.LoggerFactory;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
-
 import com.google.common.base.Optional;
+import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.protobuf.CodedInputStream;
 import com.google.protobuf.CodedOutputStream;
 import com.yahoo.omid.committable.CommitTable;
-
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.Timer;
 import com.codahale.metrics.Meter;
@@ -42,29 +50,38 @@ public class HBaseCommitTable implements CommitTable {
     static final byte[] COMMIT_TABLE_FAMILY = "F".getBytes(UTF_8);
     static final byte[] COMMIT_TABLE_QUALIFIER = "C".getBytes(UTF_8);
 
-    private final HTable table;
+    private final HTable baseTable;
     private final KeyGenerator keygen;
 
 
+    /**
+     * Create a hbase commit table.
+     * Note that we do not take ownership of the passed htable,
+     * it is just used to construct the writer and client.
+     */
     public HBaseCommitTable(HTable table) {
         this(table, defaultKeyGenerator());
     }
 
     private HBaseCommitTable(HTable table, KeyGenerator keygen) {
-        this.table = table;
-        table.setAutoFlush(false, true);
+        this.baseTable = table;
         this.keygen = keygen;
     }
 
     public class HBaseWriter implements Writer {
+        final HTable table;
+
+        HBaseWriter(HTable baseTable) throws IOException {
+            table = new HTable(baseTable.getConfiguration(), baseTable.getTableName());
+            table.setAutoFlush(false, true);
+        }
 
         @Override
         public void addCommittedTransaction(long startTimestamp, long commitTimestamp) throws IOException {
             assert(startTimestamp < commitTimestamp);
-            Put put = new Put(startTimestampToKey(startTimestamp));
+            Put put = new Put(startTimestampToKey(startTimestamp), startTimestamp);
             put.add(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER,
                     encodeCommitTimestamp(startTimestamp, commitTimestamp));
-
             table.put(put);
         }
 
@@ -81,9 +98,30 @@ public class HBaseCommitTable implements CommitTable {
             return f;
         }
 
+        @Override
+        public void close() throws IOException {
+            table.close();
+        }
     }
 
-    public class HBaseClient implements Client {
+    public class HBaseClient implements Client, Runnable {
+        final HTable table;
+        final HTable deleteTable;
+        final ExecutorService deleteBatchExecutor;
+        final BlockingQueue<DeleteRequest> deleteQueue;
+        final static int DELETE_BATCH_SIZE = 1024;
+
+        HBaseClient(HTable baseTable) throws IOException {
+            table = new HTable(baseTable.getConfiguration(), baseTable.getTableName());
+            table.setAutoFlush(false, true);
+            deleteTable = new HTable(baseTable.getConfiguration(), baseTable.getTableName());
+            deleteQueue = new ArrayBlockingQueue<DeleteRequest>(DELETE_BATCH_SIZE);
+
+            deleteBatchExecutor = Executors.newSingleThreadExecutor(
+                new ThreadFactoryBuilder().setNameFormat("omid-completor-%d").build());
+            deleteBatchExecutor.submit(this);
+
+        }
 
         @Override
         public ListenableFuture<Optional<Long>> getCommitTimestamp(long startTimestamp) {
@@ -112,36 +150,124 @@ public class HBaseCommitTable implements CommitTable {
 
         @Override
         public ListenableFuture<Void> completeTransaction(long startTimestamp) {
-
-            SettableFuture<Void> f = SettableFuture.<Void> create();
             try {
-                Delete delete = new Delete(startTimestampToKey(startTimestamp));
-                table.delete(delete);
-                f.set(null);
-            } catch (IOException e) {
-                LOG.error("Error removing TX {}", startTimestamp, e);
-                f.setException(e);
+                DeleteRequest req = new DeleteRequest(
+                        new Delete(startTimestampToKey(startTimestamp), startTimestamp));
+                deleteQueue.put(req);
+                return req;
+            } catch (IOException ioe) {
+                LOG.warn("Error generating timestamp for transaction completion", ioe);
+                SettableFuture<Void> f = SettableFuture.<Void>create();
+                f.setException(ioe);
+                return f;
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                SettableFuture<Void> f = SettableFuture.<Void>create();
+                f.setException(ie);
+                return f;
             }
-            return f;
+        }
+
+        @Override
+        public void run() {
+            List<DeleteRequest> reqbatch = new ArrayList<DeleteRequest>();
+            try {
+                while (true) {
+                    DeleteRequest r = deleteQueue.poll();
+                    if (r == null && reqbatch.size() == 0) {
+                        r = deleteQueue.take();
+                    }
+
+                    if (r != null) {
+                        reqbatch.add(r);
+                    }
+
+                    if (r == null || reqbatch.size() == DELETE_BATCH_SIZE) {
+                        List<Delete> deletes = new ArrayList<Delete>();
+                        for (DeleteRequest dr : reqbatch) {
+                            deletes.add(dr.getDelete());
+                        }
+                        try {
+                            deleteTable.delete(deletes);
+                            for (DeleteRequest dr : reqbatch) {
+                                dr.complete();
+                            }
+                        } catch (IOException ioe) {
+                            LOG.warn("Error contacting hbase", ioe);
+                            for (DeleteRequest dr : reqbatch) {
+                                dr.error(ioe);
+                            }
+                        } finally {
+                            reqbatch.clear();
+                        }
+                    }
+                }
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+            } catch (Throwable t) {
+                LOG.error("Transaction completion thread threw exception", t);
+            }
+        }
+
+        @Override
+        public void close() throws IOException {
+            deleteBatchExecutor.shutdown();
+            try {
+                if (!deleteBatchExecutor.awaitTermination(10, TimeUnit.SECONDS)) {
+                    LOG.warn("Delete executor did not shutdown");
+                }
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+            }
+
+            deleteTable.close();
+            table.close();
         }
 
         private boolean containsATimestamp(Result result) {
             return (result != null && result.containsColumn(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER));
         }
 
+        private class DeleteRequest extends AbstractFuture<Void> {
+            final Delete delete;
+
+            DeleteRequest(Delete delete) {
+                this.delete = delete;
+            }
+
+            void error(IOException ioe) {
+                setException(ioe);
+            }
+
+            void complete() {
+                set(null);
+            }
+
+            Delete getDelete() {
+                return delete;
+            }
+        }
     }
 
     @Override
     public ListenableFuture<Writer> getWriter() {
         SettableFuture<Writer> f = SettableFuture.<Writer> create();
-        f.set(new HBaseWriter());
+        try {
+            f.set(new HBaseWriter(baseTable));
+        } catch (IOException ioe) {
+            f.setException(ioe);
+        }
         return f;
     }
 
     @Override
     public ListenableFuture<Client> getClient() {
         SettableFuture<Client> f = SettableFuture.<Client> create();
-        f.set(new HBaseClient()); // Check this depending on (*)
+        try {
+            f.set(new HBaseClient(baseTable)); // Check this depending on (*)
+        } catch (IOException ioe) {
+            f.setException(ioe);
+        }
         return f;
     }
 

@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import java.util.concurrent.Future;
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.yahoo.omid.committable.CommitTable.Client;
@@ -137,9 +138,11 @@ public class HBaseCommitTableTest {
         assertEquals("Rows should be 1000!", 1000, rowCount());
 
         // Test the successful deletion of the 1000 txs
+        Future<Void> f = null;
         for (long i = 0; i < 1000; i++) {
-            client.completeTransaction(i).get();
+            f = client.completeTransaction(i);
         }
+        f.get();
         assertEquals("Rows should be 0!", 0, rowCount());
 
         // Test we don't get a commit timestamp for a non-existent transaction id in the table
