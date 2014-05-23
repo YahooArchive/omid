@@ -72,6 +72,13 @@
 	  </compilerArguments>
 	</configuration>
       </plugin>
+      <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <version>2.2.1</version>
+        <configuration>
+	  <skipAssembly>true</skipAssembly>
+        </configuration>
+      </plugin>
     </plugins>
     <pluginManagement>
       <plugins>

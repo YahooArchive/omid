@@ -36,14 +36,28 @@
 	    </goals>
 	    <configuration>
 	      <outputDirectory>${basedir}/lib</outputDirectory>
+	      <includeScope>runtime</includeScope>
 	    </configuration>
 	  </execution>
 	</executions>
       </plugin>
       <plugin>
+        <artifactId>maven-clean-plugin</artifactId>
+        <version>2.5</version>
+	<configuration>
+	  <filesets>
+            <fileset>
+              <directory>${basedir}/lib</directory>
+              <followSymlinks>false</followSymlinks>
+            </fileset>
+          </filesets>
+        </configuration>
+      </plugin>
+      <plugin>
 	<artifactId>maven-assembly-plugin</artifactId>
 	<version>2.4</version>
 	<configuration>
+          <skipAssembly>false</skipAssembly>
 	  <tarLongFileMode>gnu</tarLongFileMode>
 	  <descriptors>
 	    <descriptor>src/main/assembly/bin.xml</descriptor>
