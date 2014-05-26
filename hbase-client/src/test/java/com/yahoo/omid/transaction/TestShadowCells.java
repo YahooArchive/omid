@@ -70,9 +70,10 @@ public class TestShadowCells extends OmidTestBase {
         CommitTable.Client commitTableClient = spy(getTSO().getCommitTable().getClient().get());
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(getTSO().getClientConfiguration())
-                .withCommitTableClient(commitTableClient).build();
+                .build();
         TransactionManager tm2 = TransactionManager.newBuilder()
-                .withConfiguration(hbaseConf).withTSOClient(client).build();
+            .withConfiguration(hbaseConf).withTSOClient(client)
+            .withCommitTableClient(commitTableClient).build();
 
         Transaction t2 = tm2.begin();
         Get get = new Get(row);
@@ -88,9 +89,11 @@ public class TestShadowCells extends OmidTestBase {
         CommitTable.Client commitTableClient = spy(getTSO().getCommitTable().getClient().get());
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(getTSO().getClientConfiguration())
-                .withCommitTableClient(commitTableClient).build();
+                .build();
         TransactionManager tm = spy(TransactionManager.newBuilder()
-                .withConfiguration(hbaseConf).withTSOClient(client).build());
+                .withConfiguration(hbaseConf)
+                .withCommitTableClient(commitTableClient)
+                .withTSOClient(client).build());
         doNothing().when(tm).postCommit(any(Transaction.class));
 
         TTable table = new TTable(hbaseConf, TEST_TABLE);
@@ -122,9 +125,11 @@ public class TestShadowCells extends OmidTestBase {
         CommitTable.Client commitTableClient = spy(getTSO().getCommitTable().getClient().get());
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(getTSO().getClientConfiguration())
-                .withCommitTableClient(commitTableClient).build();
+                .build();
         TransactionManager tm = spy(TransactionManager.newBuilder()
-                .withConfiguration(hbaseConf).withTSOClient(client).build());
+                .withConfiguration(hbaseConf)
+                .withCommitTableClient(commitTableClient)
+                .withTSOClient(client).build());
         doNothing().when(tm).postCommit(any(Transaction.class));
 
         TTable table = new TTable(hbaseConf, TEST_TABLE);

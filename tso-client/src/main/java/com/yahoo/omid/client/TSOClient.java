@@ -89,7 +89,6 @@ public class TSOClient {
     private final int retry_delay_ms; // ignored for now
     private final InetSocketAddress addr;
     private final MetricRegistry metrics;
-    private final CommitTable.Client commitTableClient;
 
     public static class ConnectionException extends IOException {}
 
@@ -104,7 +103,6 @@ public class TSOClient {
     public static class Builder {
         private Configuration conf = new BaseConfiguration();
         private MetricRegistry metrics = new MetricRegistry();
-        private CommitTable.Client commitTableClient = new NullCommitTable.Client();
         private String tsoHost = null;
         private int tsoPort = -1;
 
@@ -128,11 +126,6 @@ public class TSOClient {
             return this;
         }
 
-        public Builder withCommitTableClient(CommitTable.Client commitTableClient) {
-            this.commitTableClient = commitTableClient;
-            return this;
-        }
-
         public TSOClient build() {
             if (tsoHost != null) {
                 conf.setProperty(TSO_HOST_CONFKEY, tsoHost);
@@ -140,7 +133,7 @@ public class TSOClient {
             if (tsoPort != -1) {
                 conf.setProperty(TSO_PORT_CONFKEY, tsoPort);
             }
-            return new TSOClient(conf, metrics, commitTableClient);
+            return new TSOClient(conf, metrics);
         }
     }
 
@@ -148,9 +141,8 @@ public class TSOClient {
         return new Builder();
     }
 
-    private TSOClient(Configuration conf, MetricRegistry metrics, CommitTable.Client commitTableClient) {
+    private TSOClient(Configuration conf, MetricRegistry metrics) {
         this.metrics = metrics;
-        this.commitTableClient = commitTableClient;
 
         // Start client with Nb of active threads = 3 as maximum.
         factory = new NioClientSocketChannelFactory(
@@ -160,8 +152,6 @@ public class TSOClient {
                         new ThreadFactoryBuilder().setNameFormat("tsoclient-worker-%d").build()), 3);
         // Create the bootstrap
         bootstrap = new ClientBootstrap(factory);
-
-        int executorThreads = conf.getInt("tso.executor.threads", 3);
 
         String host = conf.getString(TSO_HOST_CONFKEY);
         int port = conf.getInt(TSO_PORT_CONFKEY, DEFAULT_TSO_PORT);
@@ -219,16 +209,6 @@ public class TSOClient {
         RequestEvent request = new RequestEvent(builder.build(), requestMaxRetries);
         fsm.sendEvent(request);
         return new ForwardingTSOFuture<Long>(request);
-    }
-
-    public TSOFuture<Optional<Long>> getCommitTimestamp(long startTimestamp) {
-        return new ForwardingTSOFuture<Optional<Long>>(
-                commitTableClient.getCommitTimestamp(startTimestamp));
-    }
-
-    public TSOFuture<Void> completeTransaction(long startTimestamp) {
-        return new ForwardingTSOFuture<Void>(
-                commitTableClient.completeTransaction(startTimestamp));
     }
 
     public TSOFuture<Void> close() {

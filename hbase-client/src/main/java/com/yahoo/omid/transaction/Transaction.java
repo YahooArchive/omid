@@ -40,14 +40,17 @@ public class Transaction {
     private long commitTimestamp;
     private Set<HBaseCellIdImpl> cells;
     private Status status = Status.RUNNING;
+    private TransactionManager tm;
 
-    TSOClient tsoclient;
-
-    Transaction(long startTimestamp, TSOClient client) {
+    Transaction(long startTimestamp, TransactionManager tm) {
         this.cells = new HashSet<HBaseCellIdImpl>();
         this.startTimestamp = startTimestamp;
         this.commitTimestamp = 0;
-        this.tsoclient = client;
+        this.tm = tm;
+    }
+
+    TransactionManager getTransactionManager() {
+        return tm;
     }
 
     public long getStartTimestamp() {

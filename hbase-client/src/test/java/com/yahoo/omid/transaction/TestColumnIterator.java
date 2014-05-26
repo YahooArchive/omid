@@ -60,14 +60,4 @@ public class TestColumnIterator {
         assertEquals("Should be 3", 3, columnCount);
     }
 
-    @Test
-    public void testNewFilter() throws Exception {
-        
-        TSOClient tsoClient = Mockito.mock(TSOClient.class);
-        
-        Transaction tx1 = new Transaction(0, tsoClient);
-        
-        // List<KeyValue> TTable.filterRightQualifierSnapshotValue
-
-    }
 }

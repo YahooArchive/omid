@@ -36,6 +36,8 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
+import com.yahoo.omid.committable.hbase.CreateTable;
+import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -98,9 +100,11 @@ public class OmidTestBase {
             throw new FileNotFoundException("Failed to delete file: " + f);
     }
 
-    protected TransactionManager newTransactionManager() throws IOException {
+    protected TransactionManager newTransactionManager() throws Exception {
         return TransactionManager.newBuilder()
-            .withConfiguration(hbaseConf).withTSOClient(tso.getClient()).build();
+            .withConfiguration(hbaseConf)
+            .withCommitTableClient(tso.getCommitTable().getClient().get())
+            .withTSOClient(tso.getClient()).build();
     }
 
     @AfterClass 
@@ -137,6 +141,8 @@ public class OmidTestBase {
         for (HTableDescriptor t : tables) {
             LOG.info(t.getNameAsString());
         }
+
+        CreateTable.createTable(hbaseConf, HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME, 1);
     }
 
     @After
@@ -146,6 +152,9 @@ public class OmidTestBase {
             HBaseAdmin admin = testutil.getHBaseAdmin();
             admin.disableTable(TEST_TABLE);
             admin.deleteTable(TEST_TABLE);
+
+            admin.disableTable(HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME);
+            admin.deleteTable(HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME);
 
         } catch (Exception e) {
             LOG.error("Error tearing down", e);

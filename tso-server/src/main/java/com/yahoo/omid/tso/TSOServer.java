@@ -77,8 +77,7 @@ public class TSOServer implements Runnable {
         TimestampStorage timestampStorage;
         if (config.isHBase()) {
             Configuration hbaseConfig = HBaseConfiguration.create();
-            HTable commitHTable = new HTable(hbaseConfig , config.getHBaseCommitTable());
-            commitTable = new HBaseCommitTable(commitHTable);
+            commitTable = new HBaseCommitTable(hbaseConfig , config.getHBaseCommitTable());
             HTable timestampHTable = new HTable(hbaseConfig , config.getHBaseTimestampTable());
             timestampStorage = new HBaseTimestampStorage(timestampHTable);
         } else {

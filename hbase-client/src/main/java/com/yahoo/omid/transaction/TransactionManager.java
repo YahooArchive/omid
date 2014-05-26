@@ -16,6 +16,7 @@
 
 package com.yahoo.omid.transaction;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -38,6 +39,8 @@ import com.google.common.base.Charsets;
 import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.client.TSOClient.AbortException;
 import com.yahoo.omid.transaction.Transaction.Status;
+import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 
 /**
  * Provides the methods necessary to create and commit transactions.
@@ -45,14 +48,17 @@ import com.yahoo.omid.transaction.Transaction.Status;
  * @see TTable
  * 
  */
-public class TransactionManager {
+public class TransactionManager implements Closeable {
 
     private static final byte[] SHADOW_CELL_SUFFIX = ":OMID_CTS".getBytes(Charsets.UTF_8);
 
     private static final Logger LOG = LoggerFactory.getLogger(TransactionManager.class);
 
-    private TSOClient tsoclient = null;
-    private Configuration conf;
+    private final TSOClient tsoClient;
+    private final boolean ownsTsoClient;
+    private final CommitTable.Client commitTableClient;
+    private final boolean ownsCommitTableClient;
+    private final Configuration conf;
     private HashMap<byte[], HTableInterface> tableCache;
     private HTableFactory hTableFactory;
 
@@ -60,6 +66,7 @@ public class TransactionManager {
         Configuration conf = new Configuration();
         HTableFactory htableFactory = new DefaultHTableFactory();
         TSOClient tsoClient = null;
+        CommitTable.Client commitTableClient = null;
 
         private Builder() {}
 
@@ -78,12 +85,38 @@ public class TransactionManager {
             return this;
         }
 
+        Builder withCommitTableClient(CommitTable.Client client) {
+            this.commitTableClient = client;
+            return this;
+        }
+
         public TransactionManager build() throws IOException {
+            boolean ownsTsoClient = false;
             if (tsoClient == null) {
                 tsoClient = TSOClient.newBuilder()
                     .withConfiguration(convertToCommonsConf(conf)).build();
+                ownsTsoClient = true;
             }
-            return new TransactionManager(conf, htableFactory, tsoClient);
+
+            boolean ownsCommitTableClient = false;
+
+            if (commitTableClient == null) {
+                try {
+                    HBaseCommitTable commitTable = new HBaseCommitTable(conf,
+                            HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME);
+                    commitTableClient = commitTable.getClient().get();
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Interrupted while creating commit table client");
+                } catch (ExecutionException ee) {
+                    throw new IOException("Exception creating commit table client", ee.getCause());
+                }
+                ownsCommitTableClient = true;
+            }
+
+            return new TransactionManager(conf, htableFactory,
+                                          tsoClient, ownsTsoClient,
+                                          commitTableClient, ownsCommitTableClient);
         }
     }
 
@@ -91,12 +124,31 @@ public class TransactionManager {
         return new Builder();
     }
 
-    private TransactionManager(Configuration conf, HTableFactory hTableFactory, TSOClient tsoClient)
+    private TransactionManager(Configuration conf, HTableFactory hTableFactory,
+                               TSOClient tsoClient, boolean ownsTsoClient,
+                               CommitTable.Client commitTableClient, boolean ownsCommitTableClient)
             throws IOException {
         this.conf = conf;
         this.hTableFactory = hTableFactory;
         tableCache = new HashMap<byte[], HTableInterface>();
-        this.tsoclient = tsoClient;
+        this.tsoClient = tsoClient;
+        this.ownsTsoClient = ownsTsoClient;
+        this.commitTableClient = commitTableClient;
+        this.ownsCommitTableClient = ownsCommitTableClient;
+    }
+
+    CommitTable.Client getCommitTableClient() {
+        return commitTableClient;
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (ownsTsoClient) {
+            tsoClient.close();
+        }
+        if (ownsCommitTableClient) {
+            commitTableClient.close();
+        }
     }
 
     static org.apache.commons.configuration.Configuration convertToCommonsConf(Configuration hconf) {
@@ -120,8 +172,8 @@ public class TransactionManager {
      */
     public Transaction begin() throws TransactionException {
         try {
-            long startTimestamp = tsoclient.createTransaction().get();
-            return new Transaction(startTimestamp, tsoclient);
+            long startTimestamp = tsoClient.createTransaction().get();
+            return new Transaction(startTimestamp, this);
         } catch (ExecutionException e) {
             throw new TransactionException("Could not get new timestamp", e);
         } catch (InterruptedException ie) {
@@ -156,7 +208,7 @@ public class TransactionManager {
             throw new RollbackException();
         }
 
-        Future<Long> commit = tsoclient.commit(transaction.getStartTimestamp(),
+        Future<Long> commit = tsoClient.commit(transaction.getStartTimestamp(),
                                                transaction.getCells());
         try {
             long commitTs = commit.get();
@@ -194,7 +246,7 @@ public class TransactionManager {
         }
         // Remove transaction from commit table in not failure occurred
         if(!failureOccurred) {
-            tsoclient.completeTransaction(transaction.getStartTimestamp());
+            commitTableClient.completeTransaction(transaction.getStartTimestamp());
         }
 
     }

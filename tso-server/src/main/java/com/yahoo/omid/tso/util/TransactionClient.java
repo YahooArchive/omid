@@ -102,9 +102,8 @@ public class TransactionClient {
         for(int i = 0; i < config.nbClients; ++i) {
             CommitTable commitTable;
             if (config.isHBase()) {
-                org.apache.hadoop.conf.Configuration hbaseConfig = HBaseConfiguration.create();
-                HTable commitHTable = new HTable(hbaseConfig, config.getHBaseCommitTable());
-                commitTable = new HBaseCommitTable(commitHTable);
+                commitTable = new HBaseCommitTable(HBaseConfiguration.create(),
+                                                   config.getHBaseCommitTable());
             } else {
                 commitTable = new NullCommitTable();
             }

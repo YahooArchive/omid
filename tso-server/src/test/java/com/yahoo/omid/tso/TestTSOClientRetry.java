@@ -36,8 +36,7 @@ public class TestTSOClientRetry extends TSOTestBase {
         clientConfiguration.setProperty(TSOClient.REQUEST_TIMEOUT_IN_MS_CONFKEY, 100);
         clientConfiguration.setProperty(TSOClient.REQUEST_MAX_RETRIES_CONFKEY, 10000);
         
-        TSOClient client = TSOClient.newBuilder().withConfiguration(clientConf)
-                .withCommitTableClient(getCommitTable().getClient().get()).build();
+        TSOClient client = TSOClient.newBuilder().withConfiguration(clientConf).build();
         
         long ts1 = client.createTransaction().get();
         pauseTSO();
@@ -54,8 +53,7 @@ public class TestTSOClientRetry extends TSOTestBase {
         clientConfiguration.setProperty(TSOClient.REQUEST_TIMEOUT_IN_MS_CONFKEY, 100);
         clientConfiguration.setProperty(TSOClient.REQUEST_MAX_RETRIES_CONFKEY, 10);
         
-        TSOClient client = TSOClient.newBuilder().withConfiguration(clientConf)
-                .withCommitTableClient(getCommitTable().getClient().get()).build();
+        TSOClient client = TSOClient.newBuilder().withConfiguration(clientConf).build();
         
         long ts1 = client.createTransaction().get();
         pauseTSO();
@@ -75,8 +73,7 @@ public class TestTSOClientRetry extends TSOTestBase {
         clientConfiguration.setProperty(TSOClient.REQUEST_TIMEOUT_IN_MS_CONFKEY, 100);
         clientConfiguration.setProperty(TSOClient.REQUEST_MAX_RETRIES_CONFKEY, 10000);
         
-        TSOClient client = TSOClient.newBuilder().withConfiguration(clientConf)
-                .withCommitTableClient(getCommitTable().getClient().get()).build();
+        TSOClient client = TSOClient.newBuilder().withConfiguration(clientConf).build();
         
         pauseTSO();
         Future<Long> future = client.createTransaction();

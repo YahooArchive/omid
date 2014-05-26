@@ -49,22 +49,24 @@ public class TSOTestBase {
     private boolean tsoPaused = false;
     private volatile boolean isTsoBlockingRequest = false;
     private CommitTable commitTable = new InMemoryCommitTable();
-
+    private CommitTable.Client commitTableClient = null;
 
     final static public CellId c1 = new DummyCellIdImpl(0xdeadbeefL);
     final static public CellId c2 = new DummyCellIdImpl(0xfeedcafeL);
 
-    public void setupClient(CommitTable.Client commitTable) throws IOException {
+    public void setupClient() throws Exception {
 
         clientConf.setProperty("tso.host", "localhost");
         clientConf.setProperty("tso.port", 1234);
 
+        commitTableClient = commitTable.getClient().get();
+
         // Create the associated Handler
         client = TSOClient.newBuilder().withConfiguration(clientConf)
-            .withCommitTableClient(commitTable).build();
+            .build();
 
         client2 = TSOClient.newBuilder().withConfiguration(clientConf)
-            .withCommitTableClient(commitTable).build();
+            .build();
 
     }
 
@@ -78,6 +80,10 @@ public class TSOTestBase {
 
     public CommitTable getCommitTable() {
         return commitTable;
+    }
+
+    public CommitTable.Client getCommitTableClient() {
+        return commitTableClient;
     }
 
     public void teardownClient() throws Exception {
@@ -136,7 +142,7 @@ public class TSOTestBase {
 
         Thread.currentThread().setName("JUnit Thread");
 
-        setupClient(commitTable.getClient().get());
+        setupClient();
     }
 
     @After

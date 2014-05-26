@@ -134,6 +134,7 @@ public class ClientHandler {
 
     final Semaphore outstanding;
     final TSOClient client;
+    final CommitTable.Client commitTableClient;
     final int commitDelay;
 
     Timer timestampTimer;
@@ -171,9 +172,10 @@ public class ClientHandler {
         abortTimer = metrics.timer(name("TSOClient", name, "abort"));
         errorCounter = metrics.counter(name("TSOClient", name, "errors"));
 
+        this.commitTableClient = commitTableClient;
         client = TSOClient.newBuilder()
                 .withConfiguration(conf).withMetrics(metrics)
-                .withCommitTableClient(commitTableClient).build();
+                .build();
 
         long seed = System.currentTimeMillis();
         seed *= threadId;// to make it channel dependent
@@ -256,7 +258,7 @@ public class ClientHandler {
         public void run() {
             try {
                 f.get();
-                client.completeTransaction(txnId);
+                commitTableClient.completeTransaction(txnId);
                 commitTimer.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
             } catch (ExecutionException e) {
                 abortTimer.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);

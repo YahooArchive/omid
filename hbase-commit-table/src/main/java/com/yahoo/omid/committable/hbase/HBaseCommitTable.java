@@ -50,7 +50,8 @@ public class HBaseCommitTable implements CommitTable {
     static final byte[] COMMIT_TABLE_FAMILY = "F".getBytes(UTF_8);
     static final byte[] COMMIT_TABLE_QUALIFIER = "C".getBytes(UTF_8);
 
-    private final HTable baseTable;
+    private final String tableName;
+    private final Configuration hbaseConfig;
     private final KeyGenerator keygen;
 
 
@@ -59,20 +60,21 @@ public class HBaseCommitTable implements CommitTable {
      * Note that we do not take ownership of the passed htable,
      * it is just used to construct the writer and client.
      */
-    public HBaseCommitTable(HTable table) {
-        this(table, defaultKeyGenerator());
+    public HBaseCommitTable(Configuration hbaseConfig, String tableName) {
+        this(hbaseConfig, tableName, defaultKeyGenerator());
     }
 
-    private HBaseCommitTable(HTable table, KeyGenerator keygen) {
-        this.baseTable = table;
+    private HBaseCommitTable(Configuration hbaseConfig, String tableName, KeyGenerator keygen) {
+        this.hbaseConfig = hbaseConfig;
+        this.tableName = tableName;
         this.keygen = keygen;
     }
 
     public class HBaseWriter implements Writer {
         final HTable table;
 
-        HBaseWriter(HTable baseTable) throws IOException {
-            table = new HTable(baseTable.getConfiguration(), baseTable.getTableName());
+        HBaseWriter(Configuration hbaseConfig, String tableName) throws IOException {
+            table = new HTable(hbaseConfig, tableName);
             table.setAutoFlush(false, true);
         }
 
@@ -111,10 +113,10 @@ public class HBaseCommitTable implements CommitTable {
         final BlockingQueue<DeleteRequest> deleteQueue;
         final static int DELETE_BATCH_SIZE = 1024;
 
-        HBaseClient(HTable baseTable) throws IOException {
-            table = new HTable(baseTable.getConfiguration(), baseTable.getTableName());
+        HBaseClient(Configuration hbaseConfig, String tableName) throws IOException {
+            table = new HTable(hbaseConfig, tableName);
             table.setAutoFlush(false, true);
-            deleteTable = new HTable(baseTable.getConfiguration(), baseTable.getTableName());
+            deleteTable = new HTable(hbaseConfig, tableName);
             deleteQueue = new ArrayBlockingQueue<DeleteRequest>(DELETE_BATCH_SIZE);
 
             deleteBatchExecutor = Executors.newSingleThreadExecutor(
@@ -253,7 +255,7 @@ public class HBaseCommitTable implements CommitTable {
     public ListenableFuture<Writer> getWriter() {
         SettableFuture<Writer> f = SettableFuture.<Writer> create();
         try {
-            f.set(new HBaseWriter(baseTable));
+            f.set(new HBaseWriter(hbaseConfig, tableName));
         } catch (IOException ioe) {
             f.setException(ioe);
         }
@@ -264,7 +266,7 @@ public class HBaseCommitTable implements CommitTable {
     public ListenableFuture<Client> getClient() {
         SettableFuture<Client> f = SettableFuture.<Client> create();
         try {
-            f.set(new HBaseClient(baseTable)); // Check this depending on (*)
+            f.set(new HBaseClient(hbaseConfig, tableName));
         } catch (IOException ioe) {
             f.setException(ioe);
         }
@@ -443,12 +445,8 @@ public class HBaseCommitTable implements CommitTable {
         @Parameter(names = "-batchSize", description = "batch size")
         int batchSize = 10000;
 
-        @Parameter(names = "-writeBufferSize", description = "write buffer size")
-        long writeBufferSize = -1;
-
         @Parameter(names = "-graphite", description = "graphite server to report to")
         String graphite = null;
-
     }
 
     public static void main(String[] args) throws Exception {
@@ -456,10 +454,6 @@ public class HBaseCommitTable implements CommitTable {
         new JCommander(config, args);
 
         Configuration hbaseConfig = HBaseConfiguration.create();
-        HTable commitHTable = new HTable(hbaseConfig, COMMIT_TABLE_DEFAULT_NAME);
-        if (config.writeBufferSize != -1) {
-            commitHTable.setWriteBufferSize(config.writeBufferSize);
-        }
 
         final KeyGenerator keygen;
         if (config.fullRandomAlgo) {
@@ -474,7 +468,8 @@ public class HBaseCommitTable implements CommitTable {
             keygen = null;
             assert (false);
         }
-        CommitTable commitTable = new HBaseCommitTable(commitHTable, keygen);
+        CommitTable commitTable = new HBaseCommitTable(hbaseConfig,
+                                                       COMMIT_TABLE_DEFAULT_NAME, keygen);
         CommitTable.Writer writer = commitTable.getWriter().get();
 
         MetricRegistry metrics = new MetricRegistry();

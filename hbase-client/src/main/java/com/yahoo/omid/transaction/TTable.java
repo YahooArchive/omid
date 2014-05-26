@@ -489,7 +489,8 @@ public class TTable {
         if (commitCache.containsKey(startTimestamp)) {
             return Optional.of(commitCache.get(startTimestamp));
         }
-        Future<Optional<Long>> f = transaction.tsoclient.getCommitTimestamp(startTimestamp);
+        Future<Optional<Long>> f = transaction.getTransactionManager()
+            .getCommitTableClient().getCommitTimestamp(startTimestamp);
         Optional<Long> commitTimestamp = f.get();
         if (commitTimestamp.isPresent()) {
             // If the commit timestamp is found in the persisted commit table,

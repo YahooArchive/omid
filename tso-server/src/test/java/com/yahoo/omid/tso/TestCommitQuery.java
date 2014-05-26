@@ -32,12 +32,13 @@ public class TestCommitQuery extends TSOTestBase {
         long tr2 = client.createTransaction().get();
         assertTrue("start timestamps should grow", tr2 > tr1);
 
-        assertFalse("tr1 isn't committed", client.getCommitTimestamp(tr1).get().isPresent());
+        assertFalse("tr1 isn't committed",
+                    getCommitTableClient().getCommitTimestamp(tr1).get().isPresent());
 
         long cr1 = client.commit(tr1, Sets.newHashSet(c1)).get();
         assertTrue("commit timestamp should be higher than start timestamp", cr1 > tr1);
 
-        Long cq2 = client2.getCommitTimestamp(tr1).get().get();
+        Long cq2 = getCommitTableClient().getCommitTimestamp(tr1).get().get();
         assertNotNull("transaction is committed, should return as such", cq2);
         assertEquals("getCommitTimestamp and commit should report same thing for same transaction",
                      (long)cq2, (long)cr1);
