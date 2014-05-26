@@ -215,6 +215,10 @@ public class HBaseCommitTable implements CommitTable {
         public void close() throws IOException {
             deleteBatchExecutor.shutdown();
             try {
+                if (!deleteBatchExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
+                    deleteBatchExecutor.shutdownNow(); // may need to interrupt take
+                }
+
                 if (!deleteBatchExecutor.awaitTermination(10, TimeUnit.SECONDS)) {
                     LOG.warn("Delete executor did not shutdown");
                 }

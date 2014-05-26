@@ -82,6 +82,7 @@ public class TSOClient {
 
     private ChannelFactory factory;
     private ClientBootstrap bootstrap;
+    private final ScheduledExecutorService fsmExecutor;
     Fsm fsm;
 
     private final int requestTimeoutMs;
@@ -165,7 +166,7 @@ public class TSOClient {
 
         addr = new InetSocketAddress(host, port);
 
-        ScheduledExecutorService fsmExecutor = Executors.newSingleThreadScheduledExecutor(
+        fsmExecutor = Executors.newSingleThreadScheduledExecutor(
                 new ThreadFactoryBuilder().setNameFormat("tsofsm-%d").build());
         fsm = new FsmImpl(fsmExecutor);
         fsm.setInitState(new DisconnectedState());
@@ -214,6 +215,12 @@ public class TSOClient {
     public TSOFuture<Void> close() {
         CloseEvent closeEvent = new CloseEvent();
         fsm.sendEvent(closeEvent);
+        closeEvent.addListener(new Runnable() {
+                @Override
+                public void run() {
+                    fsmExecutor.shutdown();
+                }
+            }, fsmExecutor);
         return new ForwardingTSOFuture<Void>(closeEvent);
     }
 
@@ -323,6 +330,7 @@ public class TSOClient {
                     });
                 return new ConnectingState(retries - 1);
             } else if (e instanceof CloseEvent) {
+                factory.releaseExternalResources();
                 ((CloseEvent)e).success(null);
                 return this;
             } else {
