@@ -15,11 +15,7 @@
  -->
 <configuration>
   <property>
-    <name>tso.host</name>
+    <name>hbase.zookeeper.quorum</name>
     <value>localhost</value>
-  </property>
-  <property>
-    <name>tso.port</name>
-    <value>1234</value>
   </property>
 </configuration>

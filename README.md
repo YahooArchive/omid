@@ -1,69 +1,96 @@
-Omid
+Omid2
 =====
 
-The Omid project provides transactional support for key-value stores using Snapshot Isolation. Omid stands for Optimistically transactional Management in Datasources. At this stage of the project, HBase is the only supported data-store.
+The Omid2 project provides transactional support for key-value stores using Snapshot Isolation. Omid stands for Optimistically transactional Management in Datasources. HBase is the only datastore currently supported, though adaption to any datastore that provides multiple versions per cell should be straightforward.
 
-If you have any question, please take a look to the [Wiki](https://github.com/yahoo/omid/wiki) or contact us at omid-project@googlegroups.com or read [the online archives](https://groups.google.com/forum/?fromgroups=#!forum/omid-project)
+There are 3 components in OMID2;
+ * The Transaction Status Oracle (TSO), which assigns transaction timestamps and resolves conflicts between transactions.
+ * The commit table which stores a mapping from start timestamp to commit timestamp
+ * Shadow cells, which are written alongside data cells in the datastore to allow client to resolve reads without consulting the commit table.
 
-Use Cases
----------
+To start a transaction, the client requests a start timestamp from the TSO. It then writes any data cells it wishes to write (i.e. the write set) with the start timestamp as the version of the data cell. To commit the transaction, the client sends the write set to the TSO, which will check for conflicts. If there is no conflict, the TSO assigns a commit timestamp to the transaction, and writes the mapping of the start timestamp to commit timestamp to the commit table. Once the mapping has been persisted, the commit timestamp is returned to the client. On receiving the commit timestamp from the server, the client updates the shadow cells for the write set and clears the transaction from the commit table.
 
-Add UCs.
+To read a cell transactionally, the client first checks if the cell has a shadow cell. If the commit timestamp of the shadow cell is lower than the start timestamp of the reading transaction, then the client can "see" the cell. If there is no shadow cell, the commit table is consulted to find the commit timestamp of the cell. If the commit timestamp does not exist in the commit table, then the cell is assumed to below to an aborted transaction.
 
-Basic Architecture
-------------------
+There are currently two implementations of the commit table, a hbase implementation and an inmemory implementation. The inmemory implementation gives no persistence guarantee and is only useful for benchmarking the TSO. 
 
-The main component of Omid is a server called the Status Oracle (TSO.) The TSO contains all the information needed to manage transactions. Applications requiring transactional support in key-value stores need to use the API provided by special components provided by Omid called Transactional Clients (TCs). TCs are in charge of connecting to the TSO and perform the required operations in data-stores. The TSO replicates transactional information to the TCs which just contact the TSO when they want to start a transaction or commit it.
+Quickstart
+----------
+Clone the repository and build the TSO package:
 
-The TSO uses BookKeeper as a Write-Ahead Log where it dumps all its state. In case of crash failures it is possible to restart the TSO without losing any commit information.
+      $ git clone git@git.corp.yahoo.com:scalable-computing/omid.git
+      $ cd omid
+      $ mvn clean install assembly:single
 
-The core architecture of the software is described in more detail in the [Technical Details](https://github.com/yahoo/omid/wiki/Technical-Details) section of the Wiki.
+This will generate a binary package containing all dependencies for the TSO in tso-server/target/tso-server-<VERSION>-bin.tar.gz.
 
-Compilation
------------
+Extract this package on your server
 
-Omid uses Maven for its build system.
+      $ tar zxvf tso-server-<VERSION>-bin.tar.gz
+      $ cd tso-server-<VERSION>
 
-To compile Omid:
+Ensure that the setting for hbase.zookeeper.quorum in conf/hbase-site.xml points to your zookeeper instance, and create the commit and timestamp tables.
+      
+      $ bin/omid.sh create-hbase-commit-table -numSplits 16
+      $ bin/omid.sh create-hbase-timestamp-table
 
-	$ git clone https://github.com/yahoo/omid.git omid
-	$ cd omid
-    $ mvn install -DskipTests
+Then start the TSO.
 
-Tests should run cleanly if you want to run them.
+      $ bin/omid.sh tso
 
-Set-Up
-------
+By default the tso listens on port 54758.
 
-To test Omid you might want to run a benchmark.
+Client usage
+------------
 
-### Status Oracle
-To start the SO, run:
-   
-    $ bin/omid.sh tso
+Add the following to your pom.xml dependencies:
+```xml
+    <dependency>
+      <groupId>com.yahoo.omid</groupId>
+      <artifactId>hbase-client</artifactId>
+      <version>[VERSION]</version>
+    </dependency>
+```
 
-### Benchmark
-To benchmark the TSO alone, run:
+The client interfaces for OMID2 are TTable and TransactionManager. TransactionManager is used for creating and committing transactions. TTable can be used for putting, getting and scanning entries in a hbase table. TTable's interface is similar to HTable. _These interfaces will likely change slightly in future._
 
-    $ bin/omid.sh tsobench
+To run this example, make sure you have hbase-site.xml in your classpath, with hbase.zookeeper.quorum, tso.host and tso.port set accordingly. Also, you will need to create a hbase table "EXAMPLE_TABLE", with column family "EXAMPLE_CF", and with TTL disabled and maxVersions set to Integer.MAX_VALUE.
 
-API Description
----------------
+```java
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.util.Bytes;
+import com.yahoo.omid.transaction.TTable;
+import com.yahoo.omid.transaction.Transaction;
+import com.yahoo.omid.transaction.TransactionManager;
 
-The public API is in these classes:
+public class Example {
+    public static void main(String[] args) throws Exception {
+        Configuration conf = HBaseConfiguration.create();
 
-    src/main/java/com/yahoo/omid/transaction/TTable.java
-    src/main/java/com/yahoo/omid/transaction/Transaction.java
-    src/main/java/com/yahoo/omid/transaction/TransactionManager.java
+        TransactionManager tm = TransactionManager.newBuilder()
+            .withConfiguration(conf).build();
+        TTable tt = new TTable(conf, "EXAMPLE_TABLE");
+        byte[] exampleRow1 = Bytes.toBytes("EXAMPLE_ROW1");
+        byte[] exampleRow2 = Bytes.toBytes("EXAMPLE_ROW2");
+        byte[] family = Bytes.toBytes("EXAMPLE_CF");
+        byte[] qualifier = Bytes.toBytes("foo");
+        byte[] dataValue1 = Bytes.toBytes("val1");
+        byte[] dataValue2 = Bytes.toBytes("val2");
 
-For an example of usage, take a look to this class:
+        Transaction tx1 = tm.begin();
+        Put row1 = new Put(exampleRow1);
+        row1.add(family, qualifier, dataValue1);
+        tt.put(tx1, row1);
+        Put row2 = new Put(exampleRow2);
+        row2.add(family, qualifier, dataValue2);
+        tt.put(tx1, row2);
 
-    src/test/java/com/yahoo/omid/TestBasicTransaction.java
-
-Logging 
--------
-The logging preferences can be adjusted in src/main/resources/log4j.properties.
-
-Acknowledgement
--------
-This project has been partially supported by the EU Comission through the Cumulo Nimbo project (FP7-257993).
+        tm.commit(tx1);
+        tt.close();
+        tm.close();
+    }
+}
+```
