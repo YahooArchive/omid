@@ -20,7 +20,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
-import com.yahoo.omid.transaction.TransactionManager;
+import com.yahoo.omid.tm.TransactionManager;
+import com.yahoo.omid.transaction.HBaseTransactionManager;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -36,8 +37,10 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
+
 import com.yahoo.omid.committable.hbase.CreateTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
+
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -101,7 +104,7 @@ public class OmidTestBase {
     }
 
     protected TransactionManager newTransactionManager() throws Exception {
-        return TransactionManager.newBuilder()
+        return HBaseTransactionManager.newBuilder()
             .withConfiguration(hbaseConf)
             .withCommitTableClient(tso.getCommitTable().getClient().get())
             .withTSOClient(tso.getClient()).build();

@@ -24,6 +24,7 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// TODO Remove this?
 public class TestTable {
    private static final Logger LOG = LoggerFactory.getLogger(TestTable.class);
 

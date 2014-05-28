@@ -1,20 +1,3 @@
-/**
-
- * Copyright (c) 2011 Yahoo! Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License. See accompanying LICENSE file.
- */
-
 package com.yahoo.omid.transaction;
 
 import java.io.IOException;
@@ -29,10 +12,8 @@ import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
@@ -56,20 +37,57 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.yahoo.omid.tm.AbstractTransactionManager;
+import com.yahoo.omid.tm.AbstractTransactionManager.CommitTimestamp;
+import com.yahoo.omid.tm.CommitTimestampLocator;
+import com.yahoo.omid.tm.Transaction;
+import com.yahoo.omid.transaction.HBaseTransactionManager.HBaseTransaction;
 
 /**
  * Provides transactional methods for accessing and modifying a given snapshot
- * of data identified by an opaque {@link Transaction} object.
- *
+ * of data identified by an opaque {@link Transaction} object. It mimics the
+ * behavior in {@link org.apache.hadoop.hbase.client.HTableInterface}
  */
 public class TTable {
+
     private static Logger LOG = LoggerFactory.getLogger(TTable.class);
 
-    public static long getsPerformed = 0;
-    public static long elementsGotten = 0;
-    public static long elementsRead = 0;
-    public static long extraGetsPerformed = 0;
-    public static double extraVersionsAvg = 3;
+    private class CommitTimestampLocatorImpl implements CommitTimestampLocator {
+
+        private final Map<Long, Long> commitCache;
+        private final KeyValue kv;
+
+        public CommitTimestampLocatorImpl(Map<Long, Long> commitCache, KeyValue kv) {
+            this.commitCache = commitCache;
+            this.kv = kv;
+        }
+
+        @Override
+        public Optional<Long> readCommitTimestampFromCache(long startTimestamp) {
+            if (commitCache.containsKey(startTimestamp)) {
+                return Optional.of(commitCache.get(startTimestamp));
+            }
+            return Optional.absent();
+        }
+
+        @Override
+        public Optional<Long> readCommitTimestampFromShadowCell(long startTimestamp)
+                throws IOException {
+
+            Get get = new Get(kv.getRow());
+            byte[] family = kv.getFamily();
+            byte[] shadowCellQualifier = HBaseTransactionManager.addShadowCellSuffix(kv.getQualifier());
+            get.addColumn(family, shadowCellQualifier);
+            get.setMaxVersions(1);
+            get.setTimeStamp(startTimestamp);
+            Result result = table.get(get);
+            if (result.containsColumn(family, shadowCellQualifier)) {
+                return Optional.of(Bytes.toLong(result.getValue(family, shadowCellQualifier)));
+            }
+            return Optional.absent();
+        }
+
+    }
 
     public static byte[] DELETE_TOMBSTONE = Bytes.toBytes("__OMID_TOMBSTONE__");;
 
@@ -96,7 +114,7 @@ public class TTable {
         public void run() {
             Put put = new Put(kv.getRow());
             byte[] family = kv.getFamily();
-            byte[] shadowCellQualifier = TransactionManager.addShadowCellSuffix(kv.getQualifier());
+            byte[] shadowCellQualifier = HBaseTransactionManager.addShadowCellSuffix(kv.getQualifier());
             put.add(family, shadowCellQualifier, kv.getTimestamp(), Bytes.toBytes(commitTimestamp));
             try {
                 healerTable.put(put);
@@ -126,21 +144,13 @@ public class TTable {
     }
 
     /**
-     * Extracts certain cells from a given row.
-     *
-     * @param get
-     *            The object that specifies what data to fetch and from which
-     *            row.
-     * @return The data coming from the specified row, if it exists. If the row
-     *         specified doesn't exist, the {@link Result} instance returned
-     *         won't contain any {@link KeyValue}, as indicated by
-     *         {@link Result#isEmpty()}.
-     * @throws IOException
-     *             if a remote or network exception occurs.
+     * Transactional version of {@link HTableInterface#get(Get get)}
      */
-    public Result get(Transaction transaction, final Get get) throws IOException {
+    public Result get(Transaction tx, final Get get) throws IOException {
 
         throwExceptionIfOpSetsTimerange(get);
+
+        HBaseTransaction transaction = enforceHBaseTransactionAsParam(tx);
 
         final int requestedVersions = (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD);
         final long readTimestamp = transaction.getStartTimestamp();
@@ -158,12 +168,11 @@ public class TTable {
             } else {
                 for (byte[] qualifier : qualifiers) {
                     tsget.addColumn(family, qualifier);
-                    tsget.addColumn(family, TransactionManager.addShadowCellSuffix(qualifier));
+                    tsget.addColumn(family, HBaseTransactionManager.addShadowCellSuffix(qualifier));
                 }
             }
         }
         LOG.trace("Initial Get = {}", tsget);
-        getsPerformed++;
 
         // Return the KVs that belong to the transaction snapshot, ask for more
         // versions if needed
@@ -177,16 +186,13 @@ public class TTable {
     }
 
     /**
-     * Deletes the specified cells/row.
-     *
-     * @param delete
-     *            The object that specifies what to delete.
-     * @throws IOException
-     *             if a remote or network exception occurs.
+     * Transactional version of {@link HTableInterface#delete(Delete delete)}
      */
-    public void delete(Transaction transaction, Delete delete) throws IOException {
+    public void delete(Transaction tx, Delete delete) throws IOException {
 
         throwExceptionIfOpSetsTimerange(delete);
+
+        HBaseTransaction transaction = enforceHBaseTransactionAsParam(tx);
 
         final long startTimestamp = transaction.getStartTimestamp();
         boolean issueGet = false;
@@ -203,7 +209,7 @@ public class TTable {
                 switch (KeyValue.Type.codeToType(kv.getType())) {
                 case DeleteColumn:
                     deleteP.add(kv.getFamily(), kv.getQualifier(), startTimestamp, DELETE_TOMBSTONE);
-                    transaction.addCell(new HBaseCellIdImpl(table, delete.getRow(), kv.getFamily(), kv.getQualifier()));
+                    transaction.addWriteSetElement(new HBaseCellId(table, delete.getRow(), kv.getFamily(), kv.getQualifier()));
                     break;
                 case DeleteFamily:
                     deleteG.addFamily(kv.getFamily());
@@ -212,13 +218,15 @@ public class TTable {
                 case Delete:
                     if (kv.getTimestamp() == HConstants.LATEST_TIMESTAMP) {
                         deleteP.add(kv.getFamily(), kv.getQualifier(), startTimestamp, DELETE_TOMBSTONE);
-                        transaction.addCell(new HBaseCellIdImpl(table, delete.getRow(),
+                        transaction.addWriteSetElement(new HBaseCellId(table, delete.getRow(),
                                 kv.getFamily(), kv.getQualifier()));
                         break;
                     } else {
                         throw new UnsupportedOperationException(
                                 "Cannot delete specific versions on Snapshot Isolation.");
                     }
+                default:
+                    break;
                 }
             }
         }
@@ -233,7 +241,7 @@ public class TTable {
                     for (Entry<byte[], NavigableMap<Long, byte[]>> entryQ : entryF.getValue().entrySet()) {
                         byte[] qualifier = entryQ.getKey();
                         deleteP.add(family, qualifier, DELETE_TOMBSTONE);
-                        transaction.addCell(new HBaseCellIdImpl(table, delete.getRow(), family, qualifier));
+                        transaction.addWriteSetElement(new HBaseCellId(table, delete.getRow(), family, qualifier));
                     }
                 }
             }
@@ -243,20 +251,13 @@ public class TTable {
     }
 
     /**
-     * Puts some data in the table.
-     * <p>
-     * If {@link #isAutoFlush isAutoFlush} is false, the update is buffered
-     * until the internal buffer is full.
-     *
-     * @param put
-     *            The data to put.
-     * @throws IOException
-     *             if a remote or network exception occurs.
-     * @since 0.20.0
+     * Transactional version of {@link HTableInterface#put(Put put)}
      */
-    public void put(Transaction transaction, Put put) throws IOException {
+    public void put(Transaction tx, Put put) throws IOException {
 
         throwExceptionIfOpSetsTimerange(put);
+
+        HBaseTransaction transaction = enforceHBaseTransactionAsParam(tx);
 
         final long startTimestamp = transaction.getStartTimestamp();
         // create put with correct ts
@@ -266,7 +267,7 @@ public class TTable {
             for (KeyValue kv : kvl) {
                 throwExceptionIfTimestampSet(kv);
                 tsput.add(new KeyValue(kv.getRow(), kv.getFamily(), kv.getQualifier(), startTimestamp, kv.getValue()));
-                transaction.addCell(new HBaseCellIdImpl(table, kv.getRow(), kv.getFamily(), kv.getQualifier()));
+                transaction.addWriteSetElement(new HBaseCellId(table, kv.getRow(), kv.getFamily(), kv.getQualifier()));
             }
         }
 
@@ -274,19 +275,13 @@ public class TTable {
     }
 
     /**
-     * Returns a scanner on the current table as specified by the {@link Scan}
-     * object. Note that the passed {@link Scan}'s start row and caching
-     * properties maybe changed.
-     *
-     * @param scan
-     *            A configured {@link Scan} object.
-     * @return A scanner.
-     * @throws IOException
-     *             if a remote or network exception occurs.
+     * Transactional version of {@link HTableInterface#getScanner(Scan scan)}
      */
-    public ResultScanner getScanner(Transaction transaction, Scan scan) throws IOException {
+    public ResultScanner getScanner(Transaction tx, Scan scan) throws IOException {
 
         throwExceptionIfOpSetsTimerange(scan);
+
+        HBaseTransaction transaction = enforceHBaseTransactionAsParam(tx);
 
         Scan tsscan = new Scan(scan);
         tsscan.setMaxVersions((int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
@@ -299,7 +294,7 @@ public class TTable {
                 continue;
             }
             for (byte[] qualifier : qualifiers) {
-                tsscan.addColumn(family, TransactionManager.addShadowCellSuffix(qualifier));
+                tsscan.addColumn(family, HBaseTransactionManager.addShadowCellSuffix(qualifier));
             }
         }
         TransactionalClientScanner scanner = new TransactionalClientScanner(transaction,
@@ -338,7 +333,7 @@ public class TTable {
 
         public IterableColumn(List<KeyValue> keyValues) {
             for (KeyValue kv : keyValues) {
-                if (TransactionManager.isShadowCell(kv.getQualifier())) {
+                if (HBaseTransactionManager.isShadowCell(kv.getQualifier())) {
                     continue;
                 }
                 ColumnWrapper currentColumn = new ColumnWrapper(kv.getFamily(), kv.getQualifier());
@@ -375,7 +370,7 @@ public class TTable {
      * @return Filtered KVs belonging to the transaction snapshot
      * @throws IOException
      */
-    List<KeyValue> filterKeyValuesForSnapshot(List<KeyValue> rawKeyValues, Transaction transaction,
+    List<KeyValue> filterKeyValuesForSnapshot(List<KeyValue> rawKeyValues, HBaseTransaction transaction,
             int versionsToRequest) throws IOException {
 
         assert (rawKeyValues != null && transaction != null && versionsToRequest >= 1);
@@ -431,7 +426,7 @@ public class TTable {
         Map<Long, Long> commitCache = new HashMap<Long, Long>();
 
         for (KeyValue kv : rawKeyValues) {
-            if (TransactionManager.isShadowCell(kv.getQualifier())) {
+            if (HBaseTransactionManager.isShadowCell(kv.getQualifier())) {
                 commitCache.put(kv.getTimestamp(), Bytes.toLong(kv.getValue()));
             }
         }
@@ -439,7 +434,7 @@ public class TTable {
         return commitCache;
     }
 
-    private boolean isKeyValueInSnapshot(KeyValue kv, Transaction transaction, Map<Long, Long> commitCache)
+    private boolean isKeyValueInSnapshot(KeyValue kv, HBaseTransaction transaction, Map<Long, Long> commitCache)
             throws IOException {
 
         long startTimestamp = transaction.getStartTimestamp();
@@ -450,7 +445,7 @@ public class TTable {
 
         Optional<Long> commitTimestamp = Optional.absent();
         try {
-            commitTimestamp = checkAndGetCommitTimestamp(transaction, kv, commitCache);
+            commitTimestamp = tryToLocateKVCommitTimestamp(transaction.getTransactionManager(), kv, commitCache);
         } catch (ExecutionException ee) {
             throw new IOException("Error reading commit timestamp", ee.getCause());
         } catch (InterruptedException ie) {
@@ -465,7 +460,7 @@ public class TTable {
 
         Get pendingGet = new Get(kv.getRow());
         pendingGet.addColumn(kv.getFamily(), kv.getQualifier());
-        pendingGet.addColumn(kv.getFamily(), TransactionManager.addShadowCellSuffix(kv.getQualifier()));
+        pendingGet.addColumn(kv.getFamily(), HBaseTransactionManager.addShadowCellSuffix(kv.getQualifier()));
         pendingGet.setMaxVersions(versionCount);
         pendingGet.setTimeRange(0, kv.getTimestamp());
 
@@ -483,35 +478,32 @@ public class TTable {
 
     }
 
-    private Optional<Long> checkAndGetCommitTimestamp(Transaction transaction, KeyValue kv, Map<Long, Long> commitCache)
+    private Optional<Long> tryToLocateKVCommitTimestamp(AbstractTransactionManager transactionManager,
+                                                      KeyValue kv,
+                                                      Map<Long, Long> commitCache)
             throws InterruptedException, ExecutionException, IOException {
-        long startTimestamp = kv.getTimestamp();
-        if (commitCache.containsKey(startTimestamp)) {
-            return Optional.of(commitCache.get(startTimestamp));
-        }
-        Future<Optional<Long>> f = transaction.getTransactionManager()
-            .getCommitTableClient().getCommitTimestamp(startTimestamp);
-        Optional<Long> commitTimestamp = f.get();
-        if (commitTimestamp.isPresent()) {
+        
+        CommitTimestamp tentativeCommitTimestamp =
+                transactionManager.locateCellCommitTimestamp(
+                        kv.getTimestamp(), new CommitTimestampLocatorImpl(commitCache, kv));
+        
+        switch(tentativeCommitTimestamp.getLocation()) {
+        case COMMIT_TABLE:
             // If the commit timestamp is found in the persisted commit table,
             // that means the writing process of the shadow cell in the post
             // commit phase of the client probably failed, so we heal the shadow
             // cell with the right commit timestamp for avoiding further reads to
             // hit the storage
-            healShadowCell(kv, commitTimestamp.get());
-            return commitTimestamp;
+            healShadowCell(kv, tentativeCommitTimestamp.getValue());
+        case CACHE:
+        case SHADOW_CELL:
+            return Optional.of(tentativeCommitTimestamp.getValue());
+        case NOT_PRESENT:
+            return Optional.absent();
+        default:
+            assert (false);
+            return Optional.absent();
         }
-        Get get = new Get(kv.getRow());
-        byte[] family = kv.getFamily();
-        byte[] shadowCellQualifier = TransactionManager.addShadowCellSuffix(kv.getQualifier());
-        get.addColumn(family, shadowCellQualifier);
-        get.setMaxVersions(1);
-        get.setTimeStamp(startTimestamp);
-        Result result = table.get(get);
-        if (result.containsColumn(family, shadowCellQualifier)) {
-            return Optional.of(Bytes.toLong(result.getValue(family, shadowCellQualifier)));
-        }
-        return Optional.absent();
     }
 
     void healShadowCell(KeyValue kv, long commitTimestamp) {
@@ -520,11 +512,11 @@ public class TTable {
     }
 
     protected class TransactionalClientScanner implements ResultScanner {
-        private Transaction state;
+        private HBaseTransaction state;
         private ResultScanner innerScanner;
         private int maxVersions;
 
-        TransactionalClientScanner(Transaction state, Scan scan, int maxVersions)
+        TransactionalClientScanner(HBaseTransaction state, Scan scan, int maxVersions)
                 throws IOException {
             this.state = state;
             this.innerScanner = table.getScanner(scan);
@@ -577,93 +569,51 @@ public class TTable {
     }
 
     /**
-     * Gets the name of this table.
-     *
-     * @return the table name.
+     * Delegates to {@link HTable#getTableName()}
      */
     public byte[] getTableName() {
         return table.getTableName();
     }
 
     /**
-     * Returns the {@link Configuration} object used by this instance.
-     * <p>
-     * The reference returned is not a copy, so any change made to it will
-     * affect this instance.
+     * Delegates to {@link HTable#getConfiguration()}
      */
     public Configuration getConfiguration() {
         return table.getConfiguration();
     }
 
     /**
-     * Gets the {@link HTableDescriptor table descriptor} for this table.
-     *
-     * @throws IOException
-     *             if a remote or network exception occurs.
+     * Delegates to {@link HTable#getTableDescriptor()}
      */
     public HTableDescriptor getTableDescriptor() throws IOException {
         return table.getTableDescriptor();
     }
 
     /**
-     * Test for the existence of columns in the table, as specified in the Get.
-     * <p>
-     *
-     * This will return true if the Get matches one or more keys, false if not.
-     * <p>
-     *
-     * This is a server-side call so it prevents any data from being transfered
-     * to the client.
-     *
-     * @param get
-     *            the Get
-     * @return true if the specified Get matches one or more keys, false if not
-     * @throws IOException
-     *             e
+     * Transactional version of {@link HTableInterface#exists(Get get)}
      */
     public boolean exists(Transaction transaction, Get get) throws IOException {
         Result result = get(transaction, get);
         return !result.isEmpty();
     }
 
-    /*
+    /* TODO What should we do with this methods???
      * @Override public void batch(Transaction transaction, List<? extends Row>
-     * actions, Object[] results) throws IOException, InterruptedException { //
-     * TODO Auto-generated method stub
-     * 
-     * }
+     * actions, Object[] results) throws IOException, InterruptedException {}
      * 
      * @Override public Object[] batch(Transaction transaction, List<? extends
-     * Row> actions) throws IOException, InterruptedException { // TODO
-     * Auto-generated method stub return null; }
+     * Row> actions) throws IOException, InterruptedException {}
      * 
      * @Override public <R> void batchCallback(Transaction transaction, List<?
      * extends Row> actions, Object[] results, Callback<R> callback) throws
-     * IOException, InterruptedException { // TODO Auto-generated method stub
-     * 
-     * }
+     * IOException, InterruptedException {}
      * 
      * @Override public <R> Object[] batchCallback(List<? extends Row> actions,
-     * Callback<R> callback) throws IOException, InterruptedException { // TODO
-     * Auto-generated method stub return null; }
+     * Callback<R> callback) throws IOException, InterruptedException {}
      */
 
     /**
-     * Extracts certain cells from the given rows, in batch.
-     *
-     * @param gets
-     *            The objects that specify what data to fetch and from which
-     *            rows.
-     *
-     * @return The data coming from the specified rows, if it exists. If the row
-     *         specified doesn't exist, the {@link Result} instance returned
-     *         won't contain any {@link KeyValue}, as indicated by
-     *         {@link Result#isEmpty()}. If there are any failures even after
-     *         retries, there will be a null in the results array for those
-     *         Gets, AND an exception will be thrown.
-     * @throws IOException
-     *             if a remote or network exception occurs.
-     *
+     * Transactional version of {@link HTableInterface#get(List<Get> gets)}
      */
     public Result[] get(Transaction transaction, List<Get> gets) throws IOException {
         Result[] results = new Result[gets.size()];
@@ -675,13 +625,7 @@ public class TTable {
     }
 
     /**
-     * Gets a scanner on the current table for the given family.
-     *
-     * @param family
-     *            The column family to scan.
-     * @return A scanner.
-     * @throws IOException
-     *             if a remote or network exception occurs.
+     * Transactional version of {@link HTableInterface#getScanner(byte[] family)}
      */
     public ResultScanner getScanner(Transaction transaction, byte[] family) throws IOException {
         Scan scan = new Scan();
@@ -690,39 +634,17 @@ public class TTable {
     }
 
     /**
-     * Gets a scanner on the current table for the given family and qualifier.
-     *
-     * @param family
-     *            The column family to scan.
-     * @param qualifier
-     *            The column qualifier to scan.
-     * @return A scanner.
-     * @throws IOException
-     *             if a remote or network exception occurs.
+     * Transactional version of {@link HTableInterface#getScanner(byte[] family, byte[] qualifier)}
      */
-    public ResultScanner getScanner(Transaction transaction, byte[] family, byte[] qualifier) throws IOException {
+    public ResultScanner getScanner(Transaction transaction, byte[] family, byte[] qualifier)
+            throws IOException {
         Scan scan = new Scan();
         scan.addColumn(family, qualifier);
         return getScanner(transaction, scan);
     }
 
     /**
-     * Puts some data in the table, in batch.
-     * <p>
-     * If {@link #isAutoFlush isAutoFlush} is false, the update is buffered
-     * until the internal buffer is full.
-     * <p>
-     * This can be used for group commit, or for submitting user defined
-     * batches. The writeBuffer will be periodically inspected while the List is
-     * processed, so depending on the List size the writeBuffer may flush not at
-     * all, or more than once.
-     *
-     * @param puts
-     *            The list of mutations to apply. The batch put is done by
-     *            aggregating the iteration of the Puts over the write buffer at
-     *            the client-side for a single RPC call.
-     * @throws IOException
-     *             if a remote or network exception occurs.
+     * Transactional version of {@link HTableInterface#put(List<Put> puts)}
      */
     public void put(Transaction transaction, List<Put> puts) throws IOException {
         for (Put put : puts) {
@@ -731,17 +653,7 @@ public class TTable {
     }
 
     /**
-     * Deletes the specified cells/rows in bulk.
-     *
-     * @param deletes
-     *            List of things to delete. List gets modified by this method
-     *            (in particular it gets re-ordered, so the order in which the
-     *            elements are inserted in the list gives no guarantee as to the
-     *            order in which the {@link Delete}s are executed).
-     * @throws IOException
-     *             if a remote or network exception occurs. In that case the
-     *             {@code deletes} argument will contain the {@link Delete}
-     *             instances that have not be successfully applied.
+     * Transactional version of {@link HTableInterface#delete(List<Delete> deletes)}
      */
     public void delete(Transaction transaction, List<Delete> deletes) throws IOException {
         for (Delete delete : deletes) {
@@ -781,52 +693,42 @@ public class TTable {
     }
 
     /**
-     * Turns 'auto-flush' on or off.
-     *
-     * When enabled (default), Put operations don't get buffered/delayed and are immediately executed.
-     *
-     * Turning off autoFlush means that multiple Puts will be accepted before any RPC is actually sent to do the write
-     * operations. Writes will still be automatically flushed at commit time, so no data will be lost.
-     *
-     * @param autoFlush
-     *            Whether or not to enable 'auto-flush'.
+     * Delegates to {@link HTable#setAutoFlush(boolean autoFlush)}
      */
     public void setAutoFlush(boolean autoFlush) {
         table.setAutoFlush(autoFlush, true);
     }
 
     /**
-     * Tells whether or not 'auto-flush' is turned on.
-     *
-     * @return true if 'auto-flush' is enabled (default), meaning Put operations don't get buffered/delayed and are
-     *         immediately executed.
+     * Delegates to {@link HTable#isAutoFlush()}
      */
     public boolean isAutoFlush() {
         return table.isAutoFlush();
     }
 
     /**
-     * {@link HTable.getWriteBufferSize}
+     * Delegates to {@link HTable.getWriteBufferSize()}
      */
     public long getWriteBufferSize() {
         return table.getWriteBufferSize();
     }
 
     /**
-     * {@link HTable.setWriteBufferSize}
+     * Delegates to {@link HTable.setWriteBufferSize()}
      */
     public void setWriteBufferSize(long writeBufferSize) throws IOException {
         table.setWriteBufferSize(writeBufferSize);
     }
 
+    /**
+     * Delegates to {@link HTable.flushCommits()}
+     */
     public void flushCommits() throws IOException{
         table.flushCommits();
     }
 
     // ****************************************************************************************************************
-    //
     // Helper methods
-    //
     // ****************************************************************************************************************
 
     private void throwExceptionIfOpSetsTimerange(Get getOperation) {
@@ -857,6 +759,17 @@ public class TTable {
         if (keyValue.getTimestamp() != HConstants.LATEST_TIMESTAMP) {
             throw new IllegalArgumentException(
                     "Timestamp not allowed in transactional user operations");
+        }
+    }
+
+    private HBaseTransaction
+            enforceHBaseTransactionAsParam(Transaction tx) {
+
+        if (tx instanceof HBaseTransaction) {
+            return (HBaseTransaction) tx;
+        } else {
+            throw new IllegalArgumentException(
+                    "The transaction object passed is not an instance of HBaseTransaction");
         }
     }
 

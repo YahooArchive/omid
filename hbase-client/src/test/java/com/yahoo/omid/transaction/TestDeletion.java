@@ -16,6 +16,9 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.yahoo.omid.tm.Transaction;
+import com.yahoo.omid.tm.TransactionManager;
+
 public class TestDeletion extends OmidTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestDeletion.class);

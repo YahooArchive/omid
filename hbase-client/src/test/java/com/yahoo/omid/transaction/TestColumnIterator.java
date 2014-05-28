@@ -10,9 +10,7 @@ import java.util.List;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
-import org.mockito.Mockito;
 
-import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.transaction.TTable.IterableColumn;
 
 public class TestColumnIterator {
