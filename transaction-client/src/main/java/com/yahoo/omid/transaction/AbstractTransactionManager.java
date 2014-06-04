@@ -126,7 +126,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             } catch (TransactionManagerException e) {
                 LOG.warn(e.getMessage());
             }
-            long startTimestamp = tsoClient.createTransaction().get(); // TODO The name in TSO client would be tsoClient.getTimestamp();
+            long startTimestamp = tsoClient.getNewStartTimestamp().get();
             AbstractTransaction<? extends CellId> tx =
                     transactionFactory.createTransaction(startTimestamp, this);
             try {
@@ -184,7 +184,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             } catch (TransactionManagerException e) {
                 throw new TransactionException(e.getMessage(), e);
             }
-            long commitTs = tsoClient.commit(tx.getStartTimestamp(), tx.getWriteSet()).get(); // TODO The name in TSO client should be tsoClient.checkTransactionConflicts(...) or tsoClient.tryToCommit(...);
+            long commitTs = tsoClient.commit(tx.getStartTimestamp(), tx.getWriteSet()).get();
             tx.setStatus(Status.COMMITTED);
             tx.setCommitTimestamp(commitTs);
             try {

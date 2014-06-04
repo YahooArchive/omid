@@ -28,8 +28,8 @@ public class TestCommitQuery extends TSOTestBase {
 
     @Test(timeout=10000)
     public void testCommitQuery() throws Exception {
-        long tr1 = client.createTransaction().get();
-        long tr2 = client.createTransaction().get();
+        long tr1 = client.getNewStartTimestamp().get();
+        long tr2 = client.getNewStartTimestamp().get();
         assertTrue("start timestamps should grow", tr2 > tr1);
 
         assertFalse("tr1 isn't committed",

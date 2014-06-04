@@ -25,8 +25,8 @@ public class TestTimestamps extends TSOTestBase {
 
     @Test(timeout=10000)
     public void testGetTimestamp() throws Exception {
-        long tr1 = client.createTransaction().get();
-        long tr2 = client.createTransaction().get();;
+        long tr1 = client.getNewStartTimestamp().get();
+        long tr2 = client.getNewStartTimestamp().get();;
         assertTrue("timestamps should grow", tr2 > tr1);
     }
    

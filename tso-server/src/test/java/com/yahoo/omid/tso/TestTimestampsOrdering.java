@@ -28,10 +28,10 @@ public class TestTimestampsOrdering extends TSOTestBase {
     @Test(timeout=10000)
     public void testTimestampsOrdering() throws Exception {
         long timestamp;
-        long tr1 = client.createTransaction().get();
+        long tr1 = client.getNewStartTimestamp().get();
         timestamp = tr1;
         
-        long tr2 = client.createTransaction().get();
+        long tr2 = client.getNewStartTimestamp().get();
         assertEquals("Should grow monotonically", ++timestamp, tr2);
 
         long cr1 = client.commit(tr2, Sets.newHashSet(c1)).get();
@@ -40,7 +40,7 @@ public class TestTimestampsOrdering extends TSOTestBase {
         long cr2 = client.commit(tr1, Sets.newHashSet(c2)).get();
         assertEquals("Should grow monotonically", ++timestamp, cr2);
 
-        long tr3 = client.createTransaction().get();
+        long tr3 = client.getNewStartTimestamp().get();
         assertEquals("Should grow monotonically", ++timestamp, tr3);
    }
 }

@@ -189,7 +189,7 @@ public class TSOClient {
         return addr;
     }
 
-    public TSOFuture<Long> createTransaction() {
+    public TSOFuture<Long> getNewStartTimestamp() {
         TSOProto.Request.Builder builder = TSOProto.Request.newBuilder();
         TSOProto.TimestampRequest.Builder tsreqBuilder = TSOProto.TimestampRequest.newBuilder();
         builder.setTimestampRequest(tsreqBuilder.build());

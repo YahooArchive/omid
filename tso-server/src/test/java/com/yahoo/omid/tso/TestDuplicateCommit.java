@@ -35,7 +35,7 @@ public class TestDuplicateCommit extends TSOTestBase {
      */
     @Test
     public void testOutOfOrderMessages() throws Exception {
-        long ts1 = client.createTransaction().get();
+        long ts1 = client.getNewStartTimestamp().get();
         
         Response response1 = clientOneShot.makeRequest(createCommitRequest(ts1, true));
         Response response2 = clientOneShot.makeRequest(createCommitRequest(ts1, false));
@@ -46,8 +46,8 @@ public class TestDuplicateCommit extends TSOTestBase {
     @Test
     public void testDuplicateCommitAborting() throws Exception {
 
-        long ts1 = client.createTransaction().get();
-        long ts2 = client.createTransaction().get();
+        long ts1 = client.getNewStartTimestamp().get();
+        long ts2 = client.getNewStartTimestamp().get();
         client.commit(ts2, cells).get();
                         
         Response response1 = clientOneShot.makeRequest(createCommitRequest(ts1, false));
@@ -59,7 +59,7 @@ public class TestDuplicateCommit extends TSOTestBase {
     @Test
     public void testDuplicateCommit() throws Exception {
         
-        long ts1 = client.createTransaction().get();
+        long ts1 = client.getNewStartTimestamp().get();
         
         Response response1 = clientOneShot.makeRequest(createCommitRequest(ts1, false));
         Response response2 = clientOneShot.makeRequest(createCommitRequest(ts1, true));

@@ -188,7 +188,7 @@ public class ClientHandler {
                     while (true) {
                         outstanding.acquire();
                         long start = System.nanoTime();
-                        final TSOFuture<Long> f = client.createTransaction();
+                        final TSOFuture<Long> f = client.getNewStartTimestamp();
                         f.addListener(new TimestampListener(f, start), executor);
                     }
                 } catch (InterruptedException ie) {

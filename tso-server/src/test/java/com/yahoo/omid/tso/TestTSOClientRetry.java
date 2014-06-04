@@ -20,7 +20,7 @@ public class TestTSOClientRetry extends TSOTestBase {
     @Test(timeout = 60000)
     public void testCommitCanSucceedWhenChannelDisconnected() throws Exception {
         
-        long ts1 = client.createTransaction().get();
+        long ts1 = client.getNewStartTimestamp().get();
         pauseTSO();
         TSOFuture<Long> future = client.commit(ts1, Sets.newSet(c1, c2));
         while(!isTsoBlockingRequest()) {}
@@ -38,7 +38,7 @@ public class TestTSOClientRetry extends TSOTestBase {
         
         TSOClient client = TSOClient.newBuilder().withConfiguration(clientConf).build();
         
-        long ts1 = client.createTransaction().get();
+        long ts1 = client.getNewStartTimestamp().get();
         pauseTSO();
         TSOFuture<Long> future = client.commit(ts1, Sets.newSet(c1, c2));
         while(!isTsoBlockingRequest()) {}
@@ -55,7 +55,7 @@ public class TestTSOClientRetry extends TSOTestBase {
         
         TSOClient client = TSOClient.newBuilder().withConfiguration(clientConf).build();
         
-        long ts1 = client.createTransaction().get();
+        long ts1 = client.getNewStartTimestamp().get();
         pauseTSO();
         TSOFuture<Long> future = client.commit(ts1, Sets.newSet(c1, c2));
         while(!isTsoBlockingRequest()) {}
@@ -76,7 +76,7 @@ public class TestTSOClientRetry extends TSOTestBase {
         TSOClient client = TSOClient.newBuilder().withConfiguration(clientConf).build();
         
         pauseTSO();
-        Future<Long> future = client.createTransaction();
+        Future<Long> future = client.getNewStartTimestamp();
         while(!isTsoBlockingRequest()) {}
         Thread.sleep(1000);
         resumeTSO();

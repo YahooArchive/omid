@@ -30,9 +30,9 @@ public class TestReadAlgorithm extends TSOTestBase {
    
     @Test(timeout=10000)
     public void testReadAlgorithm() throws Exception {      
-        long tr1 = client.createTransaction().get();
-        long tr2 = client.createTransaction().get();
-        long tr3 = client.createTransaction().get();
+        long tr1 = client.getNewStartTimestamp().get();
+        long tr2 = client.getNewStartTimestamp().get();
+        long tr3 = client.getNewStartTimestamp().get();
 
         long cr1 = client.commit(tr1, Sets.newHashSet(c1)).get();
         try {
@@ -41,7 +41,7 @@ public class TestReadAlgorithm extends TSOTestBase {
         } catch (ExecutionException ee) {
             assertEquals("Should have aborted", ee.getCause().getClass(), AbortException.class);
         }
-        long tr4 = client2.createTransaction().get();
+        long tr4 = client2.getNewStartTimestamp().get();
 
         assertFalse("tr3 didn't commit",
                     getCommitTableClient().getCommitTimestamp(tr3).get().isPresent());

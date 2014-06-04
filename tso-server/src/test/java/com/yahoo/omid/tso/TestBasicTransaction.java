@@ -30,8 +30,8 @@ public class TestBasicTransaction extends TSOTestBase {
 
     @Test(timeout=10000)
     public void testConflicts() throws Exception {
-        long tr1 = client.createTransaction().get();
-        long tr2 = client.createTransaction().get();
+        long tr1 = client.getNewStartTimestamp().get();
+        long tr2 = client.getNewStartTimestamp().get();
 
         long cr1 = client.commit(tr1, Sets.newHashSet(c1)).get();
 
