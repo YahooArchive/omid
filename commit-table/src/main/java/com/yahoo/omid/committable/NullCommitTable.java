@@ -1,5 +1,7 @@
 package com.yahoo.omid.committable;
 
+import java.io.IOException;
+
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -26,6 +28,11 @@ public class NullCommitTable implements CommitTable {
         }
 
         @Override
+        public void updateLowWatermark(long lowWatermark) throws IOException {
+            // noop
+        }
+
+        @Override
         public ListenableFuture<Void> flush() {
             SettableFuture<Void> f = SettableFuture.<Void>create();
             f.set(null);
@@ -39,6 +46,11 @@ public class NullCommitTable implements CommitTable {
     public static class Client implements CommitTable.Client {
         @Override
         public ListenableFuture<Optional<Long>> getCommitTimestamp(long startTimestamp) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public ListenableFuture<Long> readLowWatermark() {
             throw new UnsupportedOperationException();
         }
 

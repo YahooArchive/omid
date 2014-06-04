@@ -5,6 +5,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
+import java.io.IOException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
@@ -47,6 +48,11 @@ public class DelayNullCommitTable implements CommitTable {
         }
 
         @Override
+        public void updateLowWatermark(long lowWatermark) throws IOException {
+            // noop
+        }
+
+        @Override
         public ListenableFuture<Void> flush() {
             final SettableFuture<Void> f = SettableFuture.<Void>create();
             executor.schedule(new Runnable() {
@@ -66,6 +72,11 @@ public class DelayNullCommitTable implements CommitTable {
     public class Client implements CommitTable.Client {
         @Override
         public ListenableFuture<Optional<Long>> getCommitTimestamp(long startTimestamp) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public ListenableFuture<Long> readLowWatermark() {
             throw new UnsupportedOperationException();
         }
 

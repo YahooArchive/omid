@@ -48,6 +48,10 @@ public class CreateTable {
             HColumnDescriptor datafam = new HColumnDescriptor(HBaseCommitTable.COMMIT_TABLE_FAMILY);
             datafam.setMaxVersions(1);
             desc.addFamily(datafam);
+            HColumnDescriptor lowWatermarkFam = new HColumnDescriptor(
+                    HBaseCommitTable.LOW_WATERMARK_FAMILY);
+            lowWatermarkFam.setMaxVersions(1);
+            desc.addFamily(lowWatermarkFam);
             if (numSplits > 1) {
                 RegionSplitter.SplitAlgorithm algo = RegionSplitter.newSplitAlgoInstance(hbaseConf,
                         RegionSplitter.UniformSplit.class.getName());

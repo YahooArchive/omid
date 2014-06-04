@@ -1,25 +1,16 @@
 package com.yahoo.omid.tso;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Set;
-import java.util.List;
 import java.util.Collection;
 import java.util.Iterator;
-
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import org.jboss.netty.channel.Channel;
 
 import com.codahale.metrics.MetricRegistry;
-
-import com.lmax.disruptor.EventFactory;
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.RingBuffer;
-
 import com.lmax.disruptor.*;
 
 import org.slf4j.Logger;
@@ -41,6 +32,7 @@ class RequestProcessorImpl
         this.persistProc = persistProc;
         this.timestampOracle = timestampOracle;
         this.lowWatermark = timestampOracle.getLast();
+        persistProc.persistLowWatermark(lowWatermark);
 
         this.hashmap = new CommitHashMap(conflictMapSize, lowWatermark);
 
@@ -48,10 +40,10 @@ class RequestProcessorImpl
         requestRing = RingBuffer.<RequestEvent>createMultiProducer(RequestEvent.EVENT_FACTORY, 1<<12,
                                                                    new BusySpinWaitStrategy());
         SequenceBarrier requestSequenceBarrier = requestRing.newBarrier();
-        BatchEventProcessor requestProcessor = new BatchEventProcessor<RequestEvent>(
-                requestRing,
-                requestSequenceBarrier,
-                this);
+        BatchEventProcessor<RequestEvent> requestProcessor =
+                new BatchEventProcessor<RequestEvent>(requestRing,
+                                                      requestSequenceBarrier,
+                                                      this);
         requestRing.addGatingSequences(requestProcessor.getSequence());
 
         ExecutorService requestExec = Executors.newSingleThreadExecutor(
@@ -136,6 +128,7 @@ class RequestProcessorImpl
                     }
 
                     lowWatermark = newLowWatermark;
+                    persistProc.persistLowWatermark(newLowWatermark);
                 }
                 persistProc.persistCommit(startTimestamp, commitTimestamp, c);
             } catch (IOException e) {

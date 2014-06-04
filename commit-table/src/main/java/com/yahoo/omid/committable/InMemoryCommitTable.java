@@ -4,10 +4,13 @@ import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
+import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class InMemoryCommitTable implements CommitTable {
     final ConcurrentHashMap<Long, Long> table = new ConcurrentHashMap<Long, Long>();
+
+    long lowWatermark;
 
     @Override
     public ListenableFuture<CommitTable.Writer> getWriter() {
@@ -27,6 +30,11 @@ public class InMemoryCommitTable implements CommitTable {
         @Override
         public void addCommittedTransaction(long startTimestamp, long commitTimestamp) {
             table.put(startTimestamp, commitTimestamp);
+        }
+
+        @Override
+        public void updateLowWatermark(long lowWatermark) throws IOException {
+            InMemoryCommitTable.this.lowWatermark = lowWatermark;
         }
 
         @Override
@@ -50,6 +58,13 @@ public class InMemoryCommitTable implements CommitTable {
             } else {
                 f.set(Optional.of(result));
             }
+            return f;
+        }
+
+        @Override
+        public ListenableFuture<Long> readLowWatermark() {
+            SettableFuture<Long> f = SettableFuture.<Long> create();
+            f.set(lowWatermark);
             return f;
         }
 

@@ -5,6 +5,7 @@ import static com.google.common.base.Charsets.UTF_8;
 import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.NoSuchElementException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -20,6 +21,7 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
@@ -49,6 +51,9 @@ public class HBaseCommitTable implements CommitTable {
     public static final String COMMIT_TABLE_DEFAULT_NAME = "OMID_COMMIT_TABLE";
     static final byte[] COMMIT_TABLE_FAMILY = "F".getBytes(UTF_8);
     static final byte[] COMMIT_TABLE_QUALIFIER = "C".getBytes(UTF_8);
+    static final byte[] LOW_WATERMARK_ROW = "LOW_WATERMARK".getBytes(UTF_8);
+    static final byte[] LOW_WATERMARK_FAMILY = "LWF".getBytes(UTF_8);
+    static final byte[] LOW_WATERMARK_QUALIFIER = "LWC".getBytes(UTF_8);
 
     private final String tableName;
     private final Configuration hbaseConfig;
@@ -84,6 +89,14 @@ public class HBaseCommitTable implements CommitTable {
             Put put = new Put(startTimestampToKey(startTimestamp), startTimestamp);
             put.add(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER,
                     encodeCommitTimestamp(startTimestamp, commitTimestamp));
+            table.put(put);
+        }
+
+        @Override
+        public void updateLowWatermark(long lowWatermark) throws IOException {
+            Put put = new Put(LOW_WATERMARK_ROW);
+            put.add(LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER,
+                    Bytes.toBytes(lowWatermark));
             table.put(put);
         }
 
@@ -129,11 +142,10 @@ public class HBaseCommitTable implements CommitTable {
         public ListenableFuture<Optional<Long>> getCommitTimestamp(long startTimestamp) {
 
             SettableFuture<Optional<Long>> f = SettableFuture.<Optional<Long>>create();
-            Result result = null;
             try {
                 Get get = new Get(startTimestampToKey(startTimestamp));
                 get.addColumn(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER);
-                result = table.get(get);
+                Result result = table.get(get);
                 if (containsATimestamp(result)) {
                     long commitTs = decodeCommitTimestamp(startTimestamp,
                             result.getValue(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER));
@@ -145,6 +157,28 @@ public class HBaseCommitTable implements CommitTable {
                 }
             } catch (IOException e) {
                 LOG.error("Error getting commit timestamp for TX {}", startTimestamp, e);
+                f.setException(e);
+            }
+            return f;
+        }
+
+        @Override
+        public ListenableFuture<Long> readLowWatermark() {
+            SettableFuture<Long> f = SettableFuture.<Long> create();
+            try {
+                Get get = new Get(LOW_WATERMARK_ROW);
+                get.addColumn(LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER);
+                Result result = table.get(get);
+                if (containsLowWatermark(result)) {
+                    long lowWatermark = Bytes.toLong(
+                            result.getValue(LOW_WATERMARK_FAMILY,
+                                            LOW_WATERMARK_QUALIFIER));
+                    f.set(lowWatermark);
+                } else {
+                    f.set(0L);
+                }
+            } catch (IOException e) {
+                LOG.error("Error getting low watermark", e);
                 f.setException(e);
             }
             return f;
@@ -232,6 +266,11 @@ public class HBaseCommitTable implements CommitTable {
 
         private boolean containsATimestamp(Result result) {
             return (result != null && result.containsColumn(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER));
+        }
+
+        private boolean containsLowWatermark(Result result) {
+            return (result != null && result.containsColumn(
+                    LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER));
         }
 
         private class DeleteRequest extends AbstractFuture<Void> {

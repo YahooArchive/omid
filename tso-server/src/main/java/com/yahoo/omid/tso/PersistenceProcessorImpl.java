@@ -96,6 +96,9 @@ class PersistenceProcessorImpl
         case TIMESTAMP:
             batch.addTimestamp(event.getStartTimestamp(), event.getChannel());
             break;
+        case LOW_WATERMARK:
+            writer.updateLowWatermark(event.getLowWatermark());
+            break;
         }
 
         if (batch.isFull() || endOfBatch) {
@@ -173,6 +176,14 @@ class PersistenceProcessorImpl
         long seq = persistRing.next();
         PersistEvent e = persistRing.get(seq);
         PersistEvent.makePersistTimestamp(e, startTimestamp, c);
+        persistRing.publish(seq);
+    }
+    
+    @Override
+    public void persistLowWatermark(long lowWatermark) {
+        long seq = persistRing.next();
+        PersistEvent e = persistRing.get(seq);
+        PersistEvent.makePersistLowWatermark(e, lowWatermark);
         persistRing.publish(seq);
     }
 
@@ -265,7 +276,7 @@ class PersistenceProcessorImpl
 
     public final static class PersistEvent {
         enum Type {
-            TIMESTAMP, COMMIT, ABORT
+            TIMESTAMP, COMMIT, ABORT, LOW_WATERMARK
         }
         private Type type = null;
         private Channel channel = null;
@@ -273,6 +284,7 @@ class PersistenceProcessorImpl
         private boolean isRetry = false;
         private long startTimestamp = 0;
         private long commitTimestamp = 0;
+        private long lowWatermark;
 
         static void makePersistCommit(PersistEvent e, long startTimestamp,
                                       long commitTimestamp, Channel c) {
@@ -295,12 +307,18 @@ class PersistenceProcessorImpl
             e.startTimestamp = startTimestamp;
             e.channel = c;
         }
+        
+        static void makePersistLowWatermark(PersistEvent e, long lowWatermark) {
+            e.type = Type.LOW_WATERMARK;
+            e.lowWatermark = lowWatermark;
+        }
 
         Type getType() { return type; }
         Channel getChannel() { return channel; }
         boolean isRetry() { return isRetry; }
         long getStartTimestamp() { return startTimestamp; }
         long getCommitTimestamp() { return commitTimestamp; }
+        long getLowWatermark() { return lowWatermark; }
 
         public final static EventFactory<PersistEvent> EVENT_FACTORY
             = new EventFactory<PersistEvent>() {

@@ -6,4 +6,5 @@ interface PersistenceProcessor {
     void persistCommit(long startTimestamp, long commitTimestamp, Channel c);
     void persistAbort(long startTimestamp, boolean isRetry, Channel c);
     void persistTimestamp(long startTimestamp, Channel c);
+    void persistLowWatermark(long lowWatermark);
 }
