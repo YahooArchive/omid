@@ -118,7 +118,6 @@ public class OmidTestBase {
         }
 
         tso.teardownTSO();
-        TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
     }
 
     @Before
