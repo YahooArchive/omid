@@ -1,6 +1,7 @@
 package com.yahoo.omid.client;
 
-import com.yahoo.omid.client.TSOClient.ConnectedState;
+import com.yahoo.omid.tsoclient.TSOClient;
+import com.yahoo.omid.tsoclient.TSOClient.ConnectedState;
 import com.yahoo.omid.util.StateMachine.FsmImpl;
 
 public class TSOClientAccessor {

@@ -19,7 +19,7 @@ package com.yahoo.omid.tso;
 import static org.junit.Assert.*;
 
 import com.google.common.collect.Sets;
-import com.yahoo.omid.client.TSOClient.AbortException;
+import com.yahoo.omid.tsoclient.TSOClient.AbortException;
 
 import java.util.concurrent.ExecutionException;
 

@@ -1,4 +1,4 @@
-package com.yahoo.omid.client;
+package com.yahoo.omid.tsoclient;
 
 import java.util.concurrent.Future;
 import java.util.concurrent.Executor;

@@ -25,7 +25,7 @@ import com.beust.jcommander.IVariableArity;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
-import com.yahoo.omid.client.TSOClient;
+import com.yahoo.omid.tsoclient.TSOClient;
 
 /**
  * Holds the configuration parameters of a TSO server instance.

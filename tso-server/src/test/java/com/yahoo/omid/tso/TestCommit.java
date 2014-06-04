@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 import com.google.common.collect.Sets;
+import com.yahoo.omid.tsoclient.CellId;
 
 public class TestCommit extends TSOTestBase {
    

@@ -37,10 +37,10 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.tm.AbstractTransactionManager;
-import com.yahoo.omid.tm.AbstractTransactionManager.CommitTimestamp;
-import com.yahoo.omid.tm.CommitTimestampLocator;
-import com.yahoo.omid.tm.Transaction;
+import com.yahoo.omid.transaction.AbstractTransactionManager;
+import com.yahoo.omid.transaction.CommitTimestampLocator;
+import com.yahoo.omid.transaction.Transaction;
+import com.yahoo.omid.transaction.AbstractTransactionManager.CommitTimestamp;
 import com.yahoo.omid.transaction.HBaseTransactionManager.HBaseTransaction;
 
 /**

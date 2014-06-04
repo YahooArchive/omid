@@ -15,14 +15,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Charsets;
-import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
-import com.yahoo.omid.tm.AbstractTransaction;
-import com.yahoo.omid.tm.TransactionManager;
-import com.yahoo.omid.tm.AbstractTransactionManager;
-import com.yahoo.omid.tm.TransactionManagerException;
-import com.yahoo.omid.tso.CellId;
+import com.yahoo.omid.transaction.AbstractTransaction;
+import com.yahoo.omid.transaction.AbstractTransactionManager;
+import com.yahoo.omid.transaction.TransactionManager;
+import com.yahoo.omid.transaction.TransactionManagerException;
+import com.yahoo.omid.tsoclient.CellId;
+import com.yahoo.omid.tsoclient.TSOClient;
 
 public class HBaseTransactionManager extends AbstractTransactionManager {
 

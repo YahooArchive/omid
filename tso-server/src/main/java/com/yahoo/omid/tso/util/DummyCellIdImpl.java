@@ -1,6 +1,6 @@
 package com.yahoo.omid.tso.util;
 
-import com.yahoo.omid.tso.CellId;
+import com.yahoo.omid.tsoclient.CellId;
 
 public class DummyCellIdImpl implements CellId {
 

@@ -9,8 +9,8 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
 import com.yahoo.omid.transaction.TTable;
-import com.yahoo.omid.tm.Transaction;
-import com.yahoo.omid.tm.TransactionManager;
+import com.yahoo.omid.transaction.Transaction;
+import com.yahoo.omid.transaction.TransactionManager;
 
 public class TestAutoFlush extends OmidTestBase {
 

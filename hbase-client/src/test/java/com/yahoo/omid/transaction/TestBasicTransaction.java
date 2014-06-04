@@ -2,7 +2,6 @@ package com.yahoo.omid.transaction;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-
 import junit.framework.Assert;
 
 import org.apache.hadoop.hbase.client.Delete;
@@ -17,8 +16,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.transaction.TTable;
-import com.yahoo.omid.tm.Transaction;
-import com.yahoo.omid.tm.TransactionManager;
+import com.yahoo.omid.transaction.Transaction;
+import com.yahoo.omid.transaction.TransactionManager;
 
 public class TestBasicTransaction extends OmidTestBase {
     private static final Logger LOG = LoggerFactory.getLogger(TestBasicTransaction.class);

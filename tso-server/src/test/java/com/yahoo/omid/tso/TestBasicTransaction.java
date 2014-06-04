@@ -24,7 +24,7 @@ import java.util.concurrent.ExecutionException;
 import org.junit.Test;
 
 import com.google.common.collect.Sets;
-import com.yahoo.omid.client.TSOClient.AbortException;
+import com.yahoo.omid.tsoclient.TSOClient.AbortException;
 
 public class TestBasicTransaction extends TSOTestBase {
 

@@ -41,10 +41,10 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.client.TSOClient;
-import com.yahoo.omid.client.TSOFuture;
 import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.tso.CellId;
+import com.yahoo.omid.tsoclient.CellId;
+import com.yahoo.omid.tsoclient.TSOClient;
+import com.yahoo.omid.tsoclient.TSOFuture;
 
 /**
  * Example of ChannelHandler for the Transaction Client

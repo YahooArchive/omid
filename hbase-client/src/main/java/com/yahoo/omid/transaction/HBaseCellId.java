@@ -5,7 +5,7 @@ import static com.google.common.base.Charsets.UTF_8;
 import org.apache.hadoop.hbase.client.HTableInterface;
 
 import com.google.common.hash.Hashing;
-import com.yahoo.omid.tso.CellId;
+import com.yahoo.omid.tsoclient.CellId;
 
 public class HBaseCellId implements CellId {
 

@@ -9,11 +9,11 @@ import org.apache.commons.configuration.Configuration;
 import org.junit.Test;
 import org.mockito.internal.util.collections.Sets;
 
-import com.yahoo.omid.client.TSOClient;
-import com.yahoo.omid.client.TSOClient.ServiceUnavailableException;
 import com.yahoo.omid.client.TSOClientAccessor;
-import com.yahoo.omid.client.TSOFuture;
 import com.yahoo.omid.committable.CommitTable.Client;
+import com.yahoo.omid.tsoclient.TSOClient;
+import com.yahoo.omid.tsoclient.TSOFuture;
+import com.yahoo.omid.tsoclient.TSOClient.ServiceUnavailableException;
 
 public class TestTSOClientRetry extends TSOTestBase {
 

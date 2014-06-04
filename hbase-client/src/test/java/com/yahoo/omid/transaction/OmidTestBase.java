@@ -20,8 +20,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
-import com.yahoo.omid.tm.TransactionManager;
 import com.yahoo.omid.transaction.HBaseTransactionManager;
+import com.yahoo.omid.transaction.TransactionManager;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;

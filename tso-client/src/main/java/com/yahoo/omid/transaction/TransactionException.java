@@ -1,4 +1,4 @@
-package com.yahoo.omid.tm;
+package com.yahoo.omid.transaction;
 
 public class TransactionException extends Exception {
 

@@ -1,4 +1,4 @@
-package com.yahoo.omid.tm;
+package com.yahoo.omid.transaction;
 
 /**
  * This interface defines the transaction state & behavior exposed to users.

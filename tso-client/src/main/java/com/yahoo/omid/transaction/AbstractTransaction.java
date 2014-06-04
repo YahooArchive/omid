@@ -1,9 +1,9 @@
-package com.yahoo.omid.tm;
+package com.yahoo.omid.transaction;
 
 import java.util.Set;
 
-import com.yahoo.omid.tm.Transaction.Status;
-import com.yahoo.omid.tso.CellId;
+import com.yahoo.omid.transaction.Transaction.Status;
+import com.yahoo.omid.tsoclient.CellId;
 
 /**
  * Omid's base abstract implementation of the {@link Transaction} interface.
@@ -50,7 +50,7 @@ public abstract class AbstractTransaction<T extends CellId> implements Transacti
     public abstract void cleanup();
 
     /**
-     * @see com.yahoo.omid.tm.Transaction#getTransactionId()
+     * @see com.yahoo.omid.transaction.Transaction#getTransactionId()
      */
     @Override
     public long getTransactionId() {
@@ -58,7 +58,7 @@ public abstract class AbstractTransaction<T extends CellId> implements Transacti
     }
 
     /**
-     * @see com.yahoo.omid.tm.Transaction#getStatus()
+     * @see com.yahoo.omid.transaction.Transaction#getStatus()
      */
     @Override
     public Status getStatus() {
@@ -66,7 +66,7 @@ public abstract class AbstractTransaction<T extends CellId> implements Transacti
     }
 
     /**
-     * @see com.yahoo.omid.tm.Transaction#getRollbackOnly()
+     * @see com.yahoo.omid.transaction.Transaction#getRollbackOnly()
      */
     @Override
     public void setRollbackOnly() {
@@ -74,7 +74,7 @@ public abstract class AbstractTransaction<T extends CellId> implements Transacti
     }
 
     /**
-     * @see com.yahoo.omid.tm.Transaction#isRollbackOnly()
+     * @see com.yahoo.omid.transaction.Transaction#isRollbackOnly()
      */
     @Override
     public boolean isRollbackOnly() {

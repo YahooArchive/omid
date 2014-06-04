@@ -10,6 +10,7 @@ import org.junit.Test;
 import com.google.common.collect.Sets;
 import com.yahoo.omid.proto.TSOProto;
 import com.yahoo.omid.proto.TSOProto.Response;
+import com.yahoo.omid.tsoclient.CellId;
 
 public class TestDuplicateCommit extends TSOTestBase {
     

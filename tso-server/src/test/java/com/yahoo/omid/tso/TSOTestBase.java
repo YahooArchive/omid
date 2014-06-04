@@ -32,8 +32,9 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.InMemoryCommitTable;
 import com.yahoo.omid.TestUtils;
-import com.yahoo.omid.client.TSOClient;
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
+import com.yahoo.omid.tsoclient.CellId;
+import com.yahoo.omid.tsoclient.TSOClient;
 
 public class TSOTestBase {
 

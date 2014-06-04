@@ -14,7 +14,7 @@
  * limitations under the License. See accompanying LICENSE file.
  */
 
-package com.yahoo.omid.client;
+package com.yahoo.omid.tsoclient;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -48,7 +48,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.tso.CellId;
 import com.yahoo.omid.proto.TSOProto;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.Client;

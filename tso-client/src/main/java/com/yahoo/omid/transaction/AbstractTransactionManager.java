@@ -1,4 +1,4 @@
-package com.yahoo.omid.tm;
+package com.yahoo.omid.transaction;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
@@ -8,13 +8,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
-import com.yahoo.omid.client.TSOClient;
-import com.yahoo.omid.client.TSOClient.AbortException;
 import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.tm.Transaction.Status;
-import com.yahoo.omid.tm.RollbackException;
-import com.yahoo.omid.tm.TransactionException;
-import com.yahoo.omid.tso.CellId;
+import com.yahoo.omid.transaction.RollbackException;
+import com.yahoo.omid.transaction.TransactionException;
+import com.yahoo.omid.transaction.Transaction.Status;
+import com.yahoo.omid.tsoclient.CellId;
+import com.yahoo.omid.tsoclient.TSOClient;
+import com.yahoo.omid.tsoclient.TSOClient.AbortException;
 
 /**
  * Omid's base abstract implementation of the
@@ -115,7 +115,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
     public void preBegin() throws TransactionManagerException {};
 
     /**
-     * @see com.yahoo.omid.tm.TransactionManager#begin()
+     * @see com.yahoo.omid.transaction.TransactionManager#begin()
      */
     @Override
     public final Transaction begin() throws TransactionException {
@@ -164,7 +164,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             throws TransactionManagerException {};
     
     /**
-     * @see com.yahoo.omid.tm.TransactionManager#commit()
+     * @see com.yahoo.omid.transaction.TransactionManager#commit()
      */
     @Override
     public final void commit(Transaction transaction)
@@ -232,7 +232,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             throws TransactionManagerException {};
 
     /**
-     * @see com.yahoo.omid.tm.TransactionManager#rollback()
+     * @see com.yahoo.omid.transaction.TransactionManager#rollback()
      */
     @Override
     public final void rollback(Transaction transaction)
