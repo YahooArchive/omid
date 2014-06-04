@@ -62,9 +62,9 @@ public abstract class AbstractTransactionManager implements TransactionManager {
 
     }
 
-    private final TSOClient tsoClient;
+    protected final TSOClient tsoClient;
     private final boolean ownsTSOClient;
-    private final CommitTable.Client commitTableClient;
+    protected final CommitTable.Client commitTableClient;
     private final boolean ownsCommitTableClient;
     private final TransactionFactory<? extends CellId> transactionFactory;
     

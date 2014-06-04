@@ -38,10 +38,10 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.transaction.AbstractTransactionManager;
-import com.yahoo.omid.transaction.CommitTimestampLocator;
 import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.AbstractTransactionManager.CommitTimestamp;
 import com.yahoo.omid.transaction.HBaseTransactionManager.HBaseTransaction;
+import com.yahoo.omid.transaction.HBaseTransactionManager.CommitTimestampLocatorImpl;
 
 /**
  * Provides transactional methods for accessing and modifying a given snapshot
@@ -51,43 +51,6 @@ import com.yahoo.omid.transaction.HBaseTransactionManager.HBaseTransaction;
 public class TTable {
 
     private static Logger LOG = LoggerFactory.getLogger(TTable.class);
-
-    private class CommitTimestampLocatorImpl implements CommitTimestampLocator {
-
-        private final Map<Long, Long> commitCache;
-        private final KeyValue kv;
-
-        public CommitTimestampLocatorImpl(Map<Long, Long> commitCache, KeyValue kv) {
-            this.commitCache = commitCache;
-            this.kv = kv;
-        }
-
-        @Override
-        public Optional<Long> readCommitTimestampFromCache(long startTimestamp) {
-            if (commitCache.containsKey(startTimestamp)) {
-                return Optional.of(commitCache.get(startTimestamp));
-            }
-            return Optional.absent();
-        }
-
-        @Override
-        public Optional<Long> readCommitTimestampFromShadowCell(long startTimestamp)
-                throws IOException {
-
-            Get get = new Get(kv.getRow());
-            byte[] family = kv.getFamily();
-            byte[] shadowCellQualifier = HBaseTransactionManager.addShadowCellSuffix(kv.getQualifier());
-            get.addColumn(family, shadowCellQualifier);
-            get.setMaxVersions(1);
-            get.setTimeStamp(startTimestamp);
-            Result result = table.get(get);
-            if (result.containsColumn(family, shadowCellQualifier)) {
-                return Optional.of(Bytes.toLong(result.getValue(family, shadowCellQualifier)));
-            }
-            return Optional.absent();
-        }
-
-    }
 
     public static byte[] DELETE_TOMBSTONE = Bytes.toBytes("__OMID_TOMBSTONE__");;
 
@@ -485,7 +448,8 @@ public class TTable {
         
         CommitTimestamp tentativeCommitTimestamp =
                 transactionManager.locateCellCommitTimestamp(
-                        kv.getTimestamp(), new CommitTimestampLocatorImpl(commitCache, kv));
+                        kv.getTimestamp(),
+                        new CommitTimestampLocatorImpl(table, commitCache, kv));
         
         switch(tentativeCommitTimestamp.getLocation()) {
         case COMMIT_TABLE:

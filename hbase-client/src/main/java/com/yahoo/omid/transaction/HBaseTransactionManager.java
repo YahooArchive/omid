@@ -7,14 +7,20 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Optional;
 import com.google.common.base.Charsets;
+import com.google.common.collect.Maps;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.transaction.AbstractTransaction;
@@ -24,7 +30,8 @@ import com.yahoo.omid.transaction.TransactionManagerException;
 import com.yahoo.omid.tsoclient.CellId;
 import com.yahoo.omid.tsoclient.TSOClient;
 
-public class HBaseTransactionManager extends AbstractTransactionManager {
+public class HBaseTransactionManager extends AbstractTransactionManager
+    implements HBaseTransactionManagerIface {
 
     private static final Logger LOG = LoggerFactory.getLogger(HBaseTransactionManager.class);
 
@@ -96,7 +103,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager {
             return this;
         }
 
-        public TransactionManager build() throws InstantiationException {
+        public HBaseTransactionManagerIface build() throws InstantiationException {
             boolean ownsTsoClient = false;
             if (tsoClient == null) {
                 tsoClient = TSOClient.newBuilder()
@@ -179,6 +186,37 @@ public class HBaseTransactionManager extends AbstractTransactionManager {
         flushTables(enforceHBaseTransactionAsParam(transaction));
     }
 
+    @Override
+    public boolean isCommitted(HTableInterface table, KeyValue kv) throws IOException {
+        CommitTimestamp tentativeCommitTimestamp =
+            locateCellCommitTimestamp(kv.getTimestamp(),
+                    new CommitTimestampLocatorImpl(table, Maps.<Long,Long>newHashMap(), kv));
+
+        switch(tentativeCommitTimestamp.getLocation()) {
+        case COMMIT_TABLE:
+        case SHADOW_CELL:
+            return true;
+        case NOT_PRESENT:
+            return false;
+        case CACHE: // cache was empty
+        default:
+            assert (false);
+            return false;
+        }
+    }
+
+    @Override
+    public long getLowWatermark() throws IOException {
+        try {
+            return commitTableClient.readLowWatermark().get();
+        } catch (ExecutionException ee) {
+            throw new IOException("Error reading low watermark", ee.getCause());
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted reading low watermark", ie);
+        }
+    }
+
     /**
      * Utility method that allows to add the shadow cell suffix to an HBase column qualifier.
      * 
@@ -231,4 +269,43 @@ public class HBaseTransactionManager extends AbstractTransactionManager {
         }
 
     }
+
+    static class CommitTimestampLocatorImpl implements CommitTimestampLocator {
+        private final HTableInterface table;
+        private final Map<Long, Long> commitCache;
+        private final KeyValue kv;
+
+        public CommitTimestampLocatorImpl(HTableInterface table, Map<Long, Long> commitCache, KeyValue kv) {
+            this.table = table;
+            this.commitCache = commitCache;
+            this.kv = kv;
+        }
+
+        @Override
+        public Optional<Long> readCommitTimestampFromCache(long startTimestamp) {
+            if (commitCache.containsKey(startTimestamp)) {
+                return Optional.of(commitCache.get(startTimestamp));
+            }
+            return Optional.absent();
+        }
+
+        @Override
+        public Optional<Long> readCommitTimestampFromShadowCell(long startTimestamp)
+                throws IOException {
+
+            Get get = new Get(kv.getRow());
+            byte[] family = kv.getFamily();
+            byte[] shadowCellQualifier = HBaseTransactionManager.addShadowCellSuffix(kv.getQualifier());
+            get.addColumn(family, shadowCellQualifier);
+            get.setMaxVersions(1);
+            get.setTimeStamp(startTimestamp);
+            Result result = table.get(get);
+            if (result.containsColumn(family, shadowCellQualifier)) {
+                return Optional.of(Bytes.toLong(result.getValue(family, shadowCellQualifier)));
+            }
+            return Optional.absent();
+        }
+
+    }
+
 }
