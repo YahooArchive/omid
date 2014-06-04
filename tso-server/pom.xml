@@ -80,7 +80,7 @@
     <!-- Dependencies on Omid modules -->
     <dependency>
       <groupId>com.yahoo.omid</groupId>
-      <artifactId>tso-client</artifactId>
+      <artifactId>transaction-client</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>

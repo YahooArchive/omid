@@ -30,7 +30,7 @@
 
   <modules>
     <module>hbase-client</module>
-    <module>tso-client</module>
+    <module>transaction-client</module>
     <module>tso-server</module>
     <module>commit-table</module>
     <module>hbase-commit-table</module>

@@ -1,4 +1,4 @@
-package com.yahoo.omid.client;
+package com.yahoo.omid.tsoclient;
 
 import com.yahoo.omid.tsoclient.TSOClient;
 import com.yahoo.omid.tsoclient.TSOClient.ConnectedState;

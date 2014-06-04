@@ -9,9 +9,9 @@
     <version>2.1-SNAPSHOT</version>
   </parent>
 
-  <artifactId>tso-client</artifactId>
+  <artifactId>transaction-client</artifactId>
   <packaging>jar</packaging>
-  <name>Omid TSO Client</name>
+  <name>Omid Transaction Client</name>
 
   <dependencies>
 
