@@ -1,4 +1,0 @@
-* Don't log rows' ids to WAL -> ~ 20 % perf improvement
-* Compute RowKeys hashcodes clientside -> ~ 16 % perf improvement
-* Add custom Compacter using Coprocessors
-* Fix integer conversion bugs at Uncommitted list

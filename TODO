@@ -1,3 +1,0 @@
-Rebuild state from WAL
-Create simple WAL interface, possibly implement other WAL backends (HDFS?)
-Client side secondary indexes (either separate library or not)

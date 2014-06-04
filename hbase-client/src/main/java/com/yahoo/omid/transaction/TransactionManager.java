@@ -1,19 +1,3 @@
-/**
- * Copyright (c) 2011 Yahoo! Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License. See accompanying LICENSE file.
- */
-
 package com.yahoo.omid.transaction;
 
 import java.io.Closeable;
@@ -22,10 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Future;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Delete;
@@ -58,13 +40,9 @@ public class TransactionManager implements Closeable {
     private final boolean ownsTsoClient;
     private final CommitTable.Client commitTableClient;
     private final boolean ownsCommitTableClient;
-    private final Configuration conf;
-    private HashMap<byte[], HTableInterface> tableCache;
-    private HTableFactory hTableFactory;
 
     public static class Builder {
         Configuration conf = new Configuration();
-        HTableFactory htableFactory = new DefaultHTableFactory();
         TSOClient tsoClient = null;
         CommitTable.Client commitTableClient = null;
 
@@ -72,11 +50,6 @@ public class TransactionManager implements Closeable {
 
         public Builder withConfiguration(Configuration conf) {
             this.conf = conf;
-            return this;
-        }
-
-        Builder withHTableFactory(HTableFactory htableFactory) {
-            this.htableFactory = htableFactory;
             return this;
         }
 
@@ -114,8 +87,7 @@ public class TransactionManager implements Closeable {
                 ownsCommitTableClient = true;
             }
 
-            return new TransactionManager(conf, htableFactory,
-                                          tsoClient, ownsTsoClient,
+            return new TransactionManager(conf, tsoClient, ownsTsoClient,
                                           commitTableClient, ownsCommitTableClient);
         }
     }
@@ -124,13 +96,10 @@ public class TransactionManager implements Closeable {
         return new Builder();
     }
 
-    private TransactionManager(Configuration conf, HTableFactory hTableFactory,
-                               TSOClient tsoClient, boolean ownsTsoClient,
+    private TransactionManager(Configuration conf, TSOClient tsoClient, boolean ownsTsoClient,
                                CommitTable.Client commitTableClient, boolean ownsCommitTableClient)
             throws IOException {
-        this.conf = conf;
-        this.hTableFactory = hTableFactory;
-        tableCache = new HashMap<byte[], HTableInterface>();
+
         this.tsoClient = tsoClient;
         this.ownsTsoClient = ownsTsoClient;
         this.commitTableClient = commitTableClient;
@@ -299,7 +268,6 @@ public class TransactionManager implements Closeable {
     private void cleanup(final Transaction transaction) {
         transaction.setStatus(Status.ABORTED);
 
-        Map<byte[], List<Delete>> deleteBatches = new HashMap<byte[], List<Delete>>();
         for (final HBaseCellIdImpl cell : transaction.getCells()) {
             Delete delete = new Delete(cell.getRow());
             delete.deleteColumn(cell.getFamily(), cell.getQualifier(), transaction.getStartTimestamp());
