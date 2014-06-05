@@ -30,6 +30,7 @@ else
 fi
 
 export JAVA_HOME
+echo "$0 JAVA_HOME = ${JAVA_HOME}"
 
 # Determine whether we're using the 32 or 64bit JVM (you can use 32 bit JVM on 64bit OS)
 
@@ -51,13 +52,6 @@ else
     YOURKIT_AGENT=${ARCH_LIBEXEC_DIR}/${YOURKIT_PKG_DIR}/bin/linux-x86-32/libyjpagent.so
     echo "$0 ARCH = 32bit"
 fi
-
-USER=$(RUN_AS_USER)
-DEBUG=""
-YNET_FILTER="FILTER_NONE"
-
-export JAVA_HOME
-echo "$0 JAVA_HOME = ${JAVA_HOME}"
 
 if [ "x${PRELOAD}" != "x" ]; then
   PRELOAD="${ARCH_LIBEXEC_DIR}/yjava_daemon_preload.so:${PRELOAD}"
@@ -99,9 +93,9 @@ for jar in lib/jars/$(PRODUCT_NAME)/*.jar; do
 done
 
 JVM_ARGS="-Xmx$(HEAP_SIZE_IN_MIB)m $(JVM_ARGS) ${YOURKIT_OPTS}"
-( cd /home/y/var/$(PRODUCT_NAME)/run ; env LD_LIBRARY_PATH=${ARCH_LIB_DIR} LD_PRELOAD=${PRELOAD} ${ARCH_BIN_DIR}/yjava_daemon ${DEBUG} \
+( cd /home/y/var/$(PRODUCT_NAME)/run ; env LD_LIBRARY_PATH=${ARCH_LIB_DIR} LD_PRELOAD=${PRELOAD} ${ARCH_BIN_DIR}/yjava_daemon \
  -jvm server -pidfile /home/y/var/$(PRODUCT_NAME)/run/$(PRODUCT_NAME).pid -ynet ${YNET_FILTER}  \
- -procs 1 -user ${USER} -outfile /home/y/var/$(PRODUCT_NAME)/run/$(PRODUCT_NAME).out \
+ -procs 1 -user $(RUN_AS_USER) -outfile /home/y/var/$(PRODUCT_NAME)/run/$(PRODUCT_NAME).out \
  -errfile /home/y/var/$(PRODUCT_NAME)/run/$(PRODUCT_NAME).err -cp ${KLASSPATH} \
  -home /home/y/share/yjava_jdk/java -Djava.library.path=${ARCH_LIB_DIR} ${JVM_ARGS} \
 com.yahoo.omid.tso.TsoServerDaemon -hbase -hbaseTimestampTable $(HBASE_TIMESTAMP_TABLE) \
