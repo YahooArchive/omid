@@ -134,14 +134,7 @@ public class TransactionClient {
         
         static public Config parseConfig(String args[]) {
             Config config = new Config();
-
-            if (args.length == 0) {
-                new JCommander(config).usage();
-                System.exit(0);
-            }
-
             new JCommander(config, args);
-
             return config;
         }
         
@@ -149,7 +142,7 @@ public class TransactionClient {
         String tsoHost = "localhost";
         
         @Parameter(names = "-tsoPort", description = "Port reserved by the Status Oracle")
-        int tsoPort = 1234;
+        int tsoPort = 54758;
         
         @Parameter(names = "-tsoExecutorThreads", description = "Concurrent netty client threads", required = false)
         int executorThreads = 10;

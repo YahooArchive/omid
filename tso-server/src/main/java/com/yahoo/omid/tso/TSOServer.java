@@ -16,6 +16,7 @@
 
 package com.yahoo.omid.tso;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutionException;
@@ -64,11 +65,17 @@ public class TSOServer implements Runnable {
     }
 
     public static void main(String[] args) throws Exception {
+        TSOServer tsoServer = getInitializedTsoServer(args);
+        if(tsoServer != null)
+            tsoServer.run();
+    }
+
+    static TSOServer getInitializedTsoServer(String[] args) throws IOException {
         TSOServerConfig config = TSOServerConfig.parseConfig(args);
 
         if (config.hasHelpFlag()) {
             config.usage();
-            return;
+            return null;
         }
 
         MetricRegistry metrics = MetricsUtils.initMetrics(config.getMetrics());
@@ -85,7 +92,7 @@ public class TSOServer implements Runnable {
             timestampStorage = new InMemoryTimestampStorage();
         }
         TimestampOracle timestampOracle = new TimestampOracle(metrics, timestampStorage);
-        new TSOServer(config, metrics, commitTable, timestampOracle).run();
+        return new TSOServer(config, metrics, commitTable, timestampOracle);
     }
 
     @Override

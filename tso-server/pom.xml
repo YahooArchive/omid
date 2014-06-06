@@ -12,7 +12,7 @@
   <artifactId>tso-server</artifactId>
   <packaging>jar</packaging>
   <name>Omid TSO Server</name>
-
+  <description>Omid Transaction Status Oracle server</description>
   <build>
 
     <plugins>
@@ -184,7 +184,48 @@
       <version>${hadoop.version}</version>
       <scope>test</scope>
     </dependency>
-
+    <!--daemon related-->
+    <dependency>
+      <groupId>commons-daemon</groupId>
+      <artifactId>commons-daemon</artifactId>
+      <version>1.0.10</version>
+    </dependency>
   </dependencies>
-
+  <profiles>
+    <profile>
+      <id>yinst</id>
+      <activation>
+        <file>
+          <exists>/home/y/libexec/maven/conf/settings.xml</exists>
+        </file>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>yahoo.yinst.maven_plugins</groupId>
+            <artifactId>yjava_maven_plugins_yinst</artifactId>
+            <version>0.13.2</version>
+            <executions>
+              <execution>
+                <phase>package</phase>
+                <goals>
+                  <goal>create</goal>
+                </goals>
+                <configuration>
+                  <buildtype>release</buildtype>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+      <dependencies>
+        <dependency>
+          <groupId>yahoo.yinst.yjava_daemon</groupId>
+          <artifactId>yjava_daemon</artifactId>
+          <version>2.23.187</version>
+        </dependency>
+      </dependencies>
+    </profile>
+  </profiles>
 </project>
