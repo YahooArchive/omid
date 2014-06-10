@@ -19,7 +19,6 @@ YINST requires pkg yjava_daemon 2.15.87 *
 YINST requires pkg yjava_jdk 1.7 *
 YINST requires pkg mon_metrics_java 0.2.2 *
 YINST requires pkg ynetdblib 1.9.34 *
-YINST requires pkg ynet_db_yahoo 1.16.291 *
 YINST set RUN_AS_USER yahoo
 
 # Yourkit profiling - disabled by default, even when enabled
@@ -34,7 +33,6 @@ YINST set RUN_AS_USER yahoo
 # Disable yourkit by default
 YINST set YOURKIT_ENABLED 0
 YINST set YOURKIT_OPTIONS ""
-YINST set YNET_FILTER ""
 
 
 #For yjava_daemon
