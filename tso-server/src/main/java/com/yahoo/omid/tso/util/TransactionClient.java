@@ -154,7 +154,7 @@ public class TransactionClient {
         long nbMessages = Long.MAX_VALUE;
         
         @Parameter(names="-maxInFlight", description="Max number of outstanding messages in the TSO pipe")
-        int maxInFlight = 100;
+        int maxInFlight = 100000;
         
         @Parameter(names="-percentRead", description="% reads")
         float percentReads = 0;
