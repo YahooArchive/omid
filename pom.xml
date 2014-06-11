@@ -6,9 +6,15 @@
   <groupId>com.yahoo.omid</groupId>
   <artifactId>omid</artifactId>
   <packaging>pom</packaging>
+  <!-- WARNING: do not update version manually, use mvn versions:set on a ylinux machine //-->
   <version>2.1-SNAPSHOT</version>
   <name>Omid</name>
   <url>http://www.github.com/yahoo/omid</url>
+
+  <scm>
+    <connection>scm:git:git@git.corp.yahoo.com:scalable-computing/omid.git</connection>
+    <tag>omid2</tag>
+  </scm>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
