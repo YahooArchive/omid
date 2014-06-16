@@ -1,24 +1,6 @@
-/**
- * Copyright (c) 2011 Yahoo! Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License. See accompanying LICENSE file.
- */
-
 package com.yahoo.omid.tso;
 
 import java.io.IOException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.BaseConfiguration;
@@ -28,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.MetricRegistry;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.InMemoryCommitTable;
 import com.yahoo.omid.TestUtils;
@@ -39,8 +20,6 @@ import com.yahoo.omid.tsoclient.TSOClient;
 public class TSOTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TSOTestBase.class);
-
-    private ExecutorService tsoExecutor;
 
     protected Configuration clientConf = new BaseConfiguration();
     protected TSOClient client;
@@ -134,10 +113,7 @@ public class TSOTestBase {
         };
         tso = new TSOServer(TSOServerConfig.configFactory(1234, 1000), metrics,
                             commitTable, timestampOracle);
-
-        tsoExecutor = Executors.newSingleThreadExecutor(
-                new ThreadFactoryBuilder().setNameFormat("tsomain-%d").build());
-        tsoExecutor.execute(tso);
+        tso.startAndWait();
         TestUtils.waitForSocketListening("localhost", 1234, 100);
         LOG.info("Finished loading TSO");
 
@@ -151,10 +127,8 @@ public class TSOTestBase {
 
         teardownClient();
 
-        tso.stop();
-        if (tsoExecutor != null) {
-            tsoExecutor.shutdownNow();
-        }
+        tso.stopAndWait();
+
         tso = null;
 
         TestUtils.waitForSocketNotListening("localhost", 1234, 1000);

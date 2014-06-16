@@ -28,12 +28,12 @@ public class TsoServerDaemon implements Daemon {
 
     @Override
     public void start() throws Exception {
-        tsoServer.run();
+        tsoServer.startAndWait();
     }
 
     @Override
     public void stop() throws Exception {
-        tsoServer.stop();
+        tsoServer.stopAndWait();
     }
 
     @Override

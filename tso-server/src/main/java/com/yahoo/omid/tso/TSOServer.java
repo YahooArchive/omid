@@ -1,19 +1,3 @@
-/**
- * Copyright (c) 2011 Yahoo! Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License. See accompanying LICENSE file.
- */
-
 package com.yahoo.omid.tso;
 
 import java.io.IOException;
@@ -34,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.common.util.concurrent.AbstractIdleService;
 import com.codahale.metrics.MetricRegistry;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.NullCommitTable;
@@ -44,7 +29,8 @@ import com.yahoo.omid.tso.hbase.HBaseTimestampStorage;
 
 import static com.yahoo.omid.tso.TimestampOracle.InMemoryTimestampStorage;
 
-public class TSOServer implements Runnable {
+public class TSOServer extends AbstractIdleService {
+
     private static final Logger LOG = LoggerFactory.getLogger(TSOServer.class);
 
     private final MetricRegistry metrics;
@@ -54,20 +40,14 @@ public class TSOServer implements Runnable {
     private final TSOServerConfig config;
     private final CommitTable commitTable;
     
-    private boolean finish = false;
-    private final Object lock = new Object();
+    private ChannelFactory factory;
+    private ChannelGroup channelGroup;
 
     public TSOServer(TSOServerConfig config, MetricRegistry metrics, CommitTable commitTable, TimestampOracle timestampOracle) {
         this.config = config;
         this.metrics = metrics;
         this.timestampOracle = timestampOracle;
         this.commitTable = commitTable;
-    }
-
-    public static void main(String[] args) throws Exception {
-        TSOServer tsoServer = getInitializedTsoServer(args);
-        if(tsoServer != null)
-            tsoServer.run();
     }
 
     static TSOServer getInitializedTsoServer(String[] args) throws IOException {
@@ -96,7 +76,16 @@ public class TSOServer implements Runnable {
     }
 
     @Override
-    public void run() {
+    protected void startUp() throws Exception {
+        startIt();
+    }
+
+    @Override
+    protected void shutDown() throws Exception {
+        stopIt();
+    }
+
+    public void startIt() {
 
         // Disruptor setup
         ReplyProcessor replyProc = new ReplyProcessorImpl(metrics);
@@ -125,7 +114,7 @@ public class TSOServer implements Runnable {
                 persistProc, config.getMaxItems());
 
         // Setup netty listener
-        ChannelFactory factory = new NioServerSocketChannelFactory(
+        factory = new NioServerSocketChannelFactory(
                 Executors.newCachedThreadPool(
                         new ThreadFactoryBuilder().setNameFormat("boss-%d").build()),
                 Executors.newCachedThreadPool(
@@ -133,7 +122,7 @@ public class TSOServer implements Runnable {
                 (Runtime.getRuntime().availableProcessors() * 2 + 1) * 2);
 
         // Create the global ChannelGroup
-        ChannelGroup channelGroup = new DefaultChannelGroup(TSOServer.class.getName());
+        channelGroup = new DefaultChannelGroup(TSOServer.class.getName());
 
         final TSOHandler handler = new TSOHandler(channelGroup, reqProc);
 
@@ -145,28 +134,27 @@ public class TSOServer implements Runnable {
         Channel channel = bootstrap.bind(new InetSocketAddress(config.getPort()));
         channelGroup.add(channel);
 
-        synchronized (lock) {
-            while (!finish) {
-                try {
-                    lock.wait();
-                } catch (InterruptedException e) {
-                    break;
-                }
-            }
-        }
+        LOG.info("********** TSO Server initialized successfully **********");
 
-        /** Start the Netty shutdown */
-        LOG.info("Close of channel group");
+   }
+
+    public void stopIt() {
+        // Netty shutdown
         channelGroup.close().awaitUninterruptibly();
-
-        LOG.info("Release resources");
         factory.releaseExternalResources();
+        LOG.info("********** TSO Server stopped successfully **********");
+
     }
 
-    public void stop() {
-        finish = true;
-        synchronized (lock) {
-            lock.notifyAll();
-        }
+    /**
+     * This is where all starts on the server side
+     */
+    public static void main(String[] args) throws Exception {
+        
+        TSOServer tsoServer = getInitializedTsoServer(args);
+        if(tsoServer != null)
+            tsoServer.startAndWait();
+
     }
+    
 }
