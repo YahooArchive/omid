@@ -4,6 +4,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ExecutionException;
 
+import javax.inject.Inject;
+
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BatchEventProcessor;
@@ -45,9 +47,9 @@ class RetryProcessorImpl
     // Metrics
     final Meter retriesMeter;
 
+    @Inject
     RetryProcessorImpl(MetricRegistry metrics, CommitTable commitTable, 
             ReplyProcessor replyProc) throws InterruptedException, ExecutionException {
-
         this.commitTableClient = commitTable.getClient().get();
         this.writer = commitTable.getWriter().get();
         this.replyProc = replyProc;

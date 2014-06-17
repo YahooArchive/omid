@@ -14,7 +14,6 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +22,7 @@ import com.google.common.base.Charsets;
 import com.google.common.collect.Maps;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
+import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
 import com.yahoo.omid.transaction.AbstractTransaction;
 import com.yahoo.omid.transaction.AbstractTransactionManager;
 import com.yahoo.omid.transaction.TransactionManager;
@@ -115,8 +115,9 @@ public class HBaseTransactionManager extends AbstractTransactionManager
             boolean ownsCommitTableClient = false;
             if (commitTableClient == null) {
                 try {
+                    HBaseCommitTableConfig config = new HBaseCommitTableConfig();
                     CommitTable commitTable =
-                            new HBaseCommitTable(conf, HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME);
+                            new HBaseCommitTable(conf, config);
                     commitTableClient = commitTable.getClient().get();
                     ownsCommitTableClient = true;
                 } catch (InterruptedException e) {

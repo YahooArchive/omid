@@ -2,19 +2,19 @@ package com.yahoo.omid.tso;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+
+import javax.inject.Inject;
+
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelHandlerContext;
 
 import com.yahoo.omid.proto.TSOProto;
-
-import com.lmax.disruptor.EventFactory;
-import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.*;
-
 import com.codahale.metrics.MetricRegistry;
+
 import static com.codahale.metrics.MetricRegistry.name;
+
 import com.codahale.metrics.Meter;
 
 import org.slf4j.Logger;
@@ -29,6 +29,7 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
     final Meter commitMeter;
     final Meter timestampMeter;
 
+    @Inject
     ReplyProcessorImpl(MetricRegistry metrics) {
         replyRing = RingBuffer.<ReplyEvent>createMultiProducer(ReplyEvent.EVENT_FACTORY, 1<<12,
                                                                new BusySpinWaitStrategy());

@@ -120,7 +120,9 @@ public class HBaseCommitTableTest {
 
     @Test
     public void testBasicBehaviour() throws Throwable {
-        HBaseCommitTable commitTable = new HBaseCommitTable(hbaseConf, TEST_TABLE);
+        HBaseCommitTableConfig config = new HBaseCommitTableConfig();
+        config.setTableName(TEST_TABLE);
+        HBaseCommitTable commitTable = new HBaseCommitTable(hbaseConf, config);
 
         ListenableFuture<Writer> futureWriter = commitTable.getWriter();
         Writer writer = futureWriter.get();

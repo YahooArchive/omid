@@ -16,6 +16,9 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import java.net.InetSocketAddress;
 
+import javax.inject.Inject;
+import javax.inject.Named;
+
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
@@ -55,6 +58,8 @@ public class HBaseCommitTable implements CommitTable {
     static final byte[] LOW_WATERMARK_FAMILY = "LWF".getBytes(UTF_8);
     static final byte[] LOW_WATERMARK_QUALIFIER = "LWC".getBytes(UTF_8);
 
+    public static final String HBASE_COMMIT_TABLE_NAME_KEY = "hbase.committable.tablename";
+
     private final String tableName;
     private final Configuration hbaseConfig;
     private final KeyGenerator keygen;
@@ -65,8 +70,9 @@ public class HBaseCommitTable implements CommitTable {
      * Note that we do not take ownership of the passed htable,
      * it is just used to construct the writer and client.
      */
-    public HBaseCommitTable(Configuration hbaseConfig, String tableName) {
-        this(hbaseConfig, tableName, defaultKeyGenerator());
+    @Inject
+    public HBaseCommitTable(Configuration hbaseConfig, HBaseCommitTableConfig config) {
+        this(hbaseConfig, config.getTableName(), defaultKeyGenerator());
     }
 
     private HBaseCommitTable(Configuration hbaseConfig, String tableName, KeyGenerator keygen) {

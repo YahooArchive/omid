@@ -1,32 +1,40 @@
 package com.yahoo.omid.tso;
 
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ExecutionException;
-
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-
-import org.jboss.netty.channel.Channel;
-
-import com.yahoo.omid.committable.CommitTable;
-import com.lmax.disruptor.*;
-import com.codahale.metrics.MetricRegistry;
-
 import static com.codahale.metrics.MetricRegistry.name;
 
-import com.codahale.metrics.Timer;
-import com.codahale.metrics.Meter;
-import com.codahale.metrics.Histogram;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
+import javax.inject.Inject;
+
+import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.lmax.disruptor.BatchEventProcessor;
+import com.lmax.disruptor.EventFactory;
+import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.SequenceBarrier;
+import com.lmax.disruptor.TimeoutBlockingWaitStrategy;
+import com.lmax.disruptor.TimeoutHandler;
+import com.yahoo.omid.committable.CommitTable;
 
 class PersistenceProcessorImpl
     implements EventHandler<PersistenceProcessorImpl.PersistEvent>,
                PersistenceProcessor, TimeoutHandler {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(PersistenceProcessor.class);
+
+    static final int DEFAULT_MAX_BATCH_SIZE = 10000;
+    static final String TSO_MAX_BATCH_SIZE_KEY = "tso.maxbatchsize";
 
     final ReplyProcessor reply;
     final RetryProcessor retryProc;
@@ -44,16 +52,20 @@ class PersistenceProcessorImpl
     long lastFlush = System.nanoTime();
     final static int BATCH_TIMEOUT_MS = 100;
 
-    PersistenceProcessorImpl(MetricRegistry metrics, CommitTable commitTable,
-                             ReplyProcessor reply, RetryProcessor retryProc, int maxBatchSize)
-                                     throws InterruptedException, ExecutionException {
+    @Inject
+    PersistenceProcessorImpl(MetricRegistry metrics,
+                             CommitTable commitTable,
+                             ReplyProcessor reply,
+                             RetryProcessor retryProc,
+                             TSOServerConfig config)
+    throws InterruptedException, ExecutionException {
 
         this.commitTableClient = commitTable.getClient().get();
         this.writer = commitTable.getWriter().get();
         this.reply = reply;
         this.retryProc = retryProc;
-        this.maxBatchSize = maxBatchSize;
-        
+        this.maxBatchSize = config.getMaxBatchSize();
+
         batch = new Batch(maxBatchSize);
 
         flushTimer = metrics.timer(name("tso", "persist", "flush"));
@@ -83,7 +95,7 @@ class PersistenceProcessorImpl
     @Override
     public void onEvent(final PersistEvent event, final long sequence, final boolean endOfBatch)
         throws Exception {
-        
+
         switch (event.getType()) {
         case COMMIT:
             // TODO: What happens when the IOException is thrown?
@@ -162,7 +174,7 @@ class PersistenceProcessorImpl
         PersistEvent.makePersistCommit(e, startTimestamp, commitTimestamp, c);
         persistRing.publish(seq);
     }
-    
+
     @Override
     public void persistAbort(long startTimestamp, boolean isRetry, Channel c) {
         long seq = persistRing.next();
@@ -178,7 +190,7 @@ class PersistenceProcessorImpl
         PersistEvent.makePersistTimestamp(e, startTimestamp, c);
         persistRing.publish(seq);
     }
-    
+
     @Override
     public void persistLowWatermark(long lowWatermark) {
         long seq = persistRing.next();
@@ -225,7 +237,7 @@ class PersistenceProcessorImpl
             PersistEvent e = events[index];
             PersistEvent.makePersistCommit(e, startTimestamp, commitTimestamp, c);
         }
-        
+
         void addUndecidedRetriedRequest(long startTimestamp, Channel c) {
             if (isFull()) {
                 throw new IllegalStateException("batch full");
@@ -307,7 +319,7 @@ class PersistenceProcessorImpl
             e.startTimestamp = startTimestamp;
             e.channel = c;
         }
-        
+
         static void makePersistLowWatermark(PersistEvent e, long lowWatermark) {
             e.type = Type.LOW_WATERMARK;
             e.lowWatermark = lowWatermark;
