@@ -43,14 +43,7 @@ public class TSOServer extends AbstractIdleService {
         this.requestProc = requestProc;
     }
 
-    static TSOServer getInitializedTsoServer(String[] args) throws IOException {
-        TSOServerCommandLineConfig config = TSOServerCommandLineConfig.parseConfig(args);
-
-        if (config.hasHelpFlag()) {
-            config.usage();
-            return null;
-        }
-
+    static TSOServer getInitializedTsoServer(TSOServerCommandLineConfig config) throws IOException {
         // NOTE: The guice config is in here following the best practices in:
         // https://code.google.com/p/google-guice/wiki/AvoidConditionalLogicInModules
         // This is due to the fact that the target storage can be selected from the
@@ -99,20 +92,41 @@ public class TSOServer extends AbstractIdleService {
 
     public void stopIt() {
         // Netty shutdown
-        channelGroup.close().awaitUninterruptibly();
-        factory.releaseExternalResources();
+        if(channelGroup != null) {
+            channelGroup.close().awaitUninterruptibly();
+        }
+        if(factory != null) {
+            factory.releaseExternalResources();
+        }
         LOG.info("********** TSO Server stopped successfully **********");
+    }
+
+    public void attachShutDownHook() {
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                stopAndWait();
+            }
+        });
+        LOG.info("Shutdown Hook Attached");
     }
 
     /**
      * This is where all starts on the server side
      */
     public static void main(String[] args) throws Exception {
-        
-        TSOServer tsoServer = getInitializedTsoServer(args);
-        if(tsoServer != null)
-            tsoServer.startAndWait();
+
+        TSOServerCommandLineConfig config = TSOServerCommandLineConfig.parseConfig(args);
+
+        if (config.hasHelpFlag()) {
+            config.usage();
+            System.exit(0);
+        }
+
+        TSOServer tsoServer = getInitializedTsoServer(config);
+        tsoServer.attachShutDownHook();
+        tsoServer.startAndWait();
 
     }
-    
+
 }
