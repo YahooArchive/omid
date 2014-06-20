@@ -52,10 +52,10 @@ public class HBaseCommitTable implements CommitTable {
     private static final Logger LOG = LoggerFactory.getLogger(HBaseCommitTable.class);
 
     public static final String COMMIT_TABLE_DEFAULT_NAME = "OMID_COMMIT_TABLE";
-    static final byte[] COMMIT_TABLE_FAMILY = "F".getBytes(UTF_8);
+    public static final byte[] COMMIT_TABLE_FAMILY = "F".getBytes(UTF_8);
     static final byte[] COMMIT_TABLE_QUALIFIER = "C".getBytes(UTF_8);
     static final byte[] LOW_WATERMARK_ROW = "LOW_WATERMARK".getBytes(UTF_8);
-    static final byte[] LOW_WATERMARK_FAMILY = "LWF".getBytes(UTF_8);
+    public static final byte[] LOW_WATERMARK_FAMILY = "LWF".getBytes(UTF_8);
     static final byte[] LOW_WATERMARK_QUALIFIER = "LWC".getBytes(UTF_8);
 
     public static final String HBASE_COMMIT_TABLE_NAME_KEY = "hbase.committable.tablename";

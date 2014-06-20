@@ -35,7 +35,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager
 
     private static final Logger LOG = LoggerFactory.getLogger(HBaseTransactionManager.class);
 
-    private static final byte[] SHADOW_CELL_SUFFIX = ":OMID_CTS".getBytes(Charsets.UTF_8);
+    static final byte[] SHADOW_CELL_SUFFIX = ":OMID_CTS".getBytes(Charsets.UTF_8);
 
     static class HBaseTransaction extends AbstractTransaction<HBaseCellId> {
 

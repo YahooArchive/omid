@@ -33,6 +33,7 @@
     <jcommander.version>1.35</jcommander.version>
     <commons.conf.version>1.10</commons.conf.version>
     <clover.version>3.3.0</clover.version>
+    <hamcrest.version>1.3</hamcrest.version>
   </properties>
 
   <modules>
@@ -41,6 +42,7 @@
     <module>tso-server</module>
     <module>commit-table</module>
     <module>hbase-commit-table</module>
+    <module>hbase-coprocessor</module>
   </modules>
 
   <build>

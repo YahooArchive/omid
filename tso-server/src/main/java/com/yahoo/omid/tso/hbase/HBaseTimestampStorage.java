@@ -25,7 +25,7 @@ public class HBaseTimestampStorage implements TimestampStorage {
 
     public static final String TIMESTAMP_TABLE_DEFAULT_NAME = "OMID_TIMESTAMP";
     static final byte[] TSO_ROW = "MAX_TIMESTAMP_R".getBytes(UTF_8);
-    static final byte[] TSO_FAMILY = "MAX_TIMESTAMP_F".getBytes(UTF_8);
+    public static final byte[] TSO_FAMILY = "MAX_TIMESTAMP_F".getBytes(UTF_8);
     static final byte[] TSO_QUALIFIER = "MAX_TIMESTAMP_Q".getBytes(UTF_8);
 
     public static final String HBASE_TIMESTAMPSTORAGE_TABLE_NAME_KEY = "hbase.timestampstorage.tablename";

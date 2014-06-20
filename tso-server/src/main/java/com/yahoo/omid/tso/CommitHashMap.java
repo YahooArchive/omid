@@ -67,6 +67,7 @@ class CommitHashMap {
         }
 
         this.rowsCommitMapping = new LongCache(size, 32);
+        LOG.info("CommitHashmap created with [{}] buckets (32 elems/bucket)", size);
     }
 
     public long getLatestWriteForRow(long hash) {

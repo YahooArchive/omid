@@ -21,13 +21,13 @@ import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
 
-class RequestProcessorImpl
+public class RequestProcessorImpl
     implements EventHandler<RequestProcessorImpl.RequestEvent>, RequestProcessor
 {
     private static final Logger LOG = LoggerFactory.getLogger(RequestProcessorImpl.class);
 
     static final int DEFAULT_MAX_ITEMS = 1000000;
-    static final String TSO_MAX_ITEMS_KEY = "tso.maxitems";
+    public static final String TSO_MAX_ITEMS_KEY = "tso.maxitems";
 
     private final TimestampOracle timestampOracle;
     public final CommitHashMap hashmap;
@@ -143,6 +143,7 @@ class RequestProcessorImpl
                     }
 
                     lowWatermark = newLowWatermark;
+                    LOG.trace("Setting new low Watermark to {}", newLowWatermark);
                     persistProc.persistLowWatermark(newLowWatermark);
                 }
                 persistProc.persistCommit(startTimestamp, commitTimestamp, c);
