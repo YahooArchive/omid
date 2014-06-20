@@ -31,7 +31,6 @@ import java.util.*;
  *
  */
 public abstract class TSOClient {
-    private static final Logger LOG = LoggerFactory.getLogger(TSOClient.class);
     public static final String TSO_HOST_CONFKEY = "tso.host";
     public static final String TSO_PORT_CONFKEY = "tso.port";
     public static final String REQUEST_MAX_RETRIES_CONFKEY = "request.max-retries";
@@ -39,7 +38,10 @@ public abstract class TSOClient {
     public static final int DEFAULT_TSO_PORT = 54758;
     public static final int DEFAULT_TSO_MAX_REQUEST_RETRIES = 5;
     public static final int DEFAULT_REQUEST_TIMEOUT_MS = 5000; // 5 secs
-
+    public static final String TSO_RETRY_DELAY_MS_CONFKEY = "tso.retry_delay_ms";
+    public static final int DEFAULT_TSO_RETRY_DELAY_MS = 1000;
+    public static final String TSO_EXECUTOR_THREAD_NUM_CONFKEY = "tso.executor.threads";
+    public static final int DEFAULT_TSO_EXECUTOR_THREAD_NUM = 3;
     public static class ConnectionException extends IOException {
     }
 
