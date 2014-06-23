@@ -92,6 +92,14 @@ for jar in lib/jars/$(PRODUCT_NAME)/*.jar; do
 	fi
 done
 
+if [ "x${ynet_filter}" != "x" ]; then
+	YNET_FILTER=${ynet_filter}
+else
+ 	YNET_FILTER="FILTER_YAHOO"
+fi
+
+echo "$0 YNET-FILTER: $YNET_FILTER"
+
 JVM_ARGS="-Xmx$(HEAP_SIZE_IN_MIB)m $(JVM_ARGS) ${YOURKIT_OPTS}"
 ( cd /home/y/var/$(PRODUCT_NAME)/run ; env LD_LIBRARY_PATH=${ARCH_LIB_DIR} LD_PRELOAD=${PRELOAD} ${ARCH_BIN_DIR}/yjava_daemon \
  -jvm server -pidfile /home/y/var/$(PRODUCT_NAME)/run/$(PRODUCT_NAME).pid -ynet ${YNET_FILTER}  \

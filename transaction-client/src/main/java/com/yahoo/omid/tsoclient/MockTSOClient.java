@@ -19,21 +19,20 @@ package com.yahoo.omid.tsoclient;
 import com.google.common.util.concurrent.SettableFuture;
 import com.yahoo.omid.committable.CommitTable;
 
-import java.util.Set;
 import java.io.IOException;
-
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class MockTSOClient extends TSOClient {
-    final static AtomicLong timestampGenerator = new AtomicLong();
-    final static int CONFLICT_MAP_SIZE = 1*1000*1000;
-    final static long[] conflictMap = new long[CONFLICT_MAP_SIZE];
-    final static AtomicLong lwm = new AtomicLong();
+    private final AtomicLong timestampGenerator = new AtomicLong();
+    private final int CONFLICT_MAP_SIZE = 1 * 1000 * 1000;
+    private final long[] conflictMap = new long[CONFLICT_MAP_SIZE];
+    private final AtomicLong lwm = new AtomicLong();
 
-    final CommitTable.Writer commitTable;
+    private final CommitTable.Writer commitTable;
 
-    MockTSOClient(CommitTable.Writer commitTable) {
+    public MockTSOClient(CommitTable.Writer commitTable) {
         this.commitTable = commitTable;
     }
 
@@ -55,7 +54,7 @@ public class MockTSOClient extends TSOClient {
 
             boolean canCommit = true;
             for (CellId c : cells) {
-                int index = (int)(c.getCellId() % (long)CONFLICT_MAP_SIZE);
+                int index = Math.abs((int) (c.getCellId() % (long) CONFLICT_MAP_SIZE));
                 if (conflictMap[index] >= transactionId) {
                     canCommit = false;
                     break;
@@ -65,7 +64,7 @@ public class MockTSOClient extends TSOClient {
             if (canCommit) {
                 long commitTimestamp = timestampGenerator.incrementAndGet();
                 for (CellId c : cells) {
-                    int index = (int)(c.getCellId() % (long)CONFLICT_MAP_SIZE);
+                    int index = Math.abs((int) (c.getCellId() % (long) CONFLICT_MAP_SIZE));
                     long oldVal = conflictMap[index];
                     conflictMap[index] = commitTimestamp;
                     long curLwm = lwm.get();

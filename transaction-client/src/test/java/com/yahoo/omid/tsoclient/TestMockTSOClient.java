@@ -35,7 +35,7 @@ import com.yahoo.omid.tsoclient.TSOClient.AbortException;
 public class TestMockTSOClient {
 
     final static public CellId c1 = new DummyCellIdImpl(0xdeadbeefL);
-    final static public CellId c2 = new DummyCellIdImpl(0xfeedcafeL);
+    final static public CellId c2 = new DummyCellIdImpl(-0xfeedcafeL);
 
     @Test(timeout=10000)
     public void testConflicts() throws Exception {
