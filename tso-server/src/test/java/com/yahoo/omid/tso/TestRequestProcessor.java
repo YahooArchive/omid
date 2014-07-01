@@ -29,10 +29,12 @@ public class TestRequestProcessor {
     @Test(timeout=10000)
     public void testTimestamp() throws Exception {
         PersistenceProcessor persist = mock(PersistenceProcessor.class);
-        TimestampOracleImpl timestampOracle = new TimestampOracleImpl(metrics, new TimestampOracleImpl.InMemoryTimestampStorage());
+        TimestampOracleImpl timestampOracle = new TimestampOracleImpl(metrics,
+                new TimestampOracleImpl.InMemoryTimestampStorage(), new MockPanicker());
         TSOServerConfig config = new TSOServerConfig();
         config.setMaxItems(1000);
-        RequestProcessor proc = new RequestProcessorImpl(metrics, timestampOracle, persist, config);
+        RequestProcessor proc = new RequestProcessorImpl(metrics, timestampOracle,
+                                                         persist, new MockPanicker(), config);
 
         proc.timestampRequest(null);
         ArgumentCaptor<Long> firstTScapture = ArgumentCaptor.forClass(Long.class);
@@ -52,10 +54,12 @@ public class TestRequestProcessor {
         List<Long> rows = Lists.newArrayList(1L, 20L, 203L);
 
         PersistenceProcessor persist = mock(PersistenceProcessor.class);
-        TimestampOracleImpl timestampOracle = new TimestampOracleImpl(metrics, new TimestampOracleImpl.InMemoryTimestampStorage());
+        TimestampOracleImpl timestampOracle = new TimestampOracleImpl(metrics,
+                new TimestampOracleImpl.InMemoryTimestampStorage(), new MockPanicker());
         TSOServerConfig config = new TSOServerConfig();
         config.setMaxItems(1000);
-        RequestProcessor proc = new RequestProcessorImpl(metrics, timestampOracle, persist, config);
+        RequestProcessor proc = new RequestProcessorImpl(metrics, timestampOracle,
+                                                         persist, new MockPanicker(), config);
         proc.timestampRequest(null);
         ArgumentCaptor<Long> TScapture = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(1)).persistTimestamp(

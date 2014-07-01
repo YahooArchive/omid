@@ -17,7 +17,8 @@ public class TestTimestampOracle {
 
     @Test
     public void testMonotonicTimestampGrowth() throws Exception {
-        TimestampOracleImpl tso = new TimestampOracleImpl(metrics, new TimestampOracleImpl.InMemoryTimestampStorage());
+        TimestampOracleImpl tso = new TimestampOracleImpl(metrics,
+                new TimestampOracleImpl.InMemoryTimestampStorage(), new MockPanicker());
         long last = tso.next();
         for (int i = 0; i < (3 * TimestampOracleImpl.TIMESTAMP_BATCH); i++) {
             long current = tso.next();

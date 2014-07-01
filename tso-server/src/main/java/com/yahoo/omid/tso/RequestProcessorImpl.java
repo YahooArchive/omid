@@ -39,6 +39,7 @@ class RequestProcessorImpl
     RequestProcessorImpl(MetricRegistry metrics,
                          TimestampOracle timestampOracle,
                          PersistenceProcessor persistProc,
+                         Panicker panicker,
                          TSOServerConfig config)
     {
 
@@ -58,6 +59,7 @@ class RequestProcessorImpl
                                                       requestSequenceBarrier,
                                                       this);
         requestRing.addGatingSequences(requestProcessor.getSequence());
+        requestProcessor.setExceptionHandler(new FatalExceptionHandler(panicker));
 
         ExecutorService requestExec = Executors.newSingleThreadExecutor(
                 new ThreadFactoryBuilder().setNameFormat("request-%d").build());

@@ -19,6 +19,7 @@ public class TSOModule extends AbstractModule {
     protected void configure() {
 
         bind(TimestampOracle.class).to(TimestampOracleImpl.class).in(Singleton.class);
+        bind(Panicker.class).to(SystemExitPanicker.class).in(Singleton.class);
 
         // Disruptor setup
         bind(RequestProcessor.class).to(RequestProcessorImpl.class).in(Singleton.class);

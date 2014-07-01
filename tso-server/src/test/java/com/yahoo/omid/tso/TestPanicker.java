@@ -1,0 +1,119 @@
+package com.yahoo.omid.tso;
+
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+
+import static org.mockito.Mockito.*;
+
+import com.yahoo.omid.committable.CommitTable;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
+
+import com.codahale.metrics.MetricRegistry;
+
+public class TestPanicker {
+
+    private static final Logger LOG = LoggerFactory.getLogger(TestPanicker.class);
+
+    MetricRegistry metrics = new MetricRegistry();
+
+    @Test
+    public void testTimestampOraclePanic() throws Exception {
+        TimestampOracleImpl.TimestampStorage storage
+            = spy(new TimestampOracleImpl.InMemoryTimestampStorage());
+        Panicker panicker = spy(new MockPanicker());
+
+        doThrow(new RuntimeException("Out of memory or something"))
+            .when(storage).updateMaxTimestamp(anyLong(), anyLong());
+
+        final TimestampOracleImpl tso = new TimestampOracleImpl(metrics,
+                storage, panicker);
+        Thread allocThread = new Thread("AllocThread") {
+                @Override
+                public void run() {
+                    try {
+                        while (true) {
+                            tso.next();
+                        }
+                    } catch (IOException ioe) {
+                        LOG.error("Shouldn't occur");
+                    }
+                }
+            };
+        allocThread.start();
+
+        verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
+    }
+
+    @Test
+    public void testCommitTablePanic() throws Exception {
+        Panicker panicker = spy(new MockPanicker());
+
+        SettableFuture<Void> f = SettableFuture.<Void>create();
+        f.setException(new IOException("Unable to write"));
+        final CommitTable.Writer mockWriter = mock(CommitTable.Writer.class);
+        doReturn(f).when(mockWriter).flush();
+
+        final CommitTable.Client mockClient = mock(CommitTable.Client.class);
+        CommitTable commitTable = new CommitTable() {
+                @Override
+                public ListenableFuture<Writer> getWriter() {
+                    SettableFuture<Writer> f = SettableFuture.<Writer>create();
+                    f.set(mockWriter);
+                    return f;
+                }
+
+                @Override
+                public ListenableFuture<Client> getClient() {
+                    SettableFuture<Client> f = SettableFuture.<Client>create();
+                    f.set(mockClient);
+                    return f;
+                }
+            };
+        PersistenceProcessor proc = new PersistenceProcessorImpl(metrics,
+                                                                 commitTable,
+                                                                 mock(ReplyProcessor.class),
+                                                                 mock(RetryProcessor.class),
+                                                                 panicker,
+                                                                 new TSOServerConfig());
+        proc.persistCommit(1, 2, null);
+        verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
+    }
+
+    @Test
+    public void testRuntimeExceptionTakesDownDaemon() throws Exception {
+        Panicker panicker = spy(new MockPanicker());
+
+        final CommitTable.Writer mockWriter = mock(CommitTable.Writer.class);
+        doThrow(new RuntimeException("Kaboom!"))
+            .when(mockWriter).addCommittedTransaction(anyLong(),anyLong());
+
+        final CommitTable.Client mockClient = mock(CommitTable.Client.class);
+        CommitTable commitTable = new CommitTable() {
+                @Override
+                public ListenableFuture<Writer> getWriter() {
+                    SettableFuture<Writer> f = SettableFuture.<Writer>create();
+                    f.set(mockWriter);
+                    return f;
+                }
+
+                @Override
+                public ListenableFuture<Client> getClient() {
+                    SettableFuture<Client> f = SettableFuture.<Client>create();
+                    f.set(mockClient);
+                    return f;
+                }
+            };
+        PersistenceProcessor proc = new PersistenceProcessorImpl(metrics,
+                                                                 commitTable,
+                                                                 mock(ReplyProcessor.class),
+                                                                 mock(RetryProcessor.class),
+                                                                 panicker,
+                                                                 new TSOServerConfig());
+        proc.persistCommit(1, 2, null);
+        verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
+    }
+}

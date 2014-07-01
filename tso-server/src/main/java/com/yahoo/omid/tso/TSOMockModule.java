@@ -27,6 +27,7 @@ public class TSOMockModule extends AbstractModule {
         bind(CommitTable.class).to(InMemoryCommitTable.class).in(Singleton.class);
         bind(TimestampStorage.class).to(InMemoryTimestampStorage.class).in(Singleton.class);
         bind(TimestampOracle.class).to(PausableTimestampOracle.class).in(Singleton.class);
+        bind(Panicker.class).to(MockPanicker.class).in(Singleton.class);
 
         // Disruptor setup
         // Overwrite default value

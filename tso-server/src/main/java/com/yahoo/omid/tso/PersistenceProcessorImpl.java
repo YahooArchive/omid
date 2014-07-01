@@ -40,6 +40,7 @@ class PersistenceProcessorImpl
     final RetryProcessor retryProc;
     final CommitTable.Client commitTableClient;
     final CommitTable.Writer writer;
+    final Panicker panicker;
     final RingBuffer<PersistEvent> persistRing;
 
     final int maxBatchSize;
@@ -57,6 +58,7 @@ class PersistenceProcessorImpl
                              CommitTable commitTable,
                              ReplyProcessor reply,
                              RetryProcessor retryProc,
+                             Panicker panicker,
                              TSOServerConfig config)
     throws InterruptedException, ExecutionException {
 
@@ -64,6 +66,7 @@ class PersistenceProcessorImpl
         this.writer = commitTable.getWriter().get();
         this.reply = reply;
         this.retryProc = retryProc;
+        this.panicker = panicker;
         this.maxBatchSize = config.getMaxBatchSize();
 
         batch = new Batch(maxBatchSize);
@@ -85,7 +88,7 @@ class PersistenceProcessorImpl
                 persistSequenceBarrier,
                 this);
         persistRing.addGatingSequences(persistProcessor.getSequence());
-
+        persistProcessor.setExceptionHandler(new FatalExceptionHandler(panicker));
 
         ExecutorService persistExec = Executors.newSingleThreadExecutor(
                 new ThreadFactoryBuilder().setNameFormat("persist-%d").build());
@@ -159,8 +162,7 @@ class PersistenceProcessorImpl
             flushTimer.update((System.nanoTime() - lastFlush), TimeUnit.NANOSECONDS);
             batch.sendRepliesAndReset(reply, retryProc);
         } catch (ExecutionException ee) {
-            LOG.error("Error persisting commit batch", ee.getCause());
-            panic();
+            panicker.panic("Error persisting commit batch", ee.getCause());
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             LOG.error("Interrupted after persistence");
@@ -197,12 +199,6 @@ class PersistenceProcessorImpl
         PersistEvent e = persistRing.get(seq);
         PersistEvent.makePersistLowWatermark(e, lowWatermark);
         persistRing.publish(seq);
-    }
-
-    public void panic() {
-        // FIXME panic properly, shouldn't call system exit directly
-        LOG.error("Ended up in bad state, panicking");
-        System.exit(-1);
     }
 
     public final static class Batch {

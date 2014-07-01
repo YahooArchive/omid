@@ -30,12 +30,14 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
     final Meter timestampMeter;
 
     @Inject
-    ReplyProcessorImpl(MetricRegistry metrics) {
+    ReplyProcessorImpl(MetricRegistry metrics, Panicker panicker) {
         replyRing = RingBuffer.<ReplyEvent>createMultiProducer(ReplyEvent.EVENT_FACTORY, 1<<12,
                                                                new BusySpinWaitStrategy());
         SequenceBarrier replySequenceBarrier = replyRing.newBarrier();
         BatchEventProcessor<ReplyEvent> replyProcessor = new BatchEventProcessor<ReplyEvent>(
                 replyRing, replySequenceBarrier, this);
+        replyProcessor.setExceptionHandler(new FatalExceptionHandler(panicker));
+
         replyRing.addGatingSequences(replyProcessor.getSequence());
 
         ExecutorService replyExec = Executors.newSingleThreadExecutor(

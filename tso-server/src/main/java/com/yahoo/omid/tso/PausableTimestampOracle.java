@@ -16,8 +16,10 @@ public class PausableTimestampOracle extends TimestampOracleImpl {
     private volatile boolean tsoPaused = false;
 
     @Inject
-    public PausableTimestampOracle(MetricRegistry metrics, TimestampStorage tsStorage) throws IOException {
-        super(metrics, tsStorage);
+    public PausableTimestampOracle(MetricRegistry metrics,
+                                   TimestampStorage tsStorage,
+                                   Panicker panicker) throws IOException {
+        super(metrics, tsStorage, panicker);
     }
 
     @Override

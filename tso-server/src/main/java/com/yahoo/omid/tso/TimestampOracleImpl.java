@@ -65,9 +65,8 @@ public class TimestampOracleImpl implements TimestampOracle {
                 storage.updateMaxTimestamp(previousMaxTimestamp, newMaxTimestamp);
                 maxAllocatedTimestamp = newMaxTimestamp;
                 previousMaxTimestamp = newMaxTimestamp;
-            } catch(IOException e) {
-                LOG.error("Can't store the new max timestamp", e);
-                // FIXME Should panic process
+            } catch(Throwable e) {
+                panicker.panic("Can't store the new max timestamp", e);
             }
         }
 
@@ -81,6 +80,7 @@ public class TimestampOracleImpl implements TimestampOracle {
     private long maxTimestamp;
 
     private TimestampStorage storage;
+    private Panicker panicker;
 
     private long nextAllocationThreshold;
     private volatile long maxAllocatedTimestamp;
@@ -126,8 +126,11 @@ public class TimestampOracleImpl implements TimestampOracle {
      * Constructor
      */
     @Inject
-    public TimestampOracleImpl(MetricRegistry metrics, TimestampStorage tsStorage) throws IOException {
+    public TimestampOracleImpl(MetricRegistry metrics,
+                               TimestampStorage tsStorage,
+                               Panicker panicker) throws IOException {
         this.storage = tsStorage;
+        this.panicker = panicker;
         this.lastTimestamp = this.maxTimestamp = tsStorage.getMaxTimestamp();
         this.allocateTimestampsBatchTask = new AllocateTimestampBatchTask(lastTimestamp);
 

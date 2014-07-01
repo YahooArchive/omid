@@ -49,7 +49,8 @@ class RetryProcessorImpl
 
     @Inject
     RetryProcessorImpl(MetricRegistry metrics, CommitTable commitTable, 
-            ReplyProcessor replyProc) throws InterruptedException, ExecutionException {
+                       ReplyProcessor replyProc, Panicker panicker)
+        throws InterruptedException, ExecutionException {
         this.commitTableClient = commitTable.getClient().get();
         this.writer = commitTable.getWriter().get();
         this.replyProc = replyProc;
@@ -63,6 +64,8 @@ class RetryProcessorImpl
                 retryRing,
                 retrySequenceBarrier,
                 this);
+        retryProcessor.setExceptionHandler(new FatalExceptionHandler(panicker));
+
         retryRing.addGatingSequences(retryProcessor.getSequence());
 
         ExecutorService retryExec = Executors.newSingleThreadExecutor(
@@ -116,12 +119,6 @@ class RetryProcessorImpl
         RetryEvent e = retryRing.get(seq);
         RetryEvent.makeCommitRetry(e, startTimestamp, c);
         retryRing.publish(seq);
-    }
-
-    public void panic() {
-        // FIXME panic properly, shouldn't call system exit directly
-        LOG.error("Ended up in bad state, panicking");
-        System.exit(-1);
     }
 
     public final static class RetryEvent {

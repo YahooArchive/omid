@@ -40,7 +40,8 @@ public class TestRetryProcessor {
         commitTable.getWriter().get().addCommittedTransaction(ST_TX_1, CT_TX_1);
         
         // The element to test
-        RetryProcessor retryProc = new RetryProcessorImpl(metrics, commitTable, replyProc);
+        RetryProcessor retryProc = new RetryProcessorImpl(metrics, commitTable,
+                                                          replyProc, new MockPanicker());
 
         // Test we'll reply with an abort for a retry request when the start timestamp IS NOT in the commit table 
         retryProc.disambiguateRetryRequestHeuristically(NON_EXISTING_ST_TX, channel);
