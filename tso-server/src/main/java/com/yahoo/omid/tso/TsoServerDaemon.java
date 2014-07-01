@@ -10,8 +10,6 @@ import java.util.Arrays;
 
 /**
  * For yjava_daemon
- *
- * @author Igor Katkov on 6/4/14.
  */
 public class TsoServerDaemon implements Daemon {
     private static final Logger LOG = LoggerFactory.getLogger(TsoServerDaemon.class);
@@ -21,9 +19,8 @@ public class TsoServerDaemon implements Daemon {
     public void init(DaemonContext daemonContext) throws Exception {
         final String[] arguments = daemonContext.getArguments();
         LOG.info("Starting TSOServer, args: {}", StringUtils.join(" ", Arrays.asList(arguments)));
-        tsoServer = TSOServer.getInitializedTsoServer(arguments);
-        if(tsoServer == null)
-            throw new RuntimeException("Configuration error");
+        TSOServerCommandLineConfig config = TSOServerCommandLineConfig.parseConfig(arguments);
+        tsoServer = TSOServer.getInitializedTsoServer(config);
     }
 
     @Override

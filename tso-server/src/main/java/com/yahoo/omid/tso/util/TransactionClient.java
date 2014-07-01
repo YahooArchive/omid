@@ -1,19 +1,3 @@
-/**
- * Copyright (c) 2011 Yahoo! Inc. All rights reserved. 
- * 
- * Licensed under the Apache License, Version 2.0 (the "License"); 
- * you may not use this file except in compliance with the License. 
- * You may obtain a copy of the License at 
- * 
- *     http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software 
- * distributed under the License is distributed on an "AS IS" BASIS, 
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
- * See the License for the specific language governing permissions and 
- * limitations under the License. See accompanying LICENSE file.
- */
-
 package com.yahoo.omid.tso.util;
 
 import java.util.ArrayList;
@@ -21,22 +5,21 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.BaseConfiguration;
+import org.apache.commons.configuration.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.client.HTable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Slf4jReporter;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.NullCommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
+import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
 import com.yahoo.omid.tso.util.ClientHandler.RowDistribution;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.Slf4jReporter;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Simple Transaction Client using Serialization
@@ -102,8 +85,10 @@ public class TransactionClient {
         for(int i = 0; i < config.nbClients; ++i) {
             CommitTable commitTable;
             if (config.isHBase()) {
+                HBaseCommitTableConfig hbaseCommitTableConfig = new HBaseCommitTableConfig();
+                hbaseCommitTableConfig.setTableName(config.getHBaseCommitTable());
                 commitTable = new HBaseCommitTable(HBaseConfiguration.create(),
-                                                   config.getHBaseCommitTable());
+                                                   hbaseCommitTableConfig);
             } else {
                 commitTable = new NullCommitTable();
             }

@@ -1,28 +1,24 @@
 package com.yahoo.omid.tso;
 
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-
 import static org.junit.Assert.assertTrue;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
-import com.google.common.collect.Lists;
-import com.yahoo.omid.tso.TimestampOracle.TimestampStorage;
-
 import org.jboss.netty.channel.Channel;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.MetricRegistry;
-
-import static org.mockito.Mockito.*;
-
-import org.mockito.ArgumentCaptor;
+import com.google.common.collect.Lists;
 
 public class TestRequestProcessor {
 
@@ -33,8 +29,10 @@ public class TestRequestProcessor {
     @Test(timeout=10000)
     public void testTimestamp() throws Exception {
         PersistenceProcessor persist = mock(PersistenceProcessor.class);
-        TimestampOracle timestampOracle = new TimestampOracle(metrics, new TimestampOracle.InMemoryTimestampStorage());
-        RequestProcessor proc = new RequestProcessorImpl(metrics, timestampOracle, persist, 1000);
+        TimestampOracleImpl timestampOracle = new TimestampOracleImpl(metrics, new TimestampOracleImpl.InMemoryTimestampStorage());
+        TSOServerConfig config = new TSOServerConfig();
+        config.setMaxItems(1000);
+        RequestProcessor proc = new RequestProcessorImpl(metrics, timestampOracle, persist, config);
 
         proc.timestampRequest(null);
         ArgumentCaptor<Long> firstTScapture = ArgumentCaptor.forClass(Long.class);
@@ -54,8 +52,10 @@ public class TestRequestProcessor {
         List<Long> rows = Lists.newArrayList(1L, 20L, 203L);
 
         PersistenceProcessor persist = mock(PersistenceProcessor.class);
-        TimestampOracle timestampOracle = new TimestampOracle(metrics, new TimestampOracle.InMemoryTimestampStorage());
-        RequestProcessor proc = new RequestProcessorImpl(metrics, timestampOracle, persist, 1000);
+        TimestampOracleImpl timestampOracle = new TimestampOracleImpl(metrics, new TimestampOracleImpl.InMemoryTimestampStorage());
+        TSOServerConfig config = new TSOServerConfig();
+        config.setMaxItems(1000);
+        RequestProcessor proc = new RequestProcessorImpl(metrics, timestampOracle, persist, config);
         proc.timestampRequest(null);
         ArgumentCaptor<Long> TScapture = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(1)).persistTimestamp(

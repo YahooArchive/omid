@@ -12,7 +12,6 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.client.HTable;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -89,8 +88,9 @@ public class TestHBaseTimestampStorage {
     public void testHBaseTimestampStorage() throws Exception {
 
         final long INITIAL_TS_VALUE = 0;
-        HTable table = new HTable(hbaseConf, TEST_TABLE);
-        HBaseTimestampStorage tsStorage = new HBaseTimestampStorage(table);
+        HBaseTimestampStorageConfig config = new HBaseTimestampStorageConfig();
+        config.setTableName(TEST_TABLE);
+        HBaseTimestampStorage tsStorage = new HBaseTimestampStorage(hbaseConf, config);
 
         // Test that the first time we get the timestamp is the initial value
         assertEquals("Initial value should be " + INITIAL_TS_VALUE, INITIAL_TS_VALUE, tsStorage.getMaxTimestamp());

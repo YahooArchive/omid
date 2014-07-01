@@ -2,12 +2,13 @@ package com.yahoo.omid.tso;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ExecutionException;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.client.HTable;
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFactory;
@@ -17,62 +18,45 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.common.util.concurrent.AbstractIdleService;
-import com.codahale.metrics.MetricRegistry;
-import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.committable.NullCommitTable;
-import com.yahoo.omid.committable.hbase.HBaseCommitTable;
-import com.yahoo.omid.metrics.MetricsUtils;
-import com.yahoo.omid.tso.TimestampOracle.TimestampStorage;
-import com.yahoo.omid.tso.hbase.HBaseTimestampStorage;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.google.inject.Module;
+import com.yahoo.omid.tso.hbase.HBaseStorageModule;
 
-import static com.yahoo.omid.tso.TimestampOracle.InMemoryTimestampStorage;
-
+@Singleton
 public class TSOServer extends AbstractIdleService {
 
     private static final Logger LOG = LoggerFactory.getLogger(TSOServer.class);
 
-    private final MetricRegistry metrics;
+    private final TSOServerCommandLineConfig config;
 
-    private final TimestampOracle timestampOracle;
+    private RequestProcessor requestProc;
 
-    private final TSOServerConfig config;
-    private final CommitTable commitTable;
-    
     private ChannelFactory factory;
     private ChannelGroup channelGroup;
 
-    public TSOServer(TSOServerConfig config, MetricRegistry metrics, CommitTable commitTable, TimestampOracle timestampOracle) {
+    @Inject
+    public TSOServer(TSOServerCommandLineConfig config, RequestProcessor requestProc) {
         this.config = config;
-        this.metrics = metrics;
-        this.timestampOracle = timestampOracle;
-        this.commitTable = commitTable;
+        this.requestProc = requestProc;
     }
 
-    static TSOServer getInitializedTsoServer(String[] args) throws IOException {
-        TSOServerConfig config = TSOServerConfig.parseConfig(args);
-
-        if (config.hasHelpFlag()) {
-            config.usage();
-            return null;
-        }
-
-        MetricRegistry metrics = MetricsUtils.initMetrics(config.getMetrics());
-
-        CommitTable commitTable;
-        TimestampStorage timestampStorage;
+    static TSOServer getInitializedTsoServer(TSOServerCommandLineConfig config) throws IOException {
+        // NOTE: The guice config is in here following the best practices in:
+        // https://code.google.com/p/google-guice/wiki/AvoidConditionalLogicInModules
+        // This is due to the fact that the target storage can be selected from the
+        // command line
+        List<Module> guiceModules = new ArrayList<Module>();
+        guiceModules.add(new TSOModule(config));
         if (config.isHBase()) {
-            Configuration hbaseConfig = HBaseConfiguration.create();
-            commitTable = new HBaseCommitTable(hbaseConfig , config.getHBaseCommitTable());
-            HTable timestampHTable = new HTable(hbaseConfig , config.getHBaseTimestampTable());
-            timestampStorage = new HBaseTimestampStorage(timestampHTable);
+            guiceModules.add(new HBaseStorageModule());
         } else {
-            commitTable = new NullCommitTable();
-            timestampStorage = new InMemoryTimestampStorage();
+            guiceModules.add(new InMemoryStorageModule());
         }
-        TimestampOracle timestampOracle = new TimestampOracle(metrics, timestampStorage);
-        return new TSOServer(config, metrics, commitTable, timestampOracle);
+        Injector injector = Guice.createInjector(guiceModules);
+        return injector.getInstance(TSOServer.class);
     }
 
     @Override
@@ -86,75 +70,63 @@ public class TSOServer extends AbstractIdleService {
     }
 
     public void startIt() {
-
-        // Disruptor setup
-        ReplyProcessor replyProc = new ReplyProcessorImpl(metrics);
-        RetryProcessor retryProc;
-        try {
-            retryProc = new RetryProcessorImpl(metrics, commitTable, replyProc);
-        } catch (ExecutionException ee) {
-            LOG.error("Can't build the retry processor", ee);
-            throw new IllegalStateException("Cannot run without a retry processor");
-        } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted creating retry processor");
-        }
-        PersistenceProcessor persistProc;
-        try {
-            persistProc = new PersistenceProcessorImpl(metrics, commitTable, replyProc, retryProc, 
-                    config.getMaxBatchSize());
-        } catch (ExecutionException ee) {
-            LOG.error("Can't build the persistence processor", ee);
-            throw new IllegalStateException("Cannot run without a persist processor");
-        } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted creating persist processor");
-        }
-        RequestProcessor reqProc = new RequestProcessorImpl(metrics, timestampOracle,
-                persistProc, config.getMaxItems());
-
         // Setup netty listener
-        factory = new NioServerSocketChannelFactory(
-                Executors.newCachedThreadPool(
-                        new ThreadFactoryBuilder().setNameFormat("boss-%d").build()),
-                Executors.newCachedThreadPool(
-                        new ThreadFactoryBuilder().setNameFormat("worker-%d").build()),
-                (Runtime.getRuntime().availableProcessors() * 2 + 1) * 2);
+        factory = new NioServerSocketChannelFactory(Executors.newCachedThreadPool(new ThreadFactoryBuilder()
+                .setNameFormat("boss-%d").build()), Executors.newCachedThreadPool(new ThreadFactoryBuilder()
+                .setNameFormat("worker-%d").build()), (Runtime.getRuntime().availableProcessors() * 2 + 1) * 2);
 
         // Create the global ChannelGroup
         channelGroup = new DefaultChannelGroup(TSOServer.class.getName());
 
-        final TSOHandler handler = new TSOHandler(channelGroup, reqProc);
+        final TSOHandler handler = new TSOHandler(channelGroup, requestProc);
 
         ServerBootstrap bootstrap = new ServerBootstrap(factory);
         bootstrap.setPipelineFactory(new TSOPipelineFactory(handler));
 
         // Add the parent channel to the group
-        LOG.info("TSO service binding to port {}", config.getPort());
         Channel channel = bootstrap.bind(new InetSocketAddress(config.getPort()));
         channelGroup.add(channel);
 
-        LOG.info("********** TSO Server initialized successfully **********");
-
-   }
+        LOG.info("********** TSO Server initialized on port {} **********", config.getPort());
+    }
 
     public void stopIt() {
         // Netty shutdown
-        channelGroup.close().awaitUninterruptibly();
-        factory.releaseExternalResources();
+        if(channelGroup != null) {
+            channelGroup.close().awaitUninterruptibly();
+        }
+        if(factory != null) {
+            factory.releaseExternalResources();
+        }
         LOG.info("********** TSO Server stopped successfully **********");
+    }
 
+    public void attachShutDownHook() {
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                stopAndWait();
+            }
+        });
+        LOG.info("Shutdown Hook Attached");
     }
 
     /**
      * This is where all starts on the server side
      */
     public static void main(String[] args) throws Exception {
-        
-        TSOServer tsoServer = getInitializedTsoServer(args);
-        if(tsoServer != null)
-            tsoServer.startAndWait();
+
+        TSOServerCommandLineConfig config = TSOServerCommandLineConfig.parseConfig(args);
+
+        if (config.hasHelpFlag()) {
+            config.usage();
+            System.exit(0);
+        }
+
+        TSOServer tsoServer = getInitializedTsoServer(config);
+        tsoServer.attachShutDownHook();
+        tsoServer.startAndWait();
 
     }
-    
+
 }

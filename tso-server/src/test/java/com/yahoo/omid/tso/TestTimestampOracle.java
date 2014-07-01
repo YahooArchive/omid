@@ -17,9 +17,9 @@ public class TestTimestampOracle {
 
     @Test
     public void testMonotonicTimestampGrowth() throws Exception {
-        TimestampOracle tso = new TimestampOracle(metrics, new TimestampOracle.InMemoryTimestampStorage());
+        TimestampOracleImpl tso = new TimestampOracleImpl(metrics, new TimestampOracleImpl.InMemoryTimestampStorage());
         long last = tso.next();
-        for (int i = 0; i < (3 * TimestampOracle.TIMESTAMP_BATCH); i++) {
+        for (int i = 0; i < (3 * TimestampOracleImpl.TIMESTAMP_BATCH); i++) {
             long current = tso.next();
             assertEquals("Not monotonic growth", last + 1, current);
             last = current;

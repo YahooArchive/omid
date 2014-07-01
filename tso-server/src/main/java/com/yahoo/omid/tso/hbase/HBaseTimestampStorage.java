@@ -4,6 +4,9 @@ import static com.google.common.base.Charsets.UTF_8;
 
 import java.io.IOException;
 
+import javax.inject.Inject;
+
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
@@ -12,7 +15,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.yahoo.omid.tso.TimestampOracle.TimestampStorage;
+import com.yahoo.omid.tso.TimestampOracleImpl.TimestampStorage;
 
 public class HBaseTimestampStorage implements TimestampStorage {
 
@@ -25,10 +28,14 @@ public class HBaseTimestampStorage implements TimestampStorage {
     static final byte[] TSO_FAMILY = "MAX_TIMESTAMP_F".getBytes(UTF_8);
     static final byte[] TSO_QUALIFIER = "MAX_TIMESTAMP_Q".getBytes(UTF_8);
 
+    public static final String HBASE_TIMESTAMPSTORAGE_TABLE_NAME_KEY = "hbase.timestampstorage.tablename";
+
     private final HTable table;
 
-    public HBaseTimestampStorage(HTable table) {
-        this.table = table;
+    @Inject
+    public HBaseTimestampStorage(Configuration hbaseConfig, HBaseTimestampStorageConfig config)
+    throws IOException {
+        this.table = new HTable(hbaseConfig, config.getTableName());
     }
 
     @Override

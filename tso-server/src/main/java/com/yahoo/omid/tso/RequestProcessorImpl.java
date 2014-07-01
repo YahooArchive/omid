@@ -3,23 +3,31 @@ package com.yahoo.omid.tso;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import javax.inject.Inject;
 
 import org.jboss.netty.channel.Channel;
-
-import com.codahale.metrics.MetricRegistry;
-import com.lmax.disruptor.*;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.codahale.metrics.MetricRegistry;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.lmax.disruptor.BatchEventProcessor;
+import com.lmax.disruptor.BusySpinWaitStrategy;
+import com.lmax.disruptor.EventFactory;
+import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.SequenceBarrier;
 
 class RequestProcessorImpl
     implements EventHandler<RequestProcessorImpl.RequestEvent>, RequestProcessor
 {
     private static final Logger LOG = LoggerFactory.getLogger(RequestProcessorImpl.class);
+
+    static final int DEFAULT_MAX_ITEMS = 1000000;
+    static final String TSO_MAX_ITEMS_KEY = "tso.maxitems";
 
     private final TimestampOracle timestampOracle;
     public final CommitHashMap hashmap;
@@ -27,14 +35,19 @@ class RequestProcessorImpl
     private final RingBuffer<RequestEvent> requestRing;
     private long lowWatermark;
 
-    RequestProcessorImpl(MetricRegistry metrics, TimestampOracle timestampOracle,
-                         PersistenceProcessor persistProc, int conflictMapSize) {
+    @Inject
+    RequestProcessorImpl(MetricRegistry metrics,
+                         TimestampOracle timestampOracle,
+                         PersistenceProcessor persistProc,
+                         TSOServerConfig config)
+    {
+
         this.persistProc = persistProc;
         this.timestampOracle = timestampOracle;
         this.lowWatermark = timestampOracle.getLast();
         persistProc.persistLowWatermark(lowWatermark);
 
-        this.hashmap = new CommitHashMap(conflictMapSize, lowWatermark);
+        this.hashmap = new CommitHashMap(config.getMaxItems(), lowWatermark);
 
         // Set up the disruptor thread
         requestRing = RingBuffer.<RequestEvent>createMultiProducer(RequestEvent.EVENT_FACTORY, 1<<12,
