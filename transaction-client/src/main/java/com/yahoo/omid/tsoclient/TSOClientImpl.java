@@ -20,6 +20,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.proto.TSOProto;
 import com.yahoo.omid.util.StateMachine.*;
+
 import org.apache.commons.configuration.Configuration;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.*;
@@ -225,24 +226,12 @@ class TSOClientImpl extends TSOClient {
     }
 
     private class DisconnectedState extends BaseState {
-        final int retries;
-
-        DisconnectedState(int retries) {
-            this.retries = retries;
-        }
-
         DisconnectedState() {
-            this.retries = requestMaxRetries;
         }
 
         @Override
         public State handleEvent(final Fsm fsm, Event e) {
             if (e instanceof RequestEvent) {
-                if (retries == 0) {
-                    LOG.error("Unable to connect after {} retries", requestMaxRetries);
-                    ((UserEvent) e).error(new ConnectionException());
-                    return this;
-                }
                 fsm.deferUserEvent((UserEvent) e);
 
                 bootstrap.connect(getAddress()).addListener(new ChannelFutureListener() {
@@ -253,7 +242,7 @@ class TSOClientImpl extends TSOClient {
                         }
                     }
                 });
-                return new ConnectingState(retries - 1);
+                return new ConnectingState();
             } else if (e instanceof CloseEvent) {
                 factory.releaseExternalResources();
                 ((CloseEvent) e).success(null);
@@ -266,11 +255,6 @@ class TSOClientImpl extends TSOClient {
     }
 
     private class ConnectingState extends BaseState {
-        final int retries;
-
-        ConnectingState(int retries) {
-            this.retries = retries;
-        }
 
         @Override
         public State handleEvent(Fsm fsm, Event e) {
@@ -282,7 +266,7 @@ class TSOClientImpl extends TSOClient {
                 return new ConnectedState(ce.getParam());
             } else if (e instanceof ErrorEvent) {
                 LOG.error("Error connecting", ((ErrorEvent) e).getParam());
-                return new DisconnectedState(retries);
+                return new DisconnectedState();
             } else {
                 return super.handleEvent(fsm, e);
             }
@@ -400,8 +384,11 @@ class TSOClientImpl extends TSOClient {
             while (timestampRequests.size() > 0) {
                 queueRetryOrError(fsm, timestampRequests.remove());
             }
-            for (long l : commitRequests.keySet()) {
-                queueRetryOrError(fsm, commitRequests.remove(l));
+            Iterator<Map.Entry<Long, RequestEvent>> iter = commitRequests.entrySet().iterator();
+            while (iter.hasNext()) {
+                RequestEvent e = iter.next().getValue();
+                queueRetryOrError(fsm, e);
+                iter.remove();
             }
             channel.close();
         }
