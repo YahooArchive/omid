@@ -12,7 +12,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -57,14 +56,14 @@ public class TestShadowCells extends OmidTestBase {
         put.add(family, qualifier, data1);
         table.put(t1, put);
         assertTrue("Cell should be there",
-                hasCell(table, row, family, qualifier, t1.getStartTimestamp()));
+                HBaseUtils.hasCell(table, row, family, qualifier, t1.getStartTimestamp()));
         assertFalse("Shadow cell shouldn't be there",
-                hasShadowCell(table, row, family, qualifier, t1.getStartTimestamp()));
+                HBaseUtils.hasShadowCell(table, row, family, qualifier, t1.getStartTimestamp()));
         tm.commit(t1);
         assertTrue("Cell should be there",
-                hasCell(table, row, family, qualifier, t1.getStartTimestamp()));
+                HBaseUtils.hasCell(table, row, family, qualifier, t1.getStartTimestamp()));
         assertTrue("Shadow cell should be there",
-                hasShadowCell(table, row, family, qualifier, t1.getStartTimestamp()));
+                HBaseUtils.hasShadowCell(table, row, family, qualifier, t1.getStartTimestamp()));
 
         // Test that we can make a valid read after adding a shadow cell without hitting the commit table
         CommitTable.Client commitTableClient = spy(getTSO().getCommitTable().getClient().get());
@@ -112,9 +111,9 @@ public class TestShadowCells extends OmidTestBase {
         }
 
         assertTrue("Cell should be there",
-                hasCell(table, row, family, qualifier, t1.getStartTimestamp()));
+                HBaseUtils.hasCell(table, row, family, qualifier, t1.getStartTimestamp()));
         assertFalse("Shadow cell should not be there",
-                hasShadowCell(table, row, family, qualifier, t1.getStartTimestamp()));
+                HBaseUtils.hasShadowCell(table, row, family, qualifier, t1.getStartTimestamp()));
 
         Transaction t2 = tm.begin();
         Get get = new Get(row);
@@ -153,9 +152,9 @@ public class TestShadowCells extends OmidTestBase {
         }
 
         assertTrue("Cell should be there",
-                hasCell(table, row, family, qualifier, t1.getStartTimestamp()));
+                HBaseUtils.hasCell(table, row, family, qualifier, t1.getStartTimestamp()));
         assertFalse("Shadow cell should not be there",
-                hasShadowCell(table, row, family, qualifier, t1.getStartTimestamp()));
+                HBaseUtils.hasShadowCell(table, row, family, qualifier, t1.getStartTimestamp()));
 
         Transaction t2 = tm.begin();
         Get get = new Get(row);
@@ -175,9 +174,9 @@ public class TestShadowCells extends OmidTestBase {
         }).get();
 
         assertTrue("Cell should be there",
-                hasCell(table, row, family, qualifier, t1.getStartTimestamp()));
+                HBaseUtils.hasCell(table, row, family, qualifier, t1.getStartTimestamp()));
         assertTrue("Shadow cell should be there after being healed",
-                hasShadowCell(table, row, family, qualifier, t1.getStartTimestamp()));
+                HBaseUtils.hasShadowCell(table, row, family, qualifier, t1.getStartTimestamp()));
 
         // As the shadow cell is healed, this get shouldn't have to hit the storage,
         // so the number of invocations to commitTableClient.getCommitTimestamp()
@@ -237,7 +236,7 @@ public class TestShadowCells extends OmidTestBase {
                             any(HBaseTransaction.class), anyInt());
 
                     TransactionManager tm = newTransactionManager();
-                    if (hasShadowCell(table, row, family, qualifier, t1.getStartTimestamp())) {
+                    if (HBaseUtils.hasShadowCell(table, row, family, qualifier, t1.getStartTimestamp())) {
                         readFailed.set(true);
                     }
 
@@ -248,7 +247,7 @@ public class TestShadowCells extends OmidTestBase {
                     Result getResult = table.get(t, get);
                     KeyValue kv = getResult.getColumnLatest(family, qualifier);
                     if (!Arrays.equals(data1, kv.getValue())
-                            || !hasShadowCell(table, row, family, qualifier, kv.getTimestamp())) {
+                            || !HBaseUtils.hasShadowCell(table, row, family, qualifier, kv.getTimestamp())) {
                         readFailed.set(true);
                     } else {
                         LOG.info("Read succeeded");
@@ -273,24 +272,4 @@ public class TestShadowCells extends OmidTestBase {
 
     }
 
-    public static boolean hasCell(TTable table, byte[] row, byte[] family, byte[] qualifier, long version)
-            throws IOException {
-        Get get = new Get(row);
-        get.addColumn(family, qualifier);
-        get.setTimeStamp(version);
-
-        Result result = table.getHTable().get(get);
-        return result.containsColumn(family, qualifier);
-    }
-
-    public static boolean hasShadowCell(TTable table, byte[] row, byte[] family, byte[] qualifier, long version)
-            throws IOException {
-        Get get = new Get(row);
-        byte[] sc = HBaseTransactionManager.addShadowCellSuffix(qualifier);
-        get.addColumn(family, sc);
-        get.setTimeStamp(version);
-
-        Result result = table.getHTable().get(get);
-        return result.containsColumn(family, sc);
-    }
 }

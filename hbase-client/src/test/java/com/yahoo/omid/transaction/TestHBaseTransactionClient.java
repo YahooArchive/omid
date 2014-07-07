@@ -76,10 +76,10 @@ public class TestHBaseTransactionClient extends OmidTestBase {
         }
 
         assertTrue("Cell should be there",
-                TestShadowCells.hasCell(table, row1, family, qualifier, t1.getStartTimestamp()));
+                HBaseUtils.hasCell(table, row1, family, qualifier, t1.getStartTimestamp()));
         assertFalse("Shadow cell should not be there",
-                TestShadowCells.hasShadowCell(table, row1, family,
-                        qualifier, t1.getStartTimestamp()));
+                HBaseUtils.hasShadowCell(table, row1, family,
+                                              qualifier, t1.getStartTimestamp()));
 
         HTable htable = new HTable(hbaseConf, TEST_TABLE);
         HBaseCellId hBaseCellId = new HBaseCellId(htable, row1, family, qualifier, t1.getStartTimestamp());

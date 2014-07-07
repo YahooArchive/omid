@@ -59,7 +59,6 @@ public class TestCompaction {
     private final byte[] qual = Bytes.toBytes(TEST_QUALIFIER);
     private final byte[] data = Bytes.toBytes("testWrite-1");
 
-    private static final int BUCKET_SIZE = 32;
     private static final int MAX_VERSIONS = 3;
 
     private Random randomGenerator;
@@ -249,9 +248,9 @@ public class TestCompaction {
         }
 
         assertTrue("Cell should be there",
-                TestShadowCells.hasCell(txTable, Bytes.toBytes(row), fam, qual, problematicTx.getStartTimestamp()));
+                HBaseUtils.hasCell(txTable, Bytes.toBytes(row), fam, qual, problematicTx.getStartTimestamp()));
         assertFalse("Shadow cell should not be there",
-                TestShadowCells.hasShadowCell(txTable, Bytes.toBytes(row), fam, qual, problematicTx.getStartTimestamp()));
+                HBaseUtils.hasShadowCell(txTable, Bytes.toBytes(row), fam, qual, problematicTx.getStartTimestamp()));
 
         // Return a LWM that triggers compaction and has all the possible start timestamps below it
         LOG.info("Regions in table {}: {}", TEST_TABLE, hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).size());
@@ -274,9 +273,9 @@ public class TestCompaction {
         LOG.info("Waking up after 3 secs");
 
         assertTrue("Cell should be there",
-                TestShadowCells.hasCell(txTable, Bytes.toBytes(row), fam, qual, problematicTx.getStartTimestamp()));
+                HBaseUtils.hasCell(txTable, Bytes.toBytes(row), fam, qual, problematicTx.getStartTimestamp()));
         assertTrue("Shadow cell should be there",
-                TestShadowCells.hasShadowCell(txTable, Bytes.toBytes(row), fam, qual, problematicTx.getStartTimestamp()));
+                HBaseUtils.hasShadowCell(txTable, Bytes.toBytes(row), fam, qual, problematicTx.getStartTimestamp()));
     }
 
     @Test
@@ -290,11 +289,11 @@ public class TestCompaction {
         put.add(fam, qual, data);
         txTable.put(neverendingTxBelowLowWatermark, put);
         assertTrue("Cell should be there",
-                TestShadowCells.hasCell(txTable, Bytes.toBytes(rowId), fam, qual,
+                HBaseUtils.hasCell(txTable, Bytes.toBytes(rowId), fam, qual,
                         neverendingTxBelowLowWatermark.getStartTimestamp()));
         assertFalse(
                 "Shadow cell should not be there",
-                TestShadowCells.hasShadowCell(txTable, Bytes.toBytes(rowId), fam, qual,
+                HBaseUtils.hasShadowCell(txTable, Bytes.toBytes(rowId), fam, qual,
                         neverendingTxBelowLowWatermark.getStartTimestamp()));
 
         // The KV in this transaction should be added without the shadow cells
@@ -305,11 +304,11 @@ public class TestCompaction {
         txTable.put(neverendingTxAboveLowWatermark, put);
         assertTrue(
                 "Cell should be there",
-                TestShadowCells.hasCell(txTable, Bytes.toBytes(rowId), fam, qual,
+                HBaseUtils.hasCell(txTable, Bytes.toBytes(rowId), fam, qual,
                         neverendingTxAboveLowWatermark.getStartTimestamp()));
         assertFalse(
                 "Shadow cell should not be there",
-                TestShadowCells.hasShadowCell(txTable, Bytes.toBytes(rowId), fam, qual,
+                HBaseUtils.hasShadowCell(txTable, Bytes.toBytes(rowId), fam, qual,
                         neverendingTxAboveLowWatermark.getStartTimestamp()));
 
         assertEquals("Rows in table before flushing should be 2", 2, rowCount(table, fam));
@@ -348,9 +347,9 @@ public class TestCompaction {
         put.add(fam, qual, data);
         txTable.put(neverendingTx, put);
         assertTrue("Cell should be there",
-                TestShadowCells.hasCell(txTable, Bytes.toBytes(rowId), fam, qual, neverendingTx.getStartTimestamp()));
+                HBaseUtils.hasCell(txTable, Bytes.toBytes(rowId), fam, qual, neverendingTx.getStartTimestamp()));
         assertFalse("Shadow cell should not be there",
-                TestShadowCells.hasShadowCell(txTable, Bytes.toBytes(rowId), fam, qual,
+                HBaseUtils.hasShadowCell(txTable, Bytes.toBytes(rowId), fam, qual,
                         neverendingTx.getStartTimestamp()));
 
         assertEquals("There should be only one rows in table before flushing", 1, rowCount(table, fam));

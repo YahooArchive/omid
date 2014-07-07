@@ -6,6 +6,9 @@ import com.google.common.collect.Maps;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
+import com.yahoo.omid.transaction.AbstractTransaction;
+import com.yahoo.omid.transaction.AbstractTransactionManager;
+import com.yahoo.omid.transaction.TransactionManagerException;
 import com.yahoo.omid.tsoclient.CellId;
 import com.yahoo.omid.tsoclient.TSOClient;
 import org.apache.hadoop.conf.Configuration;
@@ -123,7 +126,9 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
         // Add shadow cells
         for (HBaseCellId cell : cells) {
             Put put = new Put(cell.getRow());
-            put.add(cell.getFamily(), addShadowCellSuffix(cell.getQualifier()), transaction.getStartTimestamp(),
+            put.add(cell.getFamily(),
+                    HBaseUtils.addShadowCellSuffix(cell.getQualifier()),
+                    transaction.getStartTimestamp(),
                     Bytes.toBytes(transaction.getCommitTimestamp()));
             try {
                 cell.getTable().put(put);
@@ -180,27 +185,6 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
         }
     }
 
-    /**
-     * Utility method that allows to add the shadow cell suffix to an HBase column qualifier.
-     *
-     * @param qualifier the qualifier to add the suffix to.
-     * @return the suffixed qualifier
-     */
-    public static byte[] addShadowCellSuffix(byte[] qualifier) {
-        return com.google.common.primitives.Bytes.concat(qualifier, SHADOW_CELL_SUFFIX);
-    }
-
-    /**
-     * Utility method that allows know if a qualifier is a shadow cell column qualifier.
-     *
-     * @param qualifier the qualifier to learn whether is a shadow cell or not.
-     * @return whether the qualifier passed is a shadow cell or not
-     */
-    public static boolean isShadowCell(byte[] qualifier) {
-        int index = com.google.common.primitives.Bytes.indexOf(qualifier, SHADOW_CELL_SUFFIX);
-        return index >= 0 && index == (qualifier.length - SHADOW_CELL_SUFFIX.length);
-    }
-
     // ****************************************************************************************************************
     // Helper methods
     // ****************************************************************************************************************
@@ -254,7 +238,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
 
             Get get = new Get(hBaseCellId.getRow());
             byte[] family = hBaseCellId.getFamily();
-            byte[] shadowCellQualifier = HBaseTransactionManager.addShadowCellSuffix(hBaseCellId.getQualifier());
+            byte[] shadowCellQualifier = HBaseUtils.addShadowCellSuffix(hBaseCellId.getQualifier());
             get.addColumn(family, shadowCellQualifier);
             get.setMaxVersions(1);
             get.setTimeStamp(startTimestamp);

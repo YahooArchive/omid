@@ -12,9 +12,7 @@ import java.util.concurrent.ExecutionException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
 import org.apache.hadoop.hbase.coprocessor.ObserverContext;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
@@ -189,7 +187,7 @@ public class OmidCompactor extends BaseRegionObserver {
                         if (commitTimestamp.isPresent()) {
                             // Build the missing shadow cell...
                             byte[] shadowCellQualifier =
-                                    HBaseTransactionManager.addShadowCellSuffix(kv.getQualifier());
+                                    HBaseUtils.addShadowCellSuffix(kv.getQualifier());
                             KeyValue shadowCell = new KeyValue(kv.getRow(),
                                                                kv.getFamily(),
                                                                shadowCellQualifier,
@@ -201,7 +199,7 @@ public class OmidCompactor extends BaseRegionObserver {
                         } else {
                             // The shadow cell could have been added in the time period
                             // after the scanner had been created, so we check it
-                            if (hasShadowCell(kv, table)) {
+                            if (HBaseUtils.hasShadowCell(table, kv)) {
                                 LOG.trace("Retaining cell {} without its recently found shadow cell", kv);
                                 currentRowWorthValues.add(kv);
                             } else {
@@ -267,7 +265,7 @@ public class OmidCompactor extends BaseRegionObserver {
 
             Map<KeyValueId, KeyValue> kvsTokv = new HashMap<KeyValueId, KeyValue>();
             for (KeyValue kv : result) {
-                if (!HBaseTransactionManager.isShadowCell(kv.getQualifier())) {
+                if (!HBaseUtils.isShadowCell(kv.getQualifier())) {
                     KeyValueId key = new KeyValueId(kv.getRow(),
                                                     kv.getFamily(),
                                                     kv.getQualifier(),
@@ -280,7 +278,7 @@ public class OmidCompactor extends BaseRegionObserver {
                     kvToShadowCellMap.put(kv, Optional.<KeyValue> absent());
                     kvsTokv.put(key, kv);
                 } else {
-                    byte[] originalQualifier = removeShadowCellSuffix(kv.getQualifier());
+                    byte[] originalQualifier = HBaseUtils.removeShadowCellSuffix(kv.getQualifier());
                     KeyValueId key = new KeyValueId(kv.getRow(),
                                                     kv.getFamily(),
                                                     originalQualifier,
@@ -296,28 +294,6 @@ public class OmidCompactor extends BaseRegionObserver {
             }
 
             return kvToShadowCellMap;
-        }
-
-        private static byte[] removeShadowCellSuffix(byte[] qualifier) throws IOException {
-
-            int shadowCellSuffixIdx = com.google.common.primitives.Bytes.indexOf(qualifier,
-                    HBaseTransactionManager.SHADOW_CELL_SUFFIX);
-            if (shadowCellSuffixIdx < 0) {
-                throw new IOException("Can not get qualifier from shadow cell");
-            }
-            return Arrays.copyOfRange(qualifier, 0, shadowCellSuffixIdx);
-        }
-
-        public static boolean hasShadowCell(KeyValue kv, HTableInterface table)
-                throws IOException {
-
-            Get get = new Get(kv.getRow());
-            byte[] sc = HBaseTransactionManager.addShadowCellSuffix(kv.getQualifier());
-            get.addColumn(kv.getFamily(), sc);
-            get.setTimeStamp(kv.getTimestamp());
-
-            Result result = table.get(get);
-            return result.containsColumn(kv.getFamily(), sc);
         }
 
         private static class KeyValueId {

@@ -74,7 +74,7 @@ public class TTable {
         public void run() {
             Put put = new Put(kv.getRow());
             byte[] family = kv.getFamily();
-            byte[] shadowCellQualifier = HBaseTransactionManager.addShadowCellSuffix(kv.getQualifier());
+            byte[] shadowCellQualifier = HBaseUtils.addShadowCellSuffix(kv.getQualifier());
             put.add(family, shadowCellQualifier, kv.getTimestamp(), Bytes.toBytes(commitTimestamp));
             try {
                 healerTable.put(put);
@@ -133,7 +133,7 @@ public class TTable {
             } else {
                 for (byte[] qualifier : qualifiers) {
                     tsget.addColumn(family, qualifier);
-                    tsget.addColumn(family, HBaseTransactionManager.addShadowCellSuffix(qualifier));
+                    tsget.addColumn(family, HBaseUtils.addShadowCellSuffix(qualifier));
                 }
             }
         }
@@ -259,7 +259,7 @@ public class TTable {
                 continue;
             }
             for (byte[] qualifier : qualifiers) {
-                tsscan.addColumn(family, HBaseTransactionManager.addShadowCellSuffix(qualifier));
+                tsscan.addColumn(family, HBaseUtils.addShadowCellSuffix(qualifier));
             }
         }
         TransactionalClientScanner scanner = new TransactionalClientScanner(transaction,
@@ -298,7 +298,7 @@ public class TTable {
 
         public IterableColumn(List<KeyValue> keyValues) {
             for (KeyValue kv : keyValues) {
-                if (HBaseTransactionManager.isShadowCell(kv.getQualifier())) {
+                if (HBaseUtils.isShadowCell(kv.getQualifier())) {
                     continue;
                 }
                 ColumnWrapper currentColumn = new ColumnWrapper(kv.getFamily(), kv.getQualifier());
@@ -391,7 +391,7 @@ public class TTable {
         Map<Long, Long> commitCache = new HashMap<Long, Long>();
 
         for (KeyValue kv : rawKeyValues) {
-            if (HBaseTransactionManager.isShadowCell(kv.getQualifier())) {
+            if (HBaseUtils.isShadowCell(kv.getQualifier())) {
                 commitCache.put(kv.getTimestamp(), Bytes.toLong(kv.getValue()));
             }
         }
@@ -425,7 +425,7 @@ public class TTable {
 
         Get pendingGet = new Get(kv.getRow());
         pendingGet.addColumn(kv.getFamily(), kv.getQualifier());
-        pendingGet.addColumn(kv.getFamily(), HBaseTransactionManager.addShadowCellSuffix(kv.getQualifier()));
+        pendingGet.addColumn(kv.getFamily(), HBaseUtils.addShadowCellSuffix(kv.getQualifier()));
         pendingGet.setMaxVersions(versionCount);
         pendingGet.setTimeRange(0, kv.getTimestamp());
 
