@@ -10,6 +10,7 @@ import com.google.inject.Provides;
 import com.google.inject.name.Names;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.InMemoryCommitTable;
+import com.yahoo.omid.tso.DisruptorModule;
 import com.yahoo.omid.tso.TimestampOracleImpl.InMemoryTimestampStorage;
 import com.yahoo.omid.tso.TimestampOracleImpl.TimestampStorage;
 
@@ -32,10 +33,7 @@ public class TSOMockModule extends AbstractModule {
         // Disruptor setup
         // Overwrite default value
         bindConstant().annotatedWith(Names.named(TSO_MAX_ITEMS_KEY)).to(config.getMaxItems());
-        bind(RequestProcessor.class).to(RequestProcessorImpl.class).in(Singleton.class);
-        bind(PersistenceProcessor.class).to(PersistenceProcessorImpl.class).in(Singleton.class);
-        bind(ReplyProcessor.class).to(ReplyProcessorImpl.class).in(Singleton.class);
-        bind(RetryProcessor.class).to(RetryProcessorImpl.class).in(Singleton.class);
+        install(new DisruptorModule());
 
     }
 
