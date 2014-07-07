@@ -54,12 +54,17 @@ public class TestCompaction {
     private static final String TEST_FAMILY = "test-fam";
     private static final String TEST_QUALIFIER = "test-qual";
 
+    private final byte[] table = Bytes.toBytes(TEST_TABLE);
     private final byte[] fam = Bytes.toBytes(TEST_FAMILY);
     private final byte[] qual = Bytes.toBytes(TEST_QUALIFIER);
     private final byte[] data = Bytes.toBytes("testWrite-1");
 
     private static final int BUCKET_SIZE = 32;
     private static final int MAX_VERSIONS = 3;
+
+    private Random randomGenerator;
+    private AbstractTransactionManager tm;
+    private TTable txTable;
 
     private static Injector injector;
 
@@ -148,12 +153,17 @@ public class TestCompaction {
     public void setupTestCompactionIndividualTest() throws Exception {
         createTableIfNotExists(TEST_TABLE, Bytes.toBytes(TEST_FAMILY));
         enableTableIfDisabled(TEST_TABLE);
+        randomGenerator = new Random(0xfeedcafeL);
+        tm = spy((AbstractTransactionManager) newTransactionManager());
+        txTable = new TTable(hbaseConf, TEST_TABLE);
     }
 
     @After
     public void cleanupTestCompactionIndividualTest() throws Exception {
         admin.disableTable(TEST_TABLE);
         admin.deleteTable(TEST_TABLE);
+        txTable.close();
+        tm.close();
     }
 
     private static TransactionManager newTransactionManager() throws Exception {
@@ -174,15 +184,55 @@ public class TestCompaction {
     }
 
     @Test
-    public void testShadowCellIsHealedAfterCompaction() throws Exception {
+    public void testStandardTXsWithShadowCellsAndWithSTBelowAndAboveLWMArePresevedAfterCompaction() throws Throwable {
 
-        Random randomGenerator = new Random(0xfeedcafeL);
+        final int ROWS_TO_ADD = 5;
 
-        AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager());
+        long rowId = 0L;
+        Transaction tx;
+        Put put;
+        long fakeAssignedLowWatermark = 0L;
+        for (int i = 0; i < ROWS_TO_ADD; ++i) {
+            rowId = randomGenerator.nextLong();
+            tx = tm.begin();
+            if (i == (ROWS_TO_ADD / 2)) {
+                fakeAssignedLowWatermark = tx.getTransactionId();
+                LOG.info("AssignedLowWatermark " + fakeAssignedLowWatermark);
+            }
+            put = new Put(Bytes.toBytes(rowId));
+            put.add(fam, qual, data);
+            txTable.put(tx, put);
+            tm.commit(tx);
+        }
+
+        LOG.info("Flushing table {}", TEST_TABLE);
+        admin.flush(TEST_TABLE);
+
+        // Return a LWM that triggers compaction & stays between 1 and the max start timestamp assigned to previous TXs
+        LOG.info("Regions in table {}: {}", TEST_TABLE, hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).size());
+        OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).get(0)
+                .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
+        CommitTable.Client commitTableClient = spy(omidCompactor.commitTableClient);
+        SettableFuture<Long> f = SettableFuture.<Long> create();
+        f.set(fakeAssignedLowWatermark);
+        doReturn(f).when(commitTableClient).readLowWatermark();
+        omidCompactor.commitTableClient = commitTableClient;
+        LOG.info("Compacting table {}", TEST_TABLE);
+        admin.majorCompact(TEST_TABLE);
+
+        LOG.info("Sleeping for 3 secs");
+        Thread.currentThread().sleep(3000);
+        LOG.info("Waking up after 3 secs");
+
+        // No rows should have been discarded after compacting
+        assertEquals("Rows in table after compacting should be " + ROWS_TO_ADD, ROWS_TO_ADD, rowCount(table, fam));
+    }
+
+    @Test
+    public void testTXWithoutShadowCellsAndWithSTBelowLWMGetsShadowCellHealedAfterCompaction() throws Exception {
+
         // The following line emulates a crash after commit that is observed in (*) below
         doThrow(new RuntimeException()).when(tm).updateShadowCells(any(HBaseTransaction.class));
-
-        TTable table = new TTable(hbaseConf, TEST_TABLE);
 
         HBaseTransaction problematicTx = (HBaseTransaction) tm.begin();
 
@@ -191,7 +241,7 @@ public class TestCompaction {
         // Test shadow cell are created properly
         Put put = new Put(Bytes.toBytes(row));
         put.add(fam, qual, data);
-        table.put(problematicTx, put);
+        txTable.put(problematicTx, put);
         try {
             tm.commit(problematicTx);
         } catch (Exception e) { // (*) Crash
@@ -199,17 +249,17 @@ public class TestCompaction {
         }
 
         assertTrue("Cell should be there",
-                TestShadowCells.hasCell(table, Bytes.toBytes(row), fam, qual, problematicTx.getStartTimestamp()));
+                TestShadowCells.hasCell(txTable, Bytes.toBytes(row), fam, qual, problematicTx.getStartTimestamp()));
         assertFalse("Shadow cell should not be there",
-                TestShadowCells.hasShadowCell(table, Bytes.toBytes(row), fam, qual, problematicTx.getStartTimestamp()));
+                TestShadowCells.hasShadowCell(txTable, Bytes.toBytes(row), fam, qual, problematicTx.getStartTimestamp()));
 
-        // Return a LWM that triggers compaction
+        // Return a LWM that triggers compaction and has all the possible start timestamps below it
         LOG.info("Regions in table {}: {}", TEST_TABLE, hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).size());
         OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).get(0)
                 .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
         CommitTable.Client commitTableClient = spy(omidCompactor.commitTableClient);
         SettableFuture<Long> f = SettableFuture.<Long> create();
-        f.set(10L);
+        f.set(Long.MAX_VALUE);
         doReturn(f).when(commitTableClient).readLowWatermark();
         omidCompactor.commitTableClient = commitTableClient;
 
@@ -219,153 +269,94 @@ public class TestCompaction {
         LOG.info("Compacting table {}", TEST_TABLE);
         admin.majorCompact(TEST_TABLE);
 
-        LOG.info("Sleeping for 10 secs");
-        Thread.currentThread().sleep(10000);
-        LOG.info("Waking up after 10 secs");
+        LOG.info("Sleeping for 3 secs");
+        Thread.currentThread().sleep(3000);
+        LOG.info("Waking up after 3 secs");
 
         assertTrue("Cell should be there",
-                TestShadowCells.hasCell(table, Bytes.toBytes(row), fam, qual, problematicTx.getStartTimestamp()));
+                TestShadowCells.hasCell(txTable, Bytes.toBytes(row), fam, qual, problematicTx.getStartTimestamp()));
         assertTrue("Shadow cell should be there",
-                TestShadowCells.hasShadowCell(table, Bytes.toBytes(row), fam, qual, problematicTx.getStartTimestamp()));
+                TestShadowCells.hasShadowCell(txTable, Bytes.toBytes(row), fam, qual, problematicTx.getStartTimestamp()));
     }
 
     @Test
-    public void testCompactionCoprocessorBasics() throws Throwable {
-
-        byte[] tableName = Bytes.toBytes(TEST_TABLE);
-
-        Random randomGenerator = new Random(0xfeedcafeL);
-
-        byte[] fam = Bytes.toBytes(TEST_FAMILY);
-        byte[] col = Bytes.toBytes("testdata");
-        byte[] data1 = Bytes.toBytes("testWrite-1");
-
-        AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager());
-        TTable tt = new TTable(hbaseConf, TEST_TABLE);
-
-        Put put;
-        long rowId = 0L;
-
-        // The KV in this transaction should find the shadow cells in the commit table
-        HBaseTransaction problematicTx = (HBaseTransaction) tm.begin();
-        // The following line emulates a crash after commit that is observed in (*) below
-        doThrow(new RuntimeException()).when(tm).updateShadowCells(problematicTx);
-        rowId = randomGenerator.nextLong();
-        put = new Put(Bytes.toBytes(rowId));
-        put.add(fam, col, data1);
-        // put.add(fam, col2, data1);
-        tt.put(problematicTx, put);
-        try {
-            tm.commit(problematicTx);
-        } catch (Exception e) { // (*) crash
-            // Do nothing
-        }
-
-        assertTrue("Cell should be there",
-                TestShadowCells.hasCell(tt, Bytes.toBytes(rowId), fam, col, problematicTx.getStartTimestamp()));
-        assertFalse("Shadow cell should not be there",
-                TestShadowCells.hasShadowCell(tt, Bytes.toBytes(rowId), fam, col, problematicTx.getStartTimestamp()));
+    public void testNeverendingTXsWithSTBelowAndAboveLWMAreDiscardedAndPreservedRespectivelyAfterCompaction()
+            throws Throwable {
 
         // The KV in this transaction should be discarded
-        HBaseTransaction neverendingTx = (HBaseTransaction) tm.begin();
-        rowId = randomGenerator.nextLong();
-        put = new Put(Bytes.toBytes(rowId));
-        put.add(fam, col, data1);
-        tt.put(neverendingTx, put);
+        HBaseTransaction neverendingTxBelowLowWatermark = (HBaseTransaction) tm.begin();
+        long rowId = randomGenerator.nextLong();
+        Put put = new Put(Bytes.toBytes(rowId));
+        put.add(fam, qual, data);
+        txTable.put(neverendingTxBelowLowWatermark, put);
         assertTrue("Cell should be there",
-                TestShadowCells.hasCell(tt, Bytes.toBytes(rowId), fam, col, neverendingTx.getStartTimestamp()));
-        assertFalse("Shadow cell should not be there",
-                TestShadowCells.hasShadowCell(tt, Bytes.toBytes(rowId), fam, col, neverendingTx.getStartTimestamp()));
-
-        Transaction tx;
-        LOG.info("Filling single bucket in table {}", TEST_TABLE);
-        for (int i = 0; i < (BUCKET_SIZE + 1); ++i) {
-            rowId = randomGenerator.nextLong();
-            tx = tm.begin();
-            put = new Put(Bytes.toBytes(rowId));
-            put.add(fam, col, data1);
-            tt.put(tx, put);
-            tm.commit(tx);
-        }
+                TestShadowCells.hasCell(txTable, Bytes.toBytes(rowId), fam, qual,
+                        neverendingTxBelowLowWatermark.getStartTimestamp()));
+        assertFalse(
+                "Shadow cell should not be there",
+                TestShadowCells.hasShadowCell(txTable, Bytes.toBytes(rowId), fam, qual,
+                        neverendingTxBelowLowWatermark.getStartTimestamp()));
 
         // The KV in this transaction should be added without the shadow cells
         HBaseTransaction neverendingTxAboveLowWatermark = (HBaseTransaction) tm.begin();
         rowId = randomGenerator.nextLong();
         put = new Put(Bytes.toBytes(rowId));
-        put.add(fam, col, data1);
-        tt.put(neverendingTxAboveLowWatermark, put);
-        assertTrue("Cell should be there",
-                TestShadowCells.hasCell(
-                        tt, Bytes.toBytes(rowId), fam, col, neverendingTxAboveLowWatermark.getStartTimestamp()));
-        assertFalse("Shadow cell should not be there",
-                TestShadowCells.hasShadowCell(
-                        tt, Bytes.toBytes(rowId), fam, col, neverendingTxAboveLowWatermark.getStartTimestamp()));
+        put.add(fam, qual, data);
+        txTable.put(neverendingTxAboveLowWatermark, put);
+        assertTrue(
+                "Cell should be there",
+                TestShadowCells.hasCell(txTable, Bytes.toBytes(rowId), fam, qual,
+                        neverendingTxAboveLowWatermark.getStartTimestamp()));
+        assertFalse(
+                "Shadow cell should not be there",
+                TestShadowCells.hasShadowCell(txTable, Bytes.toBytes(rowId), fam, qual,
+                        neverendingTxAboveLowWatermark.getStartTimestamp()));
 
-        assertEquals("Rows in table before flushing should be " + (BUCKET_SIZE + 4), (BUCKET_SIZE + 4),
-                rowCount(tableName, fam));
+        assertEquals("Rows in table before flushing should be 2", 2, rowCount(table, fam));
         LOG.info("Flushing table {}", TEST_TABLE);
         admin.flush(TEST_TABLE);
-        assertEquals("Rows in table after flushing should be " + (BUCKET_SIZE + 4), (BUCKET_SIZE + 4),
-                rowCount(tableName, fam));
+        assertEquals("Rows in table after flushing should be 2", 2, rowCount(table, fam));
 
+        // Return a LWM that triggers compaction and stays between both ST of TXs, so assignt 1st TX's start timestamp
+        LOG.info("Regions in table {}: {}", TEST_TABLE, hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).size());
+        OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).get(0)
+                .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
+        CommitTable.Client commitTableClient = spy(omidCompactor.commitTableClient);
+        SettableFuture<Long> f = SettableFuture.<Long> create();
+        f.set(neverendingTxBelowLowWatermark.getStartTimestamp());
+        doReturn(f).when(commitTableClient).readLowWatermark();
+        omidCompactor.commitTableClient = commitTableClient;
         LOG.info("Compacting table {}", TEST_TABLE);
         admin.majorCompact(TEST_TABLE);
 
-        LOG.info("Sleeping for 10 secs");
-        Thread.currentThread().sleep(10000);
-        LOG.info("Waking up after 10 secs");
+        LOG.info("Sleeping for 3 secs");
+        Thread.currentThread().sleep(3000);
+        LOG.info("Waking up after 3 secs");
 
         // One row should have been discarded after compacting
-        assertEquals("Rows in table after compacting should be " + (BUCKET_SIZE + 3), (BUCKET_SIZE + 3),
-                rowCount(tableName, fam));
-
+        assertEquals("There should be only one row in table after compacting", 1, rowCount(table, fam));
     }
 
     @Test
     public void testRowsUnalteredWhenCommitTableCannotBeReached() throws Throwable {
-        byte[] tableName = Bytes.toBytes(TEST_TABLE);
 
-        Random randomGenerator = new Random(0xfeedcafeL);
-
-        byte[] fam = Bytes.toBytes(TEST_FAMILY);
-        byte[] col = Bytes.toBytes("testdata");
-        byte[] data1 = Bytes.toBytes("testWrite-1");
-
-        AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager());
-        TTable tt = new TTable(hbaseConf, TEST_TABLE);
-
-        Put put;
-        long rowId = 0L;
-
-        Transaction tx;
-
-        // The KV in this transaction should be discarded
+        // The KV in this transaction should be discarded but in the end should remain there because
+        // the commit table won't be accessed (simulating an error on access)
         HBaseTransaction neverendingTx = (HBaseTransaction) tm.begin();
-        rowId = randomGenerator.nextLong();
-        put = new Put(Bytes.toBytes(rowId));
-        put.add(fam, col, data1);
-        tt.put(neverendingTx, put);
+        long rowId = randomGenerator.nextLong();
+        Put put = new Put(Bytes.toBytes(rowId));
+        put.add(fam, qual, data);
+        txTable.put(neverendingTx, put);
         assertTrue("Cell should be there",
-                TestShadowCells.hasCell(tt, Bytes.toBytes(rowId), fam, col, neverendingTx.getStartTimestamp()));
+                TestShadowCells.hasCell(txTable, Bytes.toBytes(rowId), fam, qual, neverendingTx.getStartTimestamp()));
         assertFalse("Shadow cell should not be there",
-                TestShadowCells.hasShadowCell(tt, Bytes.toBytes(rowId), fam, col, neverendingTx.getStartTimestamp()));
+                TestShadowCells.hasShadowCell(txTable, Bytes.toBytes(rowId), fam, qual,
+                        neverendingTx.getStartTimestamp()));
 
-        LOG.info("Filling single bucket in table {}", TEST_TABLE);
-        for (int i = 0; i < (BUCKET_SIZE + 1); ++i) {
-            rowId = randomGenerator.nextLong();
-            tx = tm.begin();
-            put = new Put(Bytes.toBytes(rowId));
-            put.add(fam, col, data1);
-            tt.put(tx, put);
-            tm.commit(tx);
-        }
-
-        assertEquals("Rows in table before flushing should be " + (BUCKET_SIZE + 2), (BUCKET_SIZE + 2),
-                rowCount(tableName, fam));
+        assertEquals("There should be only one rows in table before flushing", 1, rowCount(table, fam));
         LOG.info("Flushing table {}", TEST_TABLE);
         admin.flush(TEST_TABLE);
-        assertEquals("Rows in table after flushing should be " + (BUCKET_SIZE + 2), (BUCKET_SIZE + 2),
-                rowCount(tableName, fam));
+        assertEquals("There should be only one rows in table after flushing", 1, rowCount(table, fam));
 
         // Break access to CommitTable functionality in Compactor
         LOG.info("Regions in table {}: {}", TEST_TABLE, hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).size());
@@ -380,95 +371,72 @@ public class TestCompaction {
         LOG.info("Compacting table {}", TEST_TABLE);
         admin.majorCompact(TEST_TABLE); // Should trigger the error when accessing CommitTable funct.
 
-        LOG.info("Sleeping for 10 secs");
-        Thread.currentThread().sleep(10000);
-        LOG.info("Waking up after 10 secs");
+        LOG.info("Sleeping for 3 secs");
+        Thread.currentThread().sleep(3000);
+        LOG.info("Waking up after 3 secs");
 
         // All rows should be there after the failed compaction
-        assertEquals("Rows in table after compacting should be " + (BUCKET_SIZE + 2), (BUCKET_SIZE + 2),
-                rowCount(tableName, fam));
+        assertEquals("There should be only one row in table after compacting", 1, rowCount(table, fam));
     }
 
     @Test
-    public void testOriginalTableParametersAreAvoided() throws Throwable {
-        byte[] tableName = Bytes.toBytes(TEST_TABLE);
-
-        Random randomGenerator = new Random(0xfeedcafeL);
-
-        byte[] fam = Bytes.toBytes(TEST_FAMILY);
-        byte[] col = Bytes.toBytes("testdata");
-        byte[] data = Bytes.toBytes("testWriteXXX");
-
-        AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager());
-        TTable tt = new TTable(hbaseConf, TEST_TABLE);
-
-        Put put;
-        long rowId = 0L;
+    public void testOriginalTableParametersAreAvoidedAlsoWhenCompacting() throws Throwable {
 
         Transaction tx;
-
-        // The KV in this transaction should be discarded
-        HBaseTransaction neverendingTx = (HBaseTransaction) tm.begin();
-        rowId = randomGenerator.nextLong();
-        put = new Put(Bytes.toBytes(rowId));
-        put.add(fam, col, data);
-        tt.put(neverendingTx, put);
-        assertTrue("Cell should be there",
-                TestShadowCells.hasCell(tt, Bytes.toBytes(rowId), fam, col, neverendingTx.getStartTimestamp()));
-        assertFalse("Shadow cell should not be there",
-                TestShadowCells.hasShadowCell(tt, Bytes.toBytes(rowId), fam, col, neverendingTx.getStartTimestamp()));
-
-        LOG.info("Filling single bucket in table {}", TEST_TABLE);
-        for (int i = 0; i < (BUCKET_SIZE + 1); ++i) {
-            rowId = randomGenerator.nextLong();
-            for (int versionCount = 0; versionCount <= MAX_VERSIONS; versionCount++) {
-                tx = tm.begin();
-                put = new Put(Bytes.toBytes(rowId));
-                put.add(fam, col, Bytes.toBytes("testWrite-" + versionCount));
-                tt.put(tx, put);
-                tm.commit(tx);
-            }
+        Put put;
+        long rowId = randomGenerator.nextLong();
+        for (int versionCount = 0; versionCount <= (2 * MAX_VERSIONS); versionCount++) {
+            tx = tm.begin();
+            put = new Put(Bytes.toBytes(rowId));
+            put.add(fam, qual, Bytes.toBytes("testWrite-" + versionCount));
+            txTable.put(tx, put);
+            tm.commit(tx);
         }
 
         tx = tm.begin();
         Get get = new Get(Bytes.toBytes(rowId));
-        get.setMaxVersions(MAX_VERSIONS);
-        assertEquals("Max versions should be set to " + MAX_VERSIONS, MAX_VERSIONS, get.getMaxVersions());
-        get.addColumn(fam, col);
-        Result result = tt.get(tx, get);
+        get.setMaxVersions(2 * MAX_VERSIONS);
+        assertEquals("Max versions should be set to " + (2 * MAX_VERSIONS), (2 * MAX_VERSIONS), get.getMaxVersions());
+        get.addColumn(fam, qual);
+        Result result = txTable.get(tx, get);
         tm.commit(tx);
-        List<KeyValue> column = result.getColumn(fam, col);
+        List<KeyValue> column = result.getColumn(fam, qual);
         assertEquals("There should be only one version in the result", 1, column.size());
 
-        assertEquals("Rows in table before flushing should be " + (BUCKET_SIZE + 2), (BUCKET_SIZE + 2),
-                rowCount(tableName, fam));
+        assertEquals("There should be only one row in table before flushing", 1, rowCount(table, fam));
         LOG.info("Flushing table {}", TEST_TABLE);
         admin.flush(TEST_TABLE);
-        assertEquals("Rows in table after flushing should be " + (BUCKET_SIZE + 2), (BUCKET_SIZE + 2),
-                rowCount(tableName, fam));
+        assertEquals("There should be only one row in table after flushing", 1, rowCount(table, fam));
 
+        // Return a LWM that triggers compaction
+        LOG.info("Regions in table {}: {}", TEST_TABLE, hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).size());
+        OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).get(0)
+                .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
+        CommitTable.Client commitTableClient = spy(omidCompactor.commitTableClient);
+        SettableFuture<Long> f = SettableFuture.<Long> create();
+        f.set(Long.MAX_VALUE);
+        doReturn(f).when(commitTableClient).readLowWatermark();
+        omidCompactor.commitTableClient = commitTableClient;
         LOG.info("Compacting table {}", TEST_TABLE);
         admin.majorCompact(TEST_TABLE);
 
-        LOG.info("Sleeping for 10 secs");
-        Thread.currentThread().sleep(10000);
-        LOG.info("Waking up after 10 secs");
+        LOG.info("Sleeping for 3 secs");
+        Thread.currentThread().sleep(3000);
+        LOG.info("Waking up after 3 secs");
 
         // One row should have been discarded after compacting
-        assertEquals("Rows in table after compacting should be " + (BUCKET_SIZE + 1), (BUCKET_SIZE + 1),
-                rowCount(tableName, fam));
+        assertEquals("There should be only one row in table after compacting", 1, rowCount(table, fam));
 
         tx = tm.begin();
         get = new Get(Bytes.toBytes(rowId));
-        get.setMaxVersions(MAX_VERSIONS);
-        assertEquals("Max versions should be set to " + MAX_VERSIONS, MAX_VERSIONS, get.getMaxVersions());
-        get.addColumn(fam, col);
-        result = tt.get(tx, get);
+        get.setMaxVersions(2 * MAX_VERSIONS);
+        assertEquals("Max versions should be set to " + (2 * MAX_VERSIONS), (2 * MAX_VERSIONS), get.getMaxVersions());
+        get.addColumn(fam, qual);
+        result = txTable.get(tx, get);
         tm.commit(tx);
-        column = result.getColumn(fam, col);
+        column = result.getColumn(fam, qual);
         assertEquals("There should be only one version in the result", 1, column.size());
-        assertEquals("Values don't match", "testWrite-" + MAX_VERSIONS, Bytes.toString(column.get(0).getValue()));
-
+        assertEquals("Values don't match", "testWrite-" + (2 * MAX_VERSIONS), Bytes.toString(column.get(0).getValue()));
     }
 
     private static long rowCount(byte[] table, byte[] family) throws Throwable {
@@ -476,4 +444,5 @@ public class TestCompaction {
         scan.addFamily(family);
         return aggregationClient.rowCount(table, null, scan);
     }
+
 }
