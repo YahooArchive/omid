@@ -409,7 +409,7 @@ class TSOClientImpl extends TSOClient {
                 }
                 fsm.sendEvent(e);
             } else {
-                e.error(new ServiceUnavailableException());
+                e.error(new ServiceUnavailableException("Number of retries exceeded. This API request failed permanently"));
             }
         }
 

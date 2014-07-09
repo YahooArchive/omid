@@ -1,7 +1,8 @@
 package com.yahoo.omid.transaction;
 
-import java.util.Set;
+import java.util.*;
 
+import com.google.common.base.Optional;
 import com.yahoo.omid.transaction.Transaction.Status;
 import com.yahoo.omid.tsoclient.CellId;
 
@@ -15,7 +16,7 @@ import com.yahoo.omid.tsoclient.CellId;
  * transaction managers related to different storage systems (HBase...)
  */
 public abstract class AbstractTransaction<T extends CellId> implements Transaction {
-
+    private transient Map<String, Object> metadata = new HashMap<String, Object>();
     private final AbstractTransactionManager transactionManager;
     private final long startTimestamp;
     private long commitTimestamp;
@@ -66,7 +67,7 @@ public abstract class AbstractTransaction<T extends CellId> implements Transacti
     }
 
     /**
-     * @see com.yahoo.omid.transaction.Transaction#getRollbackOnly()
+     * @see Transaction#isRollbackOnly()
      */
     @Override
     public void setRollbackOnly() {
@@ -145,6 +146,30 @@ public abstract class AbstractTransaction<T extends CellId> implements Transacti
                 Long.toHexString(getTransactionId()),
                 startTimestamp,
                 commitTimestamp);
+    }
+
+    public Optional<Object> getMetadata(String key) {
+        return Optional.fromNullable(metadata.get(key));
+    }
+
+    /**
+     * Expects they metadata stored under key "key" to be of the "Set" type,
+     * append "value" to the existing set or creates a new one
+     */
+    @SuppressWarnings("unchecked")
+    public void appendMetadata(String key, Object value) {
+        List existingValue = (List) metadata.get(key);
+        if (existingValue == null) {
+            List<Object> newList = new ArrayList<Object>();
+            newList.add(value);
+            metadata.put(key, newList);
+        } else {
+            existingValue.add(value);
+        }
+    }
+
+    public void setMetadata(String key, Object value) {
+        metadata.put(key, value);
     }
 
 }

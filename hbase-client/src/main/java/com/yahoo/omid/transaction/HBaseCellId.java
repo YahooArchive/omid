@@ -13,36 +13,42 @@ public class HBaseCellId implements CellId {
     private final byte[] row;
     private final byte[] family;
     private final byte[] qualifier;
+    private long timestamp;
 
-    public HBaseCellId(HTableInterface table, byte[] row, byte[] family, byte[] qualifier) {
+    public HBaseCellId(HTableInterface table, byte[] row, byte[] family, byte[] qualifier, long timestamp) {
+        this.timestamp = timestamp;
         this.table = table;
         this.row = row;
         this.family = family;
         this.qualifier = qualifier;
     }
 
-
-    HTableInterface getTable() {
+    public HTableInterface getTable() {
         return table;
     }
 
-    byte[] getRow() {
+    public byte[] getRow() {
         return row;
     }
 
-    byte[] getFamily() {
+    public byte[] getFamily() {
         return family;
     }
 
-    byte[] getQualifier() {
+    public byte[] getQualifier() {
         return qualifier;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
     }
 
     public String toString() {
         return new String(table.getTableName(), UTF_8)
                 + ":" + new String(row, UTF_8)
                 + ":" + new String(family, UTF_8)
-                + ":" + new String(qualifier, UTF_8);
+                + ":" + new String(qualifier, UTF_8)
+                + ":" + timestamp;
     }
 
     @Override

@@ -46,9 +46,9 @@ HBase Client usage
 Add the following to your pom.xml dependencies:
 ```xml
     <dependency>
-      <groupId>com.yahoo.omid</groupId>
-      <artifactId>hbase-client</artifactId>
-      <version>[VERSION]</version>
+      <groupId>yahoo.yinst.omid_client</groupId>
+      <artifactId>omid_client</artifactId>
+      <version>[2.0,)</version>
     </dependency>
 ```
 

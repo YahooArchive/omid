@@ -42,6 +42,7 @@
     <module>tso-server</module>
     <module>commit-table</module>
     <module>hbase-commit-table</module>
+    <module>omid-hbase-client</module>
     <module>hbase-coprocessor</module>
   </modules>
 

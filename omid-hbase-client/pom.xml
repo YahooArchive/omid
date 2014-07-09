@@ -1,0 +1,108 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>yahoo.yinst.yjava_base_build</groupId>
+        <artifactId>yjava_base_build</artifactId>
+        <version>3.1.6.153</version>
+    </parent>
+
+    <groupId>yahoo.yinst.omid_hbase_client</groupId>
+    <artifactId>omid_hbase_client</artifactId>
+    <packaging>jar</packaging>
+    <version>2.1.10</version>
+    <name>Omid HBase client (yinst package) for Omid v.2</name>
+    <description>Omid HBase client (yinst package) for Omid v.2</description>
+    <url>https://git.corp.yahoo.com/sieve/omid</url>
+
+    <scm>
+        <connection>scm:git:ssh//git@git.corp.yahoo.com:sieve/omid.git</connection>
+        <developerConnection>scm:git:ssh//git@git.corp.yahoo.com:sieve/omid.git</developerConnection>
+        <url>https://git.corp.yahoo.com/sieve/omid</url>
+    </scm>
+
+    <mailingLists>
+        <mailingList>
+            <name>sieve-all@yahoo.com</name>
+            <subscribe>http://ilist.yahoo.com/wws/subscribe/sieve-all@yahoo.com/</subscribe>
+            <unsubscribe>http://ilist.yahoo.com/wws/signoff/sieve-all@yahoo.com/</unsubscribe>
+            <post>mailto:sieve-all@yahoo.com</post>
+            <archive>http://ilist.yahoo.com/wws/arc/sieve-all@yahoo.com</archive>
+        </mailingList>
+    </mailingLists>
+
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>2.3</version>
+                <configuration>
+                    <createDependencyReducedPom>true</createDependencyReducedPom>
+                    <promoteTransitiveDependencies>true</promoteTransitiveDependencies>
+                    <artifactSet>
+                        <includes>
+                            <include>com.yahoo.omid:*</include>
+                        </includes>
+                    </artifactSet>
+                    <!-- put your configurations here -->
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>hbase-client</artifactId>
+            <version>2.1-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
+
+    <profiles>
+        <profile>
+            <id>yinst</id>
+            <activation>
+                <file>
+                    <exists>/home/y/libexec/maven/conf/settings.xml</exists>
+                </file>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>yahoo.yinst.maven_plugins</groupId>
+                        <artifactId>yjava_maven_plugins_yinst</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>create</goal>
+                                </goals>
+                                <configuration>
+                                    <buildtype>release</buildtype>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+            <dependencies>
+                <dependency>
+                    <groupId>yahoo.yinst.yjava_daemon</groupId>
+                    <artifactId>yjava_daemon</artifactId>
+                    <version>2.23.187</version>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+</project>

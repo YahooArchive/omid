@@ -31,10 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.transaction.AbstractTransactionManager;
-import com.yahoo.omid.transaction.Transaction;
-import com.yahoo.omid.transaction.TransactionManager;
-import com.yahoo.omid.transaction.HBaseTransactionManager.HBaseTransaction;
 import com.yahoo.omid.tsoclient.TSOClient;
 
 public class TestShadowCells extends OmidTestBase {

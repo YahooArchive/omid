@@ -33,8 +33,8 @@ import java.util.*;
 public abstract class TSOClient {
     public static final String TSO_HOST_CONFKEY = "tso.host";
     public static final String TSO_PORT_CONFKEY = "tso.port";
-    public static final String REQUEST_MAX_RETRIES_CONFKEY = "request.max-retries";
-    public static final String REQUEST_TIMEOUT_IN_MS_CONFKEY = "request.timeout-ms";
+    public static final String REQUEST_MAX_RETRIES_CONFKEY = "tso.request.max-retries";
+    public static final String REQUEST_TIMEOUT_IN_MS_CONFKEY = "tso.request.timeout-ms";
     public static final int DEFAULT_TSO_PORT = 54758;
     public static final int DEFAULT_TSO_MAX_REQUEST_RETRIES = 5;
     public static final int DEFAULT_REQUEST_TIMEOUT_MS = 5000; // 5 secs
@@ -49,6 +49,9 @@ public abstract class TSOClient {
     }
 
     public static class ServiceUnavailableException extends Exception {
+        public ServiceUnavailableException(String message) {
+            super(message);
+        }
     }
 
     public static class AbortException extends Exception {}

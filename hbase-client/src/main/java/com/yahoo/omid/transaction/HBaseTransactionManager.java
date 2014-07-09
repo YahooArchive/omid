@@ -1,41 +1,30 @@
 package com.yahoo.omid.transaction;
 
+import com.google.common.base.Charsets;
+import com.google.common.base.Optional;
+import com.google.common.collect.Maps;
+import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.hbase.HBaseCommitTable;
+import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
+import com.yahoo.omid.tsoclient.CellId;
+import com.yahoo.omid.tsoclient.TSOClient;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.Delete;
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.util.Bytes;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.base.Optional;
-import com.google.common.base.Charsets;
-import com.google.common.collect.Maps;
-import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.committable.hbase.HBaseCommitTable;
-import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
-import com.yahoo.omid.transaction.AbstractTransaction;
-import com.yahoo.omid.transaction.AbstractTransactionManager;
-import com.yahoo.omid.transaction.TransactionManager;
-import com.yahoo.omid.transaction.TransactionManagerException;
-import com.yahoo.omid.tsoclient.CellId;
-import com.yahoo.omid.tsoclient.TSOClient;
-
-public class HBaseTransactionManager extends AbstractTransactionManager
-    implements HBaseTransactionManagerIface {
+public class HBaseTransactionManager extends AbstractTransactionManager implements HBaseTransactionClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(HBaseTransactionManager.class);
 
-    static final byte[] SHADOW_CELL_SUFFIX = ":OMID_CTS".getBytes(Charsets.UTF_8);
+    public static final byte[] SHADOW_CELL_SUFFIX = ":OMID_CTS".getBytes(Charsets.UTF_8);
 
     static class HBaseTransaction extends AbstractTransaction<HBaseCellId> {
 
@@ -52,7 +41,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager
                 try {
                     cell.getTable().delete(delete);
                 } catch (IOException e) {
-                    LOG.warn("Failed cleanup cell {} for Tx {}", new Object[] { cell, getTransactionId(), e });
+                    LOG.warn("Failed cleanup cell {} for Tx {}", new Object[]{cell, getTransactionId(), e});
                 }
             }
         }
@@ -97,21 +86,21 @@ public class HBaseTransactionManager extends AbstractTransactionManager
             this.tsoClient = tsoClient;
             return this;
         }
-        
+
         public Builder withCommitTableClient(CommitTable.Client client) {
             this.commitTableClient = client;
             return this;
         }
 
-        public HBaseTransactionManagerIface build() throws InstantiationException {
+        public HBaseTransactionManager build() throws InstantiationException {
             boolean ownsTsoClient = false;
             if (tsoClient == null) {
                 tsoClient = TSOClient.newBuilder()
-                                     .withConfiguration(convertToCommonsConf(conf))
-                                     .build();
+                        .withConfiguration(convertToCommonsConf(conf))
+                        .build();
                 ownsTsoClient = true;
             }
-            
+
             boolean ownsCommitTableClient = false;
             if (commitTableClient == null) {
                 try {
@@ -128,10 +117,10 @@ public class HBaseTransactionManager extends AbstractTransactionManager
                 }
             }
             return new HBaseTransactionManager(tsoClient, ownsTsoClient,
-                                               commitTableClient, ownsCommitTableClient,
-                                               new HBaseTransactionFactory());
+                    commitTableClient, ownsCommitTableClient,
+                    new HBaseTransactionFactory());
         }
-        
+
         private org.apache.commons.configuration.Configuration convertToCommonsConf(Configuration hconf) {
             org.apache.commons.configuration.Configuration conf =
                     new org.apache.commons.configuration.BaseConfiguration();
@@ -141,7 +130,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager
             return conf;
         }
     }
-    
+
     public static Builder newBuilder() {
         return new Builder();
     }
@@ -153,7 +142,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager
                                     HBaseTransactionFactory hBaseTransactionFactory) {
         super(tsoClient, ownsTSOClient, commitTableClient, ownsCommitTableClient, hBaseTransactionFactory);
     }
-    
+
     @Override
     public void updateShadowCells(AbstractTransaction<? extends CellId> tx)
             throws TransactionManagerException {
@@ -170,7 +159,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager
             try {
                 cell.getTable().put(put);
             } catch (IOException e) {
-                LOG.warn("Failed inserting shadow cell {} for Tx {}", new Object[] { cell, transaction, e });
+                LOG.warn("Failed inserting shadow cell {} for Tx {}", new Object[]{cell, transaction, e});
             }
         }
     }
@@ -188,41 +177,44 @@ public class HBaseTransactionManager extends AbstractTransactionManager
     }
 
     @Override
-    public boolean isCommitted(HTableInterface table, KeyValue kv) throws IOException {
-        CommitTimestamp tentativeCommitTimestamp =
-            locateCellCommitTimestamp(kv.getTimestamp(),
-                    new CommitTimestampLocatorImpl(table, Maps.<Long,Long>newHashMap(), kv));
+    public boolean isCommitted(HBaseCellId hBaseCellId) throws TransactionException {
+        try {
+            CommitTimestamp tentativeCommitTimestamp =
+                    locateCellCommitTimestamp(hBaseCellId.getTimestamp(),
+                            new CommitTimestampLocatorImpl(hBaseCellId, Maps.<Long, Long>newHashMap()));
 
-        switch(tentativeCommitTimestamp.getLocation()) {
-        case COMMIT_TABLE:
-        case SHADOW_CELL:
-            return true;
-        case NOT_PRESENT:
-            return false;
-        case CACHE: // cache was empty
-        default:
-            assert (false);
-            return false;
+            switch (tentativeCommitTimestamp.getLocation()) {
+                case COMMIT_TABLE:
+                case SHADOW_CELL:
+                    return true;
+                case NOT_PRESENT:
+                    return false;
+                case CACHE: // cache was empty
+                default:
+                    assert (false);
+                    return false;
+            }
+        } catch (IOException e) {
+            throw new TransactionException("Failure while checking if a transaction was committed", e);
         }
     }
 
     @Override
-    public long getLowWatermark() throws IOException {
+    public long getLowWatermark() throws TransactionException {
         try {
             return commitTableClient.readLowWatermark().get();
         } catch (ExecutionException ee) {
-            throw new IOException("Error reading low watermark", ee.getCause());
+            throw new TransactionException("Error reading low watermark", ee.getCause());
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
-            throw new IOException("Interrupted reading low watermark", ie);
+            throw new TransactionException("Interrupted reading low watermark", ie);
         }
     }
 
     /**
      * Utility method that allows to add the shadow cell suffix to an HBase column qualifier.
-     * 
-     * @param qualifier
-     *            the qualifier to add the suffix to.
+     *
+     * @param qualifier the qualifier to add the suffix to.
      * @return the suffixed qualifier
      */
     public static byte[] addShadowCellSuffix(byte[] qualifier) {
@@ -231,9 +223,8 @@ public class HBaseTransactionManager extends AbstractTransactionManager
 
     /**
      * Utility method that allows know if a qualifier is a shadow cell column qualifier.
-     * 
-     * @param qualifier
-     *            the qualifier to learn whether is a shadow cell or not.
+     *
+     * @param qualifier the qualifier to learn whether is a shadow cell or not.
      * @return whether the qualifier passed is a shadow cell or not
      */
     public static boolean isShadowCell(byte[] qualifier) {
@@ -260,7 +251,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager
     }
 
     private HBaseTransaction
-            enforceHBaseTransactionAsParam(AbstractTransaction<? extends CellId> tx) {
+    enforceHBaseTransactionAsParam(AbstractTransaction<? extends CellId> tx) {
 
         if (tx instanceof HBaseTransaction) {
             return (HBaseTransaction) tx;
@@ -272,14 +263,12 @@ public class HBaseTransactionManager extends AbstractTransactionManager
     }
 
     static class CommitTimestampLocatorImpl implements CommitTimestampLocator {
-        private final HTableInterface table;
+        private HBaseCellId hBaseCellId;
         private final Map<Long, Long> commitCache;
-        private final KeyValue kv;
 
-        public CommitTimestampLocatorImpl(HTableInterface table, Map<Long, Long> commitCache, KeyValue kv) {
-            this.table = table;
+        public CommitTimestampLocatorImpl(HBaseCellId hBaseCellId, Map<Long, Long> commitCache) {
+            this.hBaseCellId = hBaseCellId;
             this.commitCache = commitCache;
-            this.kv = kv;
         }
 
         @Override
@@ -294,13 +283,13 @@ public class HBaseTransactionManager extends AbstractTransactionManager
         public Optional<Long> readCommitTimestampFromShadowCell(long startTimestamp)
                 throws IOException {
 
-            Get get = new Get(kv.getRow());
-            byte[] family = kv.getFamily();
-            byte[] shadowCellQualifier = HBaseTransactionManager.addShadowCellSuffix(kv.getQualifier());
+            Get get = new Get(hBaseCellId.getRow());
+            byte[] family = hBaseCellId.getFamily();
+            byte[] shadowCellQualifier = HBaseTransactionManager.addShadowCellSuffix(hBaseCellId.getQualifier());
             get.addColumn(family, shadowCellQualifier);
             get.setMaxVersions(1);
             get.setTimeStamp(startTimestamp);
-            Result result = table.get(get);
+            Result result = hBaseCellId.getTable().get(get);
             if (result.containsColumn(family, shadowCellQualifier)) {
                 return Optional.of(Bytes.toLong(result.getValue(family, shadowCellQualifier)));
             }

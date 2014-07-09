@@ -37,10 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.transaction.AbstractTransactionManager;
-import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.AbstractTransactionManager.CommitTimestamp;
-import com.yahoo.omid.transaction.HBaseTransactionManager.HBaseTransaction;
 import com.yahoo.omid.transaction.HBaseTransactionManager.CommitTimestampLocatorImpl;
 
 /**
@@ -104,6 +101,11 @@ public class TTable {
     public TTable(HTableInterface hTable) throws IOException {
         table = hTable;
         healerTable = new HTable(table.getConfiguration(), table.getTableName());
+    }
+
+    public TTable(HTableInterface hTable, HTableInterface healerTable) throws IOException {
+        table = hTable;
+        this.healerTable = healerTable;
     }
 
     /**
@@ -172,7 +174,7 @@ public class TTable {
                 switch (KeyValue.Type.codeToType(kv.getType())) {
                 case DeleteColumn:
                     deleteP.add(kv.getFamily(), kv.getQualifier(), startTimestamp, DELETE_TOMBSTONE);
-                    transaction.addWriteSetElement(new HBaseCellId(table, delete.getRow(), kv.getFamily(), kv.getQualifier()));
+                    transaction.addWriteSetElement(new HBaseCellId(table, delete.getRow(), kv.getFamily(), kv.getQualifier(), kv.getTimestamp()));
                     break;
                 case DeleteFamily:
                     deleteG.addFamily(kv.getFamily());
@@ -182,7 +184,7 @@ public class TTable {
                     if (kv.getTimestamp() == HConstants.LATEST_TIMESTAMP) {
                         deleteP.add(kv.getFamily(), kv.getQualifier(), startTimestamp, DELETE_TOMBSTONE);
                         transaction.addWriteSetElement(new HBaseCellId(table, delete.getRow(),
-                                kv.getFamily(), kv.getQualifier()));
+                                kv.getFamily(), kv.getQualifier(), kv.getTimestamp()));
                         break;
                     } else {
                         throw new UnsupportedOperationException(
@@ -204,7 +206,7 @@ public class TTable {
                     for (Entry<byte[], NavigableMap<Long, byte[]>> entryQ : entryF.getValue().entrySet()) {
                         byte[] qualifier = entryQ.getKey();
                         deleteP.add(family, qualifier, DELETE_TOMBSTONE);
-                        transaction.addWriteSetElement(new HBaseCellId(table, delete.getRow(), family, qualifier));
+                        transaction.addWriteSetElement(new HBaseCellId(table, delete.getRow(), family, qualifier, transaction.getStartTimestamp()));
                     }
                 }
             }
@@ -230,7 +232,7 @@ public class TTable {
             for (KeyValue kv : kvl) {
                 throwExceptionIfTimestampSet(kv);
                 tsput.add(new KeyValue(kv.getRow(), kv.getFamily(), kv.getQualifier(), startTimestamp, kv.getValue()));
-                transaction.addWriteSetElement(new HBaseCellId(table, kv.getRow(), kv.getFamily(), kv.getQualifier()));
+                transaction.addWriteSetElement(new HBaseCellId(table, kv.getRow(), kv.getFamily(), kv.getQualifier(), kv.getTimestamp()));
             }
         }
 
@@ -449,7 +451,7 @@ public class TTable {
         CommitTimestamp tentativeCommitTimestamp =
                 transactionManager.locateCellCommitTimestamp(
                         kv.getTimestamp(),
-                        new CommitTimestampLocatorImpl(table, commitCache, kv));
+                        new CommitTimestampLocatorImpl(new HBaseCellId(table, kv.getRow(), kv.getFamily(), kv.getQualifier(), kv.getTimestamp()), commitCache));
         
         switch(tentativeCommitTimestamp.getLocation()) {
         case COMMIT_TABLE:
