@@ -11,6 +11,7 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -25,6 +26,8 @@ public class TestHBaseTimestampStorage {
     private static final Logger LOG = LoggerFactory.getLogger(TestHBaseTimestampStorage.class);
 
     private static final String TEST_TABLE = "TEST";
+    
+    private static final TableName TABLE_NAME = TableName.valueOf(TEST_TABLE);
 
     private static HBaseTestingUtility testutil;
     private static MiniHBaseCluster hbasecluster;
@@ -54,7 +57,7 @@ public class TestHBaseTimestampStorage {
         HBaseAdmin admin = testutil.getHBaseAdmin();
 
         if (!admin.tableExists(TEST_TABLE)) {
-            HTableDescriptor desc = new HTableDescriptor(TEST_TABLE);
+            HTableDescriptor desc = new HTableDescriptor(TABLE_NAME);
             HColumnDescriptor datafam = new HColumnDescriptor(HBaseTimestampStorage.TSO_FAMILY);
             datafam.setMaxVersions(Integer.MAX_VALUE);
             desc.addFamily(datafam);

@@ -10,72 +10,196 @@ public final class TSOProto {
   }
   public interface RequestOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
-    
+
     // optional .TimestampRequest timestampRequest = 1;
+    /**
+     * <code>optional .TimestampRequest timestampRequest = 1;</code>
+     */
     boolean hasTimestampRequest();
+    /**
+     * <code>optional .TimestampRequest timestampRequest = 1;</code>
+     */
     com.yahoo.omid.proto.TSOProto.TimestampRequest getTimestampRequest();
+    /**
+     * <code>optional .TimestampRequest timestampRequest = 1;</code>
+     */
     com.yahoo.omid.proto.TSOProto.TimestampRequestOrBuilder getTimestampRequestOrBuilder();
-    
+
     // optional .CommitRequest commitRequest = 2;
+    /**
+     * <code>optional .CommitRequest commitRequest = 2;</code>
+     */
     boolean hasCommitRequest();
+    /**
+     * <code>optional .CommitRequest commitRequest = 2;</code>
+     */
     com.yahoo.omid.proto.TSOProto.CommitRequest getCommitRequest();
+    /**
+     * <code>optional .CommitRequest commitRequest = 2;</code>
+     */
     com.yahoo.omid.proto.TSOProto.CommitRequestOrBuilder getCommitRequestOrBuilder();
   }
+  /**
+   * Protobuf type {@code Request}
+   */
   public static final class Request extends
       com.google.protobuf.GeneratedMessage
       implements RequestOrBuilder {
     // Use Request.newBuilder() to construct.
-    private Request(Builder builder) {
+    private Request(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
       super(builder);
+      this.unknownFields = builder.getUnknownFields();
     }
-    private Request(boolean noInit) {}
-    
+    private Request(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
     private static final Request defaultInstance;
     public static Request getDefaultInstance() {
       return defaultInstance;
     }
-    
+
     public Request getDefaultInstanceForType() {
       return defaultInstance;
     }
-    
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private Request(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 10: {
+              com.yahoo.omid.proto.TSOProto.TimestampRequest.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000001) == 0x00000001)) {
+                subBuilder = timestampRequest_.toBuilder();
+              }
+              timestampRequest_ = input.readMessage(com.yahoo.omid.proto.TSOProto.TimestampRequest.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(timestampRequest_);
+                timestampRequest_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000001;
+              break;
+            }
+            case 18: {
+              com.yahoo.omid.proto.TSOProto.CommitRequest.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000002) == 0x00000002)) {
+                subBuilder = commitRequest_.toBuilder();
+              }
+              commitRequest_ = input.readMessage(com.yahoo.omid.proto.TSOProto.CommitRequest.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(commitRequest_);
+                commitRequest_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000002;
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
       return com.yahoo.omid.proto.TSOProto.internal_static_Request_descriptor;
     }
-    
+
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return com.yahoo.omid.proto.TSOProto.internal_static_Request_fieldAccessorTable;
+      return com.yahoo.omid.proto.TSOProto.internal_static_Request_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              com.yahoo.omid.proto.TSOProto.Request.class, com.yahoo.omid.proto.TSOProto.Request.Builder.class);
     }
-    
+
+    public static com.google.protobuf.Parser<Request> PARSER =
+        new com.google.protobuf.AbstractParser<Request>() {
+      public Request parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new Request(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<Request> getParserForType() {
+      return PARSER;
+    }
+
     private int bitField0_;
     // optional .TimestampRequest timestampRequest = 1;
     public static final int TIMESTAMPREQUEST_FIELD_NUMBER = 1;
     private com.yahoo.omid.proto.TSOProto.TimestampRequest timestampRequest_;
+    /**
+     * <code>optional .TimestampRequest timestampRequest = 1;</code>
+     */
     public boolean hasTimestampRequest() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
+    /**
+     * <code>optional .TimestampRequest timestampRequest = 1;</code>
+     */
     public com.yahoo.omid.proto.TSOProto.TimestampRequest getTimestampRequest() {
       return timestampRequest_;
     }
+    /**
+     * <code>optional .TimestampRequest timestampRequest = 1;</code>
+     */
     public com.yahoo.omid.proto.TSOProto.TimestampRequestOrBuilder getTimestampRequestOrBuilder() {
       return timestampRequest_;
     }
-    
+
     // optional .CommitRequest commitRequest = 2;
     public static final int COMMITREQUEST_FIELD_NUMBER = 2;
     private com.yahoo.omid.proto.TSOProto.CommitRequest commitRequest_;
+    /**
+     * <code>optional .CommitRequest commitRequest = 2;</code>
+     */
     public boolean hasCommitRequest() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
     }
+    /**
+     * <code>optional .CommitRequest commitRequest = 2;</code>
+     */
     public com.yahoo.omid.proto.TSOProto.CommitRequest getCommitRequest() {
       return commitRequest_;
     }
+    /**
+     * <code>optional .CommitRequest commitRequest = 2;</code>
+     */
     public com.yahoo.omid.proto.TSOProto.CommitRequestOrBuilder getCommitRequestOrBuilder() {
       return commitRequest_;
     }
-    
+
     private void initFields() {
       timestampRequest_ = com.yahoo.omid.proto.TSOProto.TimestampRequest.getDefaultInstance();
       commitRequest_ = com.yahoo.omid.proto.TSOProto.CommitRequest.getDefaultInstance();
@@ -84,11 +208,11 @@ public final class TSOProto {
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
       if (isInitialized != -1) return isInitialized == 1;
-      
+
       memoizedIsInitialized = 1;
       return true;
     }
-    
+
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
@@ -100,12 +224,12 @@ public final class TSOProto {
       }
       getUnknownFields().writeTo(output);
     }
-    
+
     private int memoizedSerializedSize = -1;
     public int getSerializedSize() {
       int size = memoizedSerializedSize;
       if (size != -1) return size;
-    
+
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
@@ -119,94 +243,83 @@ public final class TSOProto {
       memoizedSerializedSize = size;
       return size;
     }
-    
+
     private static final long serialVersionUID = 0L;
     @java.lang.Override
     protected java.lang.Object writeReplace()
         throws java.io.ObjectStreamException {
       return super.writeReplace();
     }
-    
+
     public static com.yahoo.omid.proto.TSOProto.Request parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
     public static com.yahoo.omid.proto.TSOProto.Request parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.Request parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
     public static com.yahoo.omid.proto.TSOProto.Request parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.Request parseFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
     public static com.yahoo.omid.proto.TSOProto.Request parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.Request parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input);
     }
     public static com.yahoo.omid.proto.TSOProto.Request parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.Request parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
     public static com.yahoo.omid.proto.TSOProto.Request parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    
+
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
     public static Builder newBuilder(com.yahoo.omid.proto.TSOProto.Request prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
-    
+
     @java.lang.Override
     protected Builder newBuilderForType(
         com.google.protobuf.GeneratedMessage.BuilderParent parent) {
       Builder builder = new Builder(parent);
       return builder;
     }
+    /**
+     * Protobuf type {@code Request}
+     */
     public static final class Builder extends
         com.google.protobuf.GeneratedMessage.Builder<Builder>
        implements com.yahoo.omid.proto.TSOProto.RequestOrBuilder {
@@ -214,18 +327,21 @@ public final class TSOProto {
           getDescriptor() {
         return com.yahoo.omid.proto.TSOProto.internal_static_Request_descriptor;
       }
-      
+
       protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return com.yahoo.omid.proto.TSOProto.internal_static_Request_fieldAccessorTable;
+        return com.yahoo.omid.proto.TSOProto.internal_static_Request_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                com.yahoo.omid.proto.TSOProto.Request.class, com.yahoo.omid.proto.TSOProto.Request.Builder.class);
       }
-      
+
       // Construct using com.yahoo.omid.proto.TSOProto.Request.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
-      
-      private Builder(BuilderParent parent) {
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
@@ -238,7 +354,7 @@ public final class TSOProto {
       private static Builder create() {
         return new Builder();
       }
-      
+
       public Builder clear() {
         super.clear();
         if (timestampRequestBuilder_ == null) {
@@ -255,20 +371,20 @@ public final class TSOProto {
         bitField0_ = (bitField0_ & ~0x00000002);
         return this;
       }
-      
+
       public Builder clone() {
         return create().mergeFrom(buildPartial());
       }
-      
+
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return com.yahoo.omid.proto.TSOProto.Request.getDescriptor();
+        return com.yahoo.omid.proto.TSOProto.internal_static_Request_descriptor;
       }
-      
+
       public com.yahoo.omid.proto.TSOProto.Request getDefaultInstanceForType() {
         return com.yahoo.omid.proto.TSOProto.Request.getDefaultInstance();
       }
-      
+
       public com.yahoo.omid.proto.TSOProto.Request build() {
         com.yahoo.omid.proto.TSOProto.Request result = buildPartial();
         if (!result.isInitialized()) {
@@ -276,17 +392,7 @@ public final class TSOProto {
         }
         return result;
       }
-      
-      private com.yahoo.omid.proto.TSOProto.Request buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        com.yahoo.omid.proto.TSOProto.Request result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
+
       public com.yahoo.omid.proto.TSOProto.Request buildPartial() {
         com.yahoo.omid.proto.TSOProto.Request result = new com.yahoo.omid.proto.TSOProto.Request(this);
         int from_bitField0_ = bitField0_;
@@ -311,7 +417,7 @@ public final class TSOProto {
         onBuilt();
         return result;
       }
-      
+
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof com.yahoo.omid.proto.TSOProto.Request) {
           return mergeFrom((com.yahoo.omid.proto.TSOProto.Request)other);
@@ -320,7 +426,7 @@ public final class TSOProto {
           return this;
         }
       }
-      
+
       public Builder mergeFrom(com.yahoo.omid.proto.TSOProto.Request other) {
         if (other == com.yahoo.omid.proto.TSOProto.Request.getDefaultInstance()) return this;
         if (other.hasTimestampRequest()) {
@@ -332,65 +438,43 @@ public final class TSOProto {
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
-      
+
       public final boolean isInitialized() {
         return true;
       }
-      
+
       public Builder mergeFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
           throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
-          int tag = input.readTag();
-          switch (tag) {
-            case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
-            default: {
-              if (!parseUnknownField(input, unknownFields,
-                                     extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
-              }
-              break;
-            }
-            case 10: {
-              com.yahoo.omid.proto.TSOProto.TimestampRequest.Builder subBuilder = com.yahoo.omid.proto.TSOProto.TimestampRequest.newBuilder();
-              if (hasTimestampRequest()) {
-                subBuilder.mergeFrom(getTimestampRequest());
-              }
-              input.readMessage(subBuilder, extensionRegistry);
-              setTimestampRequest(subBuilder.buildPartial());
-              break;
-            }
-            case 18: {
-              com.yahoo.omid.proto.TSOProto.CommitRequest.Builder subBuilder = com.yahoo.omid.proto.TSOProto.CommitRequest.newBuilder();
-              if (hasCommitRequest()) {
-                subBuilder.mergeFrom(getCommitRequest());
-              }
-              input.readMessage(subBuilder, extensionRegistry);
-              setCommitRequest(subBuilder.buildPartial());
-              break;
-            }
+        com.yahoo.omid.proto.TSOProto.Request parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (com.yahoo.omid.proto.TSOProto.Request) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
           }
         }
+        return this;
       }
-      
       private int bitField0_;
-      
+
       // optional .TimestampRequest timestampRequest = 1;
       private com.yahoo.omid.proto.TSOProto.TimestampRequest timestampRequest_ = com.yahoo.omid.proto.TSOProto.TimestampRequest.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           com.yahoo.omid.proto.TSOProto.TimestampRequest, com.yahoo.omid.proto.TSOProto.TimestampRequest.Builder, com.yahoo.omid.proto.TSOProto.TimestampRequestOrBuilder> timestampRequestBuilder_;
+      /**
+       * <code>optional .TimestampRequest timestampRequest = 1;</code>
+       */
       public boolean hasTimestampRequest() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
+      /**
+       * <code>optional .TimestampRequest timestampRequest = 1;</code>
+       */
       public com.yahoo.omid.proto.TSOProto.TimestampRequest getTimestampRequest() {
         if (timestampRequestBuilder_ == null) {
           return timestampRequest_;
@@ -398,6 +482,9 @@ public final class TSOProto {
           return timestampRequestBuilder_.getMessage();
         }
       }
+      /**
+       * <code>optional .TimestampRequest timestampRequest = 1;</code>
+       */
       public Builder setTimestampRequest(com.yahoo.omid.proto.TSOProto.TimestampRequest value) {
         if (timestampRequestBuilder_ == null) {
           if (value == null) {
@@ -411,6 +498,9 @@ public final class TSOProto {
         bitField0_ |= 0x00000001;
         return this;
       }
+      /**
+       * <code>optional .TimestampRequest timestampRequest = 1;</code>
+       */
       public Builder setTimestampRequest(
           com.yahoo.omid.proto.TSOProto.TimestampRequest.Builder builderForValue) {
         if (timestampRequestBuilder_ == null) {
@@ -422,6 +512,9 @@ public final class TSOProto {
         bitField0_ |= 0x00000001;
         return this;
       }
+      /**
+       * <code>optional .TimestampRequest timestampRequest = 1;</code>
+       */
       public Builder mergeTimestampRequest(com.yahoo.omid.proto.TSOProto.TimestampRequest value) {
         if (timestampRequestBuilder_ == null) {
           if (((bitField0_ & 0x00000001) == 0x00000001) &&
@@ -438,6 +531,9 @@ public final class TSOProto {
         bitField0_ |= 0x00000001;
         return this;
       }
+      /**
+       * <code>optional .TimestampRequest timestampRequest = 1;</code>
+       */
       public Builder clearTimestampRequest() {
         if (timestampRequestBuilder_ == null) {
           timestampRequest_ = com.yahoo.omid.proto.TSOProto.TimestampRequest.getDefaultInstance();
@@ -448,11 +544,17 @@ public final class TSOProto {
         bitField0_ = (bitField0_ & ~0x00000001);
         return this;
       }
+      /**
+       * <code>optional .TimestampRequest timestampRequest = 1;</code>
+       */
       public com.yahoo.omid.proto.TSOProto.TimestampRequest.Builder getTimestampRequestBuilder() {
         bitField0_ |= 0x00000001;
         onChanged();
         return getTimestampRequestFieldBuilder().getBuilder();
       }
+      /**
+       * <code>optional .TimestampRequest timestampRequest = 1;</code>
+       */
       public com.yahoo.omid.proto.TSOProto.TimestampRequestOrBuilder getTimestampRequestOrBuilder() {
         if (timestampRequestBuilder_ != null) {
           return timestampRequestBuilder_.getMessageOrBuilder();
@@ -460,6 +562,9 @@ public final class TSOProto {
           return timestampRequest_;
         }
       }
+      /**
+       * <code>optional .TimestampRequest timestampRequest = 1;</code>
+       */
       private com.google.protobuf.SingleFieldBuilder<
           com.yahoo.omid.proto.TSOProto.TimestampRequest, com.yahoo.omid.proto.TSOProto.TimestampRequest.Builder, com.yahoo.omid.proto.TSOProto.TimestampRequestOrBuilder> 
           getTimestampRequestFieldBuilder() {
@@ -473,14 +578,20 @@ public final class TSOProto {
         }
         return timestampRequestBuilder_;
       }
-      
+
       // optional .CommitRequest commitRequest = 2;
       private com.yahoo.omid.proto.TSOProto.CommitRequest commitRequest_ = com.yahoo.omid.proto.TSOProto.CommitRequest.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           com.yahoo.omid.proto.TSOProto.CommitRequest, com.yahoo.omid.proto.TSOProto.CommitRequest.Builder, com.yahoo.omid.proto.TSOProto.CommitRequestOrBuilder> commitRequestBuilder_;
+      /**
+       * <code>optional .CommitRequest commitRequest = 2;</code>
+       */
       public boolean hasCommitRequest() {
         return ((bitField0_ & 0x00000002) == 0x00000002);
       }
+      /**
+       * <code>optional .CommitRequest commitRequest = 2;</code>
+       */
       public com.yahoo.omid.proto.TSOProto.CommitRequest getCommitRequest() {
         if (commitRequestBuilder_ == null) {
           return commitRequest_;
@@ -488,6 +599,9 @@ public final class TSOProto {
           return commitRequestBuilder_.getMessage();
         }
       }
+      /**
+       * <code>optional .CommitRequest commitRequest = 2;</code>
+       */
       public Builder setCommitRequest(com.yahoo.omid.proto.TSOProto.CommitRequest value) {
         if (commitRequestBuilder_ == null) {
           if (value == null) {
@@ -501,6 +615,9 @@ public final class TSOProto {
         bitField0_ |= 0x00000002;
         return this;
       }
+      /**
+       * <code>optional .CommitRequest commitRequest = 2;</code>
+       */
       public Builder setCommitRequest(
           com.yahoo.omid.proto.TSOProto.CommitRequest.Builder builderForValue) {
         if (commitRequestBuilder_ == null) {
@@ -512,6 +629,9 @@ public final class TSOProto {
         bitField0_ |= 0x00000002;
         return this;
       }
+      /**
+       * <code>optional .CommitRequest commitRequest = 2;</code>
+       */
       public Builder mergeCommitRequest(com.yahoo.omid.proto.TSOProto.CommitRequest value) {
         if (commitRequestBuilder_ == null) {
           if (((bitField0_ & 0x00000002) == 0x00000002) &&
@@ -528,6 +648,9 @@ public final class TSOProto {
         bitField0_ |= 0x00000002;
         return this;
       }
+      /**
+       * <code>optional .CommitRequest commitRequest = 2;</code>
+       */
       public Builder clearCommitRequest() {
         if (commitRequestBuilder_ == null) {
           commitRequest_ = com.yahoo.omid.proto.TSOProto.CommitRequest.getDefaultInstance();
@@ -538,11 +661,17 @@ public final class TSOProto {
         bitField0_ = (bitField0_ & ~0x00000002);
         return this;
       }
+      /**
+       * <code>optional .CommitRequest commitRequest = 2;</code>
+       */
       public com.yahoo.omid.proto.TSOProto.CommitRequest.Builder getCommitRequestBuilder() {
         bitField0_ |= 0x00000002;
         onChanged();
         return getCommitRequestFieldBuilder().getBuilder();
       }
+      /**
+       * <code>optional .CommitRequest commitRequest = 2;</code>
+       */
       public com.yahoo.omid.proto.TSOProto.CommitRequestOrBuilder getCommitRequestOrBuilder() {
         if (commitRequestBuilder_ != null) {
           return commitRequestBuilder_.getMessageOrBuilder();
@@ -550,6 +679,9 @@ public final class TSOProto {
           return commitRequest_;
         }
       }
+      /**
+       * <code>optional .CommitRequest commitRequest = 2;</code>
+       */
       private com.google.protobuf.SingleFieldBuilder<
           com.yahoo.omid.proto.TSOProto.CommitRequest, com.yahoo.omid.proto.TSOProto.CommitRequest.Builder, com.yahoo.omid.proto.TSOProto.CommitRequestOrBuilder> 
           getCommitRequestFieldBuilder() {
@@ -563,164 +695,214 @@ public final class TSOProto {
         }
         return commitRequestBuilder_;
       }
-      
+
       // @@protoc_insertion_point(builder_scope:Request)
     }
-    
+
     static {
       defaultInstance = new Request(true);
       defaultInstance.initFields();
     }
-    
+
     // @@protoc_insertion_point(class_scope:Request)
   }
-  
+
   public interface TimestampRequestOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
   }
+  /**
+   * Protobuf type {@code TimestampRequest}
+   */
   public static final class TimestampRequest extends
       com.google.protobuf.GeneratedMessage
       implements TimestampRequestOrBuilder {
     // Use TimestampRequest.newBuilder() to construct.
-    private TimestampRequest(Builder builder) {
+    private TimestampRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
       super(builder);
+      this.unknownFields = builder.getUnknownFields();
     }
-    private TimestampRequest(boolean noInit) {}
-    
+    private TimestampRequest(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
     private static final TimestampRequest defaultInstance;
     public static TimestampRequest getDefaultInstance() {
       return defaultInstance;
     }
-    
+
     public TimestampRequest getDefaultInstanceForType() {
       return defaultInstance;
     }
-    
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private TimestampRequest(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
       return com.yahoo.omid.proto.TSOProto.internal_static_TimestampRequest_descriptor;
     }
-    
+
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return com.yahoo.omid.proto.TSOProto.internal_static_TimestampRequest_fieldAccessorTable;
+      return com.yahoo.omid.proto.TSOProto.internal_static_TimestampRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              com.yahoo.omid.proto.TSOProto.TimestampRequest.class, com.yahoo.omid.proto.TSOProto.TimestampRequest.Builder.class);
     }
-    
+
+    public static com.google.protobuf.Parser<TimestampRequest> PARSER =
+        new com.google.protobuf.AbstractParser<TimestampRequest>() {
+      public TimestampRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new TimestampRequest(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<TimestampRequest> getParserForType() {
+      return PARSER;
+    }
+
     private void initFields() {
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
       if (isInitialized != -1) return isInitialized == 1;
-      
+
       memoizedIsInitialized = 1;
       return true;
     }
-    
+
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
       getUnknownFields().writeTo(output);
     }
-    
+
     private int memoizedSerializedSize = -1;
     public int getSerializedSize() {
       int size = memoizedSerializedSize;
       if (size != -1) return size;
-    
+
       size = 0;
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
       return size;
     }
-    
+
     private static final long serialVersionUID = 0L;
     @java.lang.Override
     protected java.lang.Object writeReplace()
         throws java.io.ObjectStreamException {
       return super.writeReplace();
     }
-    
+
     public static com.yahoo.omid.proto.TSOProto.TimestampRequest parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampRequest parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampRequest parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampRequest parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampRequest parseFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampRequest parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampRequest parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampRequest parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampRequest parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampRequest parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    
+
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
     public static Builder newBuilder(com.yahoo.omid.proto.TSOProto.TimestampRequest prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
-    
+
     @java.lang.Override
     protected Builder newBuilderForType(
         com.google.protobuf.GeneratedMessage.BuilderParent parent) {
       Builder builder = new Builder(parent);
       return builder;
     }
+    /**
+     * Protobuf type {@code TimestampRequest}
+     */
     public static final class Builder extends
         com.google.protobuf.GeneratedMessage.Builder<Builder>
        implements com.yahoo.omid.proto.TSOProto.TimestampRequestOrBuilder {
@@ -728,18 +910,21 @@ public final class TSOProto {
           getDescriptor() {
         return com.yahoo.omid.proto.TSOProto.internal_static_TimestampRequest_descriptor;
       }
-      
+
       protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return com.yahoo.omid.proto.TSOProto.internal_static_TimestampRequest_fieldAccessorTable;
+        return com.yahoo.omid.proto.TSOProto.internal_static_TimestampRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                com.yahoo.omid.proto.TSOProto.TimestampRequest.class, com.yahoo.omid.proto.TSOProto.TimestampRequest.Builder.class);
       }
-      
+
       // Construct using com.yahoo.omid.proto.TSOProto.TimestampRequest.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
-      
-      private Builder(BuilderParent parent) {
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
@@ -750,25 +935,25 @@ public final class TSOProto {
       private static Builder create() {
         return new Builder();
       }
-      
+
       public Builder clear() {
         super.clear();
         return this;
       }
-      
+
       public Builder clone() {
         return create().mergeFrom(buildPartial());
       }
-      
+
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return com.yahoo.omid.proto.TSOProto.TimestampRequest.getDescriptor();
+        return com.yahoo.omid.proto.TSOProto.internal_static_TimestampRequest_descriptor;
       }
-      
+
       public com.yahoo.omid.proto.TSOProto.TimestampRequest getDefaultInstanceForType() {
         return com.yahoo.omid.proto.TSOProto.TimestampRequest.getDefaultInstance();
       }
-      
+
       public com.yahoo.omid.proto.TSOProto.TimestampRequest build() {
         com.yahoo.omid.proto.TSOProto.TimestampRequest result = buildPartial();
         if (!result.isInitialized()) {
@@ -776,23 +961,13 @@ public final class TSOProto {
         }
         return result;
       }
-      
-      private com.yahoo.omid.proto.TSOProto.TimestampRequest buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        com.yahoo.omid.proto.TSOProto.TimestampRequest result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
+
       public com.yahoo.omid.proto.TSOProto.TimestampRequest buildPartial() {
         com.yahoo.omid.proto.TSOProto.TimestampRequest result = new com.yahoo.omid.proto.TSOProto.TimestampRequest(this);
         onBuilt();
         return result;
       }
-      
+
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof com.yahoo.omid.proto.TSOProto.TimestampRequest) {
           return mergeFrom((com.yahoo.omid.proto.TSOProto.TimestampRequest)other);
@@ -801,149 +976,277 @@ public final class TSOProto {
           return this;
         }
       }
-      
+
       public Builder mergeFrom(com.yahoo.omid.proto.TSOProto.TimestampRequest other) {
         if (other == com.yahoo.omid.proto.TSOProto.TimestampRequest.getDefaultInstance()) return this;
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
-      
+
       public final boolean isInitialized() {
         return true;
       }
-      
+
       public Builder mergeFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
           throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
-          int tag = input.readTag();
-          switch (tag) {
-            case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
-            default: {
-              if (!parseUnknownField(input, unknownFields,
-                                     extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
-              }
-              break;
-            }
+        com.yahoo.omid.proto.TSOProto.TimestampRequest parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (com.yahoo.omid.proto.TSOProto.TimestampRequest) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
           }
         }
+        return this;
       }
-      
-      
+
       // @@protoc_insertion_point(builder_scope:TimestampRequest)
     }
-    
+
     static {
       defaultInstance = new TimestampRequest(true);
       defaultInstance.initFields();
     }
-    
+
     // @@protoc_insertion_point(class_scope:TimestampRequest)
   }
-  
+
   public interface CommitRequestOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
-    
+
     // optional int64 startTimestamp = 1;
+    /**
+     * <code>optional int64 startTimestamp = 1;</code>
+     */
     boolean hasStartTimestamp();
+    /**
+     * <code>optional int64 startTimestamp = 1;</code>
+     */
     long getStartTimestamp();
-    
+
     // optional bool isRetry = 2 [default = false];
+    /**
+     * <code>optional bool isRetry = 2 [default = false];</code>
+     */
     boolean hasIsRetry();
+    /**
+     * <code>optional bool isRetry = 2 [default = false];</code>
+     */
     boolean getIsRetry();
-    
+
     // repeated int64 cellId = 3;
+    /**
+     * <code>repeated int64 cellId = 3;</code>
+     */
     java.util.List<java.lang.Long> getCellIdList();
+    /**
+     * <code>repeated int64 cellId = 3;</code>
+     */
     int getCellIdCount();
+    /**
+     * <code>repeated int64 cellId = 3;</code>
+     */
     long getCellId(int index);
   }
+  /**
+   * Protobuf type {@code CommitRequest}
+   */
   public static final class CommitRequest extends
       com.google.protobuf.GeneratedMessage
       implements CommitRequestOrBuilder {
     // Use CommitRequest.newBuilder() to construct.
-    private CommitRequest(Builder builder) {
+    private CommitRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
       super(builder);
+      this.unknownFields = builder.getUnknownFields();
     }
-    private CommitRequest(boolean noInit) {}
-    
+    private CommitRequest(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
     private static final CommitRequest defaultInstance;
     public static CommitRequest getDefaultInstance() {
       return defaultInstance;
     }
-    
+
     public CommitRequest getDefaultInstanceForType() {
       return defaultInstance;
     }
-    
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private CommitRequest(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 8: {
+              bitField0_ |= 0x00000001;
+              startTimestamp_ = input.readInt64();
+              break;
+            }
+            case 16: {
+              bitField0_ |= 0x00000002;
+              isRetry_ = input.readBool();
+              break;
+            }
+            case 24: {
+              if (!((mutable_bitField0_ & 0x00000004) == 0x00000004)) {
+                cellId_ = new java.util.ArrayList<java.lang.Long>();
+                mutable_bitField0_ |= 0x00000004;
+              }
+              cellId_.add(input.readInt64());
+              break;
+            }
+            case 26: {
+              int length = input.readRawVarint32();
+              int limit = input.pushLimit(length);
+              if (!((mutable_bitField0_ & 0x00000004) == 0x00000004) && input.getBytesUntilLimit() > 0) {
+                cellId_ = new java.util.ArrayList<java.lang.Long>();
+                mutable_bitField0_ |= 0x00000004;
+              }
+              while (input.getBytesUntilLimit() > 0) {
+                cellId_.add(input.readInt64());
+              }
+              input.popLimit(limit);
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        if (((mutable_bitField0_ & 0x00000004) == 0x00000004)) {
+          cellId_ = java.util.Collections.unmodifiableList(cellId_);
+        }
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
       return com.yahoo.omid.proto.TSOProto.internal_static_CommitRequest_descriptor;
     }
-    
+
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return com.yahoo.omid.proto.TSOProto.internal_static_CommitRequest_fieldAccessorTable;
+      return com.yahoo.omid.proto.TSOProto.internal_static_CommitRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              com.yahoo.omid.proto.TSOProto.CommitRequest.class, com.yahoo.omid.proto.TSOProto.CommitRequest.Builder.class);
     }
-    
+
+    public static com.google.protobuf.Parser<CommitRequest> PARSER =
+        new com.google.protobuf.AbstractParser<CommitRequest>() {
+      public CommitRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new CommitRequest(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<CommitRequest> getParserForType() {
+      return PARSER;
+    }
+
     private int bitField0_;
     // optional int64 startTimestamp = 1;
     public static final int STARTTIMESTAMP_FIELD_NUMBER = 1;
     private long startTimestamp_;
+    /**
+     * <code>optional int64 startTimestamp = 1;</code>
+     */
     public boolean hasStartTimestamp() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
+    /**
+     * <code>optional int64 startTimestamp = 1;</code>
+     */
     public long getStartTimestamp() {
       return startTimestamp_;
     }
-    
+
     // optional bool isRetry = 2 [default = false];
     public static final int ISRETRY_FIELD_NUMBER = 2;
     private boolean isRetry_;
+    /**
+     * <code>optional bool isRetry = 2 [default = false];</code>
+     */
     public boolean hasIsRetry() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
     }
+    /**
+     * <code>optional bool isRetry = 2 [default = false];</code>
+     */
     public boolean getIsRetry() {
       return isRetry_;
     }
-    
+
     // repeated int64 cellId = 3;
     public static final int CELLID_FIELD_NUMBER = 3;
     private java.util.List<java.lang.Long> cellId_;
+    /**
+     * <code>repeated int64 cellId = 3;</code>
+     */
     public java.util.List<java.lang.Long>
         getCellIdList() {
       return cellId_;
     }
+    /**
+     * <code>repeated int64 cellId = 3;</code>
+     */
     public int getCellIdCount() {
       return cellId_.size();
     }
+    /**
+     * <code>repeated int64 cellId = 3;</code>
+     */
     public long getCellId(int index) {
       return cellId_.get(index);
     }
-    
+
     private void initFields() {
       startTimestamp_ = 0L;
       isRetry_ = false;
-      cellId_ = java.util.Collections.emptyList();;
+      cellId_ = java.util.Collections.emptyList();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
       if (isInitialized != -1) return isInitialized == 1;
-      
+
       memoizedIsInitialized = 1;
       return true;
     }
-    
+
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
@@ -958,12 +1261,12 @@ public final class TSOProto {
       }
       getUnknownFields().writeTo(output);
     }
-    
+
     private int memoizedSerializedSize = -1;
     public int getSerializedSize() {
       int size = memoizedSerializedSize;
       if (size != -1) return size;
-    
+
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
@@ -986,94 +1289,83 @@ public final class TSOProto {
       memoizedSerializedSize = size;
       return size;
     }
-    
+
     private static final long serialVersionUID = 0L;
     @java.lang.Override
     protected java.lang.Object writeReplace()
         throws java.io.ObjectStreamException {
       return super.writeReplace();
     }
-    
+
     public static com.yahoo.omid.proto.TSOProto.CommitRequest parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
     public static com.yahoo.omid.proto.TSOProto.CommitRequest parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.CommitRequest parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
     public static com.yahoo.omid.proto.TSOProto.CommitRequest parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.CommitRequest parseFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
     public static com.yahoo.omid.proto.TSOProto.CommitRequest parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.CommitRequest parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input);
     }
     public static com.yahoo.omid.proto.TSOProto.CommitRequest parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.CommitRequest parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
     public static com.yahoo.omid.proto.TSOProto.CommitRequest parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    
+
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
     public static Builder newBuilder(com.yahoo.omid.proto.TSOProto.CommitRequest prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
-    
+
     @java.lang.Override
     protected Builder newBuilderForType(
         com.google.protobuf.GeneratedMessage.BuilderParent parent) {
       Builder builder = new Builder(parent);
       return builder;
     }
+    /**
+     * Protobuf type {@code CommitRequest}
+     */
     public static final class Builder extends
         com.google.protobuf.GeneratedMessage.Builder<Builder>
        implements com.yahoo.omid.proto.TSOProto.CommitRequestOrBuilder {
@@ -1081,18 +1373,21 @@ public final class TSOProto {
           getDescriptor() {
         return com.yahoo.omid.proto.TSOProto.internal_static_CommitRequest_descriptor;
       }
-      
+
       protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return com.yahoo.omid.proto.TSOProto.internal_static_CommitRequest_fieldAccessorTable;
+        return com.yahoo.omid.proto.TSOProto.internal_static_CommitRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                com.yahoo.omid.proto.TSOProto.CommitRequest.class, com.yahoo.omid.proto.TSOProto.CommitRequest.Builder.class);
       }
-      
+
       // Construct using com.yahoo.omid.proto.TSOProto.CommitRequest.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
-      
-      private Builder(BuilderParent parent) {
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
@@ -1103,31 +1398,31 @@ public final class TSOProto {
       private static Builder create() {
         return new Builder();
       }
-      
+
       public Builder clear() {
         super.clear();
         startTimestamp_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000001);
         isRetry_ = false;
         bitField0_ = (bitField0_ & ~0x00000002);
-        cellId_ = java.util.Collections.emptyList();;
+        cellId_ = java.util.Collections.emptyList();
         bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
-      
+
       public Builder clone() {
         return create().mergeFrom(buildPartial());
       }
-      
+
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return com.yahoo.omid.proto.TSOProto.CommitRequest.getDescriptor();
+        return com.yahoo.omid.proto.TSOProto.internal_static_CommitRequest_descriptor;
       }
-      
+
       public com.yahoo.omid.proto.TSOProto.CommitRequest getDefaultInstanceForType() {
         return com.yahoo.omid.proto.TSOProto.CommitRequest.getDefaultInstance();
       }
-      
+
       public com.yahoo.omid.proto.TSOProto.CommitRequest build() {
         com.yahoo.omid.proto.TSOProto.CommitRequest result = buildPartial();
         if (!result.isInitialized()) {
@@ -1135,17 +1430,7 @@ public final class TSOProto {
         }
         return result;
       }
-      
-      private com.yahoo.omid.proto.TSOProto.CommitRequest buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        com.yahoo.omid.proto.TSOProto.CommitRequest result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
+
       public com.yahoo.omid.proto.TSOProto.CommitRequest buildPartial() {
         com.yahoo.omid.proto.TSOProto.CommitRequest result = new com.yahoo.omid.proto.TSOProto.CommitRequest(this);
         int from_bitField0_ = bitField0_;
@@ -1167,7 +1452,7 @@ public final class TSOProto {
         onBuilt();
         return result;
       }
-      
+
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof com.yahoo.omid.proto.TSOProto.CommitRequest) {
           return mergeFrom((com.yahoo.omid.proto.TSOProto.CommitRequest)other);
@@ -1176,7 +1461,7 @@ public final class TSOProto {
           return this;
         }
       }
-      
+
       public Builder mergeFrom(com.yahoo.omid.proto.TSOProto.CommitRequest other) {
         if (other == com.yahoo.omid.proto.TSOProto.CommitRequest.getDefaultInstance()) return this;
         if (other.hasStartTimestamp()) {
@@ -1198,124 +1483,126 @@ public final class TSOProto {
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
-      
+
       public final boolean isInitialized() {
         return true;
       }
-      
+
       public Builder mergeFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
           throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
-          int tag = input.readTag();
-          switch (tag) {
-            case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
-            default: {
-              if (!parseUnknownField(input, unknownFields,
-                                     extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
-              }
-              break;
-            }
-            case 8: {
-              bitField0_ |= 0x00000001;
-              startTimestamp_ = input.readInt64();
-              break;
-            }
-            case 16: {
-              bitField0_ |= 0x00000002;
-              isRetry_ = input.readBool();
-              break;
-            }
-            case 24: {
-              ensureCellIdIsMutable();
-              cellId_.add(input.readInt64());
-              break;
-            }
-            case 26: {
-              int length = input.readRawVarint32();
-              int limit = input.pushLimit(length);
-              while (input.getBytesUntilLimit() > 0) {
-                addCellId(input.readInt64());
-              }
-              input.popLimit(limit);
-              break;
-            }
+        com.yahoo.omid.proto.TSOProto.CommitRequest parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (com.yahoo.omid.proto.TSOProto.CommitRequest) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
           }
         }
+        return this;
       }
-      
       private int bitField0_;
-      
+
       // optional int64 startTimestamp = 1;
       private long startTimestamp_ ;
+      /**
+       * <code>optional int64 startTimestamp = 1;</code>
+       */
       public boolean hasStartTimestamp() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
+      /**
+       * <code>optional int64 startTimestamp = 1;</code>
+       */
       public long getStartTimestamp() {
         return startTimestamp_;
       }
+      /**
+       * <code>optional int64 startTimestamp = 1;</code>
+       */
       public Builder setStartTimestamp(long value) {
         bitField0_ |= 0x00000001;
         startTimestamp_ = value;
         onChanged();
         return this;
       }
+      /**
+       * <code>optional int64 startTimestamp = 1;</code>
+       */
       public Builder clearStartTimestamp() {
         bitField0_ = (bitField0_ & ~0x00000001);
         startTimestamp_ = 0L;
         onChanged();
         return this;
       }
-      
+
       // optional bool isRetry = 2 [default = false];
       private boolean isRetry_ ;
+      /**
+       * <code>optional bool isRetry = 2 [default = false];</code>
+       */
       public boolean hasIsRetry() {
         return ((bitField0_ & 0x00000002) == 0x00000002);
       }
+      /**
+       * <code>optional bool isRetry = 2 [default = false];</code>
+       */
       public boolean getIsRetry() {
         return isRetry_;
       }
+      /**
+       * <code>optional bool isRetry = 2 [default = false];</code>
+       */
       public Builder setIsRetry(boolean value) {
         bitField0_ |= 0x00000002;
         isRetry_ = value;
         onChanged();
         return this;
       }
+      /**
+       * <code>optional bool isRetry = 2 [default = false];</code>
+       */
       public Builder clearIsRetry() {
         bitField0_ = (bitField0_ & ~0x00000002);
         isRetry_ = false;
         onChanged();
         return this;
       }
-      
+
       // repeated int64 cellId = 3;
-      private java.util.List<java.lang.Long> cellId_ = java.util.Collections.emptyList();;
+      private java.util.List<java.lang.Long> cellId_ = java.util.Collections.emptyList();
       private void ensureCellIdIsMutable() {
         if (!((bitField0_ & 0x00000004) == 0x00000004)) {
           cellId_ = new java.util.ArrayList<java.lang.Long>(cellId_);
           bitField0_ |= 0x00000004;
          }
       }
+      /**
+       * <code>repeated int64 cellId = 3;</code>
+       */
       public java.util.List<java.lang.Long>
           getCellIdList() {
         return java.util.Collections.unmodifiableList(cellId_);
       }
+      /**
+       * <code>repeated int64 cellId = 3;</code>
+       */
       public int getCellIdCount() {
         return cellId_.size();
       }
+      /**
+       * <code>repeated int64 cellId = 3;</code>
+       */
       public long getCellId(int index) {
         return cellId_.get(index);
       }
+      /**
+       * <code>repeated int64 cellId = 3;</code>
+       */
       public Builder setCellId(
           int index, long value) {
         ensureCellIdIsMutable();
@@ -1323,12 +1610,18 @@ public final class TSOProto {
         onChanged();
         return this;
       }
+      /**
+       * <code>repeated int64 cellId = 3;</code>
+       */
       public Builder addCellId(long value) {
         ensureCellIdIsMutable();
         cellId_.add(value);
         onChanged();
         return this;
       }
+      /**
+       * <code>repeated int64 cellId = 3;</code>
+       */
       public Builder addAllCellId(
           java.lang.Iterable<? extends java.lang.Long> values) {
         ensureCellIdIsMutable();
@@ -1336,92 +1629,219 @@ public final class TSOProto {
         onChanged();
         return this;
       }
+      /**
+       * <code>repeated int64 cellId = 3;</code>
+       */
       public Builder clearCellId() {
-        cellId_ = java.util.Collections.emptyList();;
+        cellId_ = java.util.Collections.emptyList();
         bitField0_ = (bitField0_ & ~0x00000004);
         onChanged();
         return this;
       }
-      
+
       // @@protoc_insertion_point(builder_scope:CommitRequest)
     }
-    
+
     static {
       defaultInstance = new CommitRequest(true);
       defaultInstance.initFields();
     }
-    
+
     // @@protoc_insertion_point(class_scope:CommitRequest)
   }
-  
+
   public interface ResponseOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
-    
+
     // optional .TimestampResponse timestampResponse = 1;
+    /**
+     * <code>optional .TimestampResponse timestampResponse = 1;</code>
+     */
     boolean hasTimestampResponse();
+    /**
+     * <code>optional .TimestampResponse timestampResponse = 1;</code>
+     */
     com.yahoo.omid.proto.TSOProto.TimestampResponse getTimestampResponse();
+    /**
+     * <code>optional .TimestampResponse timestampResponse = 1;</code>
+     */
     com.yahoo.omid.proto.TSOProto.TimestampResponseOrBuilder getTimestampResponseOrBuilder();
-    
+
     // optional .CommitResponse commitResponse = 2;
+    /**
+     * <code>optional .CommitResponse commitResponse = 2;</code>
+     */
     boolean hasCommitResponse();
+    /**
+     * <code>optional .CommitResponse commitResponse = 2;</code>
+     */
     com.yahoo.omid.proto.TSOProto.CommitResponse getCommitResponse();
+    /**
+     * <code>optional .CommitResponse commitResponse = 2;</code>
+     */
     com.yahoo.omid.proto.TSOProto.CommitResponseOrBuilder getCommitResponseOrBuilder();
   }
+  /**
+   * Protobuf type {@code Response}
+   */
   public static final class Response extends
       com.google.protobuf.GeneratedMessage
       implements ResponseOrBuilder {
     // Use Response.newBuilder() to construct.
-    private Response(Builder builder) {
+    private Response(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
       super(builder);
+      this.unknownFields = builder.getUnknownFields();
     }
-    private Response(boolean noInit) {}
-    
+    private Response(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
     private static final Response defaultInstance;
     public static Response getDefaultInstance() {
       return defaultInstance;
     }
-    
+
     public Response getDefaultInstanceForType() {
       return defaultInstance;
     }
-    
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private Response(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 10: {
+              com.yahoo.omid.proto.TSOProto.TimestampResponse.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000001) == 0x00000001)) {
+                subBuilder = timestampResponse_.toBuilder();
+              }
+              timestampResponse_ = input.readMessage(com.yahoo.omid.proto.TSOProto.TimestampResponse.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(timestampResponse_);
+                timestampResponse_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000001;
+              break;
+            }
+            case 18: {
+              com.yahoo.omid.proto.TSOProto.CommitResponse.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000002) == 0x00000002)) {
+                subBuilder = commitResponse_.toBuilder();
+              }
+              commitResponse_ = input.readMessage(com.yahoo.omid.proto.TSOProto.CommitResponse.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(commitResponse_);
+                commitResponse_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000002;
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
       return com.yahoo.omid.proto.TSOProto.internal_static_Response_descriptor;
     }
-    
+
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return com.yahoo.omid.proto.TSOProto.internal_static_Response_fieldAccessorTable;
+      return com.yahoo.omid.proto.TSOProto.internal_static_Response_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              com.yahoo.omid.proto.TSOProto.Response.class, com.yahoo.omid.proto.TSOProto.Response.Builder.class);
     }
-    
+
+    public static com.google.protobuf.Parser<Response> PARSER =
+        new com.google.protobuf.AbstractParser<Response>() {
+      public Response parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new Response(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<Response> getParserForType() {
+      return PARSER;
+    }
+
     private int bitField0_;
     // optional .TimestampResponse timestampResponse = 1;
     public static final int TIMESTAMPRESPONSE_FIELD_NUMBER = 1;
     private com.yahoo.omid.proto.TSOProto.TimestampResponse timestampResponse_;
+    /**
+     * <code>optional .TimestampResponse timestampResponse = 1;</code>
+     */
     public boolean hasTimestampResponse() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
+    /**
+     * <code>optional .TimestampResponse timestampResponse = 1;</code>
+     */
     public com.yahoo.omid.proto.TSOProto.TimestampResponse getTimestampResponse() {
       return timestampResponse_;
     }
+    /**
+     * <code>optional .TimestampResponse timestampResponse = 1;</code>
+     */
     public com.yahoo.omid.proto.TSOProto.TimestampResponseOrBuilder getTimestampResponseOrBuilder() {
       return timestampResponse_;
     }
-    
+
     // optional .CommitResponse commitResponse = 2;
     public static final int COMMITRESPONSE_FIELD_NUMBER = 2;
     private com.yahoo.omid.proto.TSOProto.CommitResponse commitResponse_;
+    /**
+     * <code>optional .CommitResponse commitResponse = 2;</code>
+     */
     public boolean hasCommitResponse() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
     }
+    /**
+     * <code>optional .CommitResponse commitResponse = 2;</code>
+     */
     public com.yahoo.omid.proto.TSOProto.CommitResponse getCommitResponse() {
       return commitResponse_;
     }
+    /**
+     * <code>optional .CommitResponse commitResponse = 2;</code>
+     */
     public com.yahoo.omid.proto.TSOProto.CommitResponseOrBuilder getCommitResponseOrBuilder() {
       return commitResponse_;
     }
-    
+
     private void initFields() {
       timestampResponse_ = com.yahoo.omid.proto.TSOProto.TimestampResponse.getDefaultInstance();
       commitResponse_ = com.yahoo.omid.proto.TSOProto.CommitResponse.getDefaultInstance();
@@ -1430,11 +1850,11 @@ public final class TSOProto {
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
       if (isInitialized != -1) return isInitialized == 1;
-      
+
       memoizedIsInitialized = 1;
       return true;
     }
-    
+
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
@@ -1446,12 +1866,12 @@ public final class TSOProto {
       }
       getUnknownFields().writeTo(output);
     }
-    
+
     private int memoizedSerializedSize = -1;
     public int getSerializedSize() {
       int size = memoizedSerializedSize;
       if (size != -1) return size;
-    
+
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
@@ -1465,94 +1885,83 @@ public final class TSOProto {
       memoizedSerializedSize = size;
       return size;
     }
-    
+
     private static final long serialVersionUID = 0L;
     @java.lang.Override
     protected java.lang.Object writeReplace()
         throws java.io.ObjectStreamException {
       return super.writeReplace();
     }
-    
+
     public static com.yahoo.omid.proto.TSOProto.Response parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
     public static com.yahoo.omid.proto.TSOProto.Response parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.Response parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
     public static com.yahoo.omid.proto.TSOProto.Response parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.Response parseFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
     public static com.yahoo.omid.proto.TSOProto.Response parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.Response parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input);
     }
     public static com.yahoo.omid.proto.TSOProto.Response parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.Response parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
     public static com.yahoo.omid.proto.TSOProto.Response parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    
+
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
     public static Builder newBuilder(com.yahoo.omid.proto.TSOProto.Response prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
-    
+
     @java.lang.Override
     protected Builder newBuilderForType(
         com.google.protobuf.GeneratedMessage.BuilderParent parent) {
       Builder builder = new Builder(parent);
       return builder;
     }
+    /**
+     * Protobuf type {@code Response}
+     */
     public static final class Builder extends
         com.google.protobuf.GeneratedMessage.Builder<Builder>
        implements com.yahoo.omid.proto.TSOProto.ResponseOrBuilder {
@@ -1560,18 +1969,21 @@ public final class TSOProto {
           getDescriptor() {
         return com.yahoo.omid.proto.TSOProto.internal_static_Response_descriptor;
       }
-      
+
       protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return com.yahoo.omid.proto.TSOProto.internal_static_Response_fieldAccessorTable;
+        return com.yahoo.omid.proto.TSOProto.internal_static_Response_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                com.yahoo.omid.proto.TSOProto.Response.class, com.yahoo.omid.proto.TSOProto.Response.Builder.class);
       }
-      
+
       // Construct using com.yahoo.omid.proto.TSOProto.Response.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
-      
-      private Builder(BuilderParent parent) {
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
@@ -1584,7 +1996,7 @@ public final class TSOProto {
       private static Builder create() {
         return new Builder();
       }
-      
+
       public Builder clear() {
         super.clear();
         if (timestampResponseBuilder_ == null) {
@@ -1601,20 +2013,20 @@ public final class TSOProto {
         bitField0_ = (bitField0_ & ~0x00000002);
         return this;
       }
-      
+
       public Builder clone() {
         return create().mergeFrom(buildPartial());
       }
-      
+
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return com.yahoo.omid.proto.TSOProto.Response.getDescriptor();
+        return com.yahoo.omid.proto.TSOProto.internal_static_Response_descriptor;
       }
-      
+
       public com.yahoo.omid.proto.TSOProto.Response getDefaultInstanceForType() {
         return com.yahoo.omid.proto.TSOProto.Response.getDefaultInstance();
       }
-      
+
       public com.yahoo.omid.proto.TSOProto.Response build() {
         com.yahoo.omid.proto.TSOProto.Response result = buildPartial();
         if (!result.isInitialized()) {
@@ -1622,17 +2034,7 @@ public final class TSOProto {
         }
         return result;
       }
-      
-      private com.yahoo.omid.proto.TSOProto.Response buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        com.yahoo.omid.proto.TSOProto.Response result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
+
       public com.yahoo.omid.proto.TSOProto.Response buildPartial() {
         com.yahoo.omid.proto.TSOProto.Response result = new com.yahoo.omid.proto.TSOProto.Response(this);
         int from_bitField0_ = bitField0_;
@@ -1657,7 +2059,7 @@ public final class TSOProto {
         onBuilt();
         return result;
       }
-      
+
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof com.yahoo.omid.proto.TSOProto.Response) {
           return mergeFrom((com.yahoo.omid.proto.TSOProto.Response)other);
@@ -1666,7 +2068,7 @@ public final class TSOProto {
           return this;
         }
       }
-      
+
       public Builder mergeFrom(com.yahoo.omid.proto.TSOProto.Response other) {
         if (other == com.yahoo.omid.proto.TSOProto.Response.getDefaultInstance()) return this;
         if (other.hasTimestampResponse()) {
@@ -1678,65 +2080,43 @@ public final class TSOProto {
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
-      
+
       public final boolean isInitialized() {
         return true;
       }
-      
+
       public Builder mergeFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
           throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
-          int tag = input.readTag();
-          switch (tag) {
-            case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
-            default: {
-              if (!parseUnknownField(input, unknownFields,
-                                     extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
-              }
-              break;
-            }
-            case 10: {
-              com.yahoo.omid.proto.TSOProto.TimestampResponse.Builder subBuilder = com.yahoo.omid.proto.TSOProto.TimestampResponse.newBuilder();
-              if (hasTimestampResponse()) {
-                subBuilder.mergeFrom(getTimestampResponse());
-              }
-              input.readMessage(subBuilder, extensionRegistry);
-              setTimestampResponse(subBuilder.buildPartial());
-              break;
-            }
-            case 18: {
-              com.yahoo.omid.proto.TSOProto.CommitResponse.Builder subBuilder = com.yahoo.omid.proto.TSOProto.CommitResponse.newBuilder();
-              if (hasCommitResponse()) {
-                subBuilder.mergeFrom(getCommitResponse());
-              }
-              input.readMessage(subBuilder, extensionRegistry);
-              setCommitResponse(subBuilder.buildPartial());
-              break;
-            }
+        com.yahoo.omid.proto.TSOProto.Response parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (com.yahoo.omid.proto.TSOProto.Response) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
           }
         }
+        return this;
       }
-      
       private int bitField0_;
-      
+
       // optional .TimestampResponse timestampResponse = 1;
       private com.yahoo.omid.proto.TSOProto.TimestampResponse timestampResponse_ = com.yahoo.omid.proto.TSOProto.TimestampResponse.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           com.yahoo.omid.proto.TSOProto.TimestampResponse, com.yahoo.omid.proto.TSOProto.TimestampResponse.Builder, com.yahoo.omid.proto.TSOProto.TimestampResponseOrBuilder> timestampResponseBuilder_;
+      /**
+       * <code>optional .TimestampResponse timestampResponse = 1;</code>
+       */
       public boolean hasTimestampResponse() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
+      /**
+       * <code>optional .TimestampResponse timestampResponse = 1;</code>
+       */
       public com.yahoo.omid.proto.TSOProto.TimestampResponse getTimestampResponse() {
         if (timestampResponseBuilder_ == null) {
           return timestampResponse_;
@@ -1744,6 +2124,9 @@ public final class TSOProto {
           return timestampResponseBuilder_.getMessage();
         }
       }
+      /**
+       * <code>optional .TimestampResponse timestampResponse = 1;</code>
+       */
       public Builder setTimestampResponse(com.yahoo.omid.proto.TSOProto.TimestampResponse value) {
         if (timestampResponseBuilder_ == null) {
           if (value == null) {
@@ -1757,6 +2140,9 @@ public final class TSOProto {
         bitField0_ |= 0x00000001;
         return this;
       }
+      /**
+       * <code>optional .TimestampResponse timestampResponse = 1;</code>
+       */
       public Builder setTimestampResponse(
           com.yahoo.omid.proto.TSOProto.TimestampResponse.Builder builderForValue) {
         if (timestampResponseBuilder_ == null) {
@@ -1768,6 +2154,9 @@ public final class TSOProto {
         bitField0_ |= 0x00000001;
         return this;
       }
+      /**
+       * <code>optional .TimestampResponse timestampResponse = 1;</code>
+       */
       public Builder mergeTimestampResponse(com.yahoo.omid.proto.TSOProto.TimestampResponse value) {
         if (timestampResponseBuilder_ == null) {
           if (((bitField0_ & 0x00000001) == 0x00000001) &&
@@ -1784,6 +2173,9 @@ public final class TSOProto {
         bitField0_ |= 0x00000001;
         return this;
       }
+      /**
+       * <code>optional .TimestampResponse timestampResponse = 1;</code>
+       */
       public Builder clearTimestampResponse() {
         if (timestampResponseBuilder_ == null) {
           timestampResponse_ = com.yahoo.omid.proto.TSOProto.TimestampResponse.getDefaultInstance();
@@ -1794,11 +2186,17 @@ public final class TSOProto {
         bitField0_ = (bitField0_ & ~0x00000001);
         return this;
       }
+      /**
+       * <code>optional .TimestampResponse timestampResponse = 1;</code>
+       */
       public com.yahoo.omid.proto.TSOProto.TimestampResponse.Builder getTimestampResponseBuilder() {
         bitField0_ |= 0x00000001;
         onChanged();
         return getTimestampResponseFieldBuilder().getBuilder();
       }
+      /**
+       * <code>optional .TimestampResponse timestampResponse = 1;</code>
+       */
       public com.yahoo.omid.proto.TSOProto.TimestampResponseOrBuilder getTimestampResponseOrBuilder() {
         if (timestampResponseBuilder_ != null) {
           return timestampResponseBuilder_.getMessageOrBuilder();
@@ -1806,6 +2204,9 @@ public final class TSOProto {
           return timestampResponse_;
         }
       }
+      /**
+       * <code>optional .TimestampResponse timestampResponse = 1;</code>
+       */
       private com.google.protobuf.SingleFieldBuilder<
           com.yahoo.omid.proto.TSOProto.TimestampResponse, com.yahoo.omid.proto.TSOProto.TimestampResponse.Builder, com.yahoo.omid.proto.TSOProto.TimestampResponseOrBuilder> 
           getTimestampResponseFieldBuilder() {
@@ -1819,14 +2220,20 @@ public final class TSOProto {
         }
         return timestampResponseBuilder_;
       }
-      
+
       // optional .CommitResponse commitResponse = 2;
       private com.yahoo.omid.proto.TSOProto.CommitResponse commitResponse_ = com.yahoo.omid.proto.TSOProto.CommitResponse.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           com.yahoo.omid.proto.TSOProto.CommitResponse, com.yahoo.omid.proto.TSOProto.CommitResponse.Builder, com.yahoo.omid.proto.TSOProto.CommitResponseOrBuilder> commitResponseBuilder_;
+      /**
+       * <code>optional .CommitResponse commitResponse = 2;</code>
+       */
       public boolean hasCommitResponse() {
         return ((bitField0_ & 0x00000002) == 0x00000002);
       }
+      /**
+       * <code>optional .CommitResponse commitResponse = 2;</code>
+       */
       public com.yahoo.omid.proto.TSOProto.CommitResponse getCommitResponse() {
         if (commitResponseBuilder_ == null) {
           return commitResponse_;
@@ -1834,6 +2241,9 @@ public final class TSOProto {
           return commitResponseBuilder_.getMessage();
         }
       }
+      /**
+       * <code>optional .CommitResponse commitResponse = 2;</code>
+       */
       public Builder setCommitResponse(com.yahoo.omid.proto.TSOProto.CommitResponse value) {
         if (commitResponseBuilder_ == null) {
           if (value == null) {
@@ -1847,6 +2257,9 @@ public final class TSOProto {
         bitField0_ |= 0x00000002;
         return this;
       }
+      /**
+       * <code>optional .CommitResponse commitResponse = 2;</code>
+       */
       public Builder setCommitResponse(
           com.yahoo.omid.proto.TSOProto.CommitResponse.Builder builderForValue) {
         if (commitResponseBuilder_ == null) {
@@ -1858,6 +2271,9 @@ public final class TSOProto {
         bitField0_ |= 0x00000002;
         return this;
       }
+      /**
+       * <code>optional .CommitResponse commitResponse = 2;</code>
+       */
       public Builder mergeCommitResponse(com.yahoo.omid.proto.TSOProto.CommitResponse value) {
         if (commitResponseBuilder_ == null) {
           if (((bitField0_ & 0x00000002) == 0x00000002) &&
@@ -1874,6 +2290,9 @@ public final class TSOProto {
         bitField0_ |= 0x00000002;
         return this;
       }
+      /**
+       * <code>optional .CommitResponse commitResponse = 2;</code>
+       */
       public Builder clearCommitResponse() {
         if (commitResponseBuilder_ == null) {
           commitResponse_ = com.yahoo.omid.proto.TSOProto.CommitResponse.getDefaultInstance();
@@ -1884,11 +2303,17 @@ public final class TSOProto {
         bitField0_ = (bitField0_ & ~0x00000002);
         return this;
       }
+      /**
+       * <code>optional .CommitResponse commitResponse = 2;</code>
+       */
       public com.yahoo.omid.proto.TSOProto.CommitResponse.Builder getCommitResponseBuilder() {
         bitField0_ |= 0x00000002;
         onChanged();
         return getCommitResponseFieldBuilder().getBuilder();
       }
+      /**
+       * <code>optional .CommitResponse commitResponse = 2;</code>
+       */
       public com.yahoo.omid.proto.TSOProto.CommitResponseOrBuilder getCommitResponseOrBuilder() {
         if (commitResponseBuilder_ != null) {
           return commitResponseBuilder_.getMessageOrBuilder();
@@ -1896,6 +2321,9 @@ public final class TSOProto {
           return commitResponse_;
         }
       }
+      /**
+       * <code>optional .CommitResponse commitResponse = 2;</code>
+       */
       private com.google.protobuf.SingleFieldBuilder<
           com.yahoo.omid.proto.TSOProto.CommitResponse, com.yahoo.omid.proto.TSOProto.CommitResponse.Builder, com.yahoo.omid.proto.TSOProto.CommitResponseOrBuilder> 
           getCommitResponseFieldBuilder() {
@@ -1909,64 +2337,143 @@ public final class TSOProto {
         }
         return commitResponseBuilder_;
       }
-      
+
       // @@protoc_insertion_point(builder_scope:Response)
     }
-    
+
     static {
       defaultInstance = new Response(true);
       defaultInstance.initFields();
     }
-    
+
     // @@protoc_insertion_point(class_scope:Response)
   }
-  
+
   public interface TimestampResponseOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
-    
+
     // optional int64 startTimestamp = 1;
+    /**
+     * <code>optional int64 startTimestamp = 1;</code>
+     */
     boolean hasStartTimestamp();
+    /**
+     * <code>optional int64 startTimestamp = 1;</code>
+     */
     long getStartTimestamp();
   }
+  /**
+   * Protobuf type {@code TimestampResponse}
+   */
   public static final class TimestampResponse extends
       com.google.protobuf.GeneratedMessage
       implements TimestampResponseOrBuilder {
     // Use TimestampResponse.newBuilder() to construct.
-    private TimestampResponse(Builder builder) {
+    private TimestampResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
       super(builder);
+      this.unknownFields = builder.getUnknownFields();
     }
-    private TimestampResponse(boolean noInit) {}
-    
+    private TimestampResponse(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
     private static final TimestampResponse defaultInstance;
     public static TimestampResponse getDefaultInstance() {
       return defaultInstance;
     }
-    
+
     public TimestampResponse getDefaultInstanceForType() {
       return defaultInstance;
     }
-    
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private TimestampResponse(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 8: {
+              bitField0_ |= 0x00000001;
+              startTimestamp_ = input.readInt64();
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
       return com.yahoo.omid.proto.TSOProto.internal_static_TimestampResponse_descriptor;
     }
-    
+
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return com.yahoo.omid.proto.TSOProto.internal_static_TimestampResponse_fieldAccessorTable;
+      return com.yahoo.omid.proto.TSOProto.internal_static_TimestampResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              com.yahoo.omid.proto.TSOProto.TimestampResponse.class, com.yahoo.omid.proto.TSOProto.TimestampResponse.Builder.class);
     }
-    
+
+    public static com.google.protobuf.Parser<TimestampResponse> PARSER =
+        new com.google.protobuf.AbstractParser<TimestampResponse>() {
+      public TimestampResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new TimestampResponse(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<TimestampResponse> getParserForType() {
+      return PARSER;
+    }
+
     private int bitField0_;
     // optional int64 startTimestamp = 1;
     public static final int STARTTIMESTAMP_FIELD_NUMBER = 1;
     private long startTimestamp_;
+    /**
+     * <code>optional int64 startTimestamp = 1;</code>
+     */
     public boolean hasStartTimestamp() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
+    /**
+     * <code>optional int64 startTimestamp = 1;</code>
+     */
     public long getStartTimestamp() {
       return startTimestamp_;
     }
-    
+
     private void initFields() {
       startTimestamp_ = 0L;
     }
@@ -1974,11 +2481,11 @@ public final class TSOProto {
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
       if (isInitialized != -1) return isInitialized == 1;
-      
+
       memoizedIsInitialized = 1;
       return true;
     }
-    
+
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
@@ -1987,12 +2494,12 @@ public final class TSOProto {
       }
       getUnknownFields().writeTo(output);
     }
-    
+
     private int memoizedSerializedSize = -1;
     public int getSerializedSize() {
       int size = memoizedSerializedSize;
       if (size != -1) return size;
-    
+
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
@@ -2002,94 +2509,83 @@ public final class TSOProto {
       memoizedSerializedSize = size;
       return size;
     }
-    
+
     private static final long serialVersionUID = 0L;
     @java.lang.Override
     protected java.lang.Object writeReplace()
         throws java.io.ObjectStreamException {
       return super.writeReplace();
     }
-    
+
     public static com.yahoo.omid.proto.TSOProto.TimestampResponse parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampResponse parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampResponse parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampResponse parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampResponse parseFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampResponse parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampResponse parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampResponse parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampResponse parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
     public static com.yahoo.omid.proto.TSOProto.TimestampResponse parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    
+
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
     public static Builder newBuilder(com.yahoo.omid.proto.TSOProto.TimestampResponse prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
-    
+
     @java.lang.Override
     protected Builder newBuilderForType(
         com.google.protobuf.GeneratedMessage.BuilderParent parent) {
       Builder builder = new Builder(parent);
       return builder;
     }
+    /**
+     * Protobuf type {@code TimestampResponse}
+     */
     public static final class Builder extends
         com.google.protobuf.GeneratedMessage.Builder<Builder>
        implements com.yahoo.omid.proto.TSOProto.TimestampResponseOrBuilder {
@@ -2097,18 +2593,21 @@ public final class TSOProto {
           getDescriptor() {
         return com.yahoo.omid.proto.TSOProto.internal_static_TimestampResponse_descriptor;
       }
-      
+
       protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return com.yahoo.omid.proto.TSOProto.internal_static_TimestampResponse_fieldAccessorTable;
+        return com.yahoo.omid.proto.TSOProto.internal_static_TimestampResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                com.yahoo.omid.proto.TSOProto.TimestampResponse.class, com.yahoo.omid.proto.TSOProto.TimestampResponse.Builder.class);
       }
-      
+
       // Construct using com.yahoo.omid.proto.TSOProto.TimestampResponse.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
-      
-      private Builder(BuilderParent parent) {
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
@@ -2119,27 +2618,27 @@ public final class TSOProto {
       private static Builder create() {
         return new Builder();
       }
-      
+
       public Builder clear() {
         super.clear();
         startTimestamp_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000001);
         return this;
       }
-      
+
       public Builder clone() {
         return create().mergeFrom(buildPartial());
       }
-      
+
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return com.yahoo.omid.proto.TSOProto.TimestampResponse.getDescriptor();
+        return com.yahoo.omid.proto.TSOProto.internal_static_TimestampResponse_descriptor;
       }
-      
+
       public com.yahoo.omid.proto.TSOProto.TimestampResponse getDefaultInstanceForType() {
         return com.yahoo.omid.proto.TSOProto.TimestampResponse.getDefaultInstance();
       }
-      
+
       public com.yahoo.omid.proto.TSOProto.TimestampResponse build() {
         com.yahoo.omid.proto.TSOProto.TimestampResponse result = buildPartial();
         if (!result.isInitialized()) {
@@ -2147,17 +2646,7 @@ public final class TSOProto {
         }
         return result;
       }
-      
-      private com.yahoo.omid.proto.TSOProto.TimestampResponse buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        com.yahoo.omid.proto.TSOProto.TimestampResponse result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
+
       public com.yahoo.omid.proto.TSOProto.TimestampResponse buildPartial() {
         com.yahoo.omid.proto.TSOProto.TimestampResponse result = new com.yahoo.omid.proto.TSOProto.TimestampResponse(this);
         int from_bitField0_ = bitField0_;
@@ -2170,7 +2659,7 @@ public final class TSOProto {
         onBuilt();
         return result;
       }
-      
+
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof com.yahoo.omid.proto.TSOProto.TimestampResponse) {
           return mergeFrom((com.yahoo.omid.proto.TSOProto.TimestampResponse)other);
@@ -2179,7 +2668,7 @@ public final class TSOProto {
           return this;
         }
       }
-      
+
       public Builder mergeFrom(com.yahoo.omid.proto.TSOProto.TimestampResponse other) {
         if (other == com.yahoo.omid.proto.TSOProto.TimestampResponse.getDefaultInstance()) return this;
         if (other.hasStartTimestamp()) {
@@ -2188,431 +2677,155 @@ public final class TSOProto {
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
-      
+
       public final boolean isInitialized() {
         return true;
       }
-      
+
       public Builder mergeFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
           throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
-          int tag = input.readTag();
-          switch (tag) {
-            case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
-            default: {
-              if (!parseUnknownField(input, unknownFields,
-                                     extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
-              }
-              break;
-            }
-            case 8: {
-              bitField0_ |= 0x00000001;
-              startTimestamp_ = input.readInt64();
-              break;
-            }
+        com.yahoo.omid.proto.TSOProto.TimestampResponse parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (com.yahoo.omid.proto.TSOProto.TimestampResponse) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
           }
         }
+        return this;
       }
-      
       private int bitField0_;
-      
+
       // optional int64 startTimestamp = 1;
       private long startTimestamp_ ;
+      /**
+       * <code>optional int64 startTimestamp = 1;</code>
+       */
       public boolean hasStartTimestamp() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
+      /**
+       * <code>optional int64 startTimestamp = 1;</code>
+       */
       public long getStartTimestamp() {
         return startTimestamp_;
       }
+      /**
+       * <code>optional int64 startTimestamp = 1;</code>
+       */
       public Builder setStartTimestamp(long value) {
         bitField0_ |= 0x00000001;
         startTimestamp_ = value;
         onChanged();
         return this;
       }
+      /**
+       * <code>optional int64 startTimestamp = 1;</code>
+       */
       public Builder clearStartTimestamp() {
         bitField0_ = (bitField0_ & ~0x00000001);
         startTimestamp_ = 0L;
         onChanged();
         return this;
       }
-      
+
       // @@protoc_insertion_point(builder_scope:TimestampResponse)
     }
-    
+
     static {
       defaultInstance = new TimestampResponse(true);
       defaultInstance.initFields();
     }
-    
+
     // @@protoc_insertion_point(class_scope:TimestampResponse)
   }
-  
+
   public interface CommitResponseOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
-    
+
     // optional bool aborted = 1;
+    /**
+     * <code>optional bool aborted = 1;</code>
+     */
     boolean hasAborted();
+    /**
+     * <code>optional bool aborted = 1;</code>
+     */
     boolean getAborted();
-    
+
     // optional int64 startTimestamp = 2;
+    /**
+     * <code>optional int64 startTimestamp = 2;</code>
+     */
     boolean hasStartTimestamp();
+    /**
+     * <code>optional int64 startTimestamp = 2;</code>
+     */
     long getStartTimestamp();
-    
+
     // optional int64 commitTimestamp = 3;
+    /**
+     * <code>optional int64 commitTimestamp = 3;</code>
+     */
     boolean hasCommitTimestamp();
+    /**
+     * <code>optional int64 commitTimestamp = 3;</code>
+     */
     long getCommitTimestamp();
   }
+  /**
+   * Protobuf type {@code CommitResponse}
+   */
   public static final class CommitResponse extends
       com.google.protobuf.GeneratedMessage
       implements CommitResponseOrBuilder {
     // Use CommitResponse.newBuilder() to construct.
-    private CommitResponse(Builder builder) {
+    private CommitResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
       super(builder);
+      this.unknownFields = builder.getUnknownFields();
     }
-    private CommitResponse(boolean noInit) {}
-    
+    private CommitResponse(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
     private static final CommitResponse defaultInstance;
     public static CommitResponse getDefaultInstance() {
       return defaultInstance;
     }
-    
+
     public CommitResponse getDefaultInstanceForType() {
       return defaultInstance;
     }
-    
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return com.yahoo.omid.proto.TSOProto.internal_static_CommitResponse_descriptor;
-    }
-    
-    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-        internalGetFieldAccessorTable() {
-      return com.yahoo.omid.proto.TSOProto.internal_static_CommitResponse_fieldAccessorTable;
-    }
-    
-    private int bitField0_;
-    // optional bool aborted = 1;
-    public static final int ABORTED_FIELD_NUMBER = 1;
-    private boolean aborted_;
-    public boolean hasAborted() {
-      return ((bitField0_ & 0x00000001) == 0x00000001);
-    }
-    public boolean getAborted() {
-      return aborted_;
-    }
-    
-    // optional int64 startTimestamp = 2;
-    public static final int STARTTIMESTAMP_FIELD_NUMBER = 2;
-    private long startTimestamp_;
-    public boolean hasStartTimestamp() {
-      return ((bitField0_ & 0x00000002) == 0x00000002);
-    }
-    public long getStartTimestamp() {
-      return startTimestamp_;
-    }
-    
-    // optional int64 commitTimestamp = 3;
-    public static final int COMMITTIMESTAMP_FIELD_NUMBER = 3;
-    private long commitTimestamp_;
-    public boolean hasCommitTimestamp() {
-      return ((bitField0_ & 0x00000004) == 0x00000004);
-    }
-    public long getCommitTimestamp() {
-      return commitTimestamp_;
-    }
-    
-    private void initFields() {
-      aborted_ = false;
-      startTimestamp_ = 0L;
-      commitTimestamp_ = 0L;
-    }
-    private byte memoizedIsInitialized = -1;
-    public final boolean isInitialized() {
-      byte isInitialized = memoizedIsInitialized;
-      if (isInitialized != -1) return isInitialized == 1;
-      
-      memoizedIsInitialized = 1;
-      return true;
-    }
-    
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
-      getSerializedSize();
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        output.writeBool(1, aborted_);
-      }
-      if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        output.writeInt64(2, startTimestamp_);
-      }
-      if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        output.writeInt64(3, commitTimestamp_);
-      }
-      getUnknownFields().writeTo(output);
-    }
-    
-    private int memoizedSerializedSize = -1;
-    public int getSerializedSize() {
-      int size = memoizedSerializedSize;
-      if (size != -1) return size;
-    
-      size = 0;
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBoolSize(1, aborted_);
-      }
-      if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(2, startTimestamp_);
-      }
-      if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(3, commitTimestamp_);
-      }
-      size += getUnknownFields().getSerializedSize();
-      memoizedSerializedSize = size;
-      return size;
-    }
-    
-    private static final long serialVersionUID = 0L;
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
     @java.lang.Override
-    protected java.lang.Object writeReplace()
-        throws java.io.ObjectStreamException {
-      return super.writeReplace();
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
     }
-    
-    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseFrom(
-        com.google.protobuf.ByteString data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
-    }
-    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseFrom(
-        com.google.protobuf.ByteString data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
-    }
-    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseFrom(byte[] data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
-    }
-    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
-    }
-    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
-    }
-    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
-    }
-    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseDelimitedFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
-    }
-    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
-    }
-    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
-    }
-    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseFrom(
+    private CommitResponse(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
-    }
-    
-    public static Builder newBuilder() { return Builder.create(); }
-    public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(com.yahoo.omid.proto.TSOProto.CommitResponse prototype) {
-      return newBuilder().mergeFrom(prototype);
-    }
-    public Builder toBuilder() { return newBuilder(this); }
-    
-    @java.lang.Override
-    protected Builder newBuilderForType(
-        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
-      Builder builder = new Builder(parent);
-      return builder;
-    }
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements com.yahoo.omid.proto.TSOProto.CommitResponseOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return com.yahoo.omid.proto.TSOProto.internal_static_CommitResponse_descriptor;
-      }
-      
-      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-          internalGetFieldAccessorTable() {
-        return com.yahoo.omid.proto.TSOProto.internal_static_CommitResponse_fieldAccessorTable;
-      }
-      
-      // Construct using com.yahoo.omid.proto.TSOProto.CommitResponse.newBuilder()
-      private Builder() {
-        maybeForceBuilderInitialization();
-      }
-      
-      private Builder(BuilderParent parent) {
-        super(parent);
-        maybeForceBuilderInitialization();
-      }
-      private void maybeForceBuilderInitialization() {
-        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
-        }
-      }
-      private static Builder create() {
-        return new Builder();
-      }
-      
-      public Builder clear() {
-        super.clear();
-        aborted_ = false;
-        bitField0_ = (bitField0_ & ~0x00000001);
-        startTimestamp_ = 0L;
-        bitField0_ = (bitField0_ & ~0x00000002);
-        commitTimestamp_ = 0L;
-        bitField0_ = (bitField0_ & ~0x00000004);
-        return this;
-      }
-      
-      public Builder clone() {
-        return create().mergeFrom(buildPartial());
-      }
-      
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return com.yahoo.omid.proto.TSOProto.CommitResponse.getDescriptor();
-      }
-      
-      public com.yahoo.omid.proto.TSOProto.CommitResponse getDefaultInstanceForType() {
-        return com.yahoo.omid.proto.TSOProto.CommitResponse.getDefaultInstance();
-      }
-      
-      public com.yahoo.omid.proto.TSOProto.CommitResponse build() {
-        com.yahoo.omid.proto.TSOProto.CommitResponse result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(result);
-        }
-        return result;
-      }
-      
-      private com.yahoo.omid.proto.TSOProto.CommitResponse buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        com.yahoo.omid.proto.TSOProto.CommitResponse result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
-      public com.yahoo.omid.proto.TSOProto.CommitResponse buildPartial() {
-        com.yahoo.omid.proto.TSOProto.CommitResponse result = new com.yahoo.omid.proto.TSOProto.CommitResponse(this);
-        int from_bitField0_ = bitField0_;
-        int to_bitField0_ = 0;
-        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
-          to_bitField0_ |= 0x00000001;
-        }
-        result.aborted_ = aborted_;
-        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
-          to_bitField0_ |= 0x00000002;
-        }
-        result.startTimestamp_ = startTimestamp_;
-        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
-          to_bitField0_ |= 0x00000004;
-        }
-        result.commitTimestamp_ = commitTimestamp_;
-        result.bitField0_ = to_bitField0_;
-        onBuilt();
-        return result;
-      }
-      
-      public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof com.yahoo.omid.proto.TSOProto.CommitResponse) {
-          return mergeFrom((com.yahoo.omid.proto.TSOProto.CommitResponse)other);
-        } else {
-          super.mergeFrom(other);
-          return this;
-        }
-      }
-      
-      public Builder mergeFrom(com.yahoo.omid.proto.TSOProto.CommitResponse other) {
-        if (other == com.yahoo.omid.proto.TSOProto.CommitResponse.getDefaultInstance()) return this;
-        if (other.hasAborted()) {
-          setAborted(other.getAborted());
-        }
-        if (other.hasStartTimestamp()) {
-          setStartTimestamp(other.getStartTimestamp());
-        }
-        if (other.hasCommitTimestamp()) {
-          setCommitTimestamp(other.getCommitTimestamp());
-        }
-        this.mergeUnknownFields(other.getUnknownFields());
-        return this;
-      }
-      
-      public final boolean isInitialized() {
-        return true;
-      }
-      
-      public Builder mergeFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
           int tag = input.readTag();
           switch (tag) {
             case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
+              done = true;
+              break;
             default: {
               if (!parseUnknownField(input, unknownFields,
                                      extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
+                done = true;
               }
               break;
             }
@@ -2633,84 +2846,463 @@ public final class TSOProto {
             }
           }
         }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
       }
-      
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return com.yahoo.omid.proto.TSOProto.internal_static_CommitResponse_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return com.yahoo.omid.proto.TSOProto.internal_static_CommitResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              com.yahoo.omid.proto.TSOProto.CommitResponse.class, com.yahoo.omid.proto.TSOProto.CommitResponse.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<CommitResponse> PARSER =
+        new com.google.protobuf.AbstractParser<CommitResponse>() {
+      public CommitResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new CommitResponse(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<CommitResponse> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // optional bool aborted = 1;
+    public static final int ABORTED_FIELD_NUMBER = 1;
+    private boolean aborted_;
+    /**
+     * <code>optional bool aborted = 1;</code>
+     */
+    public boolean hasAborted() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>optional bool aborted = 1;</code>
+     */
+    public boolean getAborted() {
+      return aborted_;
+    }
+
+    // optional int64 startTimestamp = 2;
+    public static final int STARTTIMESTAMP_FIELD_NUMBER = 2;
+    private long startTimestamp_;
+    /**
+     * <code>optional int64 startTimestamp = 2;</code>
+     */
+    public boolean hasStartTimestamp() {
+      return ((bitField0_ & 0x00000002) == 0x00000002);
+    }
+    /**
+     * <code>optional int64 startTimestamp = 2;</code>
+     */
+    public long getStartTimestamp() {
+      return startTimestamp_;
+    }
+
+    // optional int64 commitTimestamp = 3;
+    public static final int COMMITTIMESTAMP_FIELD_NUMBER = 3;
+    private long commitTimestamp_;
+    /**
+     * <code>optional int64 commitTimestamp = 3;</code>
+     */
+    public boolean hasCommitTimestamp() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    /**
+     * <code>optional int64 commitTimestamp = 3;</code>
+     */
+    public long getCommitTimestamp() {
+      return commitTimestamp_;
+    }
+
+    private void initFields() {
+      aborted_ = false;
+      startTimestamp_ = 0L;
+      commitTimestamp_ = 0L;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeBool(1, aborted_);
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        output.writeInt64(2, startTimestamp_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeInt64(3, commitTimestamp_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(1, aborted_);
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(2, startTimestamp_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(3, commitTimestamp_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static com.yahoo.omid.proto.TSOProto.CommitResponse parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(com.yahoo.omid.proto.TSOProto.CommitResponse prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code CommitResponse}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements com.yahoo.omid.proto.TSOProto.CommitResponseOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return com.yahoo.omid.proto.TSOProto.internal_static_CommitResponse_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return com.yahoo.omid.proto.TSOProto.internal_static_CommitResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                com.yahoo.omid.proto.TSOProto.CommitResponse.class, com.yahoo.omid.proto.TSOProto.CommitResponse.Builder.class);
+      }
+
+      // Construct using com.yahoo.omid.proto.TSOProto.CommitResponse.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        aborted_ = false;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        startTimestamp_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000002);
+        commitTimestamp_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000004);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return com.yahoo.omid.proto.TSOProto.internal_static_CommitResponse_descriptor;
+      }
+
+      public com.yahoo.omid.proto.TSOProto.CommitResponse getDefaultInstanceForType() {
+        return com.yahoo.omid.proto.TSOProto.CommitResponse.getDefaultInstance();
+      }
+
+      public com.yahoo.omid.proto.TSOProto.CommitResponse build() {
+        com.yahoo.omid.proto.TSOProto.CommitResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public com.yahoo.omid.proto.TSOProto.CommitResponse buildPartial() {
+        com.yahoo.omid.proto.TSOProto.CommitResponse result = new com.yahoo.omid.proto.TSOProto.CommitResponse(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.aborted_ = aborted_;
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000002;
+        }
+        result.startTimestamp_ = startTimestamp_;
+        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        result.commitTimestamp_ = commitTimestamp_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof com.yahoo.omid.proto.TSOProto.CommitResponse) {
+          return mergeFrom((com.yahoo.omid.proto.TSOProto.CommitResponse)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(com.yahoo.omid.proto.TSOProto.CommitResponse other) {
+        if (other == com.yahoo.omid.proto.TSOProto.CommitResponse.getDefaultInstance()) return this;
+        if (other.hasAborted()) {
+          setAborted(other.getAborted());
+        }
+        if (other.hasStartTimestamp()) {
+          setStartTimestamp(other.getStartTimestamp());
+        }
+        if (other.hasCommitTimestamp()) {
+          setCommitTimestamp(other.getCommitTimestamp());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        com.yahoo.omid.proto.TSOProto.CommitResponse parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (com.yahoo.omid.proto.TSOProto.CommitResponse) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
       private int bitField0_;
-      
+
       // optional bool aborted = 1;
       private boolean aborted_ ;
+      /**
+       * <code>optional bool aborted = 1;</code>
+       */
       public boolean hasAborted() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
+      /**
+       * <code>optional bool aborted = 1;</code>
+       */
       public boolean getAborted() {
         return aborted_;
       }
+      /**
+       * <code>optional bool aborted = 1;</code>
+       */
       public Builder setAborted(boolean value) {
         bitField0_ |= 0x00000001;
         aborted_ = value;
         onChanged();
         return this;
       }
+      /**
+       * <code>optional bool aborted = 1;</code>
+       */
       public Builder clearAborted() {
         bitField0_ = (bitField0_ & ~0x00000001);
         aborted_ = false;
         onChanged();
         return this;
       }
-      
+
       // optional int64 startTimestamp = 2;
       private long startTimestamp_ ;
+      /**
+       * <code>optional int64 startTimestamp = 2;</code>
+       */
       public boolean hasStartTimestamp() {
         return ((bitField0_ & 0x00000002) == 0x00000002);
       }
+      /**
+       * <code>optional int64 startTimestamp = 2;</code>
+       */
       public long getStartTimestamp() {
         return startTimestamp_;
       }
+      /**
+       * <code>optional int64 startTimestamp = 2;</code>
+       */
       public Builder setStartTimestamp(long value) {
         bitField0_ |= 0x00000002;
         startTimestamp_ = value;
         onChanged();
         return this;
       }
+      /**
+       * <code>optional int64 startTimestamp = 2;</code>
+       */
       public Builder clearStartTimestamp() {
         bitField0_ = (bitField0_ & ~0x00000002);
         startTimestamp_ = 0L;
         onChanged();
         return this;
       }
-      
+
       // optional int64 commitTimestamp = 3;
       private long commitTimestamp_ ;
+      /**
+       * <code>optional int64 commitTimestamp = 3;</code>
+       */
       public boolean hasCommitTimestamp() {
         return ((bitField0_ & 0x00000004) == 0x00000004);
       }
+      /**
+       * <code>optional int64 commitTimestamp = 3;</code>
+       */
       public long getCommitTimestamp() {
         return commitTimestamp_;
       }
+      /**
+       * <code>optional int64 commitTimestamp = 3;</code>
+       */
       public Builder setCommitTimestamp(long value) {
         bitField0_ |= 0x00000004;
         commitTimestamp_ = value;
         onChanged();
         return this;
       }
+      /**
+       * <code>optional int64 commitTimestamp = 3;</code>
+       */
       public Builder clearCommitTimestamp() {
         bitField0_ = (bitField0_ & ~0x00000004);
         commitTimestamp_ = 0L;
         onChanged();
         return this;
       }
-      
+
       // @@protoc_insertion_point(builder_scope:CommitResponse)
     }
-    
+
     static {
       defaultInstance = new CommitResponse(true);
       defaultInstance.initFields();
     }
-    
+
     // @@protoc_insertion_point(class_scope:CommitResponse)
   }
-  
+
   private static com.google.protobuf.Descriptors.Descriptor
     internal_static_Request_descriptor;
   private static
@@ -2741,7 +3333,7 @@ public final class TSOProto {
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_CommitResponse_fieldAccessorTable;
-  
+
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
     return descriptor;
@@ -2774,49 +3366,37 @@ public final class TSOProto {
           internal_static_Request_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_Request_descriptor,
-              new java.lang.String[] { "TimestampRequest", "CommitRequest", },
-              com.yahoo.omid.proto.TSOProto.Request.class,
-              com.yahoo.omid.proto.TSOProto.Request.Builder.class);
+              new java.lang.String[] { "TimestampRequest", "CommitRequest", });
           internal_static_TimestampRequest_descriptor =
             getDescriptor().getMessageTypes().get(1);
           internal_static_TimestampRequest_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_TimestampRequest_descriptor,
-              new java.lang.String[] { },
-              com.yahoo.omid.proto.TSOProto.TimestampRequest.class,
-              com.yahoo.omid.proto.TSOProto.TimestampRequest.Builder.class);
+              new java.lang.String[] { });
           internal_static_CommitRequest_descriptor =
             getDescriptor().getMessageTypes().get(2);
           internal_static_CommitRequest_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_CommitRequest_descriptor,
-              new java.lang.String[] { "StartTimestamp", "IsRetry", "CellId", },
-              com.yahoo.omid.proto.TSOProto.CommitRequest.class,
-              com.yahoo.omid.proto.TSOProto.CommitRequest.Builder.class);
+              new java.lang.String[] { "StartTimestamp", "IsRetry", "CellId", });
           internal_static_Response_descriptor =
             getDescriptor().getMessageTypes().get(3);
           internal_static_Response_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_Response_descriptor,
-              new java.lang.String[] { "TimestampResponse", "CommitResponse", },
-              com.yahoo.omid.proto.TSOProto.Response.class,
-              com.yahoo.omid.proto.TSOProto.Response.Builder.class);
+              new java.lang.String[] { "TimestampResponse", "CommitResponse", });
           internal_static_TimestampResponse_descriptor =
             getDescriptor().getMessageTypes().get(4);
           internal_static_TimestampResponse_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_TimestampResponse_descriptor,
-              new java.lang.String[] { "StartTimestamp", },
-              com.yahoo.omid.proto.TSOProto.TimestampResponse.class,
-              com.yahoo.omid.proto.TSOProto.TimestampResponse.Builder.class);
+              new java.lang.String[] { "StartTimestamp", });
           internal_static_CommitResponse_descriptor =
             getDescriptor().getMessageTypes().get(5);
           internal_static_CommitResponse_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_CommitResponse_descriptor,
-              new java.lang.String[] { "Aborted", "StartTimestamp", "CommitTimestamp", },
-              com.yahoo.omid.proto.TSOProto.CommitResponse.class,
-              com.yahoo.omid.proto.TSOProto.CommitResponse.Builder.class);
+              new java.lang.String[] { "Aborted", "StartTimestamp", "CommitTimestamp", });
           return null;
         }
       };
@@ -2825,6 +3405,6 @@ public final class TSOProto {
         new com.google.protobuf.Descriptors.FileDescriptor[] {
         }, assigner);
   }
-  
+
   // @@protoc_insertion_point(outer_class_scope)
 }

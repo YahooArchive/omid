@@ -6,6 +6,7 @@ import static org.junit.Assert.fail;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
@@ -66,11 +67,12 @@ public class TestTransactionConflict extends OmidTestBase {
         TransactionManager tm = newTransactionManager();
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
         String table2 = TEST_TABLE + 2;
+        TableName table2Name = TableName.valueOf(table2);
 
         HBaseAdmin admin = new HBaseAdmin(hbaseConf);
 
         if (!admin.tableExists(table2)) {
-            HTableDescriptor desc = new HTableDescriptor(table2);
+            HTableDescriptor desc = new HTableDescriptor(table2Name);
             HColumnDescriptor datafam = new HColumnDescriptor(TEST_FAMILY);
             datafam.setMaxVersions(Integer.MAX_VALUE);
             desc.addFamily(datafam);
@@ -81,6 +83,7 @@ public class TestTransactionConflict extends OmidTestBase {
         if (admin.isTableDisabled(table2)) {
             admin.enableTable(table2);
         }
+        admin.close();
 
         TTable tt2 = new TTable(hbaseConf, table2);
 

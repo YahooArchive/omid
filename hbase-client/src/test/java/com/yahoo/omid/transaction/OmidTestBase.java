@@ -1,19 +1,3 @@
-/**
- * Copyright (c) 2011 Yahoo! Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License. See accompanying LICENSE file.
- */
-
 package com.yahoo.omid.transaction;
 
 import java.io.File;
@@ -24,18 +8,18 @@ import com.yahoo.omid.transaction.HBaseTransactionManager;
 import com.yahoo.omid.transaction.TransactionManager;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.yahoo.omid.committable.hbase.CreateTable;
@@ -61,6 +45,8 @@ public class OmidTestBase {
     protected static final String TEST_TABLE = "test";
     protected static final String TEST_FAMILY = "data";
     protected static final String TEST_FAMILY2 = "data2";
+
+    protected static final TableName TABLE_NAME = TableName.valueOf(TEST_TABLE);
 
     protected TSOTestBase getTSO() {
         return tso;
@@ -125,7 +111,7 @@ public class OmidTestBase {
         HBaseAdmin admin = testutil.getHBaseAdmin();
 
         if (!admin.tableExists(TEST_TABLE)) {
-            HTableDescriptor desc = new HTableDescriptor(TEST_TABLE);
+            HTableDescriptor desc = new HTableDescriptor(TABLE_NAME);
             HColumnDescriptor datafam = new HColumnDescriptor(TEST_FAMILY);
             HColumnDescriptor datafam2 = new HColumnDescriptor(TEST_FAMILY2);
             datafam.setMaxVersions(Integer.MAX_VALUE);
@@ -163,38 +149,24 @@ public class OmidTestBase {
         }
     }
 
-    protected static void dumpTable(String table) throws Exception {
-        HTable t = new HTable(hbaseConf, table);
-        if (LOG.isTraceEnabled()) {
-            ResultScanner rs = t.getScanner(new Scan());
-            Result r = rs.next();
-            while (r != null) {
-                for (KeyValue kv : r.list()) {
-                    LOG.trace("KV: " + kv.getKeyString().toString() + " value:" + Bytes.toString(kv.getValue()));
-                }
-                r = rs.next();
-            }
-        }
-    }
-
-    protected static boolean verifyValue(byte[] table, byte[] row, 
+    protected static boolean verifyValue(byte[] tableName, byte[] row,
                                          byte[] fam, byte[] col, byte[] value) {
-        try {
-            HTable t = new HTable(hbaseConf, table);
+        
+        try (HTable table = new HTable(hbaseConf, tableName)) {
             Get g = new Get(row).setMaxVersions(1);
-            Result r = t.get(g);
-            KeyValue kv = r.getColumnLatest(fam, col);
+            Result r = table.get(g);
+            Cell cell = r.getColumnLatestCell(fam, col);
 
             if (LOG.isTraceEnabled()) {
-                LOG.trace("Value for " + Bytes.toString(table) + ":" 
+                LOG.trace("Value for " + Bytes.toString(tableName) + ":"
                           + Bytes.toString(row) + ":" + Bytes.toString(fam) 
-                          + Bytes.toString(col) + "=>" + Bytes.toString(kv.getValue()) 
+                          + Bytes.toString(col) + "=>" + Bytes.toString(CellUtil.cloneValue(cell))
                           + " (" + Bytes.toString(value) + " expected)");
             }
 
-            return Bytes.equals(kv.getValue(), value);
-        } catch (Exception e) {
-            LOG.error("Error reading row " + Bytes.toString(table) + ":" 
+            return Bytes.equals(CellUtil.cloneValue(cell), value);
+        } catch (IOException e) {
+            LOG.error("Error reading row " + Bytes.toString(tableName) + ":"
                       + Bytes.toString(row) + ":" + Bytes.toString(fam) 
                       + Bytes.toString(col), e);
             return false;

@@ -6,9 +6,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.RegionSplitter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +44,7 @@ public class CreateTable {
         if (!admin.tableExists(tableName)) {
             KeyGenerator keyGen = HBaseCommitTable.defaultKeyGenerator();
 
-            HTableDescriptor desc = new HTableDescriptor(tableName);
+            HTableDescriptor desc = new HTableDescriptor(TableName.valueOf(tableName));
             HColumnDescriptor datafam = new HColumnDescriptor(HBaseCommitTable.COMMIT_TABLE_FAMILY);
             datafam.setMaxVersions(1);
             desc.addFamily(datafam);

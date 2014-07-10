@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
@@ -22,7 +23,7 @@ public class TestColumnIterator {
     final byte[] qualifier2 = Bytes.toBytes("c2");
     final byte[] data = Bytes.toBytes("data");
     
-    final List<KeyValue> keyValues = new ArrayList<KeyValue>(
+    final List<Cell> cells = new ArrayList<Cell>(
             Arrays.asList(
                     new KeyValue(row, family1, qualifier1, 0, data),
                     new KeyValue(row, family1, qualifier1, 1, data),
@@ -34,21 +35,21 @@ public class TestColumnIterator {
     @Test
     public void testBasicFunctionality() {
 
-        IterableColumn columns = new TTable.IterableColumn(keyValues);
-        Iterator<List<KeyValue>> iterator = columns.iterator();
+        IterableColumn columns = new TTable.IterableColumn(cells);
+        Iterator<List<Cell>> iterator = columns.iterator();
         int columnCount = 0;
         while (iterator.hasNext()) {
             columnCount++;
-            List<KeyValue> columnKeyValues = iterator.next();
+            List<Cell> columnCells = iterator.next();
             switch (columnCount) {
             case 1:
-                assertEquals("Should be 2", 2, columnKeyValues.size());
+                assertEquals("Should be 2", 2, columnCells.size());
                 break;
             case 2:
-                assertEquals("Should be 1", 1, columnKeyValues.size());
+                assertEquals("Should be 1", 1, columnCells.size());
                 break;
             case 3:
-                assertEquals("Should be 1", 1, columnKeyValues.size());
+                assertEquals("Should be 1", 1, columnCells.size());
                 break;
             default:
                 fail();

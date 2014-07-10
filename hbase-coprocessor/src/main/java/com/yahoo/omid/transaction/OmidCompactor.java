@@ -1,5 +1,8 @@
 package com.yahoo.omid.transaction;
 
+import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,13 +13,17 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
 import org.apache.hadoop.hbase.coprocessor.ObserverContext;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
+import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
+import org.apache.hadoop.hbase.regionserver.ScanType;
 import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
@@ -28,7 +35,6 @@ import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.Client;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
-import com.yahoo.omid.tso.hbase.HBaseTimestampStorage;
 
 /**
  * Garbage collector for stale data: triggered upon HBase
@@ -67,10 +73,11 @@ public class OmidCompactor extends BaseRegionObserver {
         // Initialize the commit table accessor the first time. Note
         // this can't be done in the start() method above because the
         // HBase server need to be initialized first
-        String tableName = Bytes.toString(e.getEnvironment().getRegion().getTableDesc().getName());
+        TableName tableName = e.getEnvironment().getRegion().getTableDesc().getTableName();
         if (!e.getEnvironment().getRegion().getRegionInfo().isMetaTable()
-                && !tableName.equals(HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME)
-                && !tableName.equals(HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME)) {
+                && !tableName.equals(TableName.valueOf("hbase:namespace"))
+                && !tableName.equals(TableName.valueOf(COMMIT_TABLE_DEFAULT_NAME))
+                && !tableName.equals(TableName.valueOf(TIMESTAMP_TABLE_DEFAULT_NAME))) {
             if (commitTableClient == null) {
                 LOG.trace("Initializing CommitTable client in preOpen for table {}", tableName);
                 commitTableClient = initAndGetCommitTableClient();
@@ -81,12 +88,14 @@ public class OmidCompactor extends BaseRegionObserver {
     @Override
     public InternalScanner preCompact(ObserverContext<RegionCoprocessorEnvironment> e,
                                       Store store,
-                                      InternalScanner scanner) throws IOException
+                                      InternalScanner scanner,
+                                      ScanType scanType) throws IOException
     {
-        String tableName = Bytes.toString(e.getEnvironment().getRegion().getTableDesc().getName());
+        TableName tableName = e.getEnvironment().getRegion().getTableDesc().getTableName();
         if (e.getEnvironment().getRegion().getRegionInfo().isMetaTable()
-                || tableName.equals(HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME)
-                || tableName.equals(HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME)) {
+                || tableName.equals(TableName.valueOf("hbase:namespace"))
+                || tableName.equals(TableName.valueOf(COMMIT_TABLE_DEFAULT_NAME))
+                || tableName.equals(TableName.valueOf(TIMESTAMP_TABLE_DEFAULT_NAME))) {
             return scanner;
         } else {
             if (commitTableClient != null) {
@@ -116,10 +125,10 @@ public class OmidCompactor extends BaseRegionObserver {
         private final CommitTable.Client commitTableClient;
         private final long lowWatermark;
 
-        private final HTableInterface table;
+        private final HRegion hRegion;
 
         private boolean hasMoreRows = false;
-        private List<KeyValue> currentRowWorthValues = new ArrayList<KeyValue>();
+        private List<Cell> currentRowWorthValues = new ArrayList<Cell>();
 
         public CompactorScanner(ObserverContext<RegionCoprocessorEnvironment> e,
                                 InternalScanner internalScanner,
@@ -128,82 +137,69 @@ public class OmidCompactor extends BaseRegionObserver {
             this.internalScanner = internalScanner;
             this.commitTableClient = commitTableClient;
             this.lowWatermark = getLowWatermarkFromCommitTable();
-            LOG.trace("Low Watermark obtained " + lowWatermark);
             // Obtain the table in which the scanner is going to operate
-            byte[] tableName = e.getEnvironment().getRegion().getTableDesc().getName();
-            this.table = e.getEnvironment().getTable(tableName);
-            LOG.info("Scanner cleaning up uncommitted txs older than LW [{}] in table [{}]",
-                    lowWatermark,
-                    Bytes.toString(tableName));
+            this.hRegion = e.getEnvironment().getRegion();
+            LOG.info("Scanner cleaning up uncommitted txs older than LW [{}] in region [{}]",
+                    lowWatermark, hRegion.getRegionInfo());
         }
 
         @Override
-        public boolean next(List<KeyValue> results) throws IOException {
+        public boolean next(List<Cell> results) throws IOException {
             return next(results, -1);
         }
 
         @Override
-        public boolean next(List<KeyValue> results, String metric) throws IOException {
-            return next(results);
-        }
-
-        @Override
-        public boolean next(List<KeyValue> result, int limit, String metric) throws IOException {
-            return next(result, limit);
-        }
-
-        @Override
-        public boolean next(List<KeyValue> result, int limit) throws IOException {
+        public boolean next(List<Cell> result, int limit) throws IOException {
 
             if (currentRowWorthValues.isEmpty()) {
                 // 1) Read next row
-                List<KeyValue> scanResult = new ArrayList<KeyValue>();
+                List<Cell> scanResult = new ArrayList<Cell>();
                 hasMoreRows = internalScanner.next(scanResult);
                 if (LOG.isTraceEnabled()) {
                     LOG.trace("Row: Result {} limit {} more rows? {}",
                             new Object[] { scanResult, limit, hasMoreRows });
                 }
-                // 2) Traverse result list separating normal key values from shadow
+                // 2) Traverse result list separating normal cells from shadow
                 // cells and building a map to access easily the shadow cells.
-                Map<KeyValue, Optional<KeyValue>> kvToSc = mapKeyValuesToShadowCells(scanResult);
+                Map<Cell, Optional<Cell>> cellToSc = mapCellsToShadowCells(scanResult);
 
                 // 3) traverse the list of row key values isolated before and
                 // check which ones should be discarded
-                for (Map.Entry<KeyValue, Optional<KeyValue>> entry : kvToSc.entrySet()) {
-                    KeyValue kv = entry.getKey();
-                    Optional<KeyValue> shadowCellKeyValueOp = entry.getValue();
+                for (Map.Entry<Cell, Optional<Cell>> entry : cellToSc.entrySet()) {
+                    Cell cell = entry.getKey();
+                    Optional<Cell> shadowCellOp = entry.getValue();
 
-                    if ((kv.getTimestamp() > lowWatermark) || shadowCellKeyValueOp.isPresent()) {
-                        LOG.trace("Retaining cell {}", kv);
-                        currentRowWorthValues.add(kv);
-                        if (shadowCellKeyValueOp.isPresent()) {
-                            LOG.trace("...with shadow cell {}", kv, shadowCellKeyValueOp.get());
-                            currentRowWorthValues.add(shadowCellKeyValueOp.get());
+                    if ((cell.getTimestamp() > lowWatermark) || shadowCellOp.isPresent()) {
+                        LOG.trace("Retaining cell {}", cell);
+                        currentRowWorthValues.add(cell);
+                        if (shadowCellOp.isPresent()) {
+                            LOG.trace("...with shadow cell {}", cell, shadowCellOp.get());
+                            currentRowWorthValues.add(shadowCellOp.get());
                         } else {
                             LOG.trace("...without shadow cell! (TS is above Low Watermark)");
                         }
                     } else {
-                        Optional<Long> commitTimestamp = findMatchingCommitTimestampInCommitTable(kv.getTimestamp());
+                        Optional<Long> commitTimestamp = findMatchingCommitTimestampInCommitTable(cell.getTimestamp());
                         if (commitTimestamp.isPresent()) {
                             // Build the missing shadow cell...
                             byte[] shadowCellQualifier =
-                                    HBaseUtils.addShadowCellSuffix(kv.getQualifier());
-                            KeyValue shadowCell = new KeyValue(kv.getRow(),
-                                                               kv.getFamily(),
+                                    HBaseUtils.addShadowCellSuffix(CellUtil.cloneQualifier(cell));
+                            KeyValue shadowCell = new KeyValue(CellUtil.cloneRow(cell),
+                                                               CellUtil.cloneFamily(cell),
                                                                shadowCellQualifier,
-                                                               kv.getTimestamp(),
+                                                               cell.getTimestamp(),
                                                                Bytes.toBytes(commitTimestamp.get()));
-                            LOG.trace("Retaining cell {} with new shadow cell {}", kv, shadowCell);
-                            currentRowWorthValues.add(kv);
+                            LOG.trace("Retaining cell {} with new shadow cell {}", cell, shadowCell);
+                            currentRowWorthValues.add(cell);
                             currentRowWorthValues.add(shadowCell);
                         } else {
                             // The shadow cell could have been added in the time period
                             // after the scanner had been created, so we check it
-                            if (HBaseUtils.hasShadowCell(table, kv)) {
-                                LOG.trace("Retaining cell {} without its recently found shadow cell", kv);
-                                currentRowWorthValues.add(kv);
+                            if (HBaseUtils.hasShadowCell(cell, new HRegionCellGetterAdapter(hRegion))) {
+                                LOG.trace("Retaining cell {} without its recently found shadow cell", cell);
+                                currentRowWorthValues.add(cell);
                             } else {
-                                LOG.trace("Discarding cell {}", kv);
+                                LOG.trace("Discarding cell {}", cell);
                             }
                         }
                     }
@@ -258,45 +254,45 @@ public class OmidCompactor extends BaseRegionObserver {
 
         }
 
-        private static Map<KeyValue, Optional<KeyValue>> mapKeyValuesToShadowCells(List<KeyValue> result)
+        private static Map<Cell, Optional<Cell>> mapCellsToShadowCells(List<Cell> result)
                 throws IOException {
 
-            Map<KeyValue, Optional<KeyValue>> kvToShadowCellMap = new HashMap<KeyValue, Optional<KeyValue>>();
+            Map<Cell, Optional<Cell>> cellToShadowCellMap = new HashMap<Cell, Optional<Cell>>();
 
-            Map<KeyValueId, KeyValue> kvsTokv = new HashMap<KeyValueId, KeyValue>();
-            for (KeyValue kv : result) {
-                if (!HBaseUtils.isShadowCell(kv.getQualifier())) {
-                    KeyValueId key = new KeyValueId(kv.getRow(),
-                                                    kv.getFamily(),
-                                                    kv.getQualifier(),
-                                                    kv.getTimestamp());
-                    if (kvsTokv.containsKey(key)) {
+            Map<CellId, Cell> cellIdToCellMap = new HashMap<CellId, Cell>();
+            for (Cell cell : result) {
+                if (!HBaseUtils.isShadowCell(CellUtil.cloneQualifier(cell))) {
+                    CellId key = new CellId(CellUtil.cloneRow(cell),
+                                            CellUtil.cloneFamily(cell),
+                                            CellUtil.cloneQualifier(cell),
+                                            cell.getTimestamp());
+                    if (cellIdToCellMap.containsKey(key)) {
                         throw new IOException(
                                 "A value is already present for key " + key + ". This should not happen");
                     }
-                    LOG.trace("Adding KV key {} to map with absent value", kv);
-                    kvToShadowCellMap.put(kv, Optional.<KeyValue> absent());
-                    kvsTokv.put(key, kv);
+                    LOG.trace("Adding KV key {} to map with absent value", cell);
+                    cellToShadowCellMap.put(cell, Optional.<Cell> absent());
+                    cellIdToCellMap.put(key, cell);
                 } else {
-                    byte[] originalQualifier = HBaseUtils.removeShadowCellSuffix(kv.getQualifier());
-                    KeyValueId key = new KeyValueId(kv.getRow(),
-                                                    kv.getFamily(),
-                                                    originalQualifier,
-                                                    kv.getTimestamp());
-                    if (kvsTokv.containsKey(key)) {
-                        KeyValue originalKV = kvsTokv.get(key);
-                        LOG.trace("Adding to key {} value {}", key, kv);
-                        kvToShadowCellMap.put(originalKV, Optional.of(kv));
+                    byte[] originalQualifier = HBaseUtils.removeShadowCellSuffix(CellUtil.cloneQualifier(cell));
+                    CellId key = new CellId(CellUtil.cloneRow(cell),
+                                            CellUtil.cloneFamily(cell),
+                                            originalQualifier,
+                                            cell.getTimestamp());
+                    if (cellIdToCellMap.containsKey(key)) {
+                        Cell originalCell = cellIdToCellMap.get(key);
+                        LOG.trace("Adding to key {} value {}", key, cell);
+                        cellToShadowCellMap.put(originalCell, Optional.of(cell));
                     } else {
                         LOG.trace("Map does not contain key {}", key);
                     }
                 }
             }
 
-            return kvToShadowCellMap;
+            return cellToShadowCellMap;
         }
 
-        private static class KeyValueId {
+        private static class CellId {
 
             private static final int MIN_BITS = 32;
 
@@ -305,7 +301,7 @@ public class OmidCompactor extends BaseRegionObserver {
             private final byte[] qualifier;
             private final long timestamp;
 
-            public KeyValueId(
+            public CellId(
                     byte[] row, byte[] family, byte[] qualifier, long timestamp) {
 
                 this.row = row;
@@ -334,13 +330,13 @@ public class OmidCompactor extends BaseRegionObserver {
             public boolean equals(Object o) {
                 if (o == this)
                     return true;
-                if (!(o instanceof KeyValueId))
+                if (!(o instanceof CellId))
                     return false;
-                KeyValueId otherKVSkel = (KeyValueId) o;
-                return Arrays.equals(otherKVSkel.getRow(), row)
-                        && Arrays.equals(otherKVSkel.getFamily(), family)
-                        && Arrays.equals(otherKVSkel.getQualifier(), qualifier)
-                        && otherKVSkel.getTimestamp() == timestamp;
+                CellId otherCellId = (CellId) o;
+                return Arrays.equals(otherCellId.getRow(), row)
+                        && Arrays.equals(otherCellId.getFamily(), family)
+                        && Arrays.equals(otherCellId.getQualifier(), qualifier)
+                        && otherCellId.getTimestamp() == timestamp;
             }
 
             @Override

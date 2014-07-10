@@ -8,7 +8,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -72,9 +73,9 @@ public class TestReadPath extends OmidTestBase {
         t = tm.begin();
         Get get = new Get(row);
         Result result = table.get(t, get);
-        KeyValue kv = result.getColumnLatest(family, col);
-        assertNotNull("KeyValue is null", kv);
-        byte[] value = kv.getValue();
+        Cell cell = result.getColumnLatestCell(family, col);
+        assertNotNull("KeyValue is null", cell);
+        byte[] value = CellUtil.cloneValue(cell);
         assertTrue("Read data doesn't match", Arrays.equals(data, value));
         tm.commit(t);
 

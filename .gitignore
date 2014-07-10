@@ -2,6 +2,7 @@
 .project
 .settings
 .metadata
+dependency-reduced-pom.xml
 target/
 lib/
 *.log

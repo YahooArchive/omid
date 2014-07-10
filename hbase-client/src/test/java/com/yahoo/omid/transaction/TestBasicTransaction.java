@@ -57,7 +57,7 @@ public class TestBasicTransaction extends OmidTestBase {
         assertTrue(
                    "Unexpected value for row 1 in col 1: " + Bytes.toString(val1),
                    Bytes.equals(dataValue1, result1.getValue(famName1, colName1)));
-        long tsRow1 = result1.raw()[0].getTimestamp();
+        long tsRow1 = result1.rawCells()[0].getTimestamp();
 
         Get getResultRow2 = new Get(rowName2).setMaxVersions(1);
         Result result2 = tt.getHTable().get(getResultRow2);
@@ -65,7 +65,7 @@ public class TestBasicTransaction extends OmidTestBase {
         assertTrue(
                    "Unexpected value for row 2 in col 1: " + Bytes.toString(val2),
                    Bytes.equals(dataValue2, result2.getValue(famName1, colName1)));
-        long tsRow2 = result2.raw()[0].getTimestamp();
+        long tsRow2 = result2.rawCells()[0].getTimestamp();
 
         assertEquals("Timestamps of row 1 and row 2 are different", tsRow1,
                      tsRow2);
@@ -121,8 +121,8 @@ public class TestBasicTransaction extends OmidTestBase {
                    "Unexpected value for row 1 in col 1: " + Bytes.toString(val1),
                    Bytes.equals(dataValue3, result1.getValue(famName1, colName1)));
 
-        long lastTsRow1 = result1.raw()[0].getTimestamp();
-        long previousTsRow1 = result1.raw()[1].getTimestamp();
+        long lastTsRow1 = result1.rawCells()[0].getTimestamp();
+        long previousTsRow1 = result1.rawCells()[1].getTimestamp();
 
         Get getResultRow2 = new Get(rowName2).setMaxVersions(2);
         Result result2 = tt.getHTable().get(getResultRow2);
@@ -131,8 +131,8 @@ public class TestBasicTransaction extends OmidTestBase {
                    "Unexpected value for row 2 in col 1: " + Bytes.toString(val2),
                    Bytes.equals(dataValue4, result2.getValue(famName1, colName1)));
 
-        long lastTsRow2 = result2.raw()[0].getTimestamp();
-        long previousTsRow2 = result2.raw()[1].getTimestamp();
+        long lastTsRow2 = result2.rawCells()[0].getTimestamp();
+        long previousTsRow2 = result2.rawCells()[1].getTimestamp();
 
         assertTrue(
                    "Timestamps assigned by Tx2 to row 1 and row 2 are different",

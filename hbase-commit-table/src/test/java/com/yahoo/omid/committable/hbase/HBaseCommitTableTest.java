@@ -1,9 +1,11 @@
 package com.yahoo.omid.committable.hbase;
 
+import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_FAMILY;
+import static com.yahoo.omid.committable.hbase.HBaseCommitTable.LOW_WATERMARK_FAMILY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+
+import java.util.concurrent.Future;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -11,9 +13,12 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.coprocessor.AggregationClient;
+import org.apache.hadoop.hbase.client.coprocessor.LongColumnInterpreter;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -21,10 +26,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.hadoop.hbase.util.Bytes;
-
-import java.util.NoSuchElementException;
-import java.util.concurrent.Future;
 
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -36,6 +37,8 @@ public class HBaseCommitTableTest {
     private static final Logger LOG = LoggerFactory.getLogger(HBaseCommitTableTest.class);
 
     private static final String TEST_TABLE = "TEST";
+
+    private static final TableName TABLE_NAME = TableName.valueOf(TEST_TABLE);
 
     private static HBaseTestingUtility testutil;
     private static MiniHBaseCluster hbasecluster;
@@ -66,7 +69,7 @@ public class HBaseCommitTableTest {
         HBaseAdmin admin = testutil.getHBaseAdmin();
 
         if (!admin.tableExists(TEST_TABLE)) {
-            HTableDescriptor desc = new HTableDescriptor(TEST_TABLE);
+            HTableDescriptor desc = new HTableDescriptor(TABLE_NAME);
 
             HColumnDescriptor datafam = new HColumnDescriptor(HBaseCommitTable.COMMIT_TABLE_FAMILY);
             datafam.setMaxVersions(Integer.MAX_VALUE);
@@ -130,16 +133,14 @@ public class HBaseCommitTableTest {
         Client client = futureClient.get();
 
         // Test that the first time the table is empty
-        assertEquals("Rows should be 0!", 0, rowCount(Bytes.toBytes(TEST_TABLE),
-                HBaseCommitTable.COMMIT_TABLE_FAMILY));
+        assertEquals("Rows should be 0!", 0, rowCount(TABLE_NAME, COMMIT_TABLE_FAMILY));
 
         // Test the successful creation of 1000 txs in the table
         for (int i = 0; i < 1000; i++) {
             writer.addCommittedTransaction(i, i + 1);
         }
         writer.flush().get();
-        assertEquals("Rows should be 1000!", 1000, rowCount(Bytes.toBytes(TEST_TABLE),
-                HBaseCommitTable.COMMIT_TABLE_FAMILY));
+        assertEquals("Rows should be 1000!", 1000, rowCount(TABLE_NAME, COMMIT_TABLE_FAMILY));
 
         // Test the we get the right commit timestamps for each previously inserted tx
         for (long i = 0; i < 1000; i++) {
@@ -148,8 +149,7 @@ public class HBaseCommitTableTest {
             Long ct = optional.get();
             assertEquals("Commit timestamp should be " + (i + 1), (i + 1), (long) ct);
         }
-        assertEquals("Rows should be 1000!", 1000, rowCount(Bytes.toBytes(TEST_TABLE),
-                HBaseCommitTable.COMMIT_TABLE_FAMILY));
+        assertEquals("Rows should be 1000!", 1000, rowCount(TABLE_NAME, COMMIT_TABLE_FAMILY));
 
         // Test the successful deletion of the 1000 txs
         Future<Void> f = null;
@@ -157,8 +157,7 @@ public class HBaseCommitTableTest {
             f = client.completeTransaction(i);
         }
         f.get();
-        assertEquals("Rows should be 0!", 0, rowCount(Bytes.toBytes(TEST_TABLE),
-                HBaseCommitTable.COMMIT_TABLE_FAMILY));
+        assertEquals("Rows should be 0!", 0, rowCount(TABLE_NAME, COMMIT_TABLE_FAMILY));
 
         // Test we don't get a commit timestamp for a non-existent transaction id in the table
         ListenableFuture<Optional<Long>> ctf = client.getCommitTimestamp(0);
@@ -166,8 +165,7 @@ public class HBaseCommitTableTest {
         assertFalse("Commit timestamp should not be present", optional.isPresent());
 
         // Test that the first time, the low watermark family in table is empty
-        assertEquals("Rows should be 0!", 0, rowCount(Bytes.toBytes(TEST_TABLE),
-                HBaseCommitTable.LOW_WATERMARK_FAMILY));
+        assertEquals("Rows should be 0!", 0, rowCount(TABLE_NAME, LOW_WATERMARK_FAMILY));
 
         // Test the unsuccessful read of the low watermark the first time
         ListenableFuture<Long> lowWatermarkFuture = client.readLowWatermark();
@@ -178,22 +176,20 @@ public class HBaseCommitTableTest {
             writer.updateLowWatermark(lowWatermark);
         }
         writer.flush().get();
-        assertEquals("Should there be only one row!", 1, rowCount(Bytes.toBytes(TEST_TABLE),
-                HBaseCommitTable.LOW_WATERMARK_FAMILY));
+        assertEquals("Should there be only one row!", 1, rowCount(TABLE_NAME, LOW_WATERMARK_FAMILY));
 
         // Test the successful read of the low watermark
         lowWatermarkFuture = client.readLowWatermark();
         long lowWatermark = lowWatermarkFuture.get();
         assertEquals("Low watermark should be 999", 999, lowWatermark);
-        assertEquals("Should there be only one row!", 1, rowCount(Bytes.toBytes(TEST_TABLE),
-                HBaseCommitTable.LOW_WATERMARK_FAMILY));
+        assertEquals("Should there be only one row!", 1, rowCount(TABLE_NAME, LOW_WATERMARK_FAMILY));
 
     }
 
-    private static long rowCount(byte[] table, byte[] family) throws Throwable {
+    private static long rowCount(TableName table, byte[] family) throws Throwable {
         Scan scan = new Scan();
         scan.addFamily(family);
-        return aggregationClient.rowCount(table, null, scan);
+        return aggregationClient.rowCount(table, new LongColumnInterpreter(), scan);
     }
 
 }

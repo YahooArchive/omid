@@ -1,17 +1,17 @@
 package com.yahoo.omid.transaction;
 
-import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.Test;
-
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
+
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.junit.Test;
+
+import com.yahoo.omid.transaction.HBaseTransaction;
 
 public class TestHBaseTransactionClient extends OmidTestBase {
     static final byte[] row1 = Bytes.toBytes("test-is-committed1");
@@ -76,10 +76,17 @@ public class TestHBaseTransactionClient extends OmidTestBase {
         }
 
         assertTrue("Cell should be there",
-                HBaseUtils.hasCell(table, row1, family, qualifier, t1.getStartTimestamp()));
+                HBaseUtils.hasCell(row1,
+                                   family,
+                                   qualifier,
+                                   t1.getStartTimestamp(),
+                                   new TTableCellGetterAdapter(table)));
         assertFalse("Shadow cell should not be there",
-                HBaseUtils.hasShadowCell(table, row1, family,
-                                              qualifier, t1.getStartTimestamp()));
+                HBaseUtils.hasShadowCell(row1,
+                                         family,
+                                         qualifier,
+                                         t1.getStartTimestamp(),
+                                         new TTableCellGetterAdapter(table)));
 
         HTable htable = new HTable(hbaseConf, TEST_TABLE);
         HBaseCellId hBaseCellId = new HBaseCellId(htable, row1, family, qualifier, t1.getStartTimestamp());
