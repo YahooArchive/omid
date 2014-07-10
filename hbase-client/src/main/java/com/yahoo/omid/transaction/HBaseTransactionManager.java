@@ -26,37 +26,6 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
 
     public static final byte[] SHADOW_CELL_SUFFIX = ":OMID_CTS".getBytes(Charsets.UTF_8);
 
-    static class HBaseTransaction extends AbstractTransaction<HBaseCellId> {
-
-        HBaseTransaction(long transactionId, Set<HBaseCellId> writeSet, AbstractTransactionManager tm) {
-            super(transactionId, writeSet, tm);
-        }
-
-        @Override
-        public void cleanup() {
-            Set<HBaseCellId> writeSet = getWriteSet();
-            for (final HBaseCellId cell : writeSet) {
-                Delete delete = new Delete(cell.getRow());
-                delete.deleteColumn(cell.getFamily(), cell.getQualifier(), getStartTimestamp());
-                try {
-                    cell.getTable().delete(delete);
-                } catch (IOException e) {
-                    LOG.warn("Failed cleanup cell {} for Tx {}", new Object[]{cell, getTransactionId(), e});
-                }
-            }
-        }
-
-        public Set<HTableInterface> getWrittenTables() {
-            HashSet<HBaseCellId> writeSet = (HashSet<HBaseCellId>) getWriteSet();
-            Set<HTableInterface> tables = new HashSet<HTableInterface>();
-            for (HBaseCellId cell : writeSet) {
-                tables.add(cell.getTable());
-            }
-            return tables;
-        }
-
-    }
-
     private static class HBaseTransactionFactory implements TransactionFactory<HBaseCellId> {
 
         @Override
@@ -92,7 +61,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
             return this;
         }
 
-        public HBaseTransactionManager build() throws InstantiationException {
+        public HBaseTransactionManager build() throws OmidInstantiationException {
             boolean ownsTsoClient = false;
             if (tsoClient == null) {
                 tsoClient = TSOClient.newBuilder()
@@ -111,9 +80,9 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
                     ownsCommitTableClient = true;
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    throw new InstantiationException("Interrupted whilst creating the HBase transaction manager");
+                    throw new OmidInstantiationException("Interrupted whilst creating the HBase transaction manager", e);
                 } catch (ExecutionException e) {
-                    throw new InstantiationException("Exception whilst getting the CommitTable client");
+                    throw new OmidInstantiationException("Exception whilst getting the CommitTable client", e);
                 }
             }
             return new HBaseTransactionManager(tsoClient, ownsTsoClient,

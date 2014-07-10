@@ -728,14 +728,11 @@ public class TTable {
         }
     }
 
-    private HBaseTransaction
-            enforceHBaseTransactionAsParam(Transaction tx) {
-
+    private HBaseTransaction enforceHBaseTransactionAsParam(Transaction tx) {
         if (tx instanceof HBaseTransaction) {
             return (HBaseTransaction) tx;
         } else {
-            throw new IllegalArgumentException(
-                    "The transaction object passed is not an instance of HBaseTransaction");
+            throw new IllegalArgumentException(String.format("The transaction object passed %s is not an instance of HBaseTransaction", tx.getClass().getName()));
         }
     }
 

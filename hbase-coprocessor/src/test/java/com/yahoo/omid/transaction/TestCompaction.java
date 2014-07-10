@@ -41,7 +41,6 @@ import com.google.inject.Injector;
 import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
-import com.yahoo.omid.transaction.HBaseTransactionManager.HBaseTransaction;
 import com.yahoo.omid.tso.TSOServer;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig;
 import com.yahoo.omid.tso.hbase.HBaseTimestampStorage;
