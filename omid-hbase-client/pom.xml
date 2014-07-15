@@ -11,7 +11,7 @@
     <groupId>yahoo.yinst.omid_hbase_client</groupId>
     <artifactId>omid_hbase_client</artifactId>
     <packaging>jar</packaging>
-    <version>2.1.11</version>
+    <version>2.1.12</version>
     <name>Omid HBase client (yinst package) for Omid v.2</name>
     <description>Omid HBase client (yinst package) for Omid v.2</description>
     <url>https://git.corp.yahoo.com/sieve/omid</url>
