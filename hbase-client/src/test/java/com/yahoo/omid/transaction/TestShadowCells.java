@@ -199,14 +199,6 @@ public class TestShadowCells extends OmidTestBase {
         assertTrue("Values should be the same", Arrays.equals(data1, getResult.getValue(family, qualifier)));
         verify(commitTableClient, times(1)).getCommitTimestamp(anyLong());
 
-        // Allow the healer thread to put the shadow cell back
-        table.shadowCellHealerExecutor.submit(new Runnable() {
-            @Override
-            public void run() {
-
-            }
-        }).get();
-
         assertTrue("Cell should be there",
                 HBaseUtils.hasCell(row,
                                    family,

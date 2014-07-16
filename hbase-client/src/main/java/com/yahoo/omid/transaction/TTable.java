@@ -11,10 +11,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
@@ -37,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.transaction.AbstractTransactionManager.CommitTimestamp;
 import com.yahoo.omid.transaction.HBaseTransactionManager.CommitTimestampLocatorImpl;
 
@@ -60,34 +55,6 @@ public class TTable {
     private static final double ALPHA = 0.975;
 
     private final HTableInterface healerTable;
-
-    private class ShadowCellsHealerTask implements Runnable {
-
-        private final Cell cell;
-        private final long commitTimestamp;
-
-        public ShadowCellsHealerTask(Cell cell, long commitTimestamp) {
-            this.cell = cell;
-            this.commitTimestamp = commitTimestamp;
-        }
-
-        @Override
-        public void run() {
-            Put put = new Put(CellUtil.cloneRow(cell));
-            byte[] family = CellUtil.cloneFamily(cell);
-            byte[] shadowCellQualifier = HBaseUtils.addShadowCellSuffix(CellUtil.cloneQualifier(cell));
-            put.add(family, shadowCellQualifier, cell.getTimestamp(), Bytes.toBytes(commitTimestamp));
-            try {
-                healerTable.put(put);
-            } catch (IOException e) {
-                LOG.warn("Failed healing shadow cell for kv {}", cell, e);
-            }
-        }
-
-    }
-
-    ExecutorService shadowCellHealerExecutor = Executors.newSingleThreadExecutor(
-            new ThreadFactoryBuilder().setNameFormat("sc-healer-%d").build());
 
     private HTableInterface table;
 
@@ -434,15 +401,8 @@ public class TTable {
             return true;
         }
 
-        Optional<Long> commitTimestamp = Optional.absent();
-        try {
-            commitTimestamp = tryToLocateCellCommitTimestamp(transaction.getTransactionManager(), kv, commitCache);
-        } catch (ExecutionException ee) {
-            throw new IOException("Error reading commit timestamp", ee.getCause());
-        } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            throw new IOException("Interrupted reading commit timestamp", ie);
-        }
+        Optional<Long> commitTimestamp = 
+                tryToLocateCellCommitTimestamp(transaction.getTransactionManager(), kv, commitCache);
 
         return commitTimestamp.isPresent() && commitTimestamp.get() < startTimestamp;
     }
@@ -472,7 +432,7 @@ public class TTable {
     private Optional<Long> tryToLocateCellCommitTimestamp(AbstractTransactionManager transactionManager,
                                                         Cell cell,
                                                         Map<Long, Long> commitCache)
-            throws InterruptedException, ExecutionException, IOException {
+            throws IOException {
         
         CommitTimestamp tentativeCommitTimestamp =
                 transactionManager.locateCellCommitTimestamp(
@@ -505,8 +465,15 @@ public class TTable {
     }
 
     void healShadowCell(Cell cell, long commitTimestamp) {
-        Runnable shadowCellHealerTask = new ShadowCellsHealerTask(cell, commitTimestamp);
-        shadowCellHealerExecutor.execute(shadowCellHealerTask);
+        Put put = new Put(CellUtil.cloneRow(cell));
+        byte[] family = CellUtil.cloneFamily(cell);
+        byte[] shadowCellQualifier = HBaseUtils.addShadowCellSuffix(CellUtil.cloneQualifier(cell));
+        put.add(family, shadowCellQualifier, cell.getTimestamp(), Bytes.toBytes(commitTimestamp));
+        try {
+            healerTable.put(put);
+        } catch (IOException e) {
+            LOG.warn("Failed healing shadow cell for kv {}", cell, e);
+        }
     }
 
     protected class TransactionalClientScanner implements ResultScanner {
@@ -678,15 +645,6 @@ public class TTable {
      */
     public void close() throws IOException {
         table.close();
-        shadowCellHealerExecutor.shutdown();
-        try {
-            if (!shadowCellHealerExecutor.awaitTermination(10, TimeUnit.SECONDS)) {
-                LOG.error("Healer executor did not finish in 10s");
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IOException(e);
-        }
         healerTable.close();
     }
 
@@ -764,7 +722,9 @@ public class TTable {
         if (tx instanceof HBaseTransaction) {
             return (HBaseTransaction) tx;
         } else {
-            throw new IllegalArgumentException(String.format("The transaction object passed %s is not an instance of HBaseTransaction", tx.getClass().getName()));
+            throw new IllegalArgumentException(
+                    String.format("The transaction object passed %s is not an instance of HBaseTransaction",
+                                  tx.getClass().getName()));
         }
     }
 
