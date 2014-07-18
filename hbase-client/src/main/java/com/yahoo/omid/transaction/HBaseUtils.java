@@ -117,7 +117,7 @@ public class HBaseUtils {
      */
     public static boolean isShadowCell(byte[] qualifier) {
         int index = com.google.common.primitives.Bytes.indexOf(qualifier, SHADOW_CELL_SUFFIX);
-        return index >= 0 && index == (qualifier.length - SHADOW_CELL_SUFFIX.length);
+        return index > 0 && index == (qualifier.length - SHADOW_CELL_SUFFIX.length);
     }
 
 }
