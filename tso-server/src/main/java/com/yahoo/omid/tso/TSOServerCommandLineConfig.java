@@ -11,6 +11,8 @@ import java.util.List;
 import com.beust.jcommander.IVariableArity;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+import com.yahoo.omid.committable.hbase.HBaseLogin;
 import com.yahoo.omid.tsoclient.TSOClient;
 
 /**
@@ -65,6 +67,9 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
     @Parameter(names = "-maxBatchSize", description = "Maximum size in each persisted batch of commits")
     private int maxBatchSize = DEFAULT_MAX_BATCH_SIZE;
 
+    @ParametersDelegate
+    private HBaseLogin.Config loginFlags = new HBaseLogin.Config();
+
     @Override
     public int processVariableArity(String optionName,
                                     String[] options) {
@@ -110,4 +115,5 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
         return maxBatchSize;
     }
 
+    public HBaseLogin.Config getLoginFlags() { return loginFlags; }
 }

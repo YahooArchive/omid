@@ -3,21 +3,16 @@ package com.yahoo.omid.committable.hbase;
 import static com.google.common.base.Charsets.UTF_8;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.NoSuchElementException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-
-import java.net.InetSocketAddress;
-
 import javax.inject.Inject;
-import javax.inject.Named;
 
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
@@ -32,10 +27,12 @@ import org.slf4j.LoggerFactory;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.CodedInputStream;
 import com.google.protobuf.CodedOutputStream;
 import com.yahoo.omid.committable.CommitTable;
@@ -63,7 +60,6 @@ public class HBaseCommitTable implements CommitTable {
     private final String tableName;
     private final Configuration hbaseConfig;
     private final KeyGenerator keygen;
-
 
     /**
      * Create a hbase commit table.
@@ -496,6 +492,9 @@ public class HBaseCommitTable implements CommitTable {
 
         @Parameter(names = "-graphite", description = "graphite server to report to")
         String graphite = null;
+
+        @ParametersDelegate
+        HBaseLogin.Config loginFlags = new HBaseLogin.Config();
     }
 
     public static void main(String[] args) throws Exception {
@@ -517,8 +516,10 @@ public class HBaseCommitTable implements CommitTable {
             keygen = null;
             assert (false);
         }
-        CommitTable commitTable = new HBaseCommitTable(hbaseConfig,
-                                                       COMMIT_TABLE_DEFAULT_NAME, keygen);
+
+        HBaseLogin.loginIfNeeded(config.loginFlags);
+
+        CommitTable commitTable = new HBaseCommitTable(hbaseConfig, COMMIT_TABLE_DEFAULT_NAME, keygen);
         CommitTable.Writer writer = commitTable.getWriter().get();
 
         MetricRegistry metrics = new MetricRegistry();
