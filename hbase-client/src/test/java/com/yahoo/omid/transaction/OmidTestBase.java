@@ -1,5 +1,6 @@
 package com.yahoo.omid.transaction;
 
+import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -38,7 +39,7 @@ public class OmidTestBase {
     private static final Logger LOG = LoggerFactory.getLogger(OmidTestBase.class);
 
     private static TSOTestBase tso = null;   
-    private static HBaseTestingUtility testutil;
+    protected static HBaseTestingUtility testutil;
     private static MiniHBaseCluster hbasecluster;
     protected static Configuration hbaseConf;
 
@@ -64,6 +65,7 @@ public class OmidTestBase {
         hbaseConf = HBaseConfiguration.create();
         hbaseConf.setInt("hbase.hregion.memstore.flush.size", 100*1024);
         hbaseConf.setInt("hbase.regionserver.nbreservationblocks", 1);
+        hbaseConf.setInt(HBASE_CLIENT_RETRIES_NUMBER, 3);
         hbaseConf.set("tso.host", "localhost");
         hbaseConf.setInt("tso.port", 1234);
         final String rootdir = "/tmp/hbase.test.dir/";

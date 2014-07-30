@@ -135,7 +135,8 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
             try {
                 cell.getTable().put(put);
             } catch (IOException e) {
-                LOG.warn("Failed inserting shadow cell {} for Tx {}", new Object[]{cell, transaction, e});
+                throw new TransactionManagerException(
+                        "Failed inserting shadow cell " + cell + " for Tx " + transaction, e);
             }
         }
     }

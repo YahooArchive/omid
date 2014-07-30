@@ -21,6 +21,7 @@ import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -218,6 +219,67 @@ public class TestShadowCells extends OmidTestBase {
         getResult = table.get(t2, get);
         assertTrue("Values should be the same", Arrays.equals(data1, getResult.getValue(family, qualifier)));
         verify(commitTableClient, times(1)).getCommitTimestamp(anyLong());
+    }
+
+    @Test
+    public void testTransactionNeverCompletesWhenCommitThrowsAnInternalTransactionManagerExceptionUpdatingShadowCells()
+            throws Exception {
+        CommitTable.Client commitTableClient = spy(getTSO().getCommitTable().getClient().get());
+
+        TSOClient client = TSOClient.newBuilder().withConfiguration(getTSO().getClientConfiguration())
+                .build();
+        AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.newBuilder()
+                .withConfiguration(hbaseConf)
+                .withCommitTableClient(commitTableClient)
+                .withTSOClient(client).build());
+
+        final TTable table = new TTable(hbaseConf, TEST_TABLE);
+
+        HBaseTransaction tx = (HBaseTransaction) tm.begin();
+
+        Put put = new Put(row);
+        put.add(family, qualifier, data1);
+        table.put(tx, put);
+
+        // This line emulates an error accessing the target table by disabling it
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                table.flushCommits();
+                HBaseAdmin admin = testutil.getHBaseAdmin();
+                admin.disableTable(table.getTableName());
+                invocation.callRealMethod();
+                return null;
+            }
+        }).when(tm).updateShadowCells(any(HBaseTransaction.class));
+
+        // When committing, a TransactionManagerException should be thrown by
+        // tm.updateShadowCells(). The exception must be catch internally by
+        // tm.commit(), avoiding the transaction completion on the commit table.
+        tm.commit(tx);
+
+        // Re-enable table to allow the required checks below
+        HBaseAdmin admin = testutil.getHBaseAdmin();
+        admin.enableTable(table.getTableName());
+
+        // 1) check that shadow cell is not created...
+        assertTrue("Cell should be there",
+                HBaseUtils.hasCell(row,
+                        family,
+                        qualifier,
+                        tx.getStartTimestamp(),
+                        new TTableCellGetterAdapter(table)));
+        assertFalse("Shadow cell should not be there",
+                HBaseUtils.hasShadowCell(row,
+                        family,
+                        qualifier,
+                        tx.getStartTimestamp(),
+                        new TTableCellGetterAdapter(table)));
+        // 2) and thus, completeTransaction() was never called on the commit table...
+        verify(commitTableClient, times(0)).completeTransaction(anyLong());
+        // 3) ...and commit value still in commit table
+        assertTrue(commitTableClient.getCommitTimestamp(tx.getStartTimestamp()).get().isPresent());
+
     }
 
     @Test(timeout = 60000)
