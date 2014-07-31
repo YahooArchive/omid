@@ -84,7 +84,7 @@ echo "$0 YOURKIT_OPTS = ${YOURKIT_OPTS}"
 
 # Resolve KLASSPATH
 
-KLASSPATH=$(CONFIG_FOLDER):$(HBASE_SITE_CONFIG_PATH)
+KLASSPATH=$(CONFIG_FOLDER):$(HBASE_CONF_DIR):$(HADOOP_CONF_DIR)
 
 for jar in lib/jars/$(PRODUCT_NAME)/*.jar; do
 	if [ -f "$jar" ]; then
@@ -107,5 +107,5 @@ JVM_ARGS="-Xmx$(HEAP_SIZE_IN_MIB)m $(JVM_ARGS) ${YOURKIT_OPTS}"
  -errfile /home/y/var/$(PRODUCT_NAME)/run/$(PRODUCT_NAME).err -cp ${KLASSPATH} \
  -home /home/y/share/yjava_jdk/java -Djava.library.path=${ARCH_LIB_DIR} ${JVM_ARGS} \
 com.yahoo.omid.tso.TsoServerDaemon -hbase -hbaseTimestampTable $(HBASE_TIMESTAMP_TABLE) \
- -hbaseCommitTable $(HBASE_COMMIT_TABLE) -port $(PORT) -maxItems $(MAX_ITEMS)\
- -metrics $(METRICS))
+ -hbaseCommitTable $(HBASE_COMMIT_TABLE) -port $(PORT) -maxItems $(MAX_ITEMS) \
+ -metrics $(METRICS) -hbaseClientPrincipal $(HBASE_CLIENT_PRINCIPAL) -hbaseClientKeytab $(HBASE_CLIENT_KEYTAB))

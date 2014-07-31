@@ -23,6 +23,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
+import com.yahoo.omid.committable.hbase.HBaseLogin;
 import com.yahoo.omid.tso.hbase.HBaseStorageModule;
 
 @Singleton
@@ -52,6 +53,7 @@ public class TSOServer extends AbstractIdleService {
         guiceModules.add(new TSOModule(config));
         if (config.isHBase()) {
             guiceModules.add(new HBaseStorageModule());
+            HBaseLogin.loginIfNeeded(config.getLoginFlags());
         } else {
             guiceModules.add(new InMemoryStorageModule());
         }

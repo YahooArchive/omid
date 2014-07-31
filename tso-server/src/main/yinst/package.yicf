@@ -19,6 +19,7 @@ YINST requires pkg yjava_daemon 2.15.87 *
 YINST requires pkg yjava_jdk 1.7 *
 YINST requires pkg mon_metrics_java 0.2.2 *
 YINST requires pkg ynetdblib 1.9.34 *
+YINST requires pkg ynet_db_yahoo 1.16.291 *
 YINST set RUN_AS_USER yahoo
 
 # Yourkit profiling - disabled by default, even when enabled
@@ -38,6 +39,14 @@ YINST set YOURKIT_OPTIONS ""
 #For yjava_daemon
 YINST set HEAP_SIZE_IN_MIB 8000
 
+# HBase & Hadoop
+# -------------------
+YINST set HBASE_CONF_DIR /home/y/libexec/hbase/conf/
+YINST set HADOOP_CONF_DIR /home/y/conf/hadoop/
+
+# The following two are ignored in insecure HBase environment
+YINST set HBASE_CLIENT_PRINCIPAL sieve_omid0@YGRID.YAHOO.COM
+YINST set HBASE_CLIENT_KEYTAB /home/sieve_omid0/sieve_omid0.prod.headless.keytab
 
 # Directories
 dir 755 yahoo - logs/$(PRODUCT_NAME)/
@@ -56,9 +65,6 @@ YINST set HBASE_COMMIT_TABLE OMID_COMMIT_TABLE
 YINST set PORT 54758
 YINST set MAX_ITEMS 100000000
 YINST set METRICS /home/y/conf/$(PRODUCT_NAME)/
-
-#HBase
-YINST set HBASE_SITE_CONFIG_PATH /home/y/libexec/hbase/conf/
 
 
 # Jars

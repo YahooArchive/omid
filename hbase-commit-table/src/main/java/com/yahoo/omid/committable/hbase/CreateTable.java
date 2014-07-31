@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable.KeyGenerator;
 
 public class CreateTable {
@@ -28,14 +29,15 @@ public class CreateTable {
         @Parameter(names = "-numSplits", description = "Number of splits (to pre-split table)", required = false)
         int numSplits = 1;
 
+        @ParametersDelegate
+        HBaseLogin.Config loginFlags = new HBaseLogin.Config();
     }
 
     public static void main(String[] args) throws IOException {
-
         Config config = new Config();
         new JCommander(config, args);
+        HBaseLogin.loginIfNeeded(config.loginFlags);
         createTable(HBaseConfiguration.create(), config.table, config.numSplits);
-
     }
 
     public static void createTable(Configuration hbaseConf, String tableName, int numSplits) throws IOException {
@@ -65,7 +67,7 @@ public class CreateTable {
             LOG.info("Created {} table with {} regions",
                     tableName, admin.getTableRegions(Bytes.toBytes(tableName)).size());
         }
-        
+
         if (admin.isTableDisabled(tableName)) {
             admin.enableTable(tableName);
         }

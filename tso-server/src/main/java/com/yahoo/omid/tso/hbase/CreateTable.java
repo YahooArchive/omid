@@ -15,6 +15,8 @@ import org.slf4j.LoggerFactory;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+import com.yahoo.omid.committable.hbase.HBaseLogin;
 
 public class CreateTable {
 
@@ -25,14 +27,17 @@ public class CreateTable {
         @Parameter(names = "-tableName", description = "Name of the timestamp storage table in HBase", required = false)
         String table = TIMESTAMP_TABLE_DEFAULT_NAME;
 
+        @ParametersDelegate
+        HBaseLogin.Config loginFlags = new HBaseLogin.Config();
     }
 
     public static void main(String[] args) throws IOException {
 
         Config config = new Config();
         new JCommander(config, args);
-        createTable(HBaseConfiguration.create(), config.table);
 
+        HBaseLogin.loginIfNeeded(config.loginFlags);
+        createTable(HBaseConfiguration.create(), config.table);
     }
 
     public static void createTable(Configuration hbaseConf, String tableName) throws IOException {

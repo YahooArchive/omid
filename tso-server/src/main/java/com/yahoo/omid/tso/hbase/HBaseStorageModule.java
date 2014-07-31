@@ -28,5 +28,4 @@ public class HBaseStorageModule extends AbstractModule {
     Configuration provideHBaseConfiguration() {
         return HBaseConfiguration.create();
     }
-
 }

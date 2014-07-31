@@ -32,7 +32,7 @@ echo "$0 JAVA_HOME = ${JAVA_HOME}"
 
 # Resolve KLASSPATH
 
-KLASSPATH=$(CONFIG_FOLDER):$(HBASE_SITE_CONFIG_PATH)
+KLASSPATH=$(CONFIG_FOLDER):$(HBASE_CONF_DIR):$(HADOOP_CONF_DIR)
 
 for jar in /home/y/lib/jars/$(PRODUCT_NAME)/*.jar; do
 	if [ -f "$jar" ]; then
@@ -41,23 +41,27 @@ for jar in /home/y/lib/jars/$(PRODUCT_NAME)/*.jar; do
 done
 JVM_ARGS="-Xmx$(HEAP_SIZE_IN_MIB)m $(JVM_ARGS) ${YOURKIT_OPTS}"
 
-
 tso() {
     exec java -server $JVM_ARGS -cp $KLASSPATH com.yahoo.omid.tso.TSOServer -hbase \
               -hbaseTimestampTable $(HBASE_TIMESTAMP_TABLE) -hbaseCommitTable $(HBASE_COMMIT_TABLE) \
-              -port $(PORT) -maxItems $(MAX_ITEMS) -metrics $(METRICS)
+              -port $(PORT) -maxItems $(MAX_ITEMS) -metrics $(METRICS) \
+              -hbaseClientPrincipal $(HBASE_CLIENT_PRINCIPAL) -hbaseClientKeytab $(HBASE_CLIENT_KEYTAB)
 }
 
 tsobench() {
-    exec java -server -cp $KLASSPATH com.yahoo.omid.tso.util.TransactionClient $@
+    exec java -server -cp $KLASSPATH com.yahoo.omid.tso.util.TransactionClient -hbaseCommitTable $(HBASE_COMMIT_TABLE) \
+              -tsoPort $(PORT) -hbaseClientPrincipal $(HBASE_CLIENT_PRINCIPAL) \
+              -hbaseClientKeytab $(HBASE_CLIENT_KEYTAB) $@
 }
 
 createHBaseCommitTable() {
-    exec java -server -cp $KLASSPATH com.yahoo.omid.committable.hbase.CreateTable $@
+    exec java -server -cp $KLASSPATH com.yahoo.omid.committable.hbase.CreateTable -tableName $(HBASE_COMMIT_TABLE) \
+       -hbaseClientPrincipal $(HBASE_CLIENT_PRINCIPAL) -hbaseClientKeytab $(HBASE_CLIENT_KEYTAB) $@
 }
 
 createHBaseTimestampTable() {
-    exec java -server -cp $KLASSPATH com.yahoo.omid.tso.hbase.CreateTable $@
+    exec java -server -cp $KLASSPATH com.yahoo.omid.tso.hbase.CreateTable -tableName $(HBASE_TIMESTAMP_TABLE) \
+      -hbaseClientPrincipal $(HBASE_CLIENT_PRINCIPAL) -hbaseClientKeytab $(HBASE_CLIENT_KEYTAB)
 }
 
 usage() {
@@ -65,8 +69,8 @@ usage() {
     echo "where <command> is one of:"
     echo "  tso           Starts the timestamp oracle server."
     echo "  tsobench      Runs a simple benchmark of the TSO."
-    echo "  create-hbase-commit-table -tableName <name> -numSplits <num>   Creates the hbase commit table."
-    echo "  create-hbase-timestamp-table  -tableName <name> Creates the hbase timestamp table."
+    echo "  create-hbase-commit-table -numSplits <num>   Creates the hbase commit table."
+    echo "  create-hbase-timestamp-table Creates the hbase timestamp table."
 }
 
 # if no args specified, show usage
