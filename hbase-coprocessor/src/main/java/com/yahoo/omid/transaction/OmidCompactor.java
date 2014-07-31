@@ -74,8 +74,7 @@ public class OmidCompactor extends BaseRegionObserver {
         // this can't be done in the start() method above because the
         // HBase server need to be initialized first
         TableName tableName = e.getEnvironment().getRegion().getTableDesc().getTableName();
-        if (!e.getEnvironment().getRegion().getRegionInfo().isMetaTable()
-                && !tableName.equals(TableName.valueOf("hbase:namespace"))
+        if (!tableName.isSystemTable()
                 && !tableName.equals(TableName.valueOf(COMMIT_TABLE_DEFAULT_NAME))
                 && !tableName.equals(TableName.valueOf(TIMESTAMP_TABLE_DEFAULT_NAME))) {
             if (commitTableClient == null) {
@@ -92,8 +91,7 @@ public class OmidCompactor extends BaseRegionObserver {
                                       ScanType scanType) throws IOException
     {
         TableName tableName = e.getEnvironment().getRegion().getTableDesc().getTableName();
-        if (e.getEnvironment().getRegion().getRegionInfo().isMetaTable()
-                || tableName.equals(TableName.valueOf("hbase:namespace"))
+        if (tableName.isSystemTable()
                 || tableName.equals(TableName.valueOf(COMMIT_TABLE_DEFAULT_NAME))
                 || tableName.equals(TableName.valueOf(TIMESTAMP_TABLE_DEFAULT_NAME))) {
             return scanner;
