@@ -15,6 +15,7 @@ import java.util.NavigableSet;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
@@ -138,7 +139,7 @@ public class TTable {
         }
         for (List<Cell> cells : fmap.values()) {
             for (Cell cell : cells) {
-                throwExceptionIfTimestampSet(cell);
+                throwExceptionIfTimestampSet(cell, startTimestamp);
                 switch (KeyValue.Type.codeToType(cell.getTypeByte())) {
                 case DeleteColumn:
                     deleteP.add(CellUtil.cloneFamily(cell),
@@ -212,14 +213,15 @@ public class TTable {
         final Put tsput = new Put(put.getRow(), startTimestamp);
         Map<byte[], List<Cell>> kvs = put.getFamilyCellMap();
         for (List<Cell> kvl : kvs.values()) {
-            for (Cell kv : kvl) {
-                throwExceptionIfTimestampSet(kv);
-                tsput.add(
-                          new KeyValue(CellUtil.cloneRow(kv),
-                                       CellUtil.cloneFamily(kv),
-                                       CellUtil.cloneQualifier(kv),
-                                       startTimestamp,
-                                       CellUtil.cloneValue(kv)));
+            for (Cell c : kvl) {
+                throwExceptionIfTimestampSet(c, startTimestamp);
+                // Reach into keyvalue to update timestamp.
+                // It's not nice to reach into keyvalue internals,
+                // but we want to avoid having to copy the whole thing
+                KeyValue kv = KeyValueUtil.ensureKeyValue(c);
+                Bytes.putLong(kv.getValueArray(), kv.getTimestampOffset(), startTimestamp);
+                tsput.add(kv);
+
                 transaction.addWriteSetElement(
                                                new HBaseCellId(table,
                                                                CellUtil.cloneRow(kv),
@@ -346,7 +348,7 @@ public class TTable {
             Cell oldestCell = null;
             for (Cell cell : columnCells) {
                 if (isCellInSnapshot(cell, transaction, commitCache)) {
-                    if (!Arrays.equals(CellUtil.cloneValue(cell), DELETE_TOMBSTONE)) {
+                    if (!CellUtil.matchingValue(cell, DELETE_TOMBSTONE)) {
                         keyValuesInSnapshot.add(cell);
                     }
                     snapshotValueFound = true;
@@ -711,8 +713,9 @@ public class TTable {
         }
     }
 
-    private void throwExceptionIfTimestampSet(Cell cell) {
-        if (cell.getTimestamp() != HConstants.LATEST_TIMESTAMP) {
+    private void throwExceptionIfTimestampSet(Cell cell, long startTimestamp) {
+        if (cell.getTimestamp() != HConstants.LATEST_TIMESTAMP
+            && cell.getTimestamp() != startTimestamp) {
             throw new IllegalArgumentException(
                     "Timestamp not allowed in transactional user operations");
         }
