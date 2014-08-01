@@ -126,6 +126,7 @@ public class HBaseCommitTable implements CommitTable {
         final HTable deleteTable;
         final ExecutorService deleteBatchExecutor;
         final BlockingQueue<DeleteRequest> deleteQueue;
+        boolean isClosed = false; // @GuardedBy("this")
         final static int DELETE_BATCH_SIZE = 1024;
 
         HBaseClient(Configuration hbaseConfig, String tableName) throws IOException {
@@ -189,10 +190,19 @@ public class HBaseCommitTable implements CommitTable {
         @Override
         public ListenableFuture<Void> completeTransaction(long startTimestamp) {
             try {
-                DeleteRequest req = new DeleteRequest(
-                        new Delete(startTimestampToKey(startTimestamp), startTimestamp));
-                deleteQueue.put(req);
-                return req;
+                synchronized (this) {
+
+                    if (isClosed) {
+                        SettableFuture<Void> f = SettableFuture.<Void> create();
+                        f.setException(new IOException("Not accepting requests anymore"));
+                        return f;
+                    }
+
+                    DeleteRequest req = new DeleteRequest(
+                            new Delete(startTimestampToKey(startTimestamp), startTimestamp));
+                    deleteQueue.put(req);
+                    return req;
+                }
             } catch (IOException ioe) {
                 LOG.warn("Error generating timestamp for transaction completion", ioe);
                 SettableFuture<Void> f = SettableFuture.<Void>create();
@@ -241,6 +251,18 @@ public class HBaseCommitTable implements CommitTable {
                     }
                 }
             } catch (InterruptedException ie) {
+                // Drain the queue and place the exception in the future
+                // for those who placed requests
+                LOG.warn("Draining delete queue");
+                DeleteRequest queuedRequest = deleteQueue.poll();
+                while (queuedRequest != null) {
+                    reqbatch.add(queuedRequest);
+                    queuedRequest = deleteQueue.poll();
+                }
+                for (DeleteRequest dr : reqbatch) {
+                    dr.error(new IOException("HBase CommitTable is going to be closed"));
+                }
+                reqbatch.clear();
                 Thread.currentThread().interrupt();
             } catch (Throwable t) {
                 LOG.error("Transaction completion thread threw exception", t);
@@ -248,18 +270,22 @@ public class HBaseCommitTable implements CommitTable {
         }
 
         @Override
-        public void close() throws IOException {
-            deleteBatchExecutor.shutdown();
+        public synchronized void close() throws IOException {
+            isClosed = true;
+            deleteBatchExecutor.shutdownNow(); // may need to interrupt take
             try {
-                if (!deleteBatchExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
-                    deleteBatchExecutor.shutdownNow(); // may need to interrupt take
-                }
-
                 if (!deleteBatchExecutor.awaitTermination(10, TimeUnit.SECONDS)) {
                     LOG.warn("Delete executor did not shutdown");
                 }
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
+            }
+
+            LOG.warn("Re-Draining delete queue just in case");
+            DeleteRequest queuedRequest = deleteQueue.poll();
+            while (queuedRequest != null) {
+                queuedRequest.error(new IOException("HBase CommitTable is going to be closed"));
+                queuedRequest = deleteQueue.poll();
             }
 
             deleteTable.close();

@@ -190,7 +190,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             try {
                 updateShadowCells(tx);
                 // Remove transaction from commit table if not failure occurred
-                commitTableClient.completeTransaction(tx.getStartTimestamp());
+                commitTableClient.completeTransaction(tx.getStartTimestamp()).get();
                 postCommit(tx);
             } catch (TransactionManagerException e) {
                 LOG.warn(e.getMessage());
