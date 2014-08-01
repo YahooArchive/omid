@@ -4,7 +4,10 @@ import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_FAM
 import static com.yahoo.omid.committable.hbase.HBaseCommitTable.LOW_WATERMARK_FAMILY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.fail;
 
+import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import org.apache.hadoop.conf.Configuration;
@@ -31,6 +34,7 @@ import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.yahoo.omid.committable.CommitTable.Client;
 import com.yahoo.omid.committable.CommitTable.Writer;
+import com.yahoo.omid.committable.hbase.HBaseCommitTable.HBaseClient;
 
 public class HBaseCommitTableTest {
 
@@ -155,8 +159,8 @@ public class HBaseCommitTableTest {
         Future<Void> f = null;
         for (long i = 0; i < 1000; i++) {
             f = client.completeTransaction(i);
+            f.get();
         }
-        f.get();
         assertEquals("Rows should be 0!", 0, rowCount(TABLE_NAME, COMMIT_TABLE_FAMILY));
 
         // Test we don't get a commit timestamp for a non-existent transaction id in the table
@@ -183,6 +187,39 @@ public class HBaseCommitTableTest {
         long lowWatermark = lowWatermarkFuture.get();
         assertEquals("Low watermark should be 999", 999, lowWatermark);
         assertEquals("Should there be only one row!", 1, rowCount(TABLE_NAME, LOW_WATERMARK_FAMILY));
+
+    }
+
+    @Test
+    public void testClosingClientEmptyQueuesProperly() throws Throwable {
+        HBaseCommitTableConfig config = new HBaseCommitTableConfig();
+        config.setTableName(TEST_TABLE);
+        HBaseCommitTable commitTable = new HBaseCommitTable(hbaseConf, config);
+
+        ListenableFuture<Writer> futureWriter = commitTable.getWriter();
+        Writer writer = futureWriter.get();
+        ListenableFuture<Client> futureClient = commitTable.getClient();
+        HBaseCommitTable.HBaseClient client = (HBaseClient) futureClient.get();
+
+        for (int i = 0; i < 1000; i++) {
+            writer.addCommittedTransaction(i, i + 1);
+        }
+        writer.flush().get();
+
+        // Completing first transaction should be fine
+        client.completeTransaction(0).get();
+        assertEquals("Rows should be 999!", 999, rowCount(TABLE_NAME, COMMIT_TABLE_FAMILY));
+
+        // When closing, removing a transaction should throw an EE with an IOException
+        client.close();
+        try {
+            client.completeTransaction(1).get();
+            fail();
+        } catch (ExecutionException e) {
+            // Expected
+        }
+        assertEquals("Delete queue size should be 0!", 0, client.deleteQueue.size());
+        assertEquals("Rows should be 999!", 999, rowCount(TABLE_NAME, COMMIT_TABLE_FAMILY));
 
     }
 
