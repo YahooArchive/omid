@@ -16,6 +16,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
@@ -44,6 +46,7 @@ import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
 public class OmidCompactor extends BaseRegionObserver {
 
     private static final Logger LOG = LoggerFactory.getLogger(OmidCompactor.class);
+    final static String OMID_COMPACTABLE_CF_FLAG = "OMID_ENABLED";
 
     private Configuration conf = null;
     CommitTable.Client commitTableClient = null;
@@ -90,16 +93,19 @@ public class OmidCompactor extends BaseRegionObserver {
                                       InternalScanner scanner,
                                       ScanType scanType) throws IOException
     {
-        TableName tableName = e.getEnvironment().getRegion().getTableDesc().getTableName();
-        if (tableName.isSystemTable()
-                || tableName.equals(TableName.valueOf(COMMIT_TABLE_DEFAULT_NAME))
-                || tableName.equals(TableName.valueOf(TIMESTAMP_TABLE_DEFAULT_NAME))) {
+        HTableDescriptor desc = e.getEnvironment().getRegion().getTableDesc();
+        HColumnDescriptor famDesc
+            = desc.getFamily(Bytes.toBytes(store.getColumnFamilyName()));
+        boolean omidCompactable = Boolean.valueOf(famDesc.getValue(OMID_COMPACTABLE_CF_FLAG));
+        // only column families tagged as compactable are compacted
+        // with omid compactor
+        if (!omidCompactable) {
             return scanner;
         } else {
             if (commitTableClient != null) {
                 return new CompactorScanner(e, scanner, commitTableClient);
             }
-            throw new IOException("CommitTable client was not be obtained when opening region for table " + tableName);
+            throw new IOException("CommitTable client was not be obtained when opening region for table " + desc.getTableName());
         }
     }
 
