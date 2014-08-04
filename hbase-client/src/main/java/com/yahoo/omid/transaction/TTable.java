@@ -88,7 +88,7 @@ public class TTable {
 
         final int requestedVersions = (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD);
         final long readTimestamp = transaction.getStartTimestamp();
-        final Get tsget = new Get(get.getRow());
+        final Get tsget = new Get(get.getRow()).setFilter(get.getFilter());
         TimeRange timeRange = get.getTimeRange();
         long startTime = timeRange.getMin();
         long endTime = Math.min(timeRange.getMax(), readTimestamp + 1);
