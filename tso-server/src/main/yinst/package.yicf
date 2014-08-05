@@ -69,7 +69,7 @@ YINST set METRICS /home/y/conf/$(PRODUCT_NAME)/
 
 # Jars
 f - - - lib/jars/$(PRODUCT_NAME).pom pom.xml
-f - - - lib/jars/$(PRODUCT_NAME)/$(PRODUCT_NAME)-$(POM_VERSION).jar target/$(POM_ARTIFACT_ID)-$(POM_VERSION).jar
+f - - - lib/jars/$(PRODUCT_NAME)/$(PRODUCT_NAME).jar target/$(POM_ARTIFACT_ID).jar
 glob - - - lib/jars/$(PRODUCT_NAME)/ lib/*.jar
 
 # Configs
