@@ -48,13 +48,6 @@ public class TTable {
 
     public static byte[] DELETE_TOMBSTONE = Bytes.toBytes("__OMID_TOMBSTONE__");;
 
-    /** We always ask for CACHE_VERSIONS_OVERHEAD extra versions */
-    private static int CACHE_VERSIONS_OVERHEAD = 3;
-    /** Average number of versions needed to reach the right snapshot */
-    public double versionsAvg = 3;
-    /** How fast do we adapt the average */
-    private static final double ALPHA = 0.975;
-
     private final HTableInterface healerTable;
 
     private HTableInterface table;
@@ -86,13 +79,12 @@ public class TTable {
 
         HBaseTransaction transaction = enforceHBaseTransactionAsParam(tx);
 
-        final int requestedVersions = (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD);
         final long readTimestamp = transaction.getStartTimestamp();
         final Get tsget = new Get(get.getRow()).setFilter(get.getFilter());
         TimeRange timeRange = get.getTimeRange();
         long startTime = timeRange.getMin();
         long endTime = Math.min(timeRange.getMax(), readTimestamp + 1);
-        tsget.setTimeRange(startTime, endTime).setMaxVersions(requestedVersions);
+        tsget.setTimeRange(startTime, endTime).setMaxVersions(1);
         Map<byte[], NavigableSet<byte[]>> kvs = get.getFamilyMap();
         for (Map.Entry<byte[], NavigableSet<byte[]>> entry : kvs.entrySet()) {
             byte[] family = entry.getKey();
@@ -113,7 +105,7 @@ public class TTable {
         Result result = table.get(tsget);
         List<Cell> filteredKeyValues = Collections.emptyList();
         if (!result.isEmpty()) {
-            filteredKeyValues = filterCellsForSnapshot(result.listCells(), transaction, requestedVersions);
+            filteredKeyValues = filterCellsForSnapshot(result.listCells(), transaction, tsget.getMaxVersions());
         }
 
         return Result.create(filteredKeyValues);
@@ -244,7 +236,7 @@ public class TTable {
         HBaseTransaction transaction = enforceHBaseTransactionAsParam(tx);
 
         Scan tsscan = new Scan(scan);
-        tsscan.setMaxVersions((int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
+        tsscan.setMaxVersions(1);
         tsscan.setTimeRange(0, transaction.getStartTimestamp() + 1);
         Map<byte[], NavigableSet<byte[]>> kvs = tsscan.getFamilyMap();
         for (Map.Entry<byte[], NavigableSet<byte[]>> entry : kvs.entrySet()) {
@@ -258,7 +250,7 @@ public class TTable {
             }
         }
         TransactionalClientScanner scanner = new TransactionalClientScanner(transaction,
-                tsscan, (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
+                tsscan, 1);
         return scanner;
     }
 
@@ -338,12 +330,14 @@ public class TTable {
         List<Cell> keyValuesInSnapshot = new ArrayList<Cell>();
         List<Get> pendingGetsList = new ArrayList<Get>();
 
-        int numberOfVersionsToFetch = versionsToRequest * 2 + CACHE_VERSIONS_OVERHEAD;
+        int numberOfVersionsToFetch = versionsToRequest * 2;
+        if (numberOfVersionsToFetch < 1) {
+            numberOfVersionsToFetch = versionsToRequest;
+        }
 
         Map<Long, Long> commitCache = buildCommitCache(rawCells);
 
         for (List<Cell> columnCells : new IterableColumn(rawCells)) {
-            int versionsProcessed = 0;
             boolean snapshotValueFound = false;
             Cell oldestCell = null;
             for (Cell cell : columnCells) {
@@ -355,14 +349,12 @@ public class TTable {
                     break;
                 }
                 oldestCell = cell;
-                versionsProcessed++;
             }
             if (!snapshotValueFound) {
                 assert (oldestCell != null);
                 Get pendingGet = createPendingGet(oldestCell, numberOfVersionsToFetch);
                 pendingGetsList.add(pendingGet);
             }
-            updateAvgNumberOfVersionsToFetchFromHBase(versionsProcessed);
         }
 
         if (!pendingGetsList.isEmpty()) {
@@ -418,17 +410,6 @@ public class TTable {
         pendingGet.setTimeRange(0, cell.getTimestamp());
 
         return pendingGet;
-    }
-
-    // TODO Try to avoid to use the versionsAvg global attribute in here
-    private void updateAvgNumberOfVersionsToFetchFromHBase(int versionsProcessed) {
-
-        if (versionsProcessed > versionsAvg) {
-            versionsAvg = versionsProcessed;
-        } else {
-            versionsAvg = ALPHA * versionsAvg + (1 - ALPHA) * versionsProcessed;
-        }
-
     }
 
     private Optional<Long> tryToLocateCellCommitTimestamp(AbstractTransactionManager transactionManager,
