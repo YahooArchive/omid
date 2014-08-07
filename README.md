@@ -46,9 +46,9 @@ HBase Client usage
 Add the following to your pom.xml dependencies:
 ```xml
     <dependency>
-      <groupId>yahoo.yinst.omid_client</groupId>
-      <artifactId>omid_client</artifactId>
-      <version>[2.0,)</version>
+      <groupId>yahoo.yinst.omid_hbase_client</groupId>
+      <artifactId>omid_hbase_client</artifactId>
+      <version>[2.2.0,)</version>
     </dependency>
 ```
 
@@ -59,7 +59,7 @@ interface is similar to the standard _HTableInterface_, and only requires passin
 first parameter in the transactional aware methods (e.g. _put(Transaction tx, Put put)_)
 _These interfaces will likely change slightly in future._
 
-To run this example, make sure you have _core-site.xml_ and _hbase-site.xml_ for your HBase cluster are present in
+To run this example, make sure _core-site.xml_ and _hbase-site.xml_ for your HBase cluster are present in
 your classpath. You will need to set _tso.host_ and _tso.port_ appropriately. Also, you will need to create a hbase
 table "EXAMPLE_TABLE", with column family "EXAMPLE_CF", and with TTL disabled and maxVersions set to Integer.MAX_VALUE.
 This example assumes non-secure communication with HBase. If your HBase cluster is secured with Kerberos, you will
