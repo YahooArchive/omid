@@ -127,6 +127,9 @@ public class TestCompaction {
 
             desc.addCoprocessor("org.apache.hadoop.hbase.coprocessor.AggregateImplementation");
             admin.createTable(desc);
+            for (byte[] family : families) {
+                CompactorUtil.enableOmidCompaction(hbaseConf, tableName, family);
+            }
         }
 
     }
@@ -228,7 +231,7 @@ public class TestCompaction {
         admin.majorCompact(TEST_TABLE);
 
         LOG.info("Sleeping for 3 secs");
-        Thread.currentThread().sleep(3000);
+        Thread.sleep(3000);
         LOG.info("Waking up after 3 secs");
 
         // No rows should have been discarded after compacting
@@ -285,7 +288,7 @@ public class TestCompaction {
         admin.majorCompact(TEST_TABLE);
 
         LOG.info("Sleeping for 3 secs");
-        Thread.currentThread().sleep(3000);
+        Thread.sleep(3000);
         LOG.info("Waking up after 3 secs");
 
         assertTrue("Cell should be there",
@@ -362,7 +365,7 @@ public class TestCompaction {
         admin.majorCompact(TEST_TABLE);
 
         LOG.info("Sleeping for 3 secs");
-        Thread.currentThread().sleep(3000);
+        Thread.sleep(3000);
         LOG.info("Waking up after 3 secs");
 
         // One row should have been discarded after compacting
@@ -438,7 +441,7 @@ public class TestCompaction {
         admin.majorCompact(TEST_TABLE); // Should trigger the error when accessing CommitTable funct.
 
         LOG.info("Sleeping for 3 secs");
-        Thread.currentThread().sleep(3000);
+        Thread.sleep(3000);
         LOG.info("Waking up after 3 secs");
 
         // All rows should be there after the failed compaction
@@ -485,20 +488,7 @@ public class TestCompaction {
         assertEquals("There should be only one row in table after flushing", 1, rowCount(TABLE_NAME, fam));
 
         // Return a LWM that triggers compaction
-        LOG.info("Regions in table {}: {}", TEST_TABLE, hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).size());
-        OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).get(0)
-                .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
-        CommitTable.Client commitTableClient = spy(omidCompactor.commitTableClient);
-        SettableFuture<Long> f = SettableFuture.<Long> create();
-        f.set(Long.MAX_VALUE);
-        doReturn(f).when(commitTableClient).readLowWatermark();
-        omidCompactor.commitTableClient = commitTableClient;
-        LOG.info("Compacting table {}", TEST_TABLE);
-        admin.majorCompact(TEST_TABLE);
-
-        LOG.info("Sleeping for 3 secs");
-        Thread.currentThread().sleep(3000);
-        LOG.info("Waking up after 3 secs");
+        compactEverything();
 
         // One row should have been discarded after compacting
         assertEquals("There should be only one row in table after compacting", 1, rowCount(TABLE_NAME, fam));
@@ -515,6 +505,62 @@ public class TestCompaction {
         assertEquals("Values don't match",
                      "testWrite-" + (2 * MAX_VERSIONS),
                      Bytes.toString(CellUtil.cloneValue(column.get(0))));
+    }
+
+    @Test(timeout=60000)
+    public void testNonOmidCFIsUntouched() throws Throwable {
+        admin.disableTable(TEST_TABLE);
+        byte[] nonOmidCF = Bytes.toBytes("nonOmidCF");
+        byte[] nonOmidQual = Bytes.toBytes("nonOmidCol");
+        HColumnDescriptor nonomidfam = new HColumnDescriptor(nonOmidCF);
+        nonomidfam.setMaxVersions(MAX_VERSIONS);
+        admin.addColumn(TEST_TABLE, nonomidfam);
+        admin.enableTable(TEST_TABLE);
+
+        byte[] rowId = Bytes.toBytes("testRow");
+        Transaction tx = tm.begin();
+        Put put = new Put(rowId);
+        put.add(fam, qual, Bytes.toBytes("testValue"));
+        txTable.put(tx, put);
+
+        Put nonTxPut = new Put(rowId);
+        nonTxPut.add(nonOmidCF, nonOmidQual, Bytes.toBytes("nonTxVal"));
+        txTable.getHTable().put(nonTxPut);
+        txTable.flushCommits(); // to make sure it left the client
+
+        Get g = new Get(rowId);
+        Result result = txTable.getHTable().get(g);
+        assertEquals("Should be there, precompact",
+                1, result.getColumnCells(nonOmidCF, nonOmidQual).size());
+        assertEquals("Should be there, precompact",
+                1, result.getColumnCells(fam, qual).size());
+
+        compactEverything();
+
+        result = txTable.getHTable().get(g);
+        assertEquals("Should be there, postcompact",
+                1, result.getColumnCells(nonOmidCF, nonOmidQual).size());
+        assertEquals("Should not be there, postcompact",
+                0, result.getColumnCells(fam, qual).size());
+    }
+
+    private void compactEverything() throws Exception {
+        admin.flush(TEST_TABLE);
+
+        LOG.info("Regions in table {}: {}", TEST_TABLE, hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).size());
+        OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).get(0)
+                .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
+        CommitTable.Client commitTableClient = spy(omidCompactor.commitTableClient);
+        SettableFuture<Long> f = SettableFuture.<Long> create();
+        f.set(Long.MAX_VALUE);
+        doReturn(f).when(commitTableClient).readLowWatermark();
+        omidCompactor.commitTableClient = commitTableClient;
+        LOG.info("Compacting table {}", TEST_TABLE);
+        admin.majorCompact(TEST_TABLE);
+
+        LOG.info("Sleeping for 3 secs");
+        Thread.sleep(3000);
+        LOG.info("Waking up after 3 secs");
     }
 
     private static long rowCount(TableName table, byte[] family) throws Throwable {
