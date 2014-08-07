@@ -2,7 +2,7 @@ package com.yahoo.omid.transaction;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -15,10 +15,10 @@ import java.util.NavigableSet;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
@@ -33,7 +33,12 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Function;
 import com.google.common.base.Optional;
+import com.google.common.base.Predicate;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Multimaps;
 import com.yahoo.omid.transaction.AbstractTransactionManager.CommitTimestamp;
 import com.yahoo.omid.transaction.HBaseTransactionManager.CommitTimestampLocatorImpl;
 
@@ -254,59 +259,6 @@ public class TTable {
         return scanner;
     }
 
-    // ThreadSafe
-    static class IterableColumn implements Iterable<List<Cell>> {
-
-        // ThreadSafe
-        class ColumnIterator implements Iterator<List<Cell>> {
-
-            private final Iterator<ColumnWrapper> listIterator = columnList.listIterator();
-
-            @Override
-            public boolean hasNext() {
-                return listIterator.hasNext();
-            }
-
-            @Override
-            public List<Cell> next() {
-                ColumnWrapper columnWrapper = listIterator.next();
-                return columns.get(columnWrapper);
-            }
-
-            @Override
-            public void remove() {
-                // Not Implemented
-            }
-
-        }
-
-        private final Map<ColumnWrapper, List<Cell>> columns = new HashMap<ColumnWrapper, List<Cell>>();
-        private final List<ColumnWrapper> columnList = new ArrayList<ColumnWrapper>();
-
-        public IterableColumn(List<Cell> cells) {
-            for (Cell cell : cells) {
-                if (HBaseUtils.isShadowCell(CellUtil.cloneQualifier(cell))) {
-                    continue;
-                }
-                ColumnWrapper currentColumn = new ColumnWrapper(CellUtil.cloneFamily(cell), CellUtil.cloneQualifier(cell));
-                if (!columns.containsKey(currentColumn)) {
-                    columns.put(currentColumn, new ArrayList<Cell>(Arrays.asList(cell)));
-                    columnList.add(currentColumn);
-                } else {
-                    List<Cell> columnKeyValues = columns.get(currentColumn);
-                    columnKeyValues.add(cell);
-                }
-            }
-
-        }
-
-        @Override
-        public Iterator<List<Cell>> iterator() {
-            return new ColumnIterator();
-        }
-
-    }
-
     /**
      * Filters the raw results returned from HBase and returns only those
      * belonging to the current snapshot, as defined by the transaction
@@ -337,7 +289,7 @@ public class TTable {
 
         Map<Long, Long> commitCache = buildCommitCache(rawCells);
 
-        for (List<Cell> columnCells : new IterableColumn(rawCells)) {
+        for (Collection<Cell> columnCells : groupCellsByColumnFilteringShadowCells(rawCells)) {
             boolean snapshotValueFound = false;
             Cell oldestCell = null;
             for (Cell cell : columnCells) {
@@ -712,4 +664,28 @@ public class TTable {
         }
     }
 
+    static ImmutableList<Collection<Cell>> groupCellsByColumnFilteringShadowCells(List<Cell> rawCells) {
+
+        Predicate<Cell> shadowCellFilter = new Predicate<Cell>() {
+
+            @Override
+            public boolean apply(Cell cell) {
+                return !HBaseUtils.isShadowCell(CellUtil.cloneQualifier(cell));
+            }
+
+        };
+
+        Function<Cell, ColumnWrapper> cellToColumnWrapper = new Function<Cell, ColumnWrapper>() {
+
+            @Override
+            public ColumnWrapper apply(Cell cell) {
+                return new ColumnWrapper(CellUtil.cloneFamily(cell), CellUtil.cloneQualifier(cell));
+            }
+
+        };
+
+        return Multimaps.index(Iterables.filter(rawCells, shadowCellFilter), cellToColumnWrapper)
+                        .asMap().values()
+                        .asList();
+    }
 }
