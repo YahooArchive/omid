@@ -32,7 +32,7 @@
     <hbase.version>0.98.3-hadoop2</hbase.version>
     <guava.version>14.0</guava.version>
     <guice.version>3.0</guice.version>
-    <junit.version>4.8.2</junit.version>
+    <testng.version>6.8.8</testng.version>
     <slf4j.version>1.7.7</slf4j.version>
     <log4j.version>1.2.14</log4j.version>
     <netty.version>3.2.6.Final</netty.version>

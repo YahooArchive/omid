@@ -16,30 +16,29 @@
 
 package com.yahoo.omid.tso;
 
-import static org.junit.Assert.*;
-
+import org.testng.annotations.Test;
+import org.testng.Assert;
+import org.testng.AssertJUnit;
 import com.google.common.collect.Sets;
 import com.yahoo.omid.tsoclient.TSOClient.AbortException;
 
 import java.util.concurrent.ExecutionException;
 
-import org.junit.Test;
-
 public class TestConflict extends TSOTestBase {
-    @Test(timeout=10000)
+    @Test(timeOut=10000)
     public void testConflict() throws Exception {
         long tr1 = client.getNewStartTimestamp().get();
         long tr2 = client.getNewStartTimestamp().get();
-        assertTrue("second txn should have higher timestamp", tr2 > tr1);
+        AssertJUnit.assertTrue("second txn should have higher timestamp", tr2 > tr1);
 
         long cr1 = client.commit(tr1, Sets.newHashSet(c1)).get();
-        assertTrue("commit ts must be higher than start ts", cr1 > tr1);
+        AssertJUnit.assertTrue("commit ts must be higher than start ts", cr1 > tr1);
 
         try {
             long cr2 = client.commit(tr2, Sets.newHashSet(c1, c2)).get();
-            fail("Second commit should fail");
+            Assert.fail("Second commit should fail");
         } catch (ExecutionException ee) {
-            assertEquals("Should have aborted", ee.getCause().getClass(), AbortException.class);
+            AssertJUnit.assertEquals("Should have aborted", ee.getCause().getClass(), AbortException.class);
         }
     }
 

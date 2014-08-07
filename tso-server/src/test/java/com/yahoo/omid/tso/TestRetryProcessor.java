@@ -1,14 +1,14 @@
 package com.yahoo.omid.tso;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.Test;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
 import org.jboss.netty.channel.Channel;
-import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
@@ -29,7 +29,7 @@ public class TestRetryProcessor {
     private static long CT_TX_1 = 1;
 
     
-    @Test(timeout=10000)
+    @Test(timeOut=10000)
     public void testBasicFunctionality() throws Exception {
         
         // Required mocks

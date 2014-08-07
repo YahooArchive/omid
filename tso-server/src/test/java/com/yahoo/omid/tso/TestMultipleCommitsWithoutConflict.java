@@ -16,17 +16,15 @@
 
 package com.yahoo.omid.tso;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import org.junit.Test;
-
+import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.Test;
 import com.google.common.collect.Sets;
 
 
 public class TestMultipleCommitsWithoutConflict extends TSOTestBase {
 
-    @Test(timeout=10000)
+    @Test(timeOut=10000)
     public void testMultipleCommitsWithoutConflict() throws Exception {
         long tr1 = client.getNewStartTimestamp().get();
         long cr1 = client.commit(tr1, Sets.newHashSet(c1)).get();

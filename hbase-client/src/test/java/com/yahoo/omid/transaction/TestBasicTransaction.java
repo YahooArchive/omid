@@ -1,9 +1,9 @@
 package com.yahoo.omid.transaction;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import junit.framework.Assert;
-
+import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.Test;
+import org.testng.AssertJUnit;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
@@ -11,7 +11,6 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -274,7 +273,7 @@ public class TestBasicTransaction extends OmidTestBase {
         }
     }
 
-    @Test(expected=IllegalArgumentException.class)
+    @Test(expectedExceptions=IllegalArgumentException.class)
     public void testSameCommitRaisesException() throws Exception  {
         TransactionManager tm = newTransactionManager();
 
@@ -375,7 +374,7 @@ public class TestBasicTransaction extends OmidTestBase {
         put.add(famName, colName, dataValue);
         try {
             tt.put(tx, put);
-            Assert.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
+            AssertJUnit.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
         } catch (IllegalArgumentException e) {
             // Continue
         }
@@ -385,7 +384,7 @@ public class TestBasicTransaction extends OmidTestBase {
         put.add(famName, colName, randomTimestampValue, dataValue);
         try {
             tt.put(tx, put);
-            Assert.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
+            AssertJUnit.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
         } catch (IllegalArgumentException e) {
             // Continue
         }
@@ -395,7 +394,7 @@ public class TestBasicTransaction extends OmidTestBase {
         get.setTimeStamp(randomTimestampValue);
         try {
             tt.get(tx, get);
-            Assert.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
+            AssertJUnit.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
         } catch (IllegalArgumentException e) {
             // Continue
         }
@@ -404,7 +403,7 @@ public class TestBasicTransaction extends OmidTestBase {
         Scan scan = new Scan(get);
         try {
             tt.getScanner(tx, scan);
-            Assert.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
+            AssertJUnit.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
         } catch (IllegalArgumentException e) {
             // Continue
         }
@@ -414,7 +413,7 @@ public class TestBasicTransaction extends OmidTestBase {
         delete.setTimestamp(randomTimestampValue);
         try {
             tt.delete(tx, delete);
-            Assert.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
+            AssertJUnit.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
         } catch (IllegalArgumentException e) {
             // Continue
         }
@@ -424,7 +423,7 @@ public class TestBasicTransaction extends OmidTestBase {
         delete.deleteColumn(famName, colName, randomTimestampValue);
         try {
             tt.delete(tx, delete);
-            Assert.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
+            AssertJUnit.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
         } catch (IllegalArgumentException e) {
             // Continue
         }

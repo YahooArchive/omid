@@ -1,16 +1,15 @@
 package com.yahoo.omid.transaction;
 
+import static org.testng.AssertJUnit.assertFalse;
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.Test;
+import org.testng.annotations.BeforeMethod;
 import static com.yahoo.omid.transaction.HBaseTransactionManager.SHADOW_CELL_SUFFIX;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 
 public class TestHBaseUtils {
 
@@ -18,12 +17,12 @@ public class TestHBaseUtils {
 
     private ByteArrayOutputStream baos;
 
-    @Before
+    @BeforeMethod
     public void beforeTest() {
         baos = new ByteArrayOutputStream();
     }
 
-    @After
+    @AfterMethod
     public void afterTest() throws IOException {
         if (baos != null) {
             baos.close();

@@ -1,6 +1,8 @@
 package com.yahoo.omid.tso;
 
-import static org.junit.Assert.assertTrue;
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.Test;
+
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyLong;
@@ -12,7 +14,6 @@ import static org.mockito.Mockito.verify;
 import java.util.List;
 
 import org.jboss.netty.channel.Channel;
-import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,10 +25,9 @@ public class TestRequestProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestRequestProcessor.class);
 
-    private MetricRegistry metrics = new MetricRegistry();
-
-    @Test(timeout=10000)
+    @Test(timeOut=10000)
     public void testTimestamp() throws Exception {
+        MetricRegistry metrics = new MetricRegistry();
         PersistenceProcessor persist = mock(PersistenceProcessor.class);
         TimestampOracleImpl timestampOracle = new TimestampOracleImpl(metrics,
                 new TimestampOracleImpl.InMemoryTimestampStorage(), new MockPanicker());
@@ -49,8 +49,9 @@ public class TestRequestProcessor {
         }
     }
 
-    @Test(timeout=10000)
+    @Test(timeOut=10000)
     public void testCommit() throws Exception {
+        MetricRegistry metrics = new MetricRegistry();
         List<Long> rows = Lists.newArrayList(1L, 20L, 203L);
 
         PersistenceProcessor persist = mock(PersistenceProcessor.class);

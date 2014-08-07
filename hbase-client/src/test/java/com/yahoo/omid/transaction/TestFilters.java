@@ -2,6 +2,10 @@ package com.yahoo.omid.transaction;
 
 
 
+import static org.testng.AssertJUnit.assertNull;
+import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.Test;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
@@ -20,13 +24,9 @@ import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.ValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
@@ -51,12 +51,12 @@ public class TestFilters extends OmidTestBase {
     byte[] col1 = Bytes.toBytes("foobar");
     byte[] col2 = Bytes.toBytes("boofar");
 
-    @Test(timeout=60000)
+    @Test(timeOut=60000)
     public void testGetWithColumnPrefixFilter() throws Exception {
         testGet(new ColumnPrefixFilter(prefix));
     }
 
-    @Test(timeout=60000)
+    @Test(timeOut=60000)
     public void testGetWithValueFilter() throws Exception {
         testGet(new ValueFilter(CompareFilter.CompareOp.EQUAL, new BinaryComparator(col1)));
     }
@@ -95,16 +95,17 @@ public class TestFilters extends OmidTestBase {
         assertEquals("shouldn't exist in result", 0, r.getColumnCells(family, col2).size());
     }
 
-    @Test(timeout=60000)
+    @Test(timeOut=60000)
     public void testScanWithColumnPrefixFilter() throws Exception {
         testScan(new ColumnPrefixFilter(prefix));
     }
 
-    @Test(timeout=60000)
+    @Test(timeOut=60000)
     public void testScanWithValueFilter() throws Exception {
         testScan(new ValueFilter(CompareFilter.CompareOp.EQUAL, new BinaryComparator(col1)));
     }
 
+    @Test(timeOut=60000)
     public void testScan(Filter f) throws Exception {
         CommitTable.Client commitTableClient = spy(getTSO().getCommitTable().getClient().get());
         TSOClient client = TSOClient.newBuilder().withConfiguration(getTSO().getClientConfiguration())
