@@ -13,10 +13,6 @@ import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.codahale.metrics.Histogram;
-import com.codahale.metrics.Meter;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.Timer;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventFactory;
@@ -26,6 +22,10 @@ import com.lmax.disruptor.SequenceBarrier;
 import com.lmax.disruptor.TimeoutBlockingWaitStrategy;
 import com.lmax.disruptor.TimeoutHandler;
 import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.metrics.Histogram;
+import com.yahoo.omid.metrics.Meter;
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.metrics.Timer;
 
 class PersistenceProcessorImpl
     implements EventHandler<PersistenceProcessorImpl.PersistEvent>,
@@ -56,7 +56,7 @@ class PersistenceProcessorImpl
     final static int BATCH_TIMEOUT_MS = 100;
 
     @Inject
-    PersistenceProcessorImpl(MetricRegistry metrics,
+    PersistenceProcessorImpl(MetricsRegistry metrics,
                              CommitTable commitTable,
                              ReplyProcessor reply,
                              RetryProcessor retryProc,
@@ -165,7 +165,7 @@ class PersistenceProcessorImpl
         batchSizeHistogram.update(batch.getNumEvents());
         try {
             writer.flush().get();
-            flushTimer.update((System.nanoTime() - lastFlush), TimeUnit.NANOSECONDS);
+            flushTimer.update((System.nanoTime() - lastFlush));
             batch.sendRepliesAndReset(reply, retryProc);
         } catch (ExecutionException ee) {
             panicker.panic("Error persisting commit batch", ee.getCause());

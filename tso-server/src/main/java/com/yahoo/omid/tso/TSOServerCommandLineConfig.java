@@ -1,12 +1,14 @@
 package com.yahoo.omid.tso;
 
 import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.tso.PersistenceProcessorImpl.DEFAULT_MAX_BATCH_SIZE;
+import static com.yahoo.omid.metrics.CodahaleMetricsProvider.DEFAULT_CODAHALE_METRICS_CONFIG;
 import static com.yahoo.omid.tso.PersistenceProcessorImpl.DEFAULT_BATCH_PERSIST_TIMEOUT_MS;
+import static com.yahoo.omid.tso.PersistenceProcessorImpl.DEFAULT_MAX_BATCH_SIZE;
 import static com.yahoo.omid.tso.RequestProcessorImpl.DEFAULT_MAX_ITEMS;
 import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import com.beust.jcommander.IVariableArity;
@@ -14,6 +16,7 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 import com.yahoo.omid.committable.hbase.HBaseLogin;
+import com.yahoo.omid.metrics.MetricsProvider;
 import com.yahoo.omid.tsoclient.TSOClient;
 
 /**
@@ -59,8 +62,11 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
     @Parameter(names = "-port", description = "Port reserved by the Status Oracle")
     private int port = TSOClient.DEFAULT_TSO_PORT;
 
-    @Parameter(names = "-metrics", description = "Metrics config", variableArity = true)
-    private List<String> metrics = new ArrayList<String>();
+    @Parameter(names = "-metricsProvider", description = "Metrics provider: CODAHALE | YMON")
+    private MetricsProvider.Provider metricsProvider = MetricsProvider.Provider.CODAHALE;
+
+    @Parameter(names = "-metricsConfigs", description = "Metrics config", variableArity = true)
+    private List<String> metricsConfigs = new ArrayList<String>(Arrays.asList(DEFAULT_CODAHALE_METRICS_CONFIG));
 
     @Parameter(names = "-maxItems", description = "Maximum number of items in the TSO (will determine the 'low watermark')")
     private int maxItems = DEFAULT_MAX_ITEMS;
@@ -107,8 +113,12 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
         return port;
     }
 
-    public List<String> getMetrics() {
-        return metrics;
+    public MetricsProvider.Provider getMetricsProvider() {
+        return metricsProvider;
+    }
+
+    public List<String> getMetricsConfigs() {
+        return metricsConfigs;
     }
 
     public int getMaxItems() {

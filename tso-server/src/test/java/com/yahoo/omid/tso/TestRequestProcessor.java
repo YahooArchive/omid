@@ -18,8 +18,9 @@ import org.mockito.ArgumentCaptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.Lists;
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.metrics.NullMetricsProvider;
 
 public class TestRequestProcessor {
 
@@ -27,7 +28,7 @@ public class TestRequestProcessor {
 
     @Test(timeOut=10000)
     public void testTimestamp() throws Exception {
-        MetricRegistry metrics = new MetricRegistry();
+        MetricsRegistry metrics = new NullMetricsProvider();
         PersistenceProcessor persist = mock(PersistenceProcessor.class);
         TimestampOracleImpl timestampOracle = new TimestampOracleImpl(metrics,
                 new TimestampOracleImpl.InMemoryTimestampStorage(), new MockPanicker());
@@ -51,7 +52,7 @@ public class TestRequestProcessor {
 
     @Test(timeOut=10000)
     public void testCommit() throws Exception {
-        MetricRegistry metrics = new MetricRegistry();
+        MetricsRegistry metrics = new NullMetricsProvider();
         List<Long> rows = Lists.newArrayList(1L, 20L, 203L);
 
         PersistenceProcessor persist = mock(PersistenceProcessor.class);

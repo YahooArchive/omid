@@ -12,8 +12,8 @@ import javax.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.codahale.metrics.Gauge;
-import com.codahale.metrics.MetricRegistry;
+import com.yahoo.omid.metrics.Gauge;
+import com.yahoo.omid.metrics.MetricsRegistry;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 /**
@@ -126,7 +126,7 @@ public class TimestampOracleImpl implements TimestampOracle {
      * Constructor
      */
     @Inject
-    public TimestampOracleImpl(MetricRegistry metrics,
+    public TimestampOracleImpl(MetricsRegistry metrics,
                                TimestampStorage tsStorage,
                                Panicker panicker) throws IOException {
         this.storage = tsStorage;
@@ -137,7 +137,7 @@ public class TimestampOracleImpl implements TimestampOracle {
         // Trigger first allocation of timestamps
         executor.execute(allocateTimestampsBatchTask);
 
-        metrics.register(name("tso", "maxTimestamp"), new Gauge<Long>() {
+        metrics.gauge(name("tso", "maxTimestamp"), new Gauge<Long>() {
             @Override
             public Long getValue() {
                 return maxTimestamp;

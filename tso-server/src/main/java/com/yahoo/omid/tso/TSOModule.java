@@ -9,11 +9,9 @@ import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.HBASE_TIMESTAMPSTOR
 
 import javax.inject.Singleton;
 
-import com.codahale.metrics.MetricRegistry;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.name.Names;
-import com.yahoo.omid.metrics.MetricsUtils;
 
 public class TSOModule extends AbstractModule {
 
@@ -50,11 +48,6 @@ public class TSOModule extends AbstractModule {
     @Provides
     TSOServerCommandLineConfig provideTSOServerConfig() {
         return config;
-    }
-
-    @Provides @Singleton
-    MetricRegistry provideMetricsRegistry() {
-        return MetricsUtils.initMetrics(config.getMetrics());
     }
 
 }

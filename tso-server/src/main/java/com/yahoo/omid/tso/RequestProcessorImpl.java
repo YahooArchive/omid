@@ -12,7 +12,6 @@ import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.codahale.metrics.MetricRegistry;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.BusySpinWaitStrategy;
@@ -20,6 +19,7 @@ import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
+import com.yahoo.omid.metrics.MetricsRegistry;
 
 public class RequestProcessorImpl
     implements EventHandler<RequestProcessorImpl.RequestEvent>, RequestProcessor
@@ -36,7 +36,7 @@ public class RequestProcessorImpl
     private long lowWatermark;
 
     @Inject
-    RequestProcessorImpl(MetricRegistry metrics,
+    RequestProcessorImpl(MetricsRegistry metrics,
                          TimestampOracle timestampOracle,
                          PersistenceProcessor persistProc,
                          Panicker panicker,

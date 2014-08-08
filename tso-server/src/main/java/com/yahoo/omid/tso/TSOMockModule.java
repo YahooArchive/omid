@@ -4,12 +4,13 @@ import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;
 
 import javax.inject.Singleton;
 
-import com.codahale.metrics.MetricRegistry;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.name.Names;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.InMemoryCommitTable;
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.metrics.NullMetricsProvider;
 import com.yahoo.omid.tso.DisruptorModule;
 import com.yahoo.omid.tso.TimestampOracleImpl.InMemoryTimestampStorage;
 import com.yahoo.omid.tso.TimestampOracleImpl.TimestampStorage;
@@ -43,8 +44,8 @@ public class TSOMockModule extends AbstractModule {
     }
 
     @Provides @Singleton
-    MetricRegistry provideMetricsRegistry() {
-        return new MetricRegistry();
+    MetricsRegistry provideMetricsRegistry() {
+        return new NullMetricsProvider();
     }
 
 }

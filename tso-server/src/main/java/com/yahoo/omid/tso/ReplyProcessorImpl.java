@@ -11,11 +11,11 @@ import org.jboss.netty.channel.Channel;
 
 import com.yahoo.omid.proto.TSOProto;
 import com.lmax.disruptor.*;
-import com.codahale.metrics.MetricRegistry;
+import com.yahoo.omid.metrics.MetricsRegistry;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
-import com.codahale.metrics.Meter;
+import com.yahoo.omid.metrics.Meter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +30,7 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
     final Meter timestampMeter;
 
     @Inject
-    ReplyProcessorImpl(MetricRegistry metrics, Panicker panicker) {
+    ReplyProcessorImpl(MetricsRegistry metrics, Panicker panicker) {
         replyRing = RingBuffer.<ReplyEvent>createMultiProducer(ReplyEvent.EVENT_FACTORY, 1<<12,
                                                                new BusySpinWaitStrategy());
         SequenceBarrier replySequenceBarrier = replyRing.newBarrier();
