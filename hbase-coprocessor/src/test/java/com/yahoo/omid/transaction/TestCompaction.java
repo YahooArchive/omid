@@ -1,13 +1,18 @@
 package com.yahoo.omid.transaction;
 
+import static org.testng.AssertJUnit.assertFalse;
+import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.Test;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.BeforeClass;
 import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
 import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TSO_FAMILY;
 import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME;
 import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_FAMILY;
 import static com.yahoo.omid.committable.hbase.HBaseCommitTable.LOW_WATERMARK_FAMILY;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -35,11 +40,6 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.coprocessor.AggregationClient;
 import org.apache.hadoop.hbase.client.coprocessor.LongColumnInterpreter;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -160,7 +160,7 @@ public class TestCompaction {
         TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
     }
 
-    @Before
+    @BeforeMethod
     public void setupTestCompactionIndividualTest() throws Exception {
         createTableIfNotExists(TABLE_NAME, Bytes.toBytes(TEST_FAMILY));
         assertTrue("Table " + TEST_TABLE + " should exist", admin.tableExists(TABLE_NAME));
@@ -171,7 +171,7 @@ public class TestCompaction {
         txTable = new TTable(hbaseConf, TEST_TABLE);
     }
 
-    @After
+    @AfterMethod
     public void cleanupTestCompactionIndividualTest() throws Exception {
         admin.disableTable(TEST_TABLE);
         admin.deleteTable(TEST_TABLE);
@@ -507,7 +507,7 @@ public class TestCompaction {
                      Bytes.toString(CellUtil.cloneValue(column.get(0))));
     }
 
-    @Test(timeout=60000)
+    @Test(timeOut=60000)
     public void testNonOmidCFIsUntouched() throws Throwable {
         admin.disableTable(TEST_TABLE);
         byte[] nonOmidCF = Bytes.toBytes("nonOmidCF");

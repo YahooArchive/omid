@@ -16,16 +16,14 @@
 
 package com.yahoo.omid.tsoclient;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
+import static org.testng.AssertJUnit.assertEquals;
+import org.testng.annotations.Test;
+import org.testng.Assert;
+import org.testng.AssertJUnit;
 import java.util.concurrent.ExecutionException;
 
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.InMemoryCommitTable;
-
-import org.junit.Test;
-import static org.junit.Assert.*;
 
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
 
@@ -37,7 +35,7 @@ public class TestMockTSOClient {
     final static public CellId c1 = new DummyCellIdImpl(0xdeadbeefL);
     final static public CellId c2 = new DummyCellIdImpl(-0xfeedcafeL);
 
-    @Test(timeout=10000)
+    @Test(timeOut=10000)
     public void testConflicts() throws Exception {
         CommitTable commitTable = new InMemoryCommitTable();
         TSOClient client = new MockTSOClient(commitTable.getWriter().get());
@@ -49,13 +47,13 @@ public class TestMockTSOClient {
 
         try {
             long cr2 = client.commit(tr2, Sets.newHashSet(c1, c2)).get();
-            fail("Shouldn't have committed");
+            Assert.fail("Shouldn't have committed");
         } catch (ExecutionException ee) {
             assertEquals("Should have aborted", ee.getCause().getClass(), AbortException.class);
         }
     }
 
-    @Test(timeout=10000)
+    @Test(timeOut=10000)
     public void testWatermarkUpdate() throws Exception {
         CommitTable commitTable = new InMemoryCommitTable();
         TSOClient client = new MockTSOClient(commitTable.getWriter().get());
@@ -70,6 +68,6 @@ public class TestMockTSOClient {
         client.commit(tr2, Sets.newHashSet(c1)).get();
 
         long newWatermark = commitTableClient.readLowWatermark().get();
-        assertTrue("new low watermark should be bigger", newWatermark > initWatermark);
+        AssertJUnit.assertTrue("new low watermark should be bigger", newWatermark > initWatermark);
     }
 }

@@ -1,7 +1,8 @@
 package com.yahoo.omid.transaction;
 
-import static org.junit.Assert.*;
-
+import org.testng.annotations.Test;
+import org.testng.Assert;
+import org.testng.AssertJUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -10,8 +11,6 @@ import java.util.List;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.Test;
-
 import com.yahoo.omid.transaction.TTable.IterableColumn;
 
 public class TestColumnIterator {
@@ -43,20 +42,20 @@ public class TestColumnIterator {
             List<Cell> columnCells = iterator.next();
             switch (columnCount) {
             case 1:
-                assertEquals("Should be 2", 2, columnCells.size());
+                AssertJUnit.assertEquals("Should be 2", 2, columnCells.size());
                 break;
             case 2:
-                assertEquals("Should be 1", 1, columnCells.size());
+                AssertJUnit.assertEquals("Should be 1", 1, columnCells.size());
                 break;
             case 3:
-                assertEquals("Should be 1", 1, columnCells.size());
+                AssertJUnit.assertEquals("Should be 1", 1, columnCells.size());
                 break;
             default:
-                fail();
+                Assert.fail();
             }
 
         }
-        assertEquals("Should be 3", 3, columnCount);
+        AssertJUnit.assertEquals("Should be 3", 3, columnCount);
     }
 
 }

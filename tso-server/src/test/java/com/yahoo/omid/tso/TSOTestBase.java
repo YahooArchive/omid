@@ -1,9 +1,9 @@
 package com.yahoo.omid.tso;
 
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
-import org.junit.After;
-import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,7 +19,7 @@ public class TSOTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TSOTestBase.class);
 
-    private Injector injector = Guice.createInjector(new TSOMockModule(TSOServerCommandLineConfig.configFactory(1234, 1000)));
+    private Injector injector = null;
 
     protected Configuration clientConf = new BaseConfiguration();
     protected TSOClient client;
@@ -34,9 +34,9 @@ public class TSOTestBase {
     final static public CellId c1 = new DummyCellIdImpl(0xdeadbeefL);
     final static public CellId c2 = new DummyCellIdImpl(0xfeedcafeL);
 
-    @Before
+    @BeforeMethod
     public void setupTSO() throws Exception {
-
+        injector = Guice.createInjector(new TSOMockModule(TSOServerCommandLineConfig.configFactory(1234, 1000)));
         LOG.info("Starting TSO");
         pausableTSOracle = (PausableTimestampOracle) injector.getInstance(TimestampOracle.class);
         tso = injector.getInstance(TSOServer.class);
@@ -66,7 +66,7 @@ public class TSOTestBase {
 
     }
 
-    @After
+    @AfterMethod
     public void teardownTSO() throws Exception {
 
         teardownClient();

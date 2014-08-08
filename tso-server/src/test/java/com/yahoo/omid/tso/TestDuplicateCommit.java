@@ -1,11 +1,9 @@
 package com.yahoo.omid.tso;
 
-import static org.junit.Assert.*;
-
+import org.testng.annotations.Test;
+import org.testng.annotations.BeforeMethod;
+import org.testng.AssertJUnit;
 import java.util.Set;
-
-import org.junit.Before;
-import org.junit.Test;
 
 import com.google.common.collect.Sets;
 import com.yahoo.omid.proto.TSOProto;
@@ -18,7 +16,7 @@ public class TestDuplicateCommit extends TSOTestBase {
     
     TSOClientOneShot clientOneShot = null; 
     
-    @Before
+    @BeforeMethod
     public void createClient() {
         clientOneShot = new TSOClientOneShot(clientConf.getString("tso.host"), clientConf.getInt("tso.port"));
     }
@@ -39,8 +37,8 @@ public class TestDuplicateCommit extends TSOTestBase {
         
         Response response1 = clientOneShot.makeRequest(createCommitRequest(ts1, true));
         Response response2 = clientOneShot.makeRequest(createCommitRequest(ts1, false));
-        assertFalse("Retry Transaction should commit", response1.getCommitResponse().getAborted());
-        assertTrue("Transaction should abort", response2.getCommitResponse().getAborted());        
+        AssertJUnit.assertFalse("Retry Transaction should commit", response1.getCommitResponse().getAborted());
+        AssertJUnit.assertTrue("Transaction should abort", response2.getCommitResponse().getAborted());
     }
     
     @Test
@@ -52,8 +50,8 @@ public class TestDuplicateCommit extends TSOTestBase {
                         
         Response response1 = clientOneShot.makeRequest(createCommitRequest(ts1, false));
         Response response2 = clientOneShot.makeRequest(createCommitRequest(ts1, true));
-        assertTrue("Transaction should abort", response1.getCommitResponse().getAborted());
-        assertTrue("Retry commit should abort", response2.getCommitResponse().getAborted());
+        AssertJUnit.assertTrue("Transaction should abort", response1.getCommitResponse().getAborted());
+        AssertJUnit.assertTrue("Retry commit should abort", response2.getCommitResponse().getAborted());
     }
     
     @Test
@@ -63,7 +61,7 @@ public class TestDuplicateCommit extends TSOTestBase {
         
         Response response1 = clientOneShot.makeRequest(createCommitRequest(ts1, false));
         Response response2 = clientOneShot.makeRequest(createCommitRequest(ts1, true));
-        assertEquals("Commit timestamp should be the same",
+        AssertJUnit.assertEquals("Commit timestamp should be the same",
                 response1.getCommitResponse().getCommitTimestamp(), response2.getCommitResponse().getCommitTimestamp());
     }
 

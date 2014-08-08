@@ -1,12 +1,11 @@
 package com.yahoo.omid.tso;
 
-import static org.junit.Assert.*;
-
+import org.testng.annotations.Test;
+import org.testng.AssertJUnit;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import org.apache.commons.configuration.Configuration;
-import org.junit.Test;
 import org.mockito.internal.util.collections.Sets;
 
 import com.yahoo.omid.committable.CommitTable.Client;
@@ -17,7 +16,7 @@ import com.yahoo.omid.tsoclient.TSOClient.ServiceUnavailableException;
 
 public class TestTSOClientRetry extends TSOTestBase {
 
-    @Test(timeout = 60000)
+    @Test(timeOut = 60000)
     public void testCommitCanSucceedWhenChannelDisconnected() throws Exception {
         
         long ts1 = client.getNewStartTimestamp().get();
@@ -30,7 +29,7 @@ public class TestTSOClientRetry extends TSOTestBase {
         
     }
 
-    @Test(timeout = 60000)
+    @Test(timeOut = 60000)
     public void testCommitCanSucceedWithMultipleTimeouts() throws Exception {
         Configuration clientConfiguration = getClientConfiguration();
         clientConfiguration.setProperty(TSOClient.REQUEST_TIMEOUT_IN_MS_CONFKEY, 100);
@@ -47,7 +46,7 @@ public class TestTSOClientRetry extends TSOTestBase {
         future.get();
     }
     
-    @Test(timeout = 60000)
+    @Test(timeOut = 60000)
     public void testCommitFailWhenTSOIsDown() throws Exception {
         Configuration clientConfiguration = getClientConfiguration();
         clientConfiguration.setProperty(TSOClient.REQUEST_TIMEOUT_IN_MS_CONFKEY, 100);
@@ -62,12 +61,12 @@ public class TestTSOClientRetry extends TSOTestBase {
         try {
             future.get();
         } catch(ExecutionException e) {
-            assertEquals("Should be a ServiceUnavailableExeption",
+            AssertJUnit.assertEquals("Should be a ServiceUnavailableExeption",
                     ServiceUnavailableException.class, e.getCause().getClass());
         }
     }
     
-    @Test(timeout = 60000)
+    @Test(timeOut = 60000)
     public void testTimestampRequestSucceedWithMultipleTimeouts() throws Exception {
         Configuration clientConfiguration = getClientConfiguration();
         clientConfiguration.setProperty(TSOClient.REQUEST_TIMEOUT_IN_MS_CONFKEY, 100);

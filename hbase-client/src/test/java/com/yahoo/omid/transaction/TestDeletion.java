@@ -1,7 +1,7 @@
 package com.yahoo.omid.transaction;
 
-import static org.junit.Assert.*;
-
+import org.testng.annotations.Test;
+import org.testng.AssertJUnit;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,7 +12,6 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,16 +65,16 @@ public class TestDeletion extends OmidTestBase {
         ResultScanner rs = tt.getScanner(tscan, new Scan());
 
         Map<FamCol, Integer> count = countColsInRows(rs, famColA, famColB);
-        assertEquals("ColA count should be equal to rowsWritten", rowsWritten, (int) count.get(famColA));
-        assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
+        AssertJUnit.assertEquals("ColA count should be equal to rowsWritten", rowsWritten, (int) count.get(famColA));
+        AssertJUnit.assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
         tm.commit(t2);
 
         tscan = tm.begin();
         rs = tt.getScanner(tscan, new Scan());
 
         count = countColsInRows(rs, famColA, famColB);
-        assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
-        assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
+        AssertJUnit.assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
+        AssertJUnit.assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
     }
 
     @Test
@@ -103,16 +102,16 @@ public class TestDeletion extends OmidTestBase {
         ResultScanner rs = tt.getScanner(tscan, new Scan());
 
         Map<FamCol, Integer> count = countColsInRows(rs, famColA, famColB);
-        assertEquals("ColA count should be equal to rowsWritten", rowsWritten, (int) count.get(famColA));
-        assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
+        AssertJUnit.assertEquals("ColA count should be equal to rowsWritten", rowsWritten, (int) count.get(famColA));
+        AssertJUnit.assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
         tm.commit(t2);
 
         tscan = tm.begin();
         rs = tt.getScanner(tscan, new Scan());
 
         count = countColsInRows(rs, famColA, famColB);
-        assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
-        assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
+        AssertJUnit.assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
+        AssertJUnit.assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
     }
 
     /**
@@ -143,8 +142,8 @@ public class TestDeletion extends OmidTestBase {
         ResultScanner rs = tt.getScanner(tscan, new Scan());
 
         Map<FamCol, Integer> count = countColsInRows(rs, famColA, famColB);
-        assertEquals("ColA count should be equal to rowsWritten", rowsWritten, (int) count.get(famColA));
-        assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
+        AssertJUnit.assertEquals("ColA count should be equal to rowsWritten", rowsWritten, (int) count.get(famColA));
+        AssertJUnit.assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
         tm.commit(t2);
 
         tscan = tm.begin();
@@ -152,8 +151,8 @@ public class TestDeletion extends OmidTestBase {
 
         count = countColsInRows(rs, famColA, famColB);
 
-        assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
-        assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
+        AssertJUnit.assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
+        AssertJUnit.assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
     }
 
     @Test
@@ -179,7 +178,7 @@ public class TestDeletion extends OmidTestBase {
         ResultScanner rs = tt.getScanner(tscan, new Scan());
 
         int rowsRead = countRows(rs);
-        assertTrue("Expected " + rowsWritten + " rows but " + rowsRead + " found",
+        AssertJUnit.assertTrue("Expected " + rowsWritten + " rows but " + rowsRead + " found",
                 rowsRead == rowsWritten);
 
         tm.commit(t2);
@@ -188,7 +187,7 @@ public class TestDeletion extends OmidTestBase {
         rs = tt.getScanner(tscan, new Scan());
 
         rowsRead = countRows(rs);
-        assertTrue("Expected " + (rowsWritten - 1) + " rows but " + rowsRead + " found",
+        AssertJUnit.assertTrue("Expected " + (rowsWritten - 1) + " rows but " + rowsRead + " found",
                 rowsRead == (rowsWritten - 1));
 
     }

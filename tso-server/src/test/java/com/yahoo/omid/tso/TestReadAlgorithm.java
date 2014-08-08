@@ -16,19 +16,18 @@
 
 package com.yahoo.omid.tso;
 
-import static org.junit.Assert.*;
-
+import org.testng.annotations.Test;
+import org.testng.Assert;
+import org.testng.AssertJUnit;
 import com.google.common.collect.Sets;
 import com.yahoo.omid.tsoclient.TSOClient.AbortException;
 
 import java.util.concurrent.ExecutionException;
 
-import org.junit.Test;
-
 
 public class TestReadAlgorithm extends TSOTestBase {
    
-    @Test(timeout=10000)
+    @Test(timeOut=10000)
     public void testReadAlgorithm() throws Exception {      
         long tr1 = client.getNewStartTimestamp().get();
         long tr2 = client.getNewStartTimestamp().get();
@@ -37,17 +36,17 @@ public class TestReadAlgorithm extends TSOTestBase {
         long cr1 = client.commit(tr1, Sets.newHashSet(c1)).get();
         try {
             long cr2 = client.commit(tr3, Sets.newHashSet(c1, c2)).get();
-            fail("Second commit should fail");
+            Assert.fail("Second commit should fail");
         } catch (ExecutionException ee) {
-            assertEquals("Should have aborted", ee.getCause().getClass(), AbortException.class);
+            AssertJUnit.assertEquals("Should have aborted", ee.getCause().getClass(), AbortException.class);
         }
         long tr4 = client2.getNewStartTimestamp().get();
 
-        assertFalse("tr3 didn't commit",
+        AssertJUnit.assertFalse("tr3 didn't commit",
                     getCommitTableClient().getCommitTimestamp(tr3).get().isPresent());
-        assertTrue("txn committed after start timestamp",
+        AssertJUnit.assertTrue("txn committed after start timestamp",
                    (long) getCommitTableClient().getCommitTimestamp(tr1).get().get() > tr2);
-        assertTrue("txn committed before start timestamp",
+        AssertJUnit.assertTrue("txn committed before start timestamp",
                    (long) getCommitTableClient().getCommitTimestamp(tr1).get().get() < tr4);
    }
    

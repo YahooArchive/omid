@@ -1,7 +1,8 @@
 package com.yahoo.omid.transaction;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.testng.AssertJUnit.assertFalse;
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.Test;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
@@ -25,7 +26,6 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.Test;
 import org.mockito.Matchers;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -282,7 +282,7 @@ public class TestShadowCells extends OmidTestBase {
 
     }
 
-    @Test(timeout = 60000)
+    @Test(timeOut = 60000)
     public void testRaceConditionBetweenReaderAndWriterThreads() throws Exception {
         final CountDownLatch readAfterCommit = new CountDownLatch(1);
         final CountDownLatch postCommitBegin = new CountDownLatch(1);

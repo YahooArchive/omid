@@ -16,14 +16,13 @@
 
 package com.yahoo.omid.tso;
 
-import static org.junit.Assert.assertTrue;
-
-import org.junit.Test;
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.Test;
 
 
 public class TestTimestamps extends TSOTestBase {
 
-    @Test(timeout=10000)
+    @Test(timeOut=10000)
     public void testGetTimestamp() throws Exception {
         long tr1 = client.getNewStartTimestamp().get();
         long tr2 = client.getNewStartTimestamp().get();;

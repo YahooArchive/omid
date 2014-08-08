@@ -1,9 +1,6 @@
 package com.yahoo.omid.tso;
-import static org.junit.Assert.*;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.testng.annotations.Test;
+import org.testng.AssertJUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +19,7 @@ public class TestTimestampOracle {
         long last = tso.next();
         for (int i = 0; i < (3 * TimestampOracleImpl.TIMESTAMP_BATCH); i++) {
             long current = tso.next();
-            assertEquals("Not monotonic growth", last + 1, current);
+            AssertJUnit.assertEquals("Not monotonic growth", last + 1, current);
             last = current;
         }
         LOG.info("Last timestamp: {}", last);

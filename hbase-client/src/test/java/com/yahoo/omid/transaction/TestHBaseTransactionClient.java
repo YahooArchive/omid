@@ -1,7 +1,8 @@
 package com.yahoo.omid.transaction;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.testng.AssertJUnit.assertFalse;
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.Test;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
@@ -9,8 +10,6 @@ import static org.mockito.Mockito.spy;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.Test;
-
 import com.yahoo.omid.transaction.HBaseTransaction;
 
 public class TestHBaseTransactionClient extends OmidTestBase {

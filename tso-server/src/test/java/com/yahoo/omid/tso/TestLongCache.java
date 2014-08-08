@@ -1,10 +1,9 @@
 package com.yahoo.omid.tso;
 
-import static org.junit.Assert.assertTrue;
-
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.Test;
 import java.util.Random;
 
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,7 +14,7 @@ public class TestLongCache {
 
     final int entries = 1000;
 
-    @Test(timeout=10000)
+    @Test(timeOut=10000)
     public void testEntriesAge() {
         
 

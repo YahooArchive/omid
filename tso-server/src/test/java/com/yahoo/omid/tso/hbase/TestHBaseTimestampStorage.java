@@ -1,8 +1,12 @@
 package com.yahoo.omid.tso.hbase;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
+import static org.testng.AssertJUnit.assertEquals;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.Test;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.BeforeClass;
+import org.testng.Assert;
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
@@ -13,11 +17,6 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +51,7 @@ public class TestHBaseTimestampStorage {
         }
     }
 
-    @Before
+    @BeforeMethod
     public void setUp() throws Exception {
         HBaseAdmin admin = testutil.getHBaseAdmin();
 
@@ -74,7 +73,7 @@ public class TestHBaseTimestampStorage {
         }
     }
 
-    @After
+    @AfterMethod
     public void tearDown() {
         try {
             LOG.info("tearing Down");
@@ -106,7 +105,7 @@ public class TestHBaseTimestampStorage {
         long wrongTimestamp = 20;
         try {
             tsStorage.updateMaxTimestamp(wrongTimestamp, newTimestamp);
-            fail("Shouldn't update");
+            Assert.fail("Shouldn't update");
         } catch (IOException e) {
             // Correct behavior
         }

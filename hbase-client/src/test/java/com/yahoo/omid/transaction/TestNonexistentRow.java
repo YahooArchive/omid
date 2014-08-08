@@ -1,12 +1,11 @@
 package com.yahoo.omid.transaction;
 
-import static org.junit.Assert.assertTrue;
-
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.Test;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

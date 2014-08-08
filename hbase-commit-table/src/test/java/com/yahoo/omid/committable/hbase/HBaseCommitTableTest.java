@@ -1,11 +1,15 @@
 package com.yahoo.omid.committable.hbase;
 
+import static org.testng.AssertJUnit.assertFalse;
+import static org.testng.AssertJUnit.assertEquals;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.Test;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.BeforeClass;
+import org.testng.Assert;
 import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_FAMILY;
 import static com.yahoo.omid.committable.hbase.HBaseCommitTable.LOW_WATERMARK_FAMILY;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.fail;
-
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -22,11 +26,6 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.coprocessor.AggregationClient;
 import org.apache.hadoop.hbase.client.coprocessor.LongColumnInterpreter;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +67,7 @@ public class HBaseCommitTableTest {
         }
     }
 
-    @Before
+    @BeforeMethod
     public void setUp() throws Exception {
         HBaseAdmin admin = testutil.getHBaseAdmin();
 
@@ -97,7 +96,7 @@ public class HBaseCommitTableTest {
         }
     }
 
-    @After
+    @AfterMethod
     public void tearDown() {
         try {
             LOG.info("tearing Down");
@@ -214,7 +213,7 @@ public class HBaseCommitTableTest {
         client.close();
         try {
             client.completeTransaction(1).get();
-            fail();
+            Assert.fail();
         } catch (ExecutionException e) {
             // Expected
         }

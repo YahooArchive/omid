@@ -17,31 +17,29 @@
 
 package com.yahoo.omid.tso;
 
-import static org.junit.Assert.*;
-
-import org.junit.Test;
-
+import org.testng.annotations.Test;
+import org.testng.AssertJUnit;
 import com.google.common.collect.Sets;
 
 
 public class TestCommitQuery extends TSOTestBase {
 
-    @Test(timeout=10000)
+    @Test(timeOut=10000)
     public void testCommitQuery() throws Exception {
         long tr1 = client.getNewStartTimestamp().get();
         long tr2 = client.getNewStartTimestamp().get();
-        assertTrue("start timestamps should grow", tr2 > tr1);
+        AssertJUnit.assertTrue("start timestamps should grow", tr2 > tr1);
 
-        assertFalse("tr1 isn't committed",
+        AssertJUnit.assertFalse("tr1 isn't committed",
                     getCommitTableClient().getCommitTimestamp(tr1).get().isPresent());
 
         long cr1 = client.commit(tr1, Sets.newHashSet(c1)).get();
-        assertTrue("commit timestamp should be higher than start timestamp", cr1 > tr1);
+        AssertJUnit.assertTrue("commit timestamp should be higher than start timestamp", cr1 > tr1);
 
         Long cq2 = getCommitTableClient().getCommitTimestamp(tr1).get().get();
-        assertNotNull("transaction is committed, should return as such", cq2);
-        assertEquals("getCommitTimestamp and commit should report same thing for same transaction",
+        AssertJUnit.assertNotNull("transaction is committed, should return as such", cq2);
+        AssertJUnit.assertEquals("getCommitTimestamp and commit should report same thing for same transaction",
                      (long)cq2, (long)cr1);
-        assertTrue("commit should be higher than previously created transaction", cq2 > tr2);
+        AssertJUnit.assertTrue("commit should be higher than previously created transaction", cq2 > tr2);
     }
 }

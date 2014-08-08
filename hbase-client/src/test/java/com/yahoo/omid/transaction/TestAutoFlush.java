@@ -1,13 +1,11 @@
 package com.yahoo.omid.transaction;
 
-import static org.junit.Assert.assertEquals;
-
+import static org.testng.AssertJUnit.assertEquals;
+import org.testng.annotations.Test;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.Test;
-
 import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;

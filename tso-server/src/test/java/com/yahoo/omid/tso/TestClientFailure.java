@@ -1,10 +1,8 @@
 package com.yahoo.omid.tso;
 
-import static org.junit.Assert.fail;
-import static org.junit.Assert.assertTrue;
-
-import org.junit.Test;
-
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.Test;
+import org.testng.Assert;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -22,7 +20,7 @@ public class TestClientFailure extends TSOTestBase {
         clientConf.setProperty(TSOClient.REQUEST_MAX_RETRIES_CONFKEY, 0);
     }
 
-    @Test(timeout=10000)
+    @Test(timeOut=10000)
     public void testCommitFailure() throws Exception {
         List<Long> startTimestamps = new ArrayList<Long>();
         for (int i = 0; i < 10; i++) {
@@ -40,7 +38,7 @@ public class TestClientFailure extends TSOTestBase {
         for (Future<Long> f : futures) {
             try {
                 f.get();
-                fail("Shouldn't be able to complete");
+                Assert.fail("Shouldn't be able to complete");
             } catch (ExecutionException ee) {
                 assertTrue("Should be a service unavailable exception",
                            ee.getCause() instanceof TSOClient.ServiceUnavailableException);
