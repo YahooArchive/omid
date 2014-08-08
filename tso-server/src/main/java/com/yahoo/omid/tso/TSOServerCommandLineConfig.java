@@ -2,6 +2,7 @@ package com.yahoo.omid.tso;
 
 import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME;
 import static com.yahoo.omid.tso.PersistenceProcessorImpl.DEFAULT_MAX_BATCH_SIZE;
+import static com.yahoo.omid.tso.PersistenceProcessorImpl.DEFAULT_BATCH_PERSIST_TIMEOUT_MS;
 import static com.yahoo.omid.tso.RequestProcessorImpl.DEFAULT_MAX_ITEMS;
 import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
 
@@ -67,6 +68,9 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
     @Parameter(names = "-maxBatchSize", description = "Maximum size in each persisted batch of commits")
     private int maxBatchSize = DEFAULT_MAX_BATCH_SIZE;
 
+    @Parameter(names = "-batchPersistTimeout", description = "Number of milliseconds the persist processer will wait without new input before flushing a batch")
+    private int batchPersistTimeoutMS = DEFAULT_BATCH_PERSIST_TIMEOUT_MS;
+
     @ParametersDelegate
     private HBaseLogin.Config loginFlags = new HBaseLogin.Config();
 
@@ -113,6 +117,10 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
 
     public int getMaxBatchSize() {
         return maxBatchSize;
+    }
+
+    public int getBatchPersistTimeoutMS() {
+        return batchPersistTimeoutMS;
     }
 
     public HBaseLogin.Config getLoginFlags() { return loginFlags; }

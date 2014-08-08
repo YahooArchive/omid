@@ -35,6 +35,8 @@ class PersistenceProcessorImpl
 
     static final int DEFAULT_MAX_BATCH_SIZE = 10000;
     static final String TSO_MAX_BATCH_SIZE_KEY = "tso.maxbatchsize";
+    static final int DEFAULT_BATCH_PERSIST_TIMEOUT_MS = 100;
+    static final String TSO_BATCH_PERSIST_TIMEOUT_MS_KEY = "tso.batch-persist-timeout-ms";
 
     final ReplyProcessor reply;
     final RetryProcessor retryProc;
@@ -69,6 +71,8 @@ class PersistenceProcessorImpl
         this.panicker = panicker;
         this.maxBatchSize = config.getMaxBatchSize();
 
+        LOG.info("Creating the persist processor with batch size {}, and timeout {}ms",
+                 maxBatchSize, config.getBatchPersistTimeoutMS());
         batch = new Batch(maxBatchSize);
 
         flushTimer = metrics.timer(name("tso", "persist", "flush"));
@@ -78,7 +82,7 @@ class PersistenceProcessorImpl
         // FIXME consider putting something more like a phased strategy here to avoid
         // all the syscalls
         final TimeoutBlockingWaitStrategy timeoutStrategy
-            = new TimeoutBlockingWaitStrategy(BATCH_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            = new TimeoutBlockingWaitStrategy(config.getBatchPersistTimeoutMS(), TimeUnit.MILLISECONDS);
 
         persistRing = RingBuffer.<PersistEvent>createSingleProducer(
                 PersistEvent.EVENT_FACTORY, 1<<20, timeoutStrategy); // 2^20 entries in ringbuffer
@@ -140,7 +144,6 @@ class PersistenceProcessorImpl
     // no event has been received in the timeout period
     @Override
     public void onTimeout(final long sequence) {
-        timeoutMeter.mark();
         maybeFlushBatch();
     }
 
@@ -149,7 +152,10 @@ class PersistenceProcessorImpl
      * or BATCH_TIMEOUT_MS milliseconds have elapsed since the last flush.
      */
     private void maybeFlushBatch() {
-        if (batch.isFull() || (System.nanoTime() - lastFlush) > TimeUnit.MILLISECONDS.toNanos(BATCH_TIMEOUT_MS)) {
+        if (batch.isFull()) {
+            flush();
+        } else if ((System.nanoTime() - lastFlush) > TimeUnit.MILLISECONDS.toNanos(BATCH_TIMEOUT_MS)) {
+            timeoutMeter.mark();
             flush();
         }
     }

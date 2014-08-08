@@ -2,6 +2,9 @@ package com.yahoo.omid.tso;
 
 import static com.yahoo.omid.tso.PersistenceProcessorImpl.DEFAULT_MAX_BATCH_SIZE;
 import static com.yahoo.omid.tso.PersistenceProcessorImpl.TSO_MAX_BATCH_SIZE_KEY;
+import static com.yahoo.omid.tso.PersistenceProcessorImpl.DEFAULT_BATCH_PERSIST_TIMEOUT_MS;
+import static com.yahoo.omid.tso.PersistenceProcessorImpl.TSO_BATCH_PERSIST_TIMEOUT_MS_KEY;
+
 import static com.yahoo.omid.tso.RequestProcessorImpl.DEFAULT_MAX_ITEMS;
 import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;
 
@@ -14,7 +17,9 @@ import com.google.inject.Inject;
 public class TSOServerConfig {
 
     private int maxBatchSize = DEFAULT_MAX_BATCH_SIZE;
+    private int batchPersistTimeoutMS = DEFAULT_BATCH_PERSIST_TIMEOUT_MS;
     private int maxItems = DEFAULT_MAX_ITEMS;
+
 
     public int getMaxBatchSize() {
         return maxBatchSize;
@@ -23,6 +28,16 @@ public class TSOServerConfig {
     @Inject(optional=true)
     public void setMaxBatchSize(@Named(TSO_MAX_BATCH_SIZE_KEY) int maxBatchSize) {
         this.maxBatchSize = maxBatchSize;
+    }
+
+    public int getBatchPersistTimeoutMS() {
+        return batchPersistTimeoutMS;
+    }
+
+    @Inject(optional=true)
+    public void setBatchPersistTimeoutMS(
+            @Named(TSO_BATCH_PERSIST_TIMEOUT_MS_KEY) int batchPersistTimeoutMS) {
+        this.batchPersistTimeoutMS = batchPersistTimeoutMS;
     }
 
     public int getMaxItems() {
