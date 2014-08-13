@@ -9,7 +9,7 @@
                 "test": {
                     "task": "script",
                     "command": "mvn -Dmaven.clover.licenseLocation=/home/y/conf/clover/clover.license -B -Pclover clover2:setup install clover2:aggregate clover2:clover",
-		    "after": "cp ${SRC_DIR}/*/target/surefire-reports/*xml ${TEST_RESULTS_DIR}/"
+                    "after": "cp ${SRC_DIR}/*/target/surefire-reports/TEST-*xml ${TEST_RESULTS_DIR}/"
                 },
 		"publish": {
                     "task": "none"
