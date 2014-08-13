@@ -14,3 +14,6 @@ lib/
 *.iws
 *~
 *.swp
+
+# TestNG
+*/test-output/
