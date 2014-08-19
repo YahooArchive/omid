@@ -13,12 +13,13 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.codahale.metrics.MetricRegistry;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.name.Names;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.metrics.NullMetricsProvider;
 import com.yahoo.omid.tso.DisruptorModule;
 import com.yahoo.omid.tso.MockPanicker;
 import com.yahoo.omid.tso.Panicker;
@@ -81,8 +82,8 @@ public class TSOForHBaseCompactorTestModule extends AbstractModule {
 
     @Provides
     @Singleton
-    MetricRegistry provideMetricsRegistry() {
-        return new MetricRegistry();
+    MetricsRegistry provideMetricsRegistry() {
+        return new NullMetricsProvider();
     }
 
     private static void delete(File f) throws IOException {

@@ -1,16 +1,17 @@
 package com.yahoo.omid.tso;
-import org.testng.annotations.Test;
-import org.testng.AssertJUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.AssertJUnit;
+import org.testng.annotations.Test;
 
-import com.codahale.metrics.MetricRegistry;
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.metrics.NullMetricsProvider;
 
 public class TestTimestampOracle {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestTimestampOracle.class);
     
-    MetricRegistry metrics = new MetricRegistry();
+    MetricsRegistry metrics = new NullMetricsProvider();
 
     @Test
     public void testMonotonicTimestampGrowth() throws Exception {

@@ -24,6 +24,9 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.yahoo.omid.committable.hbase.HBaseLogin;
+import com.yahoo.omid.metrics.CodahaleMetricsConfig;
+import com.yahoo.omid.metrics.MetricsProvider.Provider;
+import com.yahoo.omid.metrics.YMonMetricsConfig;
 import com.yahoo.omid.tso.hbase.HBaseStorageModule;
 
 @Singleton
@@ -45,18 +48,33 @@ public class TSOServer extends AbstractIdleService {
     }
 
     static TSOServer getInitializedTsoServer(TSOServerCommandLineConfig config) throws IOException {
+        LOG.info("Configuring TSO Server...");
         // NOTE: The guice config is in here following the best practices in:
         // https://code.google.com/p/google-guice/wiki/AvoidConditionalLogicInModules
         // This is due to the fact that the target storage can be selected from the
         // command line
         List<Module> guiceModules = new ArrayList<Module>();
+        // Metrics Modules
+        Provider metricsProvider = config.getMetricsProvider();
+        LOG.info("\t* Metrics provider {}", metricsProvider);
+        switch (metricsProvider) {
+        case CODAHALE:
+            guiceModules.add(new CodahaleModule(config, new CodahaleMetricsConfig()));
+            break;
+        case YMON:
+            guiceModules.add(new YMonModule(new YMonMetricsConfig()));
+            break;
+        }
         guiceModules.add(new TSOModule(config));
         if (config.isHBase()) {
+            LOG.info("\t* Storage set to HBase");
             guiceModules.add(new HBaseStorageModule());
             HBaseLogin.loginIfNeeded(config.getLoginFlags());
         } else {
+            LOG.info("\t* Storage set to memory");
             guiceModules.add(new InMemoryStorageModule());
         }
+        LOG.info("TSO Server configured. Creating instance...");
         Injector injector = Guice.createInjector(guiceModules);
         return injector.getInstance(TSOServer.class);
     }

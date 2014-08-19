@@ -1,28 +1,28 @@
 package com.yahoo.omid.tso;
 
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
-import org.testng.annotations.Test;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
+import static org.testng.AssertJUnit.assertEquals;
 
 import org.jboss.netty.channel.Channel;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.annotations.Test;
 
-import com.codahale.metrics.MetricRegistry;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.InMemoryCommitTable;
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.metrics.NullMetricsProvider;
 
 public class TestRetryProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestRetryProcessor.class);
 
-    private MetricRegistry metrics = new MetricRegistry();
+    private MetricsRegistry metrics = new NullMetricsProvider();
 
     private static long NON_EXISTING_ST_TX = 1000;
     private static long ST_TX_1 = 0;

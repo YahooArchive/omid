@@ -7,7 +7,7 @@ import javax.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.codahale.metrics.MetricRegistry;
+import com.yahoo.omid.metrics.MetricsRegistry;
 
 public class PausableTimestampOracle extends TimestampOracleImpl {
 
@@ -16,7 +16,7 @@ public class PausableTimestampOracle extends TimestampOracleImpl {
     private volatile boolean tsoPaused = false;
 
     @Inject
-    public PausableTimestampOracle(MetricRegistry metrics,
+    public PausableTimestampOracle(MetricsRegistry metrics,
                                    TimestampStorage tsStorage,
                                    Panicker panicker) throws IOException {
         super(metrics, tsStorage, panicker);

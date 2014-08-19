@@ -19,11 +19,11 @@ import com.lmax.disruptor.YieldingWaitStrategy;
 import org.jboss.netty.channel.Channel;
 
 import com.yahoo.omid.committable.CommitTable;
-import com.codahale.metrics.MetricRegistry;
+import com.yahoo.omid.metrics.MetricsRegistry;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
-import com.codahale.metrics.Meter;
+import com.yahoo.omid.metrics.Meter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,21 +34,21 @@ import org.slf4j.LoggerFactory;
  */
 class RetryProcessorImpl
     implements EventHandler<RetryProcessorImpl.RetryEvent>, RetryProcessor {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(RetryProcessor.class);
 
     // Disruptor chain stuff
     final ReplyProcessor replyProc;
     final RingBuffer<RetryEvent> retryRing;
-    
+
     final CommitTable.Client commitTableClient;
     final CommitTable.Writer writer;
-    
+
     // Metrics
     final Meter retriesMeter;
 
     @Inject
-    RetryProcessorImpl(MetricRegistry metrics, CommitTable commitTable, 
+    RetryProcessorImpl(MetricsRegistry metrics, CommitTable commitTable,
                        ReplyProcessor replyProc, Panicker panicker)
         throws InterruptedException, ExecutionException {
         this.commitTableClient = commitTable.getClient().get();
@@ -56,7 +56,7 @@ class RetryProcessorImpl
         this.replyProc = replyProc;
 
         WaitStrategy strategy = new YieldingWaitStrategy();
-        
+
         retryRing = RingBuffer.<RetryEvent>createSingleProducer(
                 RetryEvent.EVENT_FACTORY, 1<<12, strategy);
         SequenceBarrier retrySequenceBarrier = retryRing.newBarrier();
@@ -71,15 +71,15 @@ class RetryProcessorImpl
         ExecutorService retryExec = Executors.newSingleThreadExecutor(
                 new ThreadFactoryBuilder().setNameFormat("retry-%d").build());
         retryExec.submit(retryProcessor);
-        
-        // Metrics        
+
+        // Metrics
         retriesMeter = metrics.meter(name("tso", "retries"));
     }
 
     @Override
     public void onEvent(final RetryEvent event, final long sequence, final boolean endOfBatch)
         throws Exception {
-        
+
         switch (event.getType()) {
         case COMMIT:
             // TODO: What happens when the IOException is thrown?
@@ -91,11 +91,11 @@ class RetryProcessorImpl
         }
 
     }
-    
+
     private void handleCommitRetry(RetryEvent event) throws InterruptedException, ExecutionException {
-        
+
         final long startTimestamp = event.getStartTimestamp();
-        
+
         try {
             Optional<Long> commitTimestamp = commitTableClient.getCommitTimestamp(startTimestamp).get();
             if(!commitTimestamp.isPresent()) {
@@ -109,7 +109,7 @@ class RetryProcessorImpl
         } catch (ExecutionException e) {
             LOG.error("Error reading from commit table", e);
         }
-        
+
         retriesMeter.mark();
     }
 
@@ -122,12 +122,12 @@ class RetryProcessorImpl
     }
 
     public final static class RetryEvent {
-        
+
         enum Type {
             COMMIT
         }
         private Type type = null;
-        
+
         private long startTimestamp = 0;
         private Channel channel = null;
 
@@ -143,6 +143,7 @@ class RetryProcessorImpl
 
         public final static EventFactory<RetryEvent> EVENT_FACTORY
             = new EventFactory<RetryEvent>() {
+            @Override
             public RetryEvent newInstance()
             {
                 return new RetryEvent();

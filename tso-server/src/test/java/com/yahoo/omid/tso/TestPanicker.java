@@ -11,14 +11,14 @@ import static org.mockito.Mockito.*;
 import com.yahoo.omid.committable.CommitTable;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-
-import com.codahale.metrics.MetricRegistry;
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.metrics.NullMetricsProvider;
 
 public class TestPanicker {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestPanicker.class);
 
-    MetricRegistry metrics = new MetricRegistry();
+    MetricsRegistry metrics = new NullMetricsProvider();
 
     @Test
     public void testTimestampOraclePanic() throws Exception {
