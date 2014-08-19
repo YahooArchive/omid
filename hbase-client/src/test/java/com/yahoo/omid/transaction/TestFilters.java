@@ -105,8 +105,7 @@ public class TestFilters extends OmidTestBase {
         testScan(new ValueFilter(CompareFilter.CompareOp.EQUAL, new BinaryComparator(col1)));
     }
 
-    @Test(timeOut=60000)
-    public void testScan(Filter f) throws Exception {
+    private void testScan(Filter f) throws Exception {
         CommitTable.Client commitTableClient = spy(getTSO().getCommitTable().getClient().get());
         TSOClient client = TSOClient.newBuilder().withConfiguration(getTSO().getClientConfiguration())
                 .build();
