@@ -9,17 +9,9 @@
     </appender>
 
     <appender name="fileAll" class="org.apache.log4j.RollingFileAppender">
-        <param name="File" value="$(LOGS_FOLDER)out.log"/>
-        <param name="MaxBackupIndex" value="15"/>
-        <param name="MaxFileSize" value="50MB"/>
-        <layout class="org.apache.log4j.PatternLayout">
-            <param name="ConversionPattern" value="%d [%t] %-5p %c{1} %x %m%n"/>
-        </layout>
-    </appender>
-    <appender name="fileError" class="org.apache.log4j.RollingFileAppender">
-        <param name="File" value="$(LOGS_FOLDER)error.log"/>
+        <param name="File" value="../omid.log"/>
         <param name="Threshold" value="ERROR"/>
-        <param name="MaxBackupIndex" value="5"/>
+        <param name="MaxBackupIndex" value="15"/>
         <param name="MaxFileSize" value="50MB"/>
         <layout class="org.apache.log4j.PatternLayout">
             <param name="ConversionPattern" value="%d [%t] %-5p %c{1} %x %m%n"/>
@@ -27,8 +19,7 @@
     </appender>
 
     <root>
-        <level value="$(LOGS_VERBOSITY)"/>
+        <level value="INFO"/>
         <appender-ref ref="fileAll"/>
-        <appender-ref ref="fileError"/>
     </root>
 </log4j:configuration>

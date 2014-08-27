@@ -46,7 +46,7 @@ tso() {
 }
 
 tsobench() {
-    exec java $JVM_FLAGS -cp $CLASSPATH com.yahoo.omid.tso.util.TransactionClient $@
+    exec java $JVM_FLAGS -Dlog4j.configuration=bench.log4j.xml -cp $CLASSPATH com.yahoo.omid.tso.util.TransactionClient $@
 }
 
 createHBaseCommitTable() {
