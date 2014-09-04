@@ -15,7 +15,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.yahoo.omid.tso.TimestampOracleImpl.TimestampStorage;
+import com.yahoo.omid.timestamp.storage.TimestampStorage;
 
 public class HBaseTimestampStorage implements TimestampStorage {
 

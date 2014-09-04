@@ -7,6 +7,7 @@ import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ListenableFuture;
 
 public interface CommitTable {
+
     ListenableFuture<Writer> getWriter();
     ListenableFuture<Client> getClient();
 

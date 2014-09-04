@@ -12,9 +12,10 @@ import javax.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.metrics.Gauge;
 import com.yahoo.omid.metrics.MetricsRegistry;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.yahoo.omid.timestamp.storage.TimestampStorage;
 
 /**
  * The Timestamp Oracle that gives monotonically increasing timestamps
@@ -23,13 +24,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 public class TimestampOracleImpl implements TimestampOracle {
 
     private static final Logger LOG = LoggerFactory.getLogger(TimestampOracleImpl.class);
-
-    public interface TimestampStorage {
-
-        public void updateMaxTimestamp(long previousMaxTimestamp, long newMaxTimestamp) throws IOException;
-
-        public long getMaxTimestamp() throws IOException;
-    }
 
     /**
      * Used for testing

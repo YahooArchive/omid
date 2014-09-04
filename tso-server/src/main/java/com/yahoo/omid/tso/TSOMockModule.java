@@ -11,9 +11,8 @@ import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.InMemoryCommitTable;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.metrics.NullMetricsProvider;
-import com.yahoo.omid.tso.DisruptorModule;
+import com.yahoo.omid.timestamp.storage.TimestampStorage;
 import com.yahoo.omid.tso.TimestampOracleImpl.InMemoryTimestampStorage;
-import com.yahoo.omid.tso.TimestampOracleImpl.TimestampStorage;
 
 public class TSOMockModule extends AbstractModule {
 

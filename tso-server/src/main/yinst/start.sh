@@ -106,7 +106,9 @@ JVM_ARGS="-Xmx$(HEAP_SIZE_IN_MIB)m $(JVM_ARGS) ${YOURKIT_OPTS}"
  -procs 1 -user $(RUN_AS_USER) -outfile /home/y/var/$(PRODUCT_NAME)/run/$(PRODUCT_NAME).out \
  -errfile /home/y/var/$(PRODUCT_NAME)/run/$(PRODUCT_NAME).err -cp ${KLASSPATH} \
  -home /home/y/share/yjava_jdk/java -Djava.library.path=${ARCH_LIB_DIR} ${JVM_ARGS} \
-com.yahoo.omid.tso.TsoServerDaemon -hbase -hbaseTimestampTable $(HBASE_TIMESTAMP_TABLE) \
- -hbaseCommitTable $(HBASE_COMMIT_TABLE) -port $(PORT) -maxItems $(MAX_ITEMS) \
+com.yahoo.omid.tso.TsoServerDaemon \
+ -timestampStore $(TIMESTAMP_STORE) -hbaseTimestampTable $(HBASE_TIMESTAMP_TABLE) \
+ -commitTableStore $(COMMIT_TABLE_STORE) -hbaseCommitTable $(HBASE_COMMIT_TABLE) \
+ -port $(PORT) -maxItems $(MAX_ITEMS) \
  -metricsProvider $(METRICS_PROVIDER) -metricsConfigs $(METRICS_CONFIGS) -hbaseClientPrincipal $(HBASE_CLIENT_PRINCIPAL) \
  -hbaseClientKeytab $(HBASE_CLIENT_KEYTAB))

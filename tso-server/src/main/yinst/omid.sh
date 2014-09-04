@@ -42,8 +42,9 @@ done
 JVM_ARGS="-Xmx$(HEAP_SIZE_IN_MIB)m $(JVM_ARGS) ${YOURKIT_OPTS}"
 
 tso() {
-    exec java -server $JVM_ARGS -cp $KLASSPATH com.yahoo.omid.tso.TSOServer -hbase \
-              -hbaseTimestampTable $(HBASE_TIMESTAMP_TABLE) -hbaseCommitTable $(HBASE_COMMIT_TABLE) \
+    exec java -server $JVM_ARGS -cp $KLASSPATH com.yahoo.omid.tso.TSOServer \
+              -timestampStore $(TIMESTAMP_STORE) -hbaseTimestampTable $(HBASE_TIMESTAMP_TABLE) \
+              -commitTableStore $(COMMIT_TABLE_STORE) -hbaseCommitTable $(HBASE_COMMIT_TABLE) \
               -port $(PORT) -maxItems $(MAX_ITEMS) -metricsProvider $(METRICS_PROVIDER) -metricsConfigs $(METRICS_CONFIGS) \
               -hbaseClientPrincipal $(HBASE_CLIENT_PRINCIPAL) -hbaseClientKeytab $(HBASE_CLIENT_KEYTAB)
 }

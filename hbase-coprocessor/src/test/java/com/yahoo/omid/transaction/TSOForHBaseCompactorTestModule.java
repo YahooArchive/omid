@@ -20,13 +20,13 @@ import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.metrics.NullMetricsProvider;
+import com.yahoo.omid.timestamp.storage.TimestampStorage;
 import com.yahoo.omid.tso.DisruptorModule;
 import com.yahoo.omid.tso.MockPanicker;
 import com.yahoo.omid.tso.Panicker;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig;
 import com.yahoo.omid.tso.TimestampOracle;
 import com.yahoo.omid.tso.TimestampOracleImpl;
-import com.yahoo.omid.tso.TimestampOracleImpl.TimestampStorage;
 import com.yahoo.omid.tso.hbase.HBaseTimestampStorage;
 
 public class TSOForHBaseCompactorTestModule extends AbstractModule {

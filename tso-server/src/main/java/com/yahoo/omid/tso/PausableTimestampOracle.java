@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.timestamp.storage.TimestampStorage;
 
 public class PausableTimestampOracle extends TimestampOracleImpl {
 

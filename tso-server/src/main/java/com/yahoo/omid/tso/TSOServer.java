@@ -23,11 +23,15 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
+import com.yahoo.omid.committable.hbase.HBaseCommitTableStorageModule;
 import com.yahoo.omid.committable.hbase.HBaseLogin;
 import com.yahoo.omid.metrics.CodahaleMetricsConfig;
 import com.yahoo.omid.metrics.MetricsProvider.Provider;
 import com.yahoo.omid.metrics.YMonMetricsConfig;
-import com.yahoo.omid.tso.hbase.HBaseStorageModule;
+import com.yahoo.omid.timestamp.storage.ZKTimestampStorageModule;
+import com.yahoo.omid.tso.TSOServerCommandLineConfig.CommitTableStore;
+import com.yahoo.omid.tso.TSOServerCommandLineConfig.TimestampStore;
+import com.yahoo.omid.tso.hbase.HBaseTimestampStorageModule;
 
 @Singleton
 public class TSOServer extends AbstractIdleService {
@@ -49,34 +53,88 @@ public class TSOServer extends AbstractIdleService {
 
     static TSOServer getInitializedTsoServer(TSOServerCommandLineConfig config) throws IOException {
         LOG.info("Configuring TSO Server...");
-        // NOTE: The guice config is in here following the best practices in:
-        // https://code.google.com/p/google-guice/wiki/AvoidConditionalLogicInModules
-        // This is due to the fact that the target storage can be selected from the
-        // command line
-        List<Module> guiceModules = new ArrayList<Module>();
-        // Metrics Modules
-        Provider metricsProvider = config.getMetricsProvider();
-        LOG.info("\t* Metrics provider {}", metricsProvider);
-        switch (metricsProvider) {
-        case CODAHALE:
-            guiceModules.add(new CodahaleModule(config, new CodahaleMetricsConfig()));
-            break;
-        case YMON:
-            guiceModules.add(new YMonModule(new YMonMetricsConfig()));
-            break;
-        }
-        guiceModules.add(new TSOModule(config));
-        if (config.isHBase()) {
-            LOG.info("\t* Storage set to HBase");
-            guiceModules.add(new HBaseStorageModule());
-            HBaseLogin.loginIfNeeded(config.getLoginFlags());
-        } else {
-            LOG.info("\t* Storage set to memory");
-            guiceModules.add(new InMemoryStorageModule());
-        }
+        GuiceConfigBuilder guiceConfigBuilder = new GuiceConfigBuilder(config);
+        Injector injector = Guice.createInjector(guiceConfigBuilder.buildModuleList());
         LOG.info("TSO Server configured. Creating instance...");
-        Injector injector = Guice.createInjector(guiceModules);
         return injector.getInstance(TSOServer.class);
+    }
+
+    // NOTE: The guice config is in here following the best practices in:
+    // https://code.google.com/p/google-guice/wiki/AvoidConditionalLogicInModules
+    // This is due to the fact that the target storage for timestamps or
+    // commit table can be selected from the command line
+    private static class GuiceConfigBuilder {
+
+        private final TSOServerCommandLineConfig config;
+
+        private final List<Module> guiceModules = new ArrayList<Module>();
+
+        public GuiceConfigBuilder(TSOServerCommandLineConfig config) {
+            this.config = config;
+        }
+
+        public List<Module> buildModuleList() throws IOException {
+            addMetricsProviderModule();
+            addTSOModule();
+            addTimestampStorageModule();
+            addCommitTableStorageModule();
+            return guiceModules;
+        }
+
+        private void addMetricsProviderModule() {
+            Provider metricsProvider = config.getMetricsProvider();
+            switch (metricsProvider) {
+            case CODAHALE:
+                guiceModules.add(new CodahaleModule(config, new CodahaleMetricsConfig()));
+                break;
+            case YMON:
+                guiceModules.add(new YMonModule(new YMonMetricsConfig()));
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown metrics provider" + metricsProvider);
+            }
+            LOG.info("\t* Metrics provider set to {}", metricsProvider);
+        }
+
+        private void addTSOModule() {
+            guiceModules.add(new TSOModule(config));
+        }
+
+        private void addTimestampStorageModule() throws IOException {
+            TimestampStore timestampStore = config.getTimestampStore();
+            switch (timestampStore) {
+            case HBASE:
+                guiceModules.add(new HBaseTimestampStorageModule());
+                HBaseLogin.loginIfNeeded(config.getLoginFlags());
+                break;
+            case MEMORY:
+                guiceModules.add(new InMemoryTimestampStorageModule());
+                break;
+            case ZK:
+                guiceModules.add(new ZKTimestampStorageModule(config));
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown timestamp store" + timestampStore);
+            }
+            LOG.info("\t* Timestamp store set to {}", timestampStore);
+        }
+
+        private void addCommitTableStorageModule() throws IOException {
+            CommitTableStore commitTableStore = config.getCommitTableStore();
+            switch (commitTableStore) {
+            case HBASE:
+                guiceModules.add(new HBaseCommitTableStorageModule());
+                HBaseLogin.loginIfNeeded(config.getLoginFlags());
+                break;
+            case MEMORY:
+                guiceModules.add(new InMemoryCommitTableStorageModule());
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown commit table store" + commitTableStore);
+            }
+            LOG.info("\t* Commit table store set to {}", commitTableStore);
+        }
+
     }
 
     @Override

@@ -2,6 +2,7 @@ package com.yahoo.omid.tso;
 
 import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME;
 import static com.yahoo.omid.metrics.CodahaleMetricsProvider.DEFAULT_CODAHALE_METRICS_CONFIG;
+import static com.yahoo.omid.timestamp.storage.ZKTimestampStorage.DEFAULT_ZK_CLUSTER;
 import static com.yahoo.omid.tso.PersistenceProcessorImpl.DEFAULT_BATCH_PERSIST_TIMEOUT_MS;
 import static com.yahoo.omid.tso.PersistenceProcessorImpl.DEFAULT_MAX_BATCH_SIZE;
 import static com.yahoo.omid.tso.RequestProcessorImpl.DEFAULT_MAX_ITEMS;
@@ -23,6 +24,14 @@ import com.yahoo.omid.tsoclient.TSOClient;
  * Holds the configuration parameters of a TSO server instance.
  */
 public class TSOServerCommandLineConfig extends JCommander implements IVariableArity {
+
+    public enum TimestampStore {
+        MEMORY, HBASE, ZK
+    };
+
+    public enum CommitTableStore {
+        MEMORY, HBASE
+    };
 
     TSOServerCommandLineConfig() {
         this(new String[] {});
@@ -50,8 +59,14 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
     @Parameter(names="-help", description = "Print command options and exit", help = true)
     private boolean help = false;
 
-    @Parameter(names = "-hbase", description = "Enable HBase storage")
-    private boolean hbase = false;
+    @Parameter(names = "-timestampStore", description = "Available stores, MEMORY, HBASE, ZK")
+    private TimestampStore timestampStore = TimestampStore.MEMORY;
+
+    @Parameter(names = "-zkCluster", description = "Zookeeper cluster in form: <host>:<port>,<host>,<port>,...)")
+    private String zkCluster = DEFAULT_ZK_CLUSTER;
+
+    @Parameter(names = "-commitTableStore", description = "Available stores, MEMORY, HBASE")
+    private CommitTableStore commitTableStore = CommitTableStore.MEMORY;
 
     @Parameter(names = "-hbaseTimestampTable", description = "HBase timestamp table name")
     private String hbaseTimestampTable = TIMESTAMP_TABLE_DEFAULT_NAME;
@@ -97,8 +112,16 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
         return help;
     }
 
-    public boolean isHBase() {
-        return hbase;
+    public TimestampStore getTimestampStore() {
+        return timestampStore;
+    }
+
+    public String getZKCluster() {
+        return zkCluster;
+    }
+
+    public CommitTableStore getCommitTableStore() {
+        return commitTableStore;
     }
 
     public String getHBaseTimestampTable() {

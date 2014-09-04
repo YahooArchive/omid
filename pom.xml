@@ -47,6 +47,7 @@
     <commons.conf.version>1.10</commons.conf.version>
     <clover.version>3.3.0</clover.version>
     <hamcrest.version>1.3</hamcrest.version>
+    <curator.version>2.6.0</curator.version>
   </properties>
 
   <modules>
