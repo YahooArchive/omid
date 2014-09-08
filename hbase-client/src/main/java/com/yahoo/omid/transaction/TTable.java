@@ -100,6 +100,7 @@ public class TTable {
                 for (byte[] qualifier : qualifiers) {
                     tsget.addColumn(family, qualifier);
                     tsget.addColumn(family, HBaseUtils.addShadowCellSuffix(qualifier));
+                    tsget.addColumn(family, HBaseUtils.addLegacyShadowCellSuffix(qualifier));
                 }
             }
         }
@@ -136,7 +137,7 @@ public class TTable {
         }
         for (List<Cell> cells : fmap.values()) {
             for (Cell cell : cells) {
-                throwExceptionIfTimestampSet(cell, startTimestamp);
+                validateCell(cell, startTimestamp);
                 switch (KeyValue.Type.codeToType(cell.getTypeByte())) {
                 case DeleteColumn:
                     deleteP.add(CellUtil.cloneFamily(cell),
@@ -211,7 +212,7 @@ public class TTable {
         Map<byte[], List<Cell>> kvs = put.getFamilyCellMap();
         for (List<Cell> kvl : kvs.values()) {
             for (Cell c : kvl) {
-                throwExceptionIfTimestampSet(c, startTimestamp);
+                validateCell(c, startTimestamp);
                 // Reach into keyvalue to update timestamp.
                 // It's not nice to reach into keyvalue internals,
                 // but we want to avoid having to copy the whole thing
@@ -252,6 +253,7 @@ public class TTable {
             }
             for (byte[] qualifier : qualifiers) {
                 tsscan.addColumn(family, HBaseUtils.addShadowCellSuffix(qualifier));
+                tsscan.addColumn(family, HBaseUtils.addLegacyShadowCellSuffix(qualifier));
             }
         }
         TransactionalClientScanner scanner = new TransactionalClientScanner(transaction,
@@ -358,6 +360,8 @@ public class TTable {
         Get pendingGet = new Get(CellUtil.cloneRow(cell));
         pendingGet.addColumn(CellUtil.cloneFamily(cell), CellUtil.cloneQualifier(cell));
         pendingGet.addColumn(CellUtil.cloneFamily(cell), HBaseUtils.addShadowCellSuffix(CellUtil.cloneQualifier(cell)));
+        pendingGet.addColumn(CellUtil.cloneFamily(cell),
+                             HBaseUtils.addLegacyShadowCellSuffix(CellUtil.cloneQualifier(cell)));
         pendingGet.setMaxVersions(versionCount);
         pendingGet.setTimeRange(0, cell.getTimestamp());
 
@@ -646,11 +650,17 @@ public class TTable {
         }
     }
 
-    private void throwExceptionIfTimestampSet(Cell cell, long startTimestamp) {
+    private void validateCell(Cell cell, long startTimestamp) {
+        // Throw exception if timestamp is set by the user
         if (cell.getTimestamp() != HConstants.LATEST_TIMESTAMP
             && cell.getTimestamp() != startTimestamp) {
             throw new IllegalArgumentException(
                     "Timestamp not allowed in transactional user operations");
+        }
+        // Throw exception if using a non-allowed qualifier
+        if (HBaseUtils.isShadowCell(CellUtil.cloneQualifier(cell))) {
+            throw new IllegalArgumentException(
+                    "Reserved string used in column qualifier");
         }
     }
 

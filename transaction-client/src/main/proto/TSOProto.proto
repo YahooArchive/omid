@@ -4,6 +4,7 @@ option optimize_for = SPEED;
 message Request {
   optional TimestampRequest timestampRequest = 1;
   optional CommitRequest commitRequest = 2;
+  optional HandshakeRequest handshakeRequest = 3;
 }
 
 message TimestampRequest {}
@@ -17,6 +18,7 @@ message CommitRequest {
 message Response {
   optional TimestampResponse timestampResponse = 1;
   optional CommitResponse commitResponse = 2;
+  optional HandshakeResponse handshakeResponse = 3;
 }
 
 message TimestampResponse {
@@ -28,3 +30,21 @@ message CommitResponse {
   optional int64 startTimestamp = 2;
   optional int64 commitTimestamp = 3;
 }
+
+message Capabilities {
+  // this states that the hbase client will use short suffixes
+  // rather than the longer versions originally used. All clients
+  // must use short suffixes, or none many. Otherwise clients could
+  // see different views of the data, violating snapshot isolation.
+  optional bool shortSuffixes = 1;
+}
+
+message HandshakeRequest {
+  optional Capabilities clientCapabilities = 1;
+}
+
+message HandshakeResponse {
+  optional bool clientCompatible = 1;
+  optional Capabilities serverCapabilities = 2;
+}
+

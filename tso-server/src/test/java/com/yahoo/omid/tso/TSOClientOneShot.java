@@ -16,102 +16,51 @@
 
 package com.yahoo.omid.tso;
 
-import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 
-import org.jboss.netty.bootstrap.ClientBootstrap;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelFactory;
-import org.jboss.netty.channel.ChannelFuture;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelPipeline;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.channel.SimpleChannelHandler;
-import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
-import org.jboss.netty.handler.codec.frame.LengthFieldBasedFrameDecoder;
-import org.jboss.netty.handler.codec.frame.LengthFieldPrepender;
-import org.jboss.netty.handler.codec.protobuf.ProtobufDecoder;
-import org.jboss.netty.handler.codec.protobuf.ProtobufEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.util.concurrent.SettableFuture;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.proto.TSOProto;
 import com.yahoo.omid.proto.TSOProto.Response;
 
 /**
  * Communication endpoint for TSO clients.
- *
  */
 public class TSOClientOneShot {
+
     private static final Logger LOG = LoggerFactory.getLogger(TSOClientOneShot.class);
 
     private final String host;
     private final int port;
-    
-      
+
+
     public TSOClientOneShot(String host, int port) {
-        
+
         this.host = host;
         this.port = port;
-        
+
     }
 
-    public TSOProto.Response makeRequest(TSOProto.Request request) throws InterruptedException, ExecutionException {
-        // Start client with Nb of active threads = 3 as maximum.
-        ChannelFactory factory = new NioClientSocketChannelFactory(
-                Executors.newCachedThreadPool(
-                        new ThreadFactoryBuilder().setNameFormat("tsoclient-boss-%d").build()),
-                Executors.newCachedThreadPool(
-                        new ThreadFactoryBuilder().setNameFormat("tsoclient-worker-%d").build()), 3);
-        // Create the bootstrap
-        ClientBootstrap bootstrap = new ClientBootstrap(factory);
+    public TSOProto.Response makeRequest(TSOProto.Request request)
+            throws InterruptedException, ExecutionException {
+        TSOClientRaw raw = new TSOClientRaw(host, port);
 
-        InetSocketAddress addr = new InetSocketAddress(host, port);
+        // do handshake
+        TSOProto.HandshakeRequest.Builder handshake = TSOProto.HandshakeRequest.newBuilder();
+        handshake.setClientCapabilities(
+                TSOProto.Capabilities.newBuilder()
+                .setShortSuffixes(true).build());
+        raw.write(TSOProto.Request.newBuilder()
+                  .setHandshakeRequest(handshake.build()).build());
+        Response response = raw.getResponse().get();
+        assert(response.getHandshakeResponse().getClientCompatible());
 
-        ChannelPipeline pipeline = bootstrap.getPipeline();
-        pipeline.addLast("lengthbaseddecoder",
-                         new LengthFieldBasedFrameDecoder(8*1024, 0, 4, 0, 4));
-        pipeline.addLast("lengthprepender", new LengthFieldPrepender(4));
-        pipeline.addLast("protobufdecoder",
-                         new ProtobufDecoder(TSOProto.Response.getDefaultInstance()));
-        pipeline.addLast("protobufencoder", new ProtobufEncoder());
+        raw.write(request);
+        response = raw.getResponse().get();
 
-        Handler handler = new Handler();
-        pipeline.addLast("handler", handler);
-
-        bootstrap.setOption("tcpNoDelay", true);
-        bootstrap.setOption("keepAlive", true);
-        bootstrap.setOption("reuseAddress", true);
-        bootstrap.setOption("connectTimeoutMillis", 100);
-        
-        ChannelFuture channelFuture = bootstrap.connect(addr).await();
-        Channel channel = channelFuture.getChannel();
-        
-        channel.write(request);
-        TSOProto.Response response = handler.getResponse();
-        
-        channel.close();
+        raw.close();
         return response;
     }
 
-    private class Handler extends SimpleChannelHandler {
-        
-        private SettableFuture<TSOProto.Response> future = SettableFuture.<TSOProto.Response>create();
-
-        public Response getResponse() throws InterruptedException, ExecutionException {
-            return future.get();
-        }
-
-        @Override
-        public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
-            if (e.getMessage() instanceof TSOProto.Response) {
-                future.set((TSOProto.Response) e.getMessage());
-            } else {
-                LOG.warn("Received unknown message", e.getMessage());
-            }
-        }
-    }
 }

@@ -29,7 +29,8 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
 
     private static final Logger LOG = LoggerFactory.getLogger(HBaseTransactionManager.class);
 
-    public static final byte[] SHADOW_CELL_SUFFIX = ":OMID_CTS".getBytes(Charsets.UTF_8);
+    public static final byte[] LEGACY_SHADOW_CELL_SUFFIX = ":OMID_CTS".getBytes(Charsets.UTF_8);
+    public static final byte[] SHADOW_CELL_SUFFIX = "\u0080".getBytes(Charsets.UTF_8); // Non printable char (128 ASCII)
 
     private static class HBaseTransactionFactory implements TransactionFactory<HBaseCellId> {
 
@@ -123,7 +124,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
 
         HBaseTransaction transaction = enforceHBaseTransactionAsParam(tx);
 
-        Set<HBaseCellId> cells = (Set<HBaseCellId>) transaction.getWriteSet();
+        Set<HBaseCellId> cells = transaction.getWriteSet();
 
         // Add shadow cells
         for (HBaseCellId cell : cells) {

@@ -17,7 +17,6 @@
 package com.yahoo.omid.tso;
 
 import java.net.InetSocketAddress;
-
 import java.nio.channels.ClosedChannelException;
 
 import org.jboss.netty.channel.Channel;
@@ -80,6 +79,15 @@ public class TSOHandler extends SimpleChannelHandler {
         Object msg = e.getMessage();
         if (msg instanceof TSOProto.Request) {
             TSOProto.Request request = (TSOProto.Request)msg;
+            if (request.hasHandshakeRequest()) {
+                checkHandshake(ctx, request.getHandshakeRequest());
+                return;
+            }
+            if (!handshakeCompleted(ctx)) {
+                LOG.info("handshake not completed");
+                ctx.getChannel().close();
+            }
+
             if (request.hasTimestampRequest()) {
                 requestProcessor.timestampRequest(ctx.getChannel());
             } else if (request.hasCommitRequest()) {
@@ -104,5 +112,49 @@ public class TSOHandler extends SimpleChannelHandler {
         }
         LOG.warn("TSOHandler: Unexpected exception from downstream.", e.getCause());
         Channels.close(e.getChannel());
+    }
+
+    private void checkHandshake(final ChannelHandlerContext ctx,
+                                TSOProto.HandshakeRequest request) {
+        TSOProto.HandshakeResponse.Builder response = TSOProto.HandshakeResponse.newBuilder();
+        if (request.hasClientCapabilities()
+            && request.getClientCapabilities().getShortSuffixes()) {
+
+            response.setClientCompatible(true)
+                .setServerCapabilities(TSOProto.Capabilities.newBuilder()
+                                       .setShortSuffixes(true).build());
+            TSOChannelContext tsoCtx = new TSOChannelContext();
+            tsoCtx.setHandshakeComplete();
+            ctx.setAttachment(tsoCtx);
+        } else {
+            response.setClientCompatible(false);
+        }
+        ctx.getChannel().write(TSOProto.Response.newBuilder()
+                               .setHandshakeResponse(response.build()).build());
+    }
+
+    private boolean handshakeCompleted(ChannelHandlerContext ctx) {
+        Object o = ctx.getAttachment();
+        if (o instanceof TSOChannelContext) {
+            TSOChannelContext tsoCtx = (TSOChannelContext)o;
+            return tsoCtx.getHandshakeComplete();
+        }
+        return false;
+    }
+
+    static class TSOChannelContext {
+        boolean handshakeComplete;
+
+        TSOChannelContext() {
+            handshakeComplete = false;
+        }
+
+        boolean getHandshakeComplete() {
+            return handshakeComplete;
+        }
+
+        void setHandshakeComplete() {
+            handshakeComplete = true;
+        }
     }
 }

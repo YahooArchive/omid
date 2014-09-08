@@ -38,6 +38,20 @@ public final class TSOProto {
      * <code>optional .CommitRequest commitRequest = 2;</code>
      */
     com.yahoo.omid.proto.TSOProto.CommitRequestOrBuilder getCommitRequestOrBuilder();
+
+    // optional .HandshakeRequest handshakeRequest = 3;
+    /**
+     * <code>optional .HandshakeRequest handshakeRequest = 3;</code>
+     */
+    boolean hasHandshakeRequest();
+    /**
+     * <code>optional .HandshakeRequest handshakeRequest = 3;</code>
+     */
+    com.yahoo.omid.proto.TSOProto.HandshakeRequest getHandshakeRequest();
+    /**
+     * <code>optional .HandshakeRequest handshakeRequest = 3;</code>
+     */
+    com.yahoo.omid.proto.TSOProto.HandshakeRequestOrBuilder getHandshakeRequestOrBuilder();
   }
   /**
    * Protobuf type {@code Request}
@@ -114,6 +128,19 @@ public final class TSOProto {
                 commitRequest_ = subBuilder.buildPartial();
               }
               bitField0_ |= 0x00000002;
+              break;
+            }
+            case 26: {
+              com.yahoo.omid.proto.TSOProto.HandshakeRequest.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000004) == 0x00000004)) {
+                subBuilder = handshakeRequest_.toBuilder();
+              }
+              handshakeRequest_ = input.readMessage(com.yahoo.omid.proto.TSOProto.HandshakeRequest.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(handshakeRequest_);
+                handshakeRequest_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000004;
               break;
             }
           }
@@ -200,9 +227,32 @@ public final class TSOProto {
       return commitRequest_;
     }
 
+    // optional .HandshakeRequest handshakeRequest = 3;
+    public static final int HANDSHAKEREQUEST_FIELD_NUMBER = 3;
+    private com.yahoo.omid.proto.TSOProto.HandshakeRequest handshakeRequest_;
+    /**
+     * <code>optional .HandshakeRequest handshakeRequest = 3;</code>
+     */
+    public boolean hasHandshakeRequest() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    /**
+     * <code>optional .HandshakeRequest handshakeRequest = 3;</code>
+     */
+    public com.yahoo.omid.proto.TSOProto.HandshakeRequest getHandshakeRequest() {
+      return handshakeRequest_;
+    }
+    /**
+     * <code>optional .HandshakeRequest handshakeRequest = 3;</code>
+     */
+    public com.yahoo.omid.proto.TSOProto.HandshakeRequestOrBuilder getHandshakeRequestOrBuilder() {
+      return handshakeRequest_;
+    }
+
     private void initFields() {
       timestampRequest_ = com.yahoo.omid.proto.TSOProto.TimestampRequest.getDefaultInstance();
       commitRequest_ = com.yahoo.omid.proto.TSOProto.CommitRequest.getDefaultInstance();
+      handshakeRequest_ = com.yahoo.omid.proto.TSOProto.HandshakeRequest.getDefaultInstance();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -222,6 +272,9 @@ public final class TSOProto {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         output.writeMessage(2, commitRequest_);
       }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeMessage(3, handshakeRequest_);
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -238,6 +291,10 @@ public final class TSOProto {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(2, commitRequest_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(3, handshakeRequest_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -349,6 +406,7 @@ public final class TSOProto {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getTimestampRequestFieldBuilder();
           getCommitRequestFieldBuilder();
+          getHandshakeRequestFieldBuilder();
         }
       }
       private static Builder create() {
@@ -369,6 +427,12 @@ public final class TSOProto {
           commitRequestBuilder_.clear();
         }
         bitField0_ = (bitField0_ & ~0x00000002);
+        if (handshakeRequestBuilder_ == null) {
+          handshakeRequest_ = com.yahoo.omid.proto.TSOProto.HandshakeRequest.getDefaultInstance();
+        } else {
+          handshakeRequestBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
 
@@ -413,6 +477,14 @@ public final class TSOProto {
         } else {
           result.commitRequest_ = commitRequestBuilder_.build();
         }
+        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        if (handshakeRequestBuilder_ == null) {
+          result.handshakeRequest_ = handshakeRequest_;
+        } else {
+          result.handshakeRequest_ = handshakeRequestBuilder_.build();
+        }
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -434,6 +506,9 @@ public final class TSOProto {
         }
         if (other.hasCommitRequest()) {
           mergeCommitRequest(other.getCommitRequest());
+        }
+        if (other.hasHandshakeRequest()) {
+          mergeHandshakeRequest(other.getHandshakeRequest());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -694,6 +769,123 @@ public final class TSOProto {
           commitRequest_ = null;
         }
         return commitRequestBuilder_;
+      }
+
+      // optional .HandshakeRequest handshakeRequest = 3;
+      private com.yahoo.omid.proto.TSOProto.HandshakeRequest handshakeRequest_ = com.yahoo.omid.proto.TSOProto.HandshakeRequest.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          com.yahoo.omid.proto.TSOProto.HandshakeRequest, com.yahoo.omid.proto.TSOProto.HandshakeRequest.Builder, com.yahoo.omid.proto.TSOProto.HandshakeRequestOrBuilder> handshakeRequestBuilder_;
+      /**
+       * <code>optional .HandshakeRequest handshakeRequest = 3;</code>
+       */
+      public boolean hasHandshakeRequest() {
+        return ((bitField0_ & 0x00000004) == 0x00000004);
+      }
+      /**
+       * <code>optional .HandshakeRequest handshakeRequest = 3;</code>
+       */
+      public com.yahoo.omid.proto.TSOProto.HandshakeRequest getHandshakeRequest() {
+        if (handshakeRequestBuilder_ == null) {
+          return handshakeRequest_;
+        } else {
+          return handshakeRequestBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>optional .HandshakeRequest handshakeRequest = 3;</code>
+       */
+      public Builder setHandshakeRequest(com.yahoo.omid.proto.TSOProto.HandshakeRequest value) {
+        if (handshakeRequestBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          handshakeRequest_ = value;
+          onChanged();
+        } else {
+          handshakeRequestBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      /**
+       * <code>optional .HandshakeRequest handshakeRequest = 3;</code>
+       */
+      public Builder setHandshakeRequest(
+          com.yahoo.omid.proto.TSOProto.HandshakeRequest.Builder builderForValue) {
+        if (handshakeRequestBuilder_ == null) {
+          handshakeRequest_ = builderForValue.build();
+          onChanged();
+        } else {
+          handshakeRequestBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      /**
+       * <code>optional .HandshakeRequest handshakeRequest = 3;</code>
+       */
+      public Builder mergeHandshakeRequest(com.yahoo.omid.proto.TSOProto.HandshakeRequest value) {
+        if (handshakeRequestBuilder_ == null) {
+          if (((bitField0_ & 0x00000004) == 0x00000004) &&
+              handshakeRequest_ != com.yahoo.omid.proto.TSOProto.HandshakeRequest.getDefaultInstance()) {
+            handshakeRequest_ =
+              com.yahoo.omid.proto.TSOProto.HandshakeRequest.newBuilder(handshakeRequest_).mergeFrom(value).buildPartial();
+          } else {
+            handshakeRequest_ = value;
+          }
+          onChanged();
+        } else {
+          handshakeRequestBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      /**
+       * <code>optional .HandshakeRequest handshakeRequest = 3;</code>
+       */
+      public Builder clearHandshakeRequest() {
+        if (handshakeRequestBuilder_ == null) {
+          handshakeRequest_ = com.yahoo.omid.proto.TSOProto.HandshakeRequest.getDefaultInstance();
+          onChanged();
+        } else {
+          handshakeRequestBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000004);
+        return this;
+      }
+      /**
+       * <code>optional .HandshakeRequest handshakeRequest = 3;</code>
+       */
+      public com.yahoo.omid.proto.TSOProto.HandshakeRequest.Builder getHandshakeRequestBuilder() {
+        bitField0_ |= 0x00000004;
+        onChanged();
+        return getHandshakeRequestFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>optional .HandshakeRequest handshakeRequest = 3;</code>
+       */
+      public com.yahoo.omid.proto.TSOProto.HandshakeRequestOrBuilder getHandshakeRequestOrBuilder() {
+        if (handshakeRequestBuilder_ != null) {
+          return handshakeRequestBuilder_.getMessageOrBuilder();
+        } else {
+          return handshakeRequest_;
+        }
+      }
+      /**
+       * <code>optional .HandshakeRequest handshakeRequest = 3;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          com.yahoo.omid.proto.TSOProto.HandshakeRequest, com.yahoo.omid.proto.TSOProto.HandshakeRequest.Builder, com.yahoo.omid.proto.TSOProto.HandshakeRequestOrBuilder> 
+          getHandshakeRequestFieldBuilder() {
+        if (handshakeRequestBuilder_ == null) {
+          handshakeRequestBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              com.yahoo.omid.proto.TSOProto.HandshakeRequest, com.yahoo.omid.proto.TSOProto.HandshakeRequest.Builder, com.yahoo.omid.proto.TSOProto.HandshakeRequestOrBuilder>(
+                  handshakeRequest_,
+                  getParentForChildren(),
+                  isClean());
+          handshakeRequest_ = null;
+        }
+        return handshakeRequestBuilder_;
       }
 
       // @@protoc_insertion_point(builder_scope:Request)
@@ -1680,6 +1872,20 @@ public final class TSOProto {
      * <code>optional .CommitResponse commitResponse = 2;</code>
      */
     com.yahoo.omid.proto.TSOProto.CommitResponseOrBuilder getCommitResponseOrBuilder();
+
+    // optional .HandshakeResponse handshakeResponse = 3;
+    /**
+     * <code>optional .HandshakeResponse handshakeResponse = 3;</code>
+     */
+    boolean hasHandshakeResponse();
+    /**
+     * <code>optional .HandshakeResponse handshakeResponse = 3;</code>
+     */
+    com.yahoo.omid.proto.TSOProto.HandshakeResponse getHandshakeResponse();
+    /**
+     * <code>optional .HandshakeResponse handshakeResponse = 3;</code>
+     */
+    com.yahoo.omid.proto.TSOProto.HandshakeResponseOrBuilder getHandshakeResponseOrBuilder();
   }
   /**
    * Protobuf type {@code Response}
@@ -1756,6 +1962,19 @@ public final class TSOProto {
                 commitResponse_ = subBuilder.buildPartial();
               }
               bitField0_ |= 0x00000002;
+              break;
+            }
+            case 26: {
+              com.yahoo.omid.proto.TSOProto.HandshakeResponse.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000004) == 0x00000004)) {
+                subBuilder = handshakeResponse_.toBuilder();
+              }
+              handshakeResponse_ = input.readMessage(com.yahoo.omid.proto.TSOProto.HandshakeResponse.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(handshakeResponse_);
+                handshakeResponse_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000004;
               break;
             }
           }
@@ -1842,9 +2061,32 @@ public final class TSOProto {
       return commitResponse_;
     }
 
+    // optional .HandshakeResponse handshakeResponse = 3;
+    public static final int HANDSHAKERESPONSE_FIELD_NUMBER = 3;
+    private com.yahoo.omid.proto.TSOProto.HandshakeResponse handshakeResponse_;
+    /**
+     * <code>optional .HandshakeResponse handshakeResponse = 3;</code>
+     */
+    public boolean hasHandshakeResponse() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    /**
+     * <code>optional .HandshakeResponse handshakeResponse = 3;</code>
+     */
+    public com.yahoo.omid.proto.TSOProto.HandshakeResponse getHandshakeResponse() {
+      return handshakeResponse_;
+    }
+    /**
+     * <code>optional .HandshakeResponse handshakeResponse = 3;</code>
+     */
+    public com.yahoo.omid.proto.TSOProto.HandshakeResponseOrBuilder getHandshakeResponseOrBuilder() {
+      return handshakeResponse_;
+    }
+
     private void initFields() {
       timestampResponse_ = com.yahoo.omid.proto.TSOProto.TimestampResponse.getDefaultInstance();
       commitResponse_ = com.yahoo.omid.proto.TSOProto.CommitResponse.getDefaultInstance();
+      handshakeResponse_ = com.yahoo.omid.proto.TSOProto.HandshakeResponse.getDefaultInstance();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -1864,6 +2106,9 @@ public final class TSOProto {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         output.writeMessage(2, commitResponse_);
       }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeMessage(3, handshakeResponse_);
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -1880,6 +2125,10 @@ public final class TSOProto {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(2, commitResponse_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(3, handshakeResponse_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -1991,6 +2240,7 @@ public final class TSOProto {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getTimestampResponseFieldBuilder();
           getCommitResponseFieldBuilder();
+          getHandshakeResponseFieldBuilder();
         }
       }
       private static Builder create() {
@@ -2011,6 +2261,12 @@ public final class TSOProto {
           commitResponseBuilder_.clear();
         }
         bitField0_ = (bitField0_ & ~0x00000002);
+        if (handshakeResponseBuilder_ == null) {
+          handshakeResponse_ = com.yahoo.omid.proto.TSOProto.HandshakeResponse.getDefaultInstance();
+        } else {
+          handshakeResponseBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
 
@@ -2055,6 +2311,14 @@ public final class TSOProto {
         } else {
           result.commitResponse_ = commitResponseBuilder_.build();
         }
+        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        if (handshakeResponseBuilder_ == null) {
+          result.handshakeResponse_ = handshakeResponse_;
+        } else {
+          result.handshakeResponse_ = handshakeResponseBuilder_.build();
+        }
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -2076,6 +2340,9 @@ public final class TSOProto {
         }
         if (other.hasCommitResponse()) {
           mergeCommitResponse(other.getCommitResponse());
+        }
+        if (other.hasHandshakeResponse()) {
+          mergeHandshakeResponse(other.getHandshakeResponse());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -2336,6 +2603,123 @@ public final class TSOProto {
           commitResponse_ = null;
         }
         return commitResponseBuilder_;
+      }
+
+      // optional .HandshakeResponse handshakeResponse = 3;
+      private com.yahoo.omid.proto.TSOProto.HandshakeResponse handshakeResponse_ = com.yahoo.omid.proto.TSOProto.HandshakeResponse.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          com.yahoo.omid.proto.TSOProto.HandshakeResponse, com.yahoo.omid.proto.TSOProto.HandshakeResponse.Builder, com.yahoo.omid.proto.TSOProto.HandshakeResponseOrBuilder> handshakeResponseBuilder_;
+      /**
+       * <code>optional .HandshakeResponse handshakeResponse = 3;</code>
+       */
+      public boolean hasHandshakeResponse() {
+        return ((bitField0_ & 0x00000004) == 0x00000004);
+      }
+      /**
+       * <code>optional .HandshakeResponse handshakeResponse = 3;</code>
+       */
+      public com.yahoo.omid.proto.TSOProto.HandshakeResponse getHandshakeResponse() {
+        if (handshakeResponseBuilder_ == null) {
+          return handshakeResponse_;
+        } else {
+          return handshakeResponseBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>optional .HandshakeResponse handshakeResponse = 3;</code>
+       */
+      public Builder setHandshakeResponse(com.yahoo.omid.proto.TSOProto.HandshakeResponse value) {
+        if (handshakeResponseBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          handshakeResponse_ = value;
+          onChanged();
+        } else {
+          handshakeResponseBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      /**
+       * <code>optional .HandshakeResponse handshakeResponse = 3;</code>
+       */
+      public Builder setHandshakeResponse(
+          com.yahoo.omid.proto.TSOProto.HandshakeResponse.Builder builderForValue) {
+        if (handshakeResponseBuilder_ == null) {
+          handshakeResponse_ = builderForValue.build();
+          onChanged();
+        } else {
+          handshakeResponseBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      /**
+       * <code>optional .HandshakeResponse handshakeResponse = 3;</code>
+       */
+      public Builder mergeHandshakeResponse(com.yahoo.omid.proto.TSOProto.HandshakeResponse value) {
+        if (handshakeResponseBuilder_ == null) {
+          if (((bitField0_ & 0x00000004) == 0x00000004) &&
+              handshakeResponse_ != com.yahoo.omid.proto.TSOProto.HandshakeResponse.getDefaultInstance()) {
+            handshakeResponse_ =
+              com.yahoo.omid.proto.TSOProto.HandshakeResponse.newBuilder(handshakeResponse_).mergeFrom(value).buildPartial();
+          } else {
+            handshakeResponse_ = value;
+          }
+          onChanged();
+        } else {
+          handshakeResponseBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      /**
+       * <code>optional .HandshakeResponse handshakeResponse = 3;</code>
+       */
+      public Builder clearHandshakeResponse() {
+        if (handshakeResponseBuilder_ == null) {
+          handshakeResponse_ = com.yahoo.omid.proto.TSOProto.HandshakeResponse.getDefaultInstance();
+          onChanged();
+        } else {
+          handshakeResponseBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000004);
+        return this;
+      }
+      /**
+       * <code>optional .HandshakeResponse handshakeResponse = 3;</code>
+       */
+      public com.yahoo.omid.proto.TSOProto.HandshakeResponse.Builder getHandshakeResponseBuilder() {
+        bitField0_ |= 0x00000004;
+        onChanged();
+        return getHandshakeResponseFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>optional .HandshakeResponse handshakeResponse = 3;</code>
+       */
+      public com.yahoo.omid.proto.TSOProto.HandshakeResponseOrBuilder getHandshakeResponseOrBuilder() {
+        if (handshakeResponseBuilder_ != null) {
+          return handshakeResponseBuilder_.getMessageOrBuilder();
+        } else {
+          return handshakeResponse_;
+        }
+      }
+      /**
+       * <code>optional .HandshakeResponse handshakeResponse = 3;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          com.yahoo.omid.proto.TSOProto.HandshakeResponse, com.yahoo.omid.proto.TSOProto.HandshakeResponse.Builder, com.yahoo.omid.proto.TSOProto.HandshakeResponseOrBuilder> 
+          getHandshakeResponseFieldBuilder() {
+        if (handshakeResponseBuilder_ == null) {
+          handshakeResponseBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              com.yahoo.omid.proto.TSOProto.HandshakeResponse, com.yahoo.omid.proto.TSOProto.HandshakeResponse.Builder, com.yahoo.omid.proto.TSOProto.HandshakeResponseOrBuilder>(
+                  handshakeResponse_,
+                  getParentForChildren(),
+                  isClean());
+          handshakeResponse_ = null;
+        }
+        return handshakeResponseBuilder_;
       }
 
       // @@protoc_insertion_point(builder_scope:Response)
@@ -3303,6 +3687,1553 @@ public final class TSOProto {
     // @@protoc_insertion_point(class_scope:CommitResponse)
   }
 
+  public interface CapabilitiesOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // optional bool shortSuffixes = 1;
+    /**
+     * <code>optional bool shortSuffixes = 1;</code>
+     *
+     * <pre>
+     * this states that the hbase client will use short suffixes
+     * rather than the longer versions originally used. All clients
+     * must use short suffixes, or none many. Otherwise clients could
+     * see different views of the data, violating snapshot isolation.
+     * </pre>
+     */
+    boolean hasShortSuffixes();
+    /**
+     * <code>optional bool shortSuffixes = 1;</code>
+     *
+     * <pre>
+     * this states that the hbase client will use short suffixes
+     * rather than the longer versions originally used. All clients
+     * must use short suffixes, or none many. Otherwise clients could
+     * see different views of the data, violating snapshot isolation.
+     * </pre>
+     */
+    boolean getShortSuffixes();
+  }
+  /**
+   * Protobuf type {@code Capabilities}
+   */
+  public static final class Capabilities extends
+      com.google.protobuf.GeneratedMessage
+      implements CapabilitiesOrBuilder {
+    // Use Capabilities.newBuilder() to construct.
+    private Capabilities(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private Capabilities(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final Capabilities defaultInstance;
+    public static Capabilities getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public Capabilities getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private Capabilities(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 8: {
+              bitField0_ |= 0x00000001;
+              shortSuffixes_ = input.readBool();
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return com.yahoo.omid.proto.TSOProto.internal_static_Capabilities_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return com.yahoo.omid.proto.TSOProto.internal_static_Capabilities_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              com.yahoo.omid.proto.TSOProto.Capabilities.class, com.yahoo.omid.proto.TSOProto.Capabilities.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<Capabilities> PARSER =
+        new com.google.protobuf.AbstractParser<Capabilities>() {
+      public Capabilities parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new Capabilities(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<Capabilities> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // optional bool shortSuffixes = 1;
+    public static final int SHORTSUFFIXES_FIELD_NUMBER = 1;
+    private boolean shortSuffixes_;
+    /**
+     * <code>optional bool shortSuffixes = 1;</code>
+     *
+     * <pre>
+     * this states that the hbase client will use short suffixes
+     * rather than the longer versions originally used. All clients
+     * must use short suffixes, or none many. Otherwise clients could
+     * see different views of the data, violating snapshot isolation.
+     * </pre>
+     */
+    public boolean hasShortSuffixes() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>optional bool shortSuffixes = 1;</code>
+     *
+     * <pre>
+     * this states that the hbase client will use short suffixes
+     * rather than the longer versions originally used. All clients
+     * must use short suffixes, or none many. Otherwise clients could
+     * see different views of the data, violating snapshot isolation.
+     * </pre>
+     */
+    public boolean getShortSuffixes() {
+      return shortSuffixes_;
+    }
+
+    private void initFields() {
+      shortSuffixes_ = false;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeBool(1, shortSuffixes_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(1, shortSuffixes_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    public static com.yahoo.omid.proto.TSOProto.Capabilities parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static com.yahoo.omid.proto.TSOProto.Capabilities parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static com.yahoo.omid.proto.TSOProto.Capabilities parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static com.yahoo.omid.proto.TSOProto.Capabilities parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static com.yahoo.omid.proto.TSOProto.Capabilities parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static com.yahoo.omid.proto.TSOProto.Capabilities parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static com.yahoo.omid.proto.TSOProto.Capabilities parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static com.yahoo.omid.proto.TSOProto.Capabilities parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static com.yahoo.omid.proto.TSOProto.Capabilities parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static com.yahoo.omid.proto.TSOProto.Capabilities parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(com.yahoo.omid.proto.TSOProto.Capabilities prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code Capabilities}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements com.yahoo.omid.proto.TSOProto.CapabilitiesOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return com.yahoo.omid.proto.TSOProto.internal_static_Capabilities_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return com.yahoo.omid.proto.TSOProto.internal_static_Capabilities_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                com.yahoo.omid.proto.TSOProto.Capabilities.class, com.yahoo.omid.proto.TSOProto.Capabilities.Builder.class);
+      }
+
+      // Construct using com.yahoo.omid.proto.TSOProto.Capabilities.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        shortSuffixes_ = false;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return com.yahoo.omid.proto.TSOProto.internal_static_Capabilities_descriptor;
+      }
+
+      public com.yahoo.omid.proto.TSOProto.Capabilities getDefaultInstanceForType() {
+        return com.yahoo.omid.proto.TSOProto.Capabilities.getDefaultInstance();
+      }
+
+      public com.yahoo.omid.proto.TSOProto.Capabilities build() {
+        com.yahoo.omid.proto.TSOProto.Capabilities result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public com.yahoo.omid.proto.TSOProto.Capabilities buildPartial() {
+        com.yahoo.omid.proto.TSOProto.Capabilities result = new com.yahoo.omid.proto.TSOProto.Capabilities(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.shortSuffixes_ = shortSuffixes_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof com.yahoo.omid.proto.TSOProto.Capabilities) {
+          return mergeFrom((com.yahoo.omid.proto.TSOProto.Capabilities)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(com.yahoo.omid.proto.TSOProto.Capabilities other) {
+        if (other == com.yahoo.omid.proto.TSOProto.Capabilities.getDefaultInstance()) return this;
+        if (other.hasShortSuffixes()) {
+          setShortSuffixes(other.getShortSuffixes());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        com.yahoo.omid.proto.TSOProto.Capabilities parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (com.yahoo.omid.proto.TSOProto.Capabilities) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // optional bool shortSuffixes = 1;
+      private boolean shortSuffixes_ ;
+      /**
+       * <code>optional bool shortSuffixes = 1;</code>
+       *
+       * <pre>
+       * this states that the hbase client will use short suffixes
+       * rather than the longer versions originally used. All clients
+       * must use short suffixes, or none many. Otherwise clients could
+       * see different views of the data, violating snapshot isolation.
+       * </pre>
+       */
+      public boolean hasShortSuffixes() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>optional bool shortSuffixes = 1;</code>
+       *
+       * <pre>
+       * this states that the hbase client will use short suffixes
+       * rather than the longer versions originally used. All clients
+       * must use short suffixes, or none many. Otherwise clients could
+       * see different views of the data, violating snapshot isolation.
+       * </pre>
+       */
+      public boolean getShortSuffixes() {
+        return shortSuffixes_;
+      }
+      /**
+       * <code>optional bool shortSuffixes = 1;</code>
+       *
+       * <pre>
+       * this states that the hbase client will use short suffixes
+       * rather than the longer versions originally used. All clients
+       * must use short suffixes, or none many. Otherwise clients could
+       * see different views of the data, violating snapshot isolation.
+       * </pre>
+       */
+      public Builder setShortSuffixes(boolean value) {
+        bitField0_ |= 0x00000001;
+        shortSuffixes_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool shortSuffixes = 1;</code>
+       *
+       * <pre>
+       * this states that the hbase client will use short suffixes
+       * rather than the longer versions originally used. All clients
+       * must use short suffixes, or none many. Otherwise clients could
+       * see different views of the data, violating snapshot isolation.
+       * </pre>
+       */
+      public Builder clearShortSuffixes() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        shortSuffixes_ = false;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:Capabilities)
+    }
+
+    static {
+      defaultInstance = new Capabilities(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:Capabilities)
+  }
+
+  public interface HandshakeRequestOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // optional .Capabilities clientCapabilities = 1;
+    /**
+     * <code>optional .Capabilities clientCapabilities = 1;</code>
+     */
+    boolean hasClientCapabilities();
+    /**
+     * <code>optional .Capabilities clientCapabilities = 1;</code>
+     */
+    com.yahoo.omid.proto.TSOProto.Capabilities getClientCapabilities();
+    /**
+     * <code>optional .Capabilities clientCapabilities = 1;</code>
+     */
+    com.yahoo.omid.proto.TSOProto.CapabilitiesOrBuilder getClientCapabilitiesOrBuilder();
+  }
+  /**
+   * Protobuf type {@code HandshakeRequest}
+   */
+  public static final class HandshakeRequest extends
+      com.google.protobuf.GeneratedMessage
+      implements HandshakeRequestOrBuilder {
+    // Use HandshakeRequest.newBuilder() to construct.
+    private HandshakeRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private HandshakeRequest(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final HandshakeRequest defaultInstance;
+    public static HandshakeRequest getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public HandshakeRequest getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private HandshakeRequest(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 10: {
+              com.yahoo.omid.proto.TSOProto.Capabilities.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000001) == 0x00000001)) {
+                subBuilder = clientCapabilities_.toBuilder();
+              }
+              clientCapabilities_ = input.readMessage(com.yahoo.omid.proto.TSOProto.Capabilities.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(clientCapabilities_);
+                clientCapabilities_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000001;
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return com.yahoo.omid.proto.TSOProto.internal_static_HandshakeRequest_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return com.yahoo.omid.proto.TSOProto.internal_static_HandshakeRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              com.yahoo.omid.proto.TSOProto.HandshakeRequest.class, com.yahoo.omid.proto.TSOProto.HandshakeRequest.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<HandshakeRequest> PARSER =
+        new com.google.protobuf.AbstractParser<HandshakeRequest>() {
+      public HandshakeRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new HandshakeRequest(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<HandshakeRequest> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // optional .Capabilities clientCapabilities = 1;
+    public static final int CLIENTCAPABILITIES_FIELD_NUMBER = 1;
+    private com.yahoo.omid.proto.TSOProto.Capabilities clientCapabilities_;
+    /**
+     * <code>optional .Capabilities clientCapabilities = 1;</code>
+     */
+    public boolean hasClientCapabilities() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>optional .Capabilities clientCapabilities = 1;</code>
+     */
+    public com.yahoo.omid.proto.TSOProto.Capabilities getClientCapabilities() {
+      return clientCapabilities_;
+    }
+    /**
+     * <code>optional .Capabilities clientCapabilities = 1;</code>
+     */
+    public com.yahoo.omid.proto.TSOProto.CapabilitiesOrBuilder getClientCapabilitiesOrBuilder() {
+      return clientCapabilities_;
+    }
+
+    private void initFields() {
+      clientCapabilities_ = com.yahoo.omid.proto.TSOProto.Capabilities.getDefaultInstance();
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeMessage(1, clientCapabilities_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(1, clientCapabilities_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    public static com.yahoo.omid.proto.TSOProto.HandshakeRequest parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeRequest parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeRequest parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeRequest parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeRequest parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeRequest parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeRequest parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeRequest parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeRequest parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeRequest parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(com.yahoo.omid.proto.TSOProto.HandshakeRequest prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code HandshakeRequest}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements com.yahoo.omid.proto.TSOProto.HandshakeRequestOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return com.yahoo.omid.proto.TSOProto.internal_static_HandshakeRequest_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return com.yahoo.omid.proto.TSOProto.internal_static_HandshakeRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                com.yahoo.omid.proto.TSOProto.HandshakeRequest.class, com.yahoo.omid.proto.TSOProto.HandshakeRequest.Builder.class);
+      }
+
+      // Construct using com.yahoo.omid.proto.TSOProto.HandshakeRequest.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+          getClientCapabilitiesFieldBuilder();
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        if (clientCapabilitiesBuilder_ == null) {
+          clientCapabilities_ = com.yahoo.omid.proto.TSOProto.Capabilities.getDefaultInstance();
+        } else {
+          clientCapabilitiesBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return com.yahoo.omid.proto.TSOProto.internal_static_HandshakeRequest_descriptor;
+      }
+
+      public com.yahoo.omid.proto.TSOProto.HandshakeRequest getDefaultInstanceForType() {
+        return com.yahoo.omid.proto.TSOProto.HandshakeRequest.getDefaultInstance();
+      }
+
+      public com.yahoo.omid.proto.TSOProto.HandshakeRequest build() {
+        com.yahoo.omid.proto.TSOProto.HandshakeRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public com.yahoo.omid.proto.TSOProto.HandshakeRequest buildPartial() {
+        com.yahoo.omid.proto.TSOProto.HandshakeRequest result = new com.yahoo.omid.proto.TSOProto.HandshakeRequest(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        if (clientCapabilitiesBuilder_ == null) {
+          result.clientCapabilities_ = clientCapabilities_;
+        } else {
+          result.clientCapabilities_ = clientCapabilitiesBuilder_.build();
+        }
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof com.yahoo.omid.proto.TSOProto.HandshakeRequest) {
+          return mergeFrom((com.yahoo.omid.proto.TSOProto.HandshakeRequest)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(com.yahoo.omid.proto.TSOProto.HandshakeRequest other) {
+        if (other == com.yahoo.omid.proto.TSOProto.HandshakeRequest.getDefaultInstance()) return this;
+        if (other.hasClientCapabilities()) {
+          mergeClientCapabilities(other.getClientCapabilities());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        com.yahoo.omid.proto.TSOProto.HandshakeRequest parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (com.yahoo.omid.proto.TSOProto.HandshakeRequest) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // optional .Capabilities clientCapabilities = 1;
+      private com.yahoo.omid.proto.TSOProto.Capabilities clientCapabilities_ = com.yahoo.omid.proto.TSOProto.Capabilities.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          com.yahoo.omid.proto.TSOProto.Capabilities, com.yahoo.omid.proto.TSOProto.Capabilities.Builder, com.yahoo.omid.proto.TSOProto.CapabilitiesOrBuilder> clientCapabilitiesBuilder_;
+      /**
+       * <code>optional .Capabilities clientCapabilities = 1;</code>
+       */
+      public boolean hasClientCapabilities() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>optional .Capabilities clientCapabilities = 1;</code>
+       */
+      public com.yahoo.omid.proto.TSOProto.Capabilities getClientCapabilities() {
+        if (clientCapabilitiesBuilder_ == null) {
+          return clientCapabilities_;
+        } else {
+          return clientCapabilitiesBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>optional .Capabilities clientCapabilities = 1;</code>
+       */
+      public Builder setClientCapabilities(com.yahoo.omid.proto.TSOProto.Capabilities value) {
+        if (clientCapabilitiesBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          clientCapabilities_ = value;
+          onChanged();
+        } else {
+          clientCapabilitiesBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000001;
+        return this;
+      }
+      /**
+       * <code>optional .Capabilities clientCapabilities = 1;</code>
+       */
+      public Builder setClientCapabilities(
+          com.yahoo.omid.proto.TSOProto.Capabilities.Builder builderForValue) {
+        if (clientCapabilitiesBuilder_ == null) {
+          clientCapabilities_ = builderForValue.build();
+          onChanged();
+        } else {
+          clientCapabilitiesBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000001;
+        return this;
+      }
+      /**
+       * <code>optional .Capabilities clientCapabilities = 1;</code>
+       */
+      public Builder mergeClientCapabilities(com.yahoo.omid.proto.TSOProto.Capabilities value) {
+        if (clientCapabilitiesBuilder_ == null) {
+          if (((bitField0_ & 0x00000001) == 0x00000001) &&
+              clientCapabilities_ != com.yahoo.omid.proto.TSOProto.Capabilities.getDefaultInstance()) {
+            clientCapabilities_ =
+              com.yahoo.omid.proto.TSOProto.Capabilities.newBuilder(clientCapabilities_).mergeFrom(value).buildPartial();
+          } else {
+            clientCapabilities_ = value;
+          }
+          onChanged();
+        } else {
+          clientCapabilitiesBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000001;
+        return this;
+      }
+      /**
+       * <code>optional .Capabilities clientCapabilities = 1;</code>
+       */
+      public Builder clearClientCapabilities() {
+        if (clientCapabilitiesBuilder_ == null) {
+          clientCapabilities_ = com.yahoo.omid.proto.TSOProto.Capabilities.getDefaultInstance();
+          onChanged();
+        } else {
+          clientCapabilitiesBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+      /**
+       * <code>optional .Capabilities clientCapabilities = 1;</code>
+       */
+      public com.yahoo.omid.proto.TSOProto.Capabilities.Builder getClientCapabilitiesBuilder() {
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return getClientCapabilitiesFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>optional .Capabilities clientCapabilities = 1;</code>
+       */
+      public com.yahoo.omid.proto.TSOProto.CapabilitiesOrBuilder getClientCapabilitiesOrBuilder() {
+        if (clientCapabilitiesBuilder_ != null) {
+          return clientCapabilitiesBuilder_.getMessageOrBuilder();
+        } else {
+          return clientCapabilities_;
+        }
+      }
+      /**
+       * <code>optional .Capabilities clientCapabilities = 1;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          com.yahoo.omid.proto.TSOProto.Capabilities, com.yahoo.omid.proto.TSOProto.Capabilities.Builder, com.yahoo.omid.proto.TSOProto.CapabilitiesOrBuilder> 
+          getClientCapabilitiesFieldBuilder() {
+        if (clientCapabilitiesBuilder_ == null) {
+          clientCapabilitiesBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              com.yahoo.omid.proto.TSOProto.Capabilities, com.yahoo.omid.proto.TSOProto.Capabilities.Builder, com.yahoo.omid.proto.TSOProto.CapabilitiesOrBuilder>(
+                  clientCapabilities_,
+                  getParentForChildren(),
+                  isClean());
+          clientCapabilities_ = null;
+        }
+        return clientCapabilitiesBuilder_;
+      }
+
+      // @@protoc_insertion_point(builder_scope:HandshakeRequest)
+    }
+
+    static {
+      defaultInstance = new HandshakeRequest(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:HandshakeRequest)
+  }
+
+  public interface HandshakeResponseOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // optional bool clientCompatible = 1;
+    /**
+     * <code>optional bool clientCompatible = 1;</code>
+     */
+    boolean hasClientCompatible();
+    /**
+     * <code>optional bool clientCompatible = 1;</code>
+     */
+    boolean getClientCompatible();
+
+    // optional .Capabilities serverCapabilities = 2;
+    /**
+     * <code>optional .Capabilities serverCapabilities = 2;</code>
+     */
+    boolean hasServerCapabilities();
+    /**
+     * <code>optional .Capabilities serverCapabilities = 2;</code>
+     */
+    com.yahoo.omid.proto.TSOProto.Capabilities getServerCapabilities();
+    /**
+     * <code>optional .Capabilities serverCapabilities = 2;</code>
+     */
+    com.yahoo.omid.proto.TSOProto.CapabilitiesOrBuilder getServerCapabilitiesOrBuilder();
+  }
+  /**
+   * Protobuf type {@code HandshakeResponse}
+   */
+  public static final class HandshakeResponse extends
+      com.google.protobuf.GeneratedMessage
+      implements HandshakeResponseOrBuilder {
+    // Use HandshakeResponse.newBuilder() to construct.
+    private HandshakeResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private HandshakeResponse(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final HandshakeResponse defaultInstance;
+    public static HandshakeResponse getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public HandshakeResponse getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private HandshakeResponse(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 8: {
+              bitField0_ |= 0x00000001;
+              clientCompatible_ = input.readBool();
+              break;
+            }
+            case 18: {
+              com.yahoo.omid.proto.TSOProto.Capabilities.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000002) == 0x00000002)) {
+                subBuilder = serverCapabilities_.toBuilder();
+              }
+              serverCapabilities_ = input.readMessage(com.yahoo.omid.proto.TSOProto.Capabilities.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(serverCapabilities_);
+                serverCapabilities_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000002;
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return com.yahoo.omid.proto.TSOProto.internal_static_HandshakeResponse_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return com.yahoo.omid.proto.TSOProto.internal_static_HandshakeResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              com.yahoo.omid.proto.TSOProto.HandshakeResponse.class, com.yahoo.omid.proto.TSOProto.HandshakeResponse.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<HandshakeResponse> PARSER =
+        new com.google.protobuf.AbstractParser<HandshakeResponse>() {
+      public HandshakeResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new HandshakeResponse(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<HandshakeResponse> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // optional bool clientCompatible = 1;
+    public static final int CLIENTCOMPATIBLE_FIELD_NUMBER = 1;
+    private boolean clientCompatible_;
+    /**
+     * <code>optional bool clientCompatible = 1;</code>
+     */
+    public boolean hasClientCompatible() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>optional bool clientCompatible = 1;</code>
+     */
+    public boolean getClientCompatible() {
+      return clientCompatible_;
+    }
+
+    // optional .Capabilities serverCapabilities = 2;
+    public static final int SERVERCAPABILITIES_FIELD_NUMBER = 2;
+    private com.yahoo.omid.proto.TSOProto.Capabilities serverCapabilities_;
+    /**
+     * <code>optional .Capabilities serverCapabilities = 2;</code>
+     */
+    public boolean hasServerCapabilities() {
+      return ((bitField0_ & 0x00000002) == 0x00000002);
+    }
+    /**
+     * <code>optional .Capabilities serverCapabilities = 2;</code>
+     */
+    public com.yahoo.omid.proto.TSOProto.Capabilities getServerCapabilities() {
+      return serverCapabilities_;
+    }
+    /**
+     * <code>optional .Capabilities serverCapabilities = 2;</code>
+     */
+    public com.yahoo.omid.proto.TSOProto.CapabilitiesOrBuilder getServerCapabilitiesOrBuilder() {
+      return serverCapabilities_;
+    }
+
+    private void initFields() {
+      clientCompatible_ = false;
+      serverCapabilities_ = com.yahoo.omid.proto.TSOProto.Capabilities.getDefaultInstance();
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeBool(1, clientCompatible_);
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        output.writeMessage(2, serverCapabilities_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(1, clientCompatible_);
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(2, serverCapabilities_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    public static com.yahoo.omid.proto.TSOProto.HandshakeResponse parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeResponse parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeResponse parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeResponse parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeResponse parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeResponse parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeResponse parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeResponse parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeResponse parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static com.yahoo.omid.proto.TSOProto.HandshakeResponse parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(com.yahoo.omid.proto.TSOProto.HandshakeResponse prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code HandshakeResponse}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements com.yahoo.omid.proto.TSOProto.HandshakeResponseOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return com.yahoo.omid.proto.TSOProto.internal_static_HandshakeResponse_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return com.yahoo.omid.proto.TSOProto.internal_static_HandshakeResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                com.yahoo.omid.proto.TSOProto.HandshakeResponse.class, com.yahoo.omid.proto.TSOProto.HandshakeResponse.Builder.class);
+      }
+
+      // Construct using com.yahoo.omid.proto.TSOProto.HandshakeResponse.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+          getServerCapabilitiesFieldBuilder();
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        clientCompatible_ = false;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        if (serverCapabilitiesBuilder_ == null) {
+          serverCapabilities_ = com.yahoo.omid.proto.TSOProto.Capabilities.getDefaultInstance();
+        } else {
+          serverCapabilitiesBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000002);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return com.yahoo.omid.proto.TSOProto.internal_static_HandshakeResponse_descriptor;
+      }
+
+      public com.yahoo.omid.proto.TSOProto.HandshakeResponse getDefaultInstanceForType() {
+        return com.yahoo.omid.proto.TSOProto.HandshakeResponse.getDefaultInstance();
+      }
+
+      public com.yahoo.omid.proto.TSOProto.HandshakeResponse build() {
+        com.yahoo.omid.proto.TSOProto.HandshakeResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public com.yahoo.omid.proto.TSOProto.HandshakeResponse buildPartial() {
+        com.yahoo.omid.proto.TSOProto.HandshakeResponse result = new com.yahoo.omid.proto.TSOProto.HandshakeResponse(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.clientCompatible_ = clientCompatible_;
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000002;
+        }
+        if (serverCapabilitiesBuilder_ == null) {
+          result.serverCapabilities_ = serverCapabilities_;
+        } else {
+          result.serverCapabilities_ = serverCapabilitiesBuilder_.build();
+        }
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof com.yahoo.omid.proto.TSOProto.HandshakeResponse) {
+          return mergeFrom((com.yahoo.omid.proto.TSOProto.HandshakeResponse)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(com.yahoo.omid.proto.TSOProto.HandshakeResponse other) {
+        if (other == com.yahoo.omid.proto.TSOProto.HandshakeResponse.getDefaultInstance()) return this;
+        if (other.hasClientCompatible()) {
+          setClientCompatible(other.getClientCompatible());
+        }
+        if (other.hasServerCapabilities()) {
+          mergeServerCapabilities(other.getServerCapabilities());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        com.yahoo.omid.proto.TSOProto.HandshakeResponse parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (com.yahoo.omid.proto.TSOProto.HandshakeResponse) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // optional bool clientCompatible = 1;
+      private boolean clientCompatible_ ;
+      /**
+       * <code>optional bool clientCompatible = 1;</code>
+       */
+      public boolean hasClientCompatible() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>optional bool clientCompatible = 1;</code>
+       */
+      public boolean getClientCompatible() {
+        return clientCompatible_;
+      }
+      /**
+       * <code>optional bool clientCompatible = 1;</code>
+       */
+      public Builder setClientCompatible(boolean value) {
+        bitField0_ |= 0x00000001;
+        clientCompatible_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool clientCompatible = 1;</code>
+       */
+      public Builder clearClientCompatible() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        clientCompatible_ = false;
+        onChanged();
+        return this;
+      }
+
+      // optional .Capabilities serverCapabilities = 2;
+      private com.yahoo.omid.proto.TSOProto.Capabilities serverCapabilities_ = com.yahoo.omid.proto.TSOProto.Capabilities.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          com.yahoo.omid.proto.TSOProto.Capabilities, com.yahoo.omid.proto.TSOProto.Capabilities.Builder, com.yahoo.omid.proto.TSOProto.CapabilitiesOrBuilder> serverCapabilitiesBuilder_;
+      /**
+       * <code>optional .Capabilities serverCapabilities = 2;</code>
+       */
+      public boolean hasServerCapabilities() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      /**
+       * <code>optional .Capabilities serverCapabilities = 2;</code>
+       */
+      public com.yahoo.omid.proto.TSOProto.Capabilities getServerCapabilities() {
+        if (serverCapabilitiesBuilder_ == null) {
+          return serverCapabilities_;
+        } else {
+          return serverCapabilitiesBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>optional .Capabilities serverCapabilities = 2;</code>
+       */
+      public Builder setServerCapabilities(com.yahoo.omid.proto.TSOProto.Capabilities value) {
+        if (serverCapabilitiesBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          serverCapabilities_ = value;
+          onChanged();
+        } else {
+          serverCapabilitiesBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000002;
+        return this;
+      }
+      /**
+       * <code>optional .Capabilities serverCapabilities = 2;</code>
+       */
+      public Builder setServerCapabilities(
+          com.yahoo.omid.proto.TSOProto.Capabilities.Builder builderForValue) {
+        if (serverCapabilitiesBuilder_ == null) {
+          serverCapabilities_ = builderForValue.build();
+          onChanged();
+        } else {
+          serverCapabilitiesBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000002;
+        return this;
+      }
+      /**
+       * <code>optional .Capabilities serverCapabilities = 2;</code>
+       */
+      public Builder mergeServerCapabilities(com.yahoo.omid.proto.TSOProto.Capabilities value) {
+        if (serverCapabilitiesBuilder_ == null) {
+          if (((bitField0_ & 0x00000002) == 0x00000002) &&
+              serverCapabilities_ != com.yahoo.omid.proto.TSOProto.Capabilities.getDefaultInstance()) {
+            serverCapabilities_ =
+              com.yahoo.omid.proto.TSOProto.Capabilities.newBuilder(serverCapabilities_).mergeFrom(value).buildPartial();
+          } else {
+            serverCapabilities_ = value;
+          }
+          onChanged();
+        } else {
+          serverCapabilitiesBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000002;
+        return this;
+      }
+      /**
+       * <code>optional .Capabilities serverCapabilities = 2;</code>
+       */
+      public Builder clearServerCapabilities() {
+        if (serverCapabilitiesBuilder_ == null) {
+          serverCapabilities_ = com.yahoo.omid.proto.TSOProto.Capabilities.getDefaultInstance();
+          onChanged();
+        } else {
+          serverCapabilitiesBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000002);
+        return this;
+      }
+      /**
+       * <code>optional .Capabilities serverCapabilities = 2;</code>
+       */
+      public com.yahoo.omid.proto.TSOProto.Capabilities.Builder getServerCapabilitiesBuilder() {
+        bitField0_ |= 0x00000002;
+        onChanged();
+        return getServerCapabilitiesFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>optional .Capabilities serverCapabilities = 2;</code>
+       */
+      public com.yahoo.omid.proto.TSOProto.CapabilitiesOrBuilder getServerCapabilitiesOrBuilder() {
+        if (serverCapabilitiesBuilder_ != null) {
+          return serverCapabilitiesBuilder_.getMessageOrBuilder();
+        } else {
+          return serverCapabilities_;
+        }
+      }
+      /**
+       * <code>optional .Capabilities serverCapabilities = 2;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          com.yahoo.omid.proto.TSOProto.Capabilities, com.yahoo.omid.proto.TSOProto.Capabilities.Builder, com.yahoo.omid.proto.TSOProto.CapabilitiesOrBuilder> 
+          getServerCapabilitiesFieldBuilder() {
+        if (serverCapabilitiesBuilder_ == null) {
+          serverCapabilitiesBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              com.yahoo.omid.proto.TSOProto.Capabilities, com.yahoo.omid.proto.TSOProto.Capabilities.Builder, com.yahoo.omid.proto.TSOProto.CapabilitiesOrBuilder>(
+                  serverCapabilities_,
+                  getParentForChildren(),
+                  isClean());
+          serverCapabilities_ = null;
+        }
+        return serverCapabilitiesBuilder_;
+      }
+
+      // @@protoc_insertion_point(builder_scope:HandshakeResponse)
+    }
+
+    static {
+      defaultInstance = new HandshakeResponse(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:HandshakeResponse)
+  }
+
   private static com.google.protobuf.Descriptors.Descriptor
     internal_static_Request_descriptor;
   private static
@@ -3333,6 +5264,21 @@ public final class TSOProto {
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_CommitResponse_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_Capabilities_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_Capabilities_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_HandshakeRequest_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_HandshakeRequest_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_HandshakeResponse_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_HandshakeResponse_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -3342,19 +5288,26 @@ public final class TSOProto {
       descriptor;
   static {
     java.lang.String[] descriptorData = {
-      "\n\035src/main/proto/TSOProto.proto\"]\n\007Reque" +
-      "st\022+\n\020timestampRequest\030\001 \001(\0132\021.Timestamp" +
-      "Request\022%\n\rcommitRequest\030\002 \001(\0132\016.CommitR" +
-      "equest\"\022\n\020TimestampRequest\"O\n\rCommitRequ" +
-      "est\022\026\n\016startTimestamp\030\001 \001(\003\022\026\n\007isRetry\030\002" +
-      " \001(\010:\005false\022\016\n\006cellId\030\003 \003(\003\"b\n\010Response\022" +
-      "-\n\021timestampResponse\030\001 \001(\0132\022.TimestampRe" +
-      "sponse\022\'\n\016commitResponse\030\002 \001(\0132\017.CommitR" +
-      "esponse\"+\n\021TimestampResponse\022\026\n\016startTim" +
-      "estamp\030\001 \001(\003\"R\n\016CommitResponse\022\017\n\007aborte",
-      "d\030\001 \001(\010\022\026\n\016startTimestamp\030\002 \001(\003\022\027\n\017commi" +
-      "tTimestamp\030\003 \001(\003B\030\n\024com.yahoo.omid.proto" +
-      "H\001"
+      "\n\035src/main/proto/TSOProto.proto\"\212\001\n\007Requ" +
+      "est\022+\n\020timestampRequest\030\001 \001(\0132\021.Timestam" +
+      "pRequest\022%\n\rcommitRequest\030\002 \001(\0132\016.Commit" +
+      "Request\022+\n\020handshakeRequest\030\003 \001(\0132\021.Hand" +
+      "shakeRequest\"\022\n\020TimestampRequest\"O\n\rComm" +
+      "itRequest\022\026\n\016startTimestamp\030\001 \001(\003\022\026\n\007isR" +
+      "etry\030\002 \001(\010:\005false\022\016\n\006cellId\030\003 \003(\003\"\221\001\n\010Re" +
+      "sponse\022-\n\021timestampResponse\030\001 \001(\0132\022.Time" +
+      "stampResponse\022\'\n\016commitResponse\030\002 \001(\0132\017." +
+      "CommitResponse\022-\n\021handshakeResponse\030\003 \001(",
+      "\0132\022.HandshakeResponse\"+\n\021TimestampRespon" +
+      "se\022\026\n\016startTimestamp\030\001 \001(\003\"R\n\016CommitResp" +
+      "onse\022\017\n\007aborted\030\001 \001(\010\022\026\n\016startTimestamp\030" +
+      "\002 \001(\003\022\027\n\017commitTimestamp\030\003 \001(\003\"%\n\014Capabi" +
+      "lities\022\025\n\rshortSuffixes\030\001 \001(\010\"=\n\020Handsha" +
+      "keRequest\022)\n\022clientCapabilities\030\001 \001(\0132\r." +
+      "Capabilities\"X\n\021HandshakeResponse\022\030\n\020cli" +
+      "entCompatible\030\001 \001(\010\022)\n\022serverCapabilitie" +
+      "s\030\002 \001(\0132\r.CapabilitiesB\030\n\024com.yahoo.omid" +
+      ".protoH\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -3366,7 +5319,7 @@ public final class TSOProto {
           internal_static_Request_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_Request_descriptor,
-              new java.lang.String[] { "TimestampRequest", "CommitRequest", });
+              new java.lang.String[] { "TimestampRequest", "CommitRequest", "HandshakeRequest", });
           internal_static_TimestampRequest_descriptor =
             getDescriptor().getMessageTypes().get(1);
           internal_static_TimestampRequest_fieldAccessorTable = new
@@ -3384,7 +5337,7 @@ public final class TSOProto {
           internal_static_Response_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_Response_descriptor,
-              new java.lang.String[] { "TimestampResponse", "CommitResponse", });
+              new java.lang.String[] { "TimestampResponse", "CommitResponse", "HandshakeResponse", });
           internal_static_TimestampResponse_descriptor =
             getDescriptor().getMessageTypes().get(4);
           internal_static_TimestampResponse_fieldAccessorTable = new
@@ -3397,6 +5350,24 @@ public final class TSOProto {
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_CommitResponse_descriptor,
               new java.lang.String[] { "Aborted", "StartTimestamp", "CommitTimestamp", });
+          internal_static_Capabilities_descriptor =
+            getDescriptor().getMessageTypes().get(6);
+          internal_static_Capabilities_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_Capabilities_descriptor,
+              new java.lang.String[] { "ShortSuffixes", });
+          internal_static_HandshakeRequest_descriptor =
+            getDescriptor().getMessageTypes().get(7);
+          internal_static_HandshakeRequest_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_HandshakeRequest_descriptor,
+              new java.lang.String[] { "ClientCapabilities", });
+          internal_static_HandshakeResponse_descriptor =
+            getDescriptor().getMessageTypes().get(8);
+          internal_static_HandshakeResponse_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_HandshakeResponse_descriptor,
+              new java.lang.String[] { "ClientCompatible", "ServerCapabilities", });
           return null;
         }
       };

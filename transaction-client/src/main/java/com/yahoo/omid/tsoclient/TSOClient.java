@@ -48,6 +48,9 @@ public abstract class TSOClient {
     public static class ClosingException extends Exception {
     }
 
+    public static class HandshakeFailedException extends Exception {
+    }
+
     public static class ServiceUnavailableException extends Exception {
         public ServiceUnavailableException(String message) {
             super(message);

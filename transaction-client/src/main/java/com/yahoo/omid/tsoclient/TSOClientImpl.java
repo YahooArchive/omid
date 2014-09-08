@@ -1,26 +1,9 @@
-/**
- * Copyright (c) 2011 Yahoo! Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License. See accompanying LICENSE file.
- */
-
 package com.yahoo.omid.tsoclient;
 
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.proto.TSOProto;
-import com.yahoo.omid.tsoclient.TSOClientImpl.RequestAndTimeout;
 import com.yahoo.statemachine.StateMachine.*;
 
 import org.apache.commons.configuration.Configuration;
@@ -110,6 +93,7 @@ class TSOClientImpl extends TSOClient {
         return addr;
     }
 
+    @Override
     public TSOFuture<Long> getNewStartTimestamp() {
         TSOProto.Request.Builder builder = TSOProto.Request.newBuilder();
         TSOProto.TimestampRequest.Builder tsreqBuilder = TSOProto.TimestampRequest.newBuilder();
@@ -119,6 +103,7 @@ class TSOClientImpl extends TSOClient {
         return new ForwardingTSOFuture<Long>(request);
     }
 
+    @Override
     public TSOFuture<Long> commit(long transactionId, Set<? extends CellId> cells) {
         TSOProto.Request.Builder builder = TSOProto.Request.newBuilder();
         TSOProto.CommitRequest.Builder commitbuilder = TSOProto.CommitRequest.newBuilder();
@@ -132,6 +117,7 @@ class TSOClientImpl extends TSOClient {
         return new ForwardingTSOFuture<Long>(request);
     }
 
+    @Override
     public TSOFuture<Void> close() {
         CloseEvent closeEvent = new CloseEvent();
         fsm.sendEvent(closeEvent);
@@ -184,6 +170,9 @@ class TSOClientImpl extends TSOClient {
     }
 
     private static class ChannelClosedEvent implements Event {
+    }
+
+    private static class HandshakeTimeoutEvent implements Event {
     }
 
     private static class TimestampRequestTimeoutEvent implements Event {
@@ -282,11 +271,11 @@ class TSOClientImpl extends TSOClient {
         }
 
         public State handleEvent(ConnectedEvent e) {
-            return new ConnectedState(fsm, e.getParam());
+            return new HandshakingState(fsm, e.getParam());
         }
 
         public State handleEvent(ErrorEvent e) {
-            LOG.error("Error connecting", ((ErrorEvent) e).getParam());
+            LOG.error("Error connecting", e.getParam());
             return new DisconnectedState(fsm);
         }
     }
@@ -309,17 +298,113 @@ class TSOClientImpl extends TSOClient {
         }
     }
 
+    private class HandshakingState extends BaseState {
+        final Channel channel;
+
+        final HashedWheelTimer timeoutExecutor = new HashedWheelTimer(
+                new ThreadFactoryBuilder().setNameFormat("tso-client-timeout").build());
+        final Timeout timeout;
+
+        HandshakingState(Fsm fsm, Channel channel) {
+            super(fsm);
+            this.channel = channel;
+            TSOProto.HandshakeRequest.Builder handshake = TSOProto.HandshakeRequest.newBuilder();
+            handshake.setClientCapabilities(
+                    TSOProto.Capabilities.newBuilder()
+                    .setShortSuffixes(true).build());
+            channel.write(TSOProto.Request.newBuilder()
+                          .setHandshakeRequest(handshake.build()).build());
+            timeout = newTimeout();
+        }
+
+        private Timeout newTimeout() {
+            if (requestTimeoutMs > 0) {
+                return timeoutExecutor.newTimeout(new TimerTask() {
+                    @Override
+                    public void run(Timeout timeout) {
+                        fsm.sendEvent(new HandshakeTimeoutEvent());
+                    }
+                }, 30, TimeUnit.SECONDS);
+            } else {
+                return null;
+            }
+        }
+
+        public State handleEvent(UserEvent e) {
+            fsm.deferEvent(e);
+            return this;
+        }
+
+        public State handleEvent(ResponseEvent e) {
+            if (e.getParam().hasHandshakeResponse()
+                    && e.getParam().getHandshakeResponse().getClientCompatible()) {
+                if (timeout != null) {
+                    timeout.cancel();
+                }
+                return new ConnectedState(fsm, channel, timeoutExecutor);
+            } else {
+                cleanupState();
+                LOG.error("Client incompatible with server");
+                return new HandshakeFailedState(fsm,
+                        new HandshakeFailedException());
+            }
+        }
+
+        public State handleEvent(HandshakeTimeoutEvent e) {
+            cleanupState();
+            return new ClosingState(fsm);
+        }
+
+        public State handleEvent(ErrorEvent e) {
+            cleanupState();
+            Throwable exception = e.getParam();
+            LOG.error("Error during handshake", exception);
+            return new HandshakeFailedState(fsm, exception);
+        }
+
+        private void cleanupState() {
+            timeoutExecutor.stop();
+            channel.close();
+            if (timeout != null) {
+                timeout.cancel();
+            }
+        }
+
+    }
+
+
+    private class HandshakeFailedState extends BaseState {
+
+        Throwable exception;
+
+        HandshakeFailedState(Fsm fsm, Throwable exception) {
+            super(fsm);
+            this.exception = exception;
+        }
+
+        public State handleEvent(UserEvent e) {
+            e.error(exception);
+            return this;
+        }
+
+        public State handleEvent(ChannelClosedEvent e) {
+            return new DisconnectedState(fsm);
+        }
+
+    }
+
+
     class ConnectedState extends BaseState {
         final Queue<RequestAndTimeout> timestampRequests;
         final Map<Long, RequestAndTimeout> commitRequests;
         final Channel channel;
 
-        final HashedWheelTimer timeoutExecutor = new HashedWheelTimer(
-                new ThreadFactoryBuilder().setNameFormat("tso-client-timeout").build());
+        final HashedWheelTimer timeoutExecutor;
 
-        ConnectedState(Fsm fsm, Channel channel) {
+        ConnectedState(Fsm fsm, Channel channel, HashedWheelTimer timeoutExecutor) {
             super(fsm);
             this.channel = channel;
+            this.timeoutExecutor = timeoutExecutor;
             timestampRequests = new ArrayDeque<RequestAndTimeout>();
             commitRequests = new HashMap<Long, RequestAndTimeout>();
         }
@@ -357,6 +442,7 @@ class TSOClientImpl extends TSOClient {
             ChannelFuture f = channel.write(req);
 
             f.addListener(new ChannelFutureListener() {
+                @Override
                 public void operationComplete(ChannelFuture future) {
                     if (!future.isSuccess()) {
                         fsm.sendEvent(new ErrorEvent(future.getCause()));
@@ -500,6 +586,7 @@ class TSOClientImpl extends TSOClient {
     }
 
     private class ClosingState extends BaseState {
+
         ClosingState(Fsm fsm) {
             super(fsm);
         }
@@ -532,6 +619,11 @@ class TSOClientImpl extends TSOClient {
         public State handleEvent(ChannelClosedEvent e) {
             return new DisconnectedState(fsm);
         }
+
+        public State handleEvent(HandshakeTimeoutEvent e) {
+            return this;
+        }
+
     }
 
     private class Handler extends SimpleChannelHandler {
