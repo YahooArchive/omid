@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.yahoo.omid</groupId>
         <artifactId>omid</artifactId>
-        <version>2.2.1</version>
+        <version>2.2.10</version>
     </parent>
 
     <groupId>yahoo.yinst.omid_hbase_client</groupId>
@@ -86,6 +86,39 @@
             </activation>
             <build>
                 <plugins>
+                    <plugin>
+                        <groupId>com.google.code.maven-replacer-plugin</groupId>
+                        <artifactId>replacer</artifactId>
+                        <version>1.5.3</version>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>replace</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <file>${project.basedir}/dependency-reduced-pom.xml</file>
+                            <replacements>
+                                <replacement>
+                                    <xpath>/project/parent/artifactId</xpath>
+                                    <token>omid</token>
+                                    <value>yjava_base_build</value>
+                                </replacement>
+                                <replacement>
+                                    <xpath>/project/parent/groupId</xpath>
+                                    <token>com.yahoo.omid</token>
+                                    <value>yahoo.yinst.yjava_base_build</value>
+                                </replacement>
+                                <replacement>
+                                    <xpath>/project/parent/version</xpath>
+                                    <token>${project.parent.version}</token>
+                                    <value>3.1.6.153</value>
+                                </replacement>
+                            </replacements>
+                        </configuration>
+                    </plugin>
                     <plugin>
                         <groupId>yahoo.yinst.maven_plugins</groupId>
                         <artifactId>yjava_maven_plugins_yinst</artifactId>

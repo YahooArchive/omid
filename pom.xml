@@ -13,7 +13,7 @@
   <artifactId>omid</artifactId>
   <packaging>pom</packaging>
   <!-- WARNING: do not update version manually, use mvn versions:set on a ylinux machine //-->
-  <version>2.2.1</version>
+  <version>2.2.10</version>
   <name>Omid</name>
   <url>http://www.github.com/yahoo/omid</url>
 
