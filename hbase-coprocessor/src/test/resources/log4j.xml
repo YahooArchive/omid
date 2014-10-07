@@ -43,7 +43,7 @@
     </logger>
 
     <root>
-        <level value="$(LOGS_VERBOSITY)"/>
+        <level value="INFO"/>
         <appender-ref ref="console"/>
     </root>
 </log4j:configuration>

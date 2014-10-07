@@ -89,6 +89,11 @@ public class TestCompaction {
         injector = Guice.createInjector(
                 new TSOForHBaseCompactorTestModule(TSOServerCommandLineConfig.configFactory(1234, 1)));
         hbaseConf = injector.getInstance(Configuration.class);
+
+        // settings required for #testDuplicateDeletes()
+        hbaseConf.setInt("hbase.hstore.compaction.min", 2);
+        hbaseConf.setInt("hbase.hstore.compaction.max", 2);
+
         setupHBase();
         aggregationClient = new AggregationClient(hbaseConf);
         admin = new HBaseAdmin(hbaseConf);
@@ -100,7 +105,7 @@ public class TestCompaction {
         LOG.info("********** Setting up HBase **********");
         hbaseTestUtil = new HBaseTestingUtility(hbaseConf);
         LOG.info("********** Creating HBase MiniCluster **********");
-        hbaseCluster = hbaseTestUtil.startMiniCluster(3);
+        hbaseCluster = hbaseTestUtil.startMiniCluster(1);
     }
 
     private static void createRequiredHBaseTables() throws IOException {
@@ -507,6 +512,125 @@ public class TestCompaction {
                      Bytes.toString(CellUtil.cloneValue(column.get(0))));
     }
 
+    // manually flush the regions on the region server.
+    // flushing like this prevents compaction running
+    // directly after the flush, which we want to avoid.
+    private void manualFlush() throws Throwable {
+        LOG.info("Manually flushing all regions");
+        for (HRegion r : hbaseTestUtil.getHBaseCluster().getRegionServer(0)
+                 .getOnlineRegions(TableName.valueOf(TEST_TABLE))) {
+            r.flushcache();
+        }
+    }
+
+    /**
+     * Tests a case where a temporary failure to flush causes the
+     * compactor to crash
+     */
+    @Test
+    public void testDuplicateDeletes() throws Throwable {
+        // jump through hoops to trigger a minor compaction.
+        // a minor compaction will only run if there are enough
+        // files to be compacted, but that is less than the number
+        // of total files, in which case it will run a major
+        // compaction. The issue this is testing only shows up
+        // with minor compaction, as only Deletes can be duplicate
+        // and major compactions filter them out.
+        byte[] firstRow = "FirstRow".getBytes();
+        HBaseTransaction tx0 = (HBaseTransaction)tm.begin();
+        Put put0 = new Put(firstRow);
+        put0.add(fam, qual, Bytes.toBytes("testWrite-1"));
+        txTable.put(tx0, put0);
+        tm.commit(tx0);
+
+        // create the first hfile
+        manualFlush();
+
+        // write a row, it won't be committed
+        byte[] rowToBeCompactedAway = "compactMe".getBytes();
+        HBaseTransaction tx1 = (HBaseTransaction)tm.begin();
+        Put put1 = new Put(rowToBeCompactedAway);
+        put1.add(fam, qual, Bytes.toBytes("testWrite-1"));
+        txTable.put(tx1, put1);
+        txTable.flushCommits();
+
+        // write a row to trigger the double delete problem
+        byte[] row = "iCauseErrors".getBytes();
+        HBaseTransaction tx2 = (HBaseTransaction)tm.begin();
+        Put put2 = new Put(row);
+        put2.add(fam, qual, Bytes.toBytes("testWrite-1"));
+        txTable.put(tx2, put2);
+        tm.commit(tx2);
+
+        HBaseTransaction tx3 = (HBaseTransaction)tm.begin();
+        Put put3 = new Put(row);
+        put3.add(fam, qual, Bytes.toBytes("testWrite-1"));
+        txTable.put(tx3, put3);
+        txTable.flushCommits();
+
+        // cause a failure on HBaseTM#preCommit();
+        Set<HBaseCellId> writeSet = tx3.getWriteSet();
+        assertEquals(1, writeSet.size());
+        List<HBaseCellId> newWriteSet = new ArrayList<>();
+        final AtomicBoolean flushFailing = new AtomicBoolean(true);
+        for (HBaseCellId id : writeSet) {
+            HTableInterface failableHTable = spy(id.getTable());
+            doAnswer(new Answer<Void>() {
+                    @Override
+                    public Void answer(InvocationOnMock invocation)
+                        throws Throwable {
+                        if (flushFailing.get()) {
+                            throw new RetriesExhaustedWithDetailsException(new ArrayList<Throwable>(),
+                                    new ArrayList<Put>(), new ArrayList<String>());
+                        } else {
+                            invocation.callRealMethod();
+                        }
+                        return null;
+                    }
+                }).when(failableHTable).flushCommits();
+
+            newWriteSet.add(new HBaseCellId(failableHTable,
+                                            id.getRow(), id.getFamily(),
+                                            id.getQualifier(), id.getTimestamp()));
+        }
+        writeSet.clear();
+        writeSet.addAll(newWriteSet);
+
+        try {
+            tm.commit(tx3);
+            fail("Shouldn't succeed");
+        } catch (TransactionException tme) {
+            flushFailing.set(false);
+            tm.rollback(tx3);
+        }
+
+        // create second hfile,
+        // it should contain multiple deletes
+        manualFlush();
+
+        // create loads of files
+        byte[] anotherRow = "someotherrow".getBytes();
+        HBaseTransaction tx4 = (HBaseTransaction)tm.begin();
+        Put put4 = new Put(anotherRow);
+        put4.add(fam, qual, Bytes.toBytes("testWrite-1"));
+        txTable.put(tx4, put4);
+        tm.commit(tx4);
+
+        // create third hfile
+        manualFlush();
+
+        // trigger minor compaction and give it time to run
+        setCompactorLWM(tx4.getStartTimestamp());
+        admin.compact(TEST_TABLE);
+        Thread.sleep(3000);
+
+        // check if the cell that should be compacted, is compacted
+        assertFalse("Cell should not be be there",
+                   HBaseUtils.hasCell(rowToBeCompactedAway, fam, qual,
+                                      tx1.getStartTimestamp(),
+                                      new TTableCellGetterAdapter(txTable)));
+    }
+
     @Test(timeOut=60000)
     public void testNonOmidCFIsUntouched() throws Throwable {
         admin.disableTable(TEST_TABLE);
@@ -544,17 +668,21 @@ public class TestCompaction {
                 0, result.getColumnCells(fam, qual).size());
     }
 
-    private void compactEverything() throws Exception {
-        admin.flush(TEST_TABLE);
-
-        LOG.info("Regions in table {}: {}", TEST_TABLE, hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).size());
+    private void setCompactorLWM(long lwm) throws Exception {
         OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).get(0)
                 .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
         CommitTable.Client commitTableClient = spy(omidCompactor.commitTableClient);
         SettableFuture<Long> f = SettableFuture.<Long> create();
-        f.set(Long.MAX_VALUE);
+        f.set(lwm);
         doReturn(f).when(commitTableClient).readLowWatermark();
         omidCompactor.commitTableClient = commitTableClient;
+    }
+
+    private void compactEverything() throws Exception {
+        admin.flush(TEST_TABLE);
+
+        LOG.info("Regions in table {}: {}", TEST_TABLE, hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).size());
+        setCompactorLWM(Long.MAX_VALUE);
         LOG.info("Compacting table {}", TEST_TABLE);
         admin.majorCompact(TEST_TABLE);
 

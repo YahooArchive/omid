@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Optional;
 import com.google.common.hash.Hashing;
 import com.yahoo.omid.committable.CommitTable;
@@ -124,7 +125,7 @@ public class OmidCompactor extends BaseRegionObserver {
         }
     }
 
-    private static class CompactorScanner implements InternalScanner {
+    static class CompactorScanner implements InternalScanner {
         private final InternalScanner internalScanner;
         private final CommitTable.Client commitTableClient;
         private final long lowWatermark;
@@ -270,9 +271,11 @@ public class OmidCompactor extends BaseRegionObserver {
                                             CellUtil.cloneFamily(cell),
                                             CellUtil.cloneQualifier(cell),
                                             cell.getTimestamp());
-                    if (cellIdToCellMap.containsKey(key)) {
+                    if (cellIdToCellMap.containsKey(key)
+                        && !cellIdToCellMap.get(key).equals(cell)) {
                         throw new IOException(
-                                "A value is already present for key " + key + ". This should not happen");
+                                "A value is already present for key " + key +
+                                ". This should not happen. Current row elements: " + result);
                     }
                     LOG.trace("Adding KV key {} to map with absent value", cell);
                     cellToShadowCellMap.put(cell, Optional.<Cell> absent());
@@ -296,7 +299,7 @@ public class OmidCompactor extends BaseRegionObserver {
             return cellToShadowCellMap;
         }
 
-        private static class CellId {
+        static class CellId {
 
             private static final int MIN_BITS = 32;
 
@@ -351,6 +354,16 @@ public class OmidCompactor extends BaseRegionObserver {
                         .putBytes(qualifier)
                         .putLong(timestamp)
                         .hash().asInt();
+            }
+
+            @Override
+            public String toString() {
+                return Objects.toStringHelper(this)
+                              .add("row", Bytes.toStringBinary(row))
+                              .add("family", Bytes.toString(family))
+                              .add("qualifier", Bytes.toString(qualifier))
+                              .add("ts", timestamp)
+                              .toString();
             }
         }
 
