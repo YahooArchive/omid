@@ -13,7 +13,7 @@
   <artifactId>omid</artifactId>
   <packaging>pom</packaging>
   <!-- WARNING: do not update version manually, use mvn versions:set on a ylinux machine //-->
-  <version>2.2.10</version>
+  <version>2.2.11</version>
   <name>Omid</name>
   <url>http://www.github.com/yahoo/omid</url>
 
@@ -32,7 +32,7 @@
     <yahoo.mon_metrics.version>0.2.11_25</yahoo.mon_metrics.version>
 
     <!-- 3rd-Party Library Versioning -->
-    <hbase.version>0.98.3-hadoop2</hbase.version>
+    <hbase.version>0.98.7.3.1410020120_h2</hbase.version>
     <guava.version>14.0</guava.version>
     <guice.version>3.0</guice.version>
     <testng.version>6.8.8</testng.version>
