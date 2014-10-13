@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,12 +16,15 @@ import java.util.concurrent.ExecutionException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
 import org.apache.hadoop.hbase.coprocessor.ObserverContext;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
@@ -33,6 +38,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Optional;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.PeekingIterator;
 import com.google.common.hash.Hashing;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.Client;
@@ -153,6 +160,31 @@ public class OmidCompactor extends BaseRegionObserver {
             return next(results, -1);
         }
 
+        private static void retain(List<Cell> result,
+                                   Cell cell, Optional<Cell> shadowCell) {
+            LOG.trace("Retaining cell {}", cell);
+            result.add(cell);
+            if (shadowCell.isPresent()) {
+                LOG.trace("...with shadow cell {}", cell, shadowCell.get());
+                result.add(shadowCell.get());
+            } else {
+                LOG.trace("...without shadow cell! (TS is above Low Watermark)");
+            }
+        }
+
+        private static void skipToNextColumn(Cell cell,
+                                             PeekingIterator<Map.Entry<Cell, Optional<Cell>>> iter) {
+            while (iter.hasNext()
+                   && CellUtil.matchingFamily(iter.peek().getKey(), cell)
+                   && CellUtil.matchingQualifier(iter.peek().getKey(), cell)) {
+                iter.next();
+            }
+        }
+
+        private static boolean isTombstone(Cell cell) {
+            return CellUtil.matchingValue(cell, TTable.DELETE_TOMBSTONE);
+        }
+
         @Override
         public boolean next(List<Cell> result, int limit) throws IOException {
 
@@ -166,25 +198,32 @@ public class OmidCompactor extends BaseRegionObserver {
                 }
                 // 2) Traverse result list separating normal cells from shadow
                 // cells and building a map to access easily the shadow cells.
-                Map<Cell, Optional<Cell>> cellToSc = mapCellsToShadowCells(scanResult);
+                SortedMap<Cell, Optional<Cell>> cellToSc = mapCellsToShadowCells(scanResult);
 
                 // 3) traverse the list of row key values isolated before and
                 // check which ones should be discarded
-                for (Map.Entry<Cell, Optional<Cell>> entry : cellToSc.entrySet()) {
+                PeekingIterator<Map.Entry<Cell, Optional<Cell>>> iter
+                    = Iterators.peekingIterator(cellToSc.entrySet().iterator());
+                while (iter.hasNext()) {
+                    Map.Entry<Cell, Optional<Cell>> entry = iter.next();
                     Cell cell = entry.getKey();
                     Optional<Cell> shadowCellOp = entry.getValue();
 
-                    if ((cell.getTimestamp() > lowWatermark) || shadowCellOp.isPresent()) {
-                        LOG.trace("Retaining cell {}", cell);
-                        currentRowWorthValues.add(cell);
+                    if (cell.getTimestamp() > lowWatermark) {
+                        retain(currentRowWorthValues, cell, shadowCellOp);
+                    } else if (isTombstone(cell)) {
                         if (shadowCellOp.isPresent()) {
-                            LOG.trace("...with shadow cell {}", cell, shadowCellOp.get());
-                            currentRowWorthValues.add(shadowCellOp.get());
+                            skipToNextColumn(cell, iter);
                         } else {
-                            LOG.trace("...without shadow cell! (TS is above Low Watermark)");
+                            Optional<Long> commitTimestamp = queryCommitTimestamp(cell);
+                            if (commitTimestamp.isPresent()) {
+                                skipToNextColumn(cell, iter);
+                            }
                         }
+                    } else if (shadowCellOp.isPresent()) {
+                        retain(currentRowWorthValues, cell, shadowCellOp);
                     } else {
-                        Optional<Long> commitTimestamp = findMatchingCommitTimestampInCommitTable(cell.getTimestamp());
+                        Optional<Long> commitTimestamp = queryCommitTimestamp(cell);
                         if (commitTimestamp.isPresent()) {
                             // Build the missing shadow cell...
                             byte[] shadowCellQualifier =
@@ -194,18 +233,11 @@ public class OmidCompactor extends BaseRegionObserver {
                                                                shadowCellQualifier,
                                                                cell.getTimestamp(),
                                                                Bytes.toBytes(commitTimestamp.get()));
-                            LOG.trace("Retaining cell {} with new shadow cell {}", cell, shadowCell);
+                            LOG.trace("Retaining cell {} with shadow cell {}", cell, shadowCell);
                             currentRowWorthValues.add(cell);
                             currentRowWorthValues.add(shadowCell);
                         } else {
-                            // The shadow cell could have been added in the time period
-                            // after the scanner had been created, so we check it
-                            if (HBaseUtils.hasShadowCell(cell, new HRegionCellGetterAdapter(hRegion))) {
-                                LOG.trace("Retaining cell {} without its recently found shadow cell", cell);
-                                currentRowWorthValues.add(cell);
-                            } else {
-                                LOG.trace("Discarding cell {}", cell);
-                            }
+                            LOG.trace("Discarding cell {}", cell);
                         }
                     }
                 }
@@ -246,8 +278,25 @@ public class OmidCompactor extends BaseRegionObserver {
             }
         }
 
-        private Optional<Long> findMatchingCommitTimestampInCommitTable(long startTimestamp) throws IOException {
+        private Optional<Long> queryCommitTimestamp(Cell cell) throws IOException {
+            Optional<Long> commitTimestamp = queryCommitTable(cell.getTimestamp());
+            if (commitTimestamp.isPresent()) {
+                return commitTimestamp;
+            } else {
+                Get g = new Get(CellUtil.cloneRow(cell));
+                byte[] family = CellUtil.cloneFamily(cell);
+                byte[] qualifier = HBaseUtils.addShadowCellSuffix(CellUtil.cloneQualifier(cell));
+                g.addColumn(family, qualifier);
+                g.setTimeStamp(cell.getTimestamp());
+                Result r = hRegion.get(g);
+                if (r.containsColumn(family, qualifier)) {
+                    return Optional.of(Bytes.toLong(r.getValue(family, qualifier)));
+                }
+            }
+            return Optional.absent();
+        }
 
+        private Optional<Long> queryCommitTable(long startTimestamp) throws IOException {
             try {
                 return commitTableClient.getCommitTimestamp(startTimestamp).get();
             } catch (InterruptedException e) {
@@ -259,10 +308,11 @@ public class OmidCompactor extends BaseRegionObserver {
 
         }
 
-        private static Map<Cell, Optional<Cell>> mapCellsToShadowCells(List<Cell> result)
+        private static SortedMap<Cell, Optional<Cell>> mapCellsToShadowCells(List<Cell> result)
                 throws IOException {
 
-            Map<Cell, Optional<Cell>> cellToShadowCellMap = new HashMap<Cell, Optional<Cell>>();
+            SortedMap<Cell, Optional<Cell>> cellToShadowCellMap
+                = new TreeMap<Cell, Optional<Cell>>(new CellComparator());
 
             Map<CellId, Cell> cellIdToCellMap = new HashMap<CellId, Cell>();
             for (Cell cell : result) {

@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.RetriesExhaustedWithDetailsException;
 import org.apache.hadoop.hbase.client.Scan;
@@ -678,6 +679,221 @@ public class TestCompaction {
                 0, result.getColumnCells(fam, qual).size());
     }
 
+    /**
+     * Test that when compaction runs, tombstones are cleaned up
+     * case1: 1 put (ts < lwm) then tombstone (ts > lwm)
+     */
+    @Test(timeOut=60000)
+    public void testTombstonesAreCleanedUpCase1() throws Exception {
+
+        HBaseTransaction tx1 = (HBaseTransaction)tm.begin();
+        byte[] rowId = Bytes.toBytes("case1");
+        Put p = new Put(rowId);
+        p.add(fam, qual, Bytes.toBytes("testValue"));
+        txTable.put(tx1, p);
+        tm.commit(tx1);
+
+        HBaseTransaction lwmTx = (HBaseTransaction)tm.begin();
+        setCompactorLWM(lwmTx.getStartTimestamp());
+
+        HBaseTransaction tx2 = (HBaseTransaction)tm.begin();
+        Delete d = new Delete(rowId);
+        d.deleteColumn(fam, qual);
+        txTable.delete(tx2, d);
+        tm.commit(tx2);
+
+        TTableCellGetterAdapter getter = new TTableCellGetterAdapter(txTable);
+        assertTrue("Put cell should be there",
+                   HBaseUtils.hasCell(rowId, fam, qual,
+                                      tx1.getStartTimestamp(), getter));
+        assertTrue("Put shadow cell should be there",
+                   HBaseUtils.hasShadowCell(rowId, fam, qual,
+                                            tx1.getStartTimestamp(), getter));
+        assertTrue("Delete cell should be there",
+                   HBaseUtils.hasCell(rowId, fam, qual,
+                                      tx2.getStartTimestamp(), getter));
+        assertTrue("Delete shadow cell should be there",
+                   HBaseUtils.hasShadowCell(rowId, fam, qual,
+                                            tx2.getStartTimestamp(), getter));
+    }
+
+    /**
+     * Test that when compaction runs, tombstones are cleaned up
+     * case2: 1 put (ts < lwm) then tombstone (ts < lwm)
+     */
+    @Test(timeOut=60000)
+    public void testTombstonesAreCleanedUpCase2() throws Exception {
+
+        HBaseTransaction tx1 = (HBaseTransaction)tm.begin();
+        byte[] rowId = Bytes.toBytes("case2");
+        Put p = new Put(rowId);
+        p.add(fam, qual, Bytes.toBytes("testValue"));
+        txTable.put(tx1, p);
+        tm.commit(tx1);
+
+        HBaseTransaction tx2 = (HBaseTransaction)tm.begin();
+        Delete d = new Delete(rowId);
+        d.deleteColumn(fam, qual);
+        txTable.delete(tx2, d);
+        tm.commit(tx2);
+
+        HBaseTransaction lwmTx = (HBaseTransaction)tm.begin();
+        compactWithLWM(lwmTx.getStartTimestamp());
+
+        TTableCellGetterAdapter getter = new TTableCellGetterAdapter(txTable);
+        assertFalse("Put cell shouldn't be there",
+                    HBaseUtils.hasCell(rowId, fam, qual,
+                                      tx1.getStartTimestamp(), getter));
+        assertFalse("Put shadow cell shouldn't be there",
+                    HBaseUtils.hasShadowCell(rowId, fam, qual,
+                                             tx1.getStartTimestamp(), getter));
+        assertFalse("Delete cell shouldn't be there",
+                    HBaseUtils.hasCell(rowId, fam, qual,
+                                       tx2.getStartTimestamp(), getter));
+        assertFalse("Delete shadow cell shouldn't be there",
+                    HBaseUtils.hasShadowCell(rowId, fam, qual,
+                                             tx2.getStartTimestamp(), getter));
+    }
+
+    /**
+     * Test that when compaction runs, tombstones are cleaned up
+     * case3: 1 put (ts < lwm) then tombstone (ts < lwm) not committed
+     */
+    @Test(timeOut=60000)
+    public void testTombstonesAreCleanedUpCase3() throws Exception {
+
+        HBaseTransaction tx1 = (HBaseTransaction)tm.begin();
+        byte[] rowId = Bytes.toBytes("case3");
+        Put p = new Put(rowId);
+        p.add(fam, qual, Bytes.toBytes("testValue"));
+        txTable.put(tx1, p);
+        tm.commit(tx1);
+
+        HBaseTransaction tx2 = (HBaseTransaction)tm.begin();
+        Delete d = new Delete(rowId);
+        d.deleteColumn(fam, qual);
+        txTable.delete(tx2, d);
+
+        HBaseTransaction lwmTx = (HBaseTransaction)tm.begin();
+        compactWithLWM(lwmTx.getStartTimestamp());
+
+        TTableCellGetterAdapter getter = new TTableCellGetterAdapter(txTable);
+        assertTrue("Put cell should be there",
+                   HBaseUtils.hasCell(rowId, fam, qual,
+                                      tx1.getStartTimestamp(), getter));
+        assertTrue("Put shadow cell shouldn't be there",
+                   HBaseUtils.hasShadowCell(rowId, fam, qual,
+                                            tx1.getStartTimestamp(), getter));
+        assertFalse("Delete cell shouldn't be there",
+                    HBaseUtils.hasCell(rowId, fam, qual,
+                                       tx2.getStartTimestamp(), getter));
+        assertFalse("Delete shadow cell shouldn't be there",
+                    HBaseUtils.hasShadowCell(rowId, fam, qual,
+                                             tx2.getStartTimestamp(), getter));
+    }
+
+    /**
+     * Test that when compaction runs, tombstones are cleaned up
+     * case4: 1 put (ts < lwm) then tombstone (ts > lwm) not committed
+     */
+    @Test(timeOut=60000)
+    public void testTombstonesAreCleanedUpCase4() throws Exception {
+
+        HBaseTransaction tx1 = (HBaseTransaction)tm.begin();
+        byte[] rowId = Bytes.toBytes("case4");
+        Put p = new Put(rowId);
+        p.add(fam, qual, Bytes.toBytes("testValue"));
+        txTable.put(tx1, p);
+        tm.commit(tx1);
+
+        HBaseTransaction lwmTx = (HBaseTransaction)tm.begin();
+
+        HBaseTransaction tx2 = (HBaseTransaction)tm.begin();
+        Delete d = new Delete(rowId);
+        d.deleteColumn(fam, qual);
+        txTable.delete(tx2, d);
+        compactWithLWM(lwmTx.getStartTimestamp());
+
+        TTableCellGetterAdapter getter = new TTableCellGetterAdapter(txTable);
+        assertTrue("Put cell should be there",
+                   HBaseUtils.hasCell(rowId, fam, qual,
+                                      tx1.getStartTimestamp(), getter));
+        assertTrue("Put shadow cell shouldn't be there",
+                   HBaseUtils.hasShadowCell(rowId, fam, qual,
+                                            tx1.getStartTimestamp(), getter));
+        assertTrue("Delete cell should be there",
+                   HBaseUtils.hasCell(rowId, fam, qual,
+                                      tx2.getStartTimestamp(), getter));
+        assertFalse("Delete shadow cell shouldn't be there",
+                    HBaseUtils.hasShadowCell(rowId, fam, qual,
+                                             tx2.getStartTimestamp(), getter));
+    }
+
+    /**
+     * Test that when compaction runs, tombstones are cleaned up
+     * case5: tombstone (ts < lwm)
+     */
+    @Test(timeOut=60000)
+    public void testTombstonesAreCleanedUpCase5() throws Exception {
+
+        HBaseTransaction tx1 = (HBaseTransaction)tm.begin();
+        byte[] rowId = Bytes.toBytes("case5");
+        Delete d = new Delete(rowId);
+        d.deleteColumn(fam, qual);
+        txTable.delete(tx1, d);
+        tm.commit(tx1);
+
+        HBaseTransaction lwmTx = (HBaseTransaction)tm.begin();
+        compactWithLWM(lwmTx.getStartTimestamp());
+
+        TTableCellGetterAdapter getter = new TTableCellGetterAdapter(txTable);
+        assertFalse("Delete cell shouldn't be there",
+                    HBaseUtils.hasCell(rowId, fam, qual,
+                                       tx1.getStartTimestamp(), getter));
+        assertFalse("Delete shadow cell shouldn't be there",
+                    HBaseUtils.hasShadowCell(rowId, fam, qual,
+                                             tx1.getStartTimestamp(), getter));
+    }
+
+    /**
+     * Test that when compaction runs, tombstones are cleaned up
+     * case6: tombstone (ts < lwm), then put (ts < lwm)
+     */
+    @Test(timeOut=60000)
+    public void testTombstonesAreCleanedUpCase6() throws Exception {
+        byte[] rowId = Bytes.toBytes("case6");
+
+        HBaseTransaction tx1 = (HBaseTransaction)tm.begin();
+        Delete d = new Delete(rowId);
+        d.deleteColumn(fam, qual);
+        txTable.delete(tx1, d);
+        tm.commit(tx1);
+
+        HBaseTransaction tx2 = (HBaseTransaction)tm.begin();
+        Put p = new Put(rowId);
+        p.add(fam, qual, Bytes.toBytes("testValue"));
+        txTable.put(tx2, p);
+        tm.commit(tx2);
+
+
+        HBaseTransaction lwmTx = (HBaseTransaction)tm.begin();
+        compactWithLWM(lwmTx.getStartTimestamp());
+
+        TTableCellGetterAdapter getter = new TTableCellGetterAdapter(txTable);
+        assertFalse("Delete cell shouldn't be there",
+                    HBaseUtils.hasCell(rowId, fam, qual,
+                                       tx1.getStartTimestamp(), getter));
+        assertFalse("Delete shadow cell shouldn't be there",
+                    HBaseUtils.hasShadowCell(rowId, fam, qual,
+                                             tx1.getStartTimestamp(), getter));
+        assertTrue("Put cell should be there",
+                   HBaseUtils.hasCell(rowId, fam, qual,
+                                      tx2.getStartTimestamp(), getter));
+        assertTrue("Put shadow cell shouldn't be there",
+                   HBaseUtils.hasShadowCell(rowId, fam, qual,
+                                            tx2.getStartTimestamp(), getter));
+    }
+
     private void setCompactorLWM(long lwm) throws Exception {
         OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).get(0)
                 .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
@@ -689,10 +905,14 @@ public class TestCompaction {
     }
 
     private void compactEverything() throws Exception {
+        compactWithLWM(Long.MAX_VALUE);
+    }
+
+    private void compactWithLWM(long lwm) throws Exception {
         admin.flush(TEST_TABLE);
 
         LOG.info("Regions in table {}: {}", TEST_TABLE, hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).size());
-        setCompactorLWM(Long.MAX_VALUE);
+        setCompactorLWM(lwm);
         LOG.info("Compacting table {}", TEST_TABLE);
         admin.majorCompact(TEST_TABLE);
 
