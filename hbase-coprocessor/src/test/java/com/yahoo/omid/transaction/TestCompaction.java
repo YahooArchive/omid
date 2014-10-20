@@ -8,16 +8,17 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.transaction.HBaseTransaction;
 import com.yahoo.omid.tso.TSOServer;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig;
 import com.yahoo.omid.tsoclient.TSOClient;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.hadoop.conf.Configuration;
@@ -238,11 +239,12 @@ public class TestCompaction {
         LOG.info("Regions in table {}: {}", TEST_TABLE, hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).size());
         OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).get(0)
                 .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
-        CommitTable.Client commitTableClient = spy(omidCompactor.commitTableClient);
+        CommitTable commitTable = injector.getInstance(CommitTable.class);
+        CommitTable.Client commitTableClient = spy(commitTable.getClient().get());
         SettableFuture<Long> f = SettableFuture.<Long> create();
         f.set(fakeAssignedLowWatermark);
         doReturn(f).when(commitTableClient).readLowWatermark();
-        omidCompactor.commitTableClient = commitTableClient;
+        omidCompactor.commitTableClientQueue.add(commitTableClient);
         LOG.info("Compacting table {}", TEST_TABLE);
         admin.majorCompact(TEST_TABLE);
 
@@ -291,11 +293,12 @@ public class TestCompaction {
         LOG.info("Regions in table {}: {}", TEST_TABLE, hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).size());
         OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).get(0)
                 .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
-        CommitTable.Client commitTableClient = spy(omidCompactor.commitTableClient);
+        CommitTable commitTable = injector.getInstance(CommitTable.class);
+        CommitTable.Client commitTableClient = spy(commitTable.getClient().get());
         SettableFuture<Long> f = SettableFuture.<Long> create();
         f.set(Long.MAX_VALUE);
         doReturn(f).when(commitTableClient).readLowWatermark();
-        omidCompactor.commitTableClient = commitTableClient;
+        omidCompactor.commitTableClientQueue.add(commitTableClient);
 
         LOG.info("Flushing table {}", TEST_TABLE);
         admin.flush(TEST_TABLE);
@@ -372,11 +375,12 @@ public class TestCompaction {
         LOG.info("Regions in table {}: {}", TEST_TABLE, hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).size());
         OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).get(0)
                 .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
-        CommitTable.Client commitTableClient = spy(omidCompactor.commitTableClient);
+        CommitTable commitTable = injector.getInstance(CommitTable.class);
+        CommitTable.Client commitTableClient = spy(commitTable.getClient().get());
         SettableFuture<Long> f = SettableFuture.<Long> create();
         f.set(neverendingTxBelowLowWatermark.getStartTimestamp());
         doReturn(f).when(commitTableClient).readLowWatermark();
-        omidCompactor.commitTableClient = commitTableClient;
+        omidCompactor.commitTableClientQueue.add(commitTableClient);
         LOG.info("Compacting table {}", TEST_TABLE);
         admin.majorCompact(TEST_TABLE);
 
@@ -447,11 +451,12 @@ public class TestCompaction {
         LOG.info("Regions in table {}: {}", TEST_TABLE, hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).size());
         OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).get(0)
                 .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
-        CommitTable.Client commitTableClient = spy(omidCompactor.commitTableClient);
+        CommitTable commitTable = injector.getInstance(CommitTable.class);
+        CommitTable.Client commitTableClient = spy(commitTable.getClient().get());
         SettableFuture<Long> f = SettableFuture.<Long> create();
         f.setException(new IOException("Unable to read"));
         doReturn(f).when(commitTableClient).readLowWatermark();
-        omidCompactor.commitTableClient = commitTableClient;
+        omidCompactor.commitTableClientQueue.add(commitTableClient);
 
         LOG.info("Compacting table {}", TEST_TABLE);
         admin.majorCompact(TEST_TABLE); // Should trigger the error when accessing CommitTable funct.
@@ -897,11 +902,12 @@ public class TestCompaction {
     private void setCompactorLWM(long lwm) throws Exception {
         OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).get(0)
                 .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
-        CommitTable.Client commitTableClient = spy(omidCompactor.commitTableClient);
+        CommitTable commitTable = injector.getInstance(CommitTable.class);
+        CommitTable.Client commitTableClient = spy(commitTable.getClient().get());
         SettableFuture<Long> f = SettableFuture.<Long> create();
         f.set(lwm);
         doReturn(f).when(commitTableClient).readLowWatermark();
-        omidCompactor.commitTableClient = commitTableClient;
+        omidCompactor.commitTableClientQueue.add(commitTableClient);
     }
 
     private void compactEverything() throws Exception {

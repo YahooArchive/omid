@@ -1,19 +1,21 @@
 package com.yahoo.omid.transaction;
 
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.committable.hbase.HBaseCommitTable.HBASE_COMMIT_TABLE_NAME_KEY;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Queue;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
@@ -22,7 +24,6 @@ import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
@@ -56,8 +57,10 @@ public class OmidCompactor extends BaseRegionObserver {
     private static final Logger LOG = LoggerFactory.getLogger(OmidCompactor.class);
     final static String OMID_COMPACTABLE_CF_FLAG = "OMID_ENABLED";
 
+    private HBaseCommitTableConfig commitTableConf = null;
     private Configuration conf = null;
-    CommitTable.Client commitTableClient = null;
+    @VisibleForTesting
+    protected Queue<CommitTable.Client> commitTableClientQueue = new ConcurrentLinkedQueue<>();
 
     public OmidCompactor() {
         LOG.info("Compactor coprocessor initialized via empty constructor");
@@ -67,32 +70,23 @@ public class OmidCompactor extends BaseRegionObserver {
     public void start(CoprocessorEnvironment env) throws IOException {
         LOG.info("Starting compactor coprocessor");
         this.conf = env.getConfiguration();
+        this.commitTableConf = new HBaseCommitTableConfig();
+        String commitTableName = this.conf.get(HBASE_COMMIT_TABLE_NAME_KEY);
+        if (commitTableName != null) {
+            this.commitTableConf.setTableName(commitTableName);
+        }
         LOG.info("Compactor coprocessor started");
     }
 
     @Override
     public void stop(CoprocessorEnvironment e) throws IOException {
         LOG.info("Stopping compactor coprocessor");
-        if (commitTableClient != null) {
-            commitTableClient.close();
-        }
-        LOG.info("Compactor coprocessor stopped");
-    }
-
-    @Override
-    public void preOpen(ObserverContext<RegionCoprocessorEnvironment> e) throws IOException {
-        // Initialize the commit table accessor the first time. Note
-        // this can't be done in the start() method above because the
-        // HBase server need to be initialized first
-        TableName tableName = e.getEnvironment().getRegion().getTableDesc().getTableName();
-        if (!tableName.isSystemTable()
-                && !tableName.equals(TableName.valueOf(COMMIT_TABLE_DEFAULT_NAME))
-                && !tableName.equals(TableName.valueOf(TIMESTAMP_TABLE_DEFAULT_NAME))) {
-            if (commitTableClient == null) {
-                LOG.trace("Initializing CommitTable client in preOpen for table {}", tableName);
-                commitTableClient = initAndGetCommitTableClient();
+        if (commitTableClientQueue != null) {
+            for (CommitTable.Client commitTableClient : commitTableClientQueue) {
+                commitTableClient.close();
             }
         }
+        LOG.info("Compactor coprocessor stopped");
     }
 
     @Override
@@ -110,18 +104,19 @@ public class OmidCompactor extends BaseRegionObserver {
         if (!omidCompactable) {
             return scanner;
         } else {
-            if (commitTableClient != null) {
-                return new CompactorScanner(e, scanner, commitTableClient);
+            CommitTable.Client commitTableClient = commitTableClientQueue.poll();
+            if (commitTableClient == null) {
+                commitTableClient = initAndGetCommitTableClient();
             }
-            throw new IOException("CommitTable client was not be obtained when opening region for table " + desc.getTableName());
+            return new CompactorScanner(e, scanner, commitTableClient, commitTableClientQueue);
         }
     }
 
-    public CommitTable.Client initAndGetCommitTableClient() throws IOException {
+    private CommitTable.Client initAndGetCommitTableClient() throws IOException {
         LOG.info("Trying to get the commit table client");
-        CommitTable commitTable = new HBaseCommitTable(conf, new HBaseCommitTableConfig());
+        CommitTable commitTable = new HBaseCommitTable(conf, commitTableConf);
         try {
-            commitTableClient = commitTable.getClient().get();
+            CommitTable.Client commitTableClient = commitTable.getClient().get();
             LOG.info("Commit table client obtained {}", commitTableClient.getClass().getCanonicalName());
             return commitTableClient;
         } catch (InterruptedException ie) {
@@ -135,6 +130,7 @@ public class OmidCompactor extends BaseRegionObserver {
     static class CompactorScanner implements InternalScanner {
         private final InternalScanner internalScanner;
         private final CommitTable.Client commitTableClient;
+        private final Queue<CommitTable.Client> commitTableClientQueue;
         private final long lowWatermark;
 
         private final HRegion hRegion;
@@ -144,10 +140,12 @@ public class OmidCompactor extends BaseRegionObserver {
 
         public CompactorScanner(ObserverContext<RegionCoprocessorEnvironment> e,
                                 InternalScanner internalScanner,
-                                Client commitTableClient) throws IOException
+                                Client commitTableClient,
+                                Queue<CommitTable.Client> commitTableClientQueue) throws IOException
         {
             this.internalScanner = internalScanner;
             this.commitTableClient = commitTableClient;
+            this.commitTableClientQueue = commitTableClientQueue;
             this.lowWatermark = getLowWatermarkFromCommitTable();
             // Obtain the table in which the scanner is going to operate
             this.hRegion = e.getEnvironment().getRegion();
@@ -262,6 +260,7 @@ public class OmidCompactor extends BaseRegionObserver {
         @Override
         public void close() throws IOException {
             internalScanner.close();
+            commitTableClientQueue.add(commitTableClient);
         }
 
         private long getLowWatermarkFromCommitTable() throws IOException {
