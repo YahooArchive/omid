@@ -40,6 +40,15 @@ public class YMonMetricsProvider extends AbstractScheduledService implements Met
         metrics.send();
     }
 
+    //two methods because of guava 11
+    @Override
+    protected void startUp() throws Exception {
+    }
+
+    @Override
+    protected void shutDown() throws Exception {
+    }
+
     @Override
     protected Scheduler scheduler() {
         return Scheduler.newFixedRateSchedule(outputFreqInSec, outputFreqInSec, TimeUnit.SECONDS);
