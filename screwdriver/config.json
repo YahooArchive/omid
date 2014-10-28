@@ -9,7 +9,15 @@
                 "test": {
                     "task": "script",
                     "command": "mvn clean install -DskipTests && mvn -Dmaven.clover.licenseLocation=/home/y/conf/clover/clover.license -B -Pclover clover2:setup test clover2:aggregate clover2:clover",
-                    "after": "cp ${SRC_DIR}/*/target/surefire-reports/TEST-*xml ${TEST_RESULTS_DIR}/"
+                    "after": "cp ${SRC_DIR}/*/target/surefire-reports/TEST-*xml ${TEST_RESULTS_DIR}/",
+                    "before": [{
+                            "task": "script",
+                            "command": "mvn versions:set -DnewVersion=`xml_grep -t '/project/version' pom.xml | perl -pe 's/([0-9]+)$/$1+1/e'`"
+                        }, {
+                            "task": "script",
+                            "command": "git review -s && git add pom.xml */pom.xml && git commit -m 'Auto updating versions in child modules' && git push gerrit master"
+                        }
+                    ]
                 },
                 "publish": {
                     "task": "dist-install",
