@@ -61,6 +61,11 @@
       <version>${testng.version}</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.yahoo.bcn.statemachine</groupId>
+      <artifactId>statemachine</artifactId>
+      <version>${statemachine.version}</version>
+    </dependency>
 
   </dependencies>
 

@@ -48,6 +48,7 @@
     <clover.version>3.3.0</clover.version>
     <hamcrest.version>1.3</hamcrest.version>
     <curator.version>2.6.0</curator.version>
+    <statemachine.version>1.0.9</statemachine.version>
   </properties>
 
   <modules>
@@ -182,5 +183,12 @@
     </profile>
 
   </profiles>
+
+  <repositories>
+    <repository>
+      <id>local-release</id>
+      <url>http://artifactory.ops.yahoo.com:9999/artifactory/maven-local-release/</url>
+    </repository>
+  </repositories>
 
 </project>

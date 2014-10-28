@@ -17,9 +17,10 @@
 package com.yahoo.omid.tsoclient;
 
 import com.codahale.metrics.MetricRegistry;
+import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.proto.TSOProto;
-import com.yahoo.omid.util.StateMachine.*;
+import com.yahoo.statemachine.StateMachine.*;
 
 import org.apache.commons.configuration.Configuration;
 import org.jboss.netty.bootstrap.ClientBootstrap;
@@ -84,7 +85,7 @@ class TSOClientImpl extends TSOClient {
         fsmExecutor = Executors.newSingleThreadScheduledExecutor(
                 new ThreadFactoryBuilder().setNameFormat("tsofsm-%d").build());
         fsm = new FsmImpl(fsmExecutor);
-        fsm.setInitState(new DisconnectedState());
+        fsm.setInitState(new DisconnectedState(fsm));
 
         ChannelPipeline pipeline = bootstrap.getPipeline();
         pipeline.addLast("lengthbaseddecoder",
@@ -163,6 +164,18 @@ class TSOClientImpl extends TSOClient {
         }
     }
 
+    private static class UserEvent<T> extends AbstractFuture<T>
+        implements DeferrableEvent {
+        public void success(T value) {
+            set(value);
+        }
+
+        @Override
+        public void error(Throwable t) {
+            setException(t);
+        }
+    }
+
     private static class CloseEvent extends UserEvent<Void> {
     }
 
@@ -217,59 +230,60 @@ class TSOClientImpl extends TSOClient {
         }
     }
 
-    private class BaseState implements State {
-        @Override
-        public State handleEvent(Fsm fsm, Event e) {
+    private class BaseState extends State {
+        BaseState(Fsm fsm) {
+            super(fsm);
+        }
+
+        public State handleEvent(Event e) {
             LOG.error("Unhandled event {} while in state {}", e, this.getClass().getName());
             return this;
         }
     }
 
     private class DisconnectedState extends BaseState {
-        DisconnectedState() {
+        DisconnectedState(Fsm fsm) {
+            super(fsm);
         }
 
-        @Override
-        public State handleEvent(final Fsm fsm, Event e) {
-            if (e instanceof RequestEvent) {
-                fsm.deferUserEvent((UserEvent) e);
-
-                bootstrap.connect(getAddress()).addListener(new ChannelFutureListener() {
+        public State handleEvent(RequestEvent e) {
+            fsm.deferEvent(e);
+            bootstrap.connect(getAddress()).addListener(new ChannelFutureListener() {
                     @Override
-                    public void operationComplete(ChannelFuture future) throws Exception {
+                    public void operationComplete(ChannelFuture future)
+                            throws Exception {
                         if (!future.isSuccess()) {
                             fsm.sendEvent(new ErrorEvent(future.getCause()));
                         }
                     }
                 });
-                return new ConnectingState();
-            } else if (e instanceof CloseEvent) {
-                factory.releaseExternalResources();
-                ((CloseEvent) e).success(null);
-                return this;
-            } else {
-                super.handleEvent(fsm, e);
-                return this;
-            }
+            return new ConnectingState(fsm);
+        }
+
+        public State handleEvent(CloseEvent e) {
+            factory.releaseExternalResources();
+            e.success(null);
+            return this;
         }
     }
 
     private class ConnectingState extends BaseState {
+        ConnectingState(Fsm fsm) {
+            super(fsm);
+        }
 
-        @Override
-        public State handleEvent(Fsm fsm, Event e) {
-            if (e instanceof UserEvent) {
-                fsm.deferUserEvent((UserEvent) e);
-                return this;
-            } else if (e instanceof ConnectedEvent) {
-                ConnectedEvent ce = (ConnectedEvent) e;
-                return new ConnectedState(ce.getParam());
-            } else if (e instanceof ErrorEvent) {
-                LOG.error("Error connecting", ((ErrorEvent) e).getParam());
-                return new DisconnectedState();
-            } else {
-                return super.handleEvent(fsm, e);
-            }
+        public State handleEvent(UserEvent e) {
+            fsm.deferEvent(e);
+            return this;
+        }
+
+        public State handleEvent(ConnectedEvent e) {
+            return new ConnectedState(fsm, e.getParam());
+        }
+
+        public State handleEvent(ErrorEvent e) {
+            LOG.error("Error connecting", ((ErrorEvent) e).getParam());
+            return new DisconnectedState(fsm);
         }
     }
 
@@ -282,7 +296,8 @@ class TSOClientImpl extends TSOClient {
                 .newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("tso-client-timeout")
                         .build());
 
-        ConnectedState(Channel channel) {
+        ConnectedState(Fsm fsm, Channel channel) {
+            super(fsm);
             this.channel = channel;
             timestampRequests = new ArrayDeque<RequestEvent>();
             commitRequests = new HashMap<Long, RequestEvent>();
@@ -347,37 +362,42 @@ class TSOClientImpl extends TSOClient {
             }
         }
 
-        @Override
-        public State handleEvent(Fsm fsm, Event e) {
-            if (e instanceof TimestampRequestTimeoutEvent) {
-                if (!timestampRequests.isEmpty()) {
-                    queueRetryOrError(fsm, timestampRequests.remove());
-                }
-                return this;
-            } else if (e instanceof CommitRequestTimeoutEvent) {
-                long startTimestamp = ((CommitRequestTimeoutEvent) e).getStartTimestamp();
-                if (commitRequests.containsKey(startTimestamp)) {
-                    queueRetryOrError(fsm, commitRequests.remove(startTimestamp));
-                }
-                return this;
-            } else if (e instanceof CloseEvent) {
-                timeoutExecutor.shutdownNow();
-                closeChannelAndErrorRequests();
-                fsm.deferUserEvent((CloseEvent) e);
-                return new ClosingState();
-            } else if (e instanceof RequestEvent) {
-                sendRequest(fsm, (RequestEvent) e);
-                return this;
-            } else if (e instanceof ResponseEvent) {
-                handleResponse((ResponseEvent) e);
-                return this;
-            } else if (e instanceof ErrorEvent) {
-                timeoutExecutor.shutdownNow();
-                handleError(fsm);
-                return new ClosingState();
-            } else {
-                return super.handleEvent(fsm, e);
+        public State handleEvent(TimestampRequestTimeoutEvent e) {
+            if (!timestampRequests.isEmpty()) {
+                queueRetryOrError(fsm, timestampRequests.remove());
             }
+            return this;
+        }
+
+        public State handleEvent(CommitRequestTimeoutEvent e) {
+            long startTimestamp = e.getStartTimestamp();
+            if (commitRequests.containsKey(startTimestamp)) {
+                queueRetryOrError(fsm, commitRequests.remove(startTimestamp));
+            }
+            return this;
+        }
+
+        public State handleEvent(CloseEvent e) {
+            timeoutExecutor.shutdownNow();
+            closeChannelAndErrorRequests();
+            fsm.deferEvent(e);
+            return new ClosingState(fsm);
+        }
+
+        public State handleEvent(RequestEvent e) {
+            sendRequest(fsm, e);
+            return this;
+        }
+
+        public State handleEvent(ResponseEvent e) {
+            handleResponse(e);
+            return this;
+        }
+
+        public State handleEvent(ErrorEvent e) {
+            timeoutExecutor.shutdownNow();
+            handleError(fsm);
+            return new ClosingState(fsm);
         }
 
         private void handleError(Fsm fsm) {
@@ -425,22 +445,37 @@ class TSOClientImpl extends TSOClient {
     }
 
     private class ClosingState extends BaseState {
-        @Override
-        public State handleEvent(Fsm fsm, Event e) {
-            if (e instanceof TimestampRequestTimeoutEvent
-                    || e instanceof CommitRequestTimeoutEvent
-                    || e instanceof ErrorEvent
-                    || e instanceof ResponseEvent) {
-                // Ignored. They will be retried or errored
-                return this;
-            } else if (e instanceof UserEvent) {
-                fsm.deferUserEvent((UserEvent) e);
-                return this;
-            } else if (e instanceof ChannelClosedEvent) {
-                return new DisconnectedState();
-            } else {
-                return super.handleEvent(fsm, e);
-            }
+        ClosingState(Fsm fsm) {
+            super(fsm);
+        }
+
+        public State handleEvent(TimestampRequestTimeoutEvent e) {
+            // Ignored. They will be retried or errored
+            return this;
+        }
+
+        public State handleEvent(CommitRequestTimeoutEvent e) {
+            // Ignored. They will be retried or errored
+            return this;
+        }
+
+        public State handleEvent(ErrorEvent e) {
+            // Ignored. They will be retried or errored
+            return this;
+        }
+
+        public State handleEvent(ResponseEvent e) {
+            // Ignored. They will be retried or errored
+            return this;
+        }
+
+        public State handleEvent(UserEvent e) {
+            fsm.deferEvent(e);
+            return this;
+        }
+
+        public State handleEvent(ChannelClosedEvent e) {
+            return new DisconnectedState(fsm);
         }
     }
 
