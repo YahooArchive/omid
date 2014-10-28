@@ -20,6 +20,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.proto.TSOProto;
+import com.yahoo.omid.tsoclient.TSOClientImpl.RequestAndTimeout;
 import com.yahoo.statemachine.StateMachine.*;
 
 import org.apache.commons.configuration.Configuration;
@@ -30,6 +31,9 @@ import org.jboss.netty.handler.codec.frame.LengthFieldBasedFrameDecoder;
 import org.jboss.netty.handler.codec.frame.LengthFieldPrepender;
 import org.jboss.netty.handler.codec.protobuf.ProtobufDecoder;
 import org.jboss.netty.handler.codec.protobuf.ProtobufEncoder;
+import org.jboss.netty.util.HashedWheelTimer;
+import org.jboss.netty.util.Timeout;
+import org.jboss.netty.util.TimerTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -287,47 +291,71 @@ class TSOClientImpl extends TSOClient {
         }
     }
 
+    static class RequestAndTimeout {
+        final RequestEvent event;
+        final Timeout timeout;
+
+        RequestAndTimeout(RequestEvent event, Timeout timeout) {
+            this.event = event;
+            this.timeout = timeout;
+        }
+
+        RequestEvent getRequest() {
+            return event;
+        }
+
+        Timeout getTimeout() {
+            return timeout;
+        }
+    }
+
     class ConnectedState extends BaseState {
-        final Queue<RequestEvent> timestampRequests;
-        final Map<Long, RequestEvent> commitRequests;
+        final Queue<RequestAndTimeout> timestampRequests;
+        final Map<Long, RequestAndTimeout> commitRequests;
         final Channel channel;
 
-        final ScheduledExecutorService timeoutExecutor = Executors
-                .newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("tso-client-timeout")
-                        .build());
+        final HashedWheelTimer timeoutExecutor = new HashedWheelTimer(
+                new ThreadFactoryBuilder().setNameFormat("tso-client-timeout").build());
 
         ConnectedState(Fsm fsm, Channel channel) {
             super(fsm);
             this.channel = channel;
-            timestampRequests = new ArrayDeque<RequestEvent>();
-            commitRequests = new HashMap<Long, RequestEvent>();
+            timestampRequests = new ArrayDeque<RequestAndTimeout>();
+            commitRequests = new HashMap<Long, RequestAndTimeout>();
+        }
+
+        private Timeout newTimeout(final Event timeoutEvent) {
+            if (requestTimeoutMs > 0) {
+                return timeoutExecutor.newTimeout(new TimerTask() {
+                        @Override
+                        public void run(Timeout timeout) {
+                            fsm.sendEvent(timeoutEvent);
+                        }
+                    }, requestTimeoutMs, TimeUnit.MILLISECONDS);
+            } else {
+                return null;
+            }
         }
 
         private void sendRequest(final Fsm fsm, RequestEvent request) {
             TSOProto.Request req = request.getRequest();
 
-            final Event timeoutEvent;
             if (req.hasTimestampRequest()) {
-                timestampRequests.add(request);
-                timeoutEvent = new TimestampRequestTimeoutEvent();
+                timestampRequests.add(
+                        new RequestAndTimeout(request,
+                                newTimeout(new TimestampRequestTimeoutEvent())));
             } else if (req.hasCommitRequest()) {
                 TSOProto.CommitRequest commitReq = req.getCommitRequest();
-                commitRequests.put(commitReq.getStartTimestamp(), request);
-                timeoutEvent = new CommitRequestTimeoutEvent(commitReq.getStartTimestamp());
+                commitRequests.put(commitReq.getStartTimestamp(),
+                        new RequestAndTimeout(request,
+                                newTimeout(new CommitRequestTimeoutEvent(
+                                                   commitReq.getStartTimestamp()))));
             } else {
-                timeoutEvent = null;
                 request.error(new IllegalArgumentException("Unknown request type"));
                 return;
             }
             ChannelFuture f = channel.write(req);
-            if (requestTimeoutMs > 0) {
-                timeoutExecutor.schedule(new Runnable() {
-                    @Override
-                    public void run() {
-                        fsm.sendEvent(timeoutEvent);
-                    }
-                }, requestTimeoutMs, TimeUnit.MILLISECONDS);
-            }
+
             f.addListener(new ChannelFutureListener() {
                 public void operationComplete(ChannelFuture future) {
                     if (!future.isSuccess()) {
@@ -344,27 +372,37 @@ class TSOClientImpl extends TSOClient {
                     LOG.debug("Received timestamp response when no requests outstanding");
                     return;
                 }
-                RequestEvent e = timestampRequests.remove();
-                e.success(resp.getTimestampResponse().getStartTimestamp());
+                RequestAndTimeout e = timestampRequests.remove();
+                e.getRequest().success(resp.getTimestampResponse().getStartTimestamp());
+                if (e.getTimeout() != null) {
+                    e.getTimeout().cancel();
+                }
             } else if (resp.hasCommitResponse()) {
                 long startTimestamp = resp.getCommitResponse().getStartTimestamp();
-                RequestEvent e = commitRequests.remove(startTimestamp);
+                RequestAndTimeout e = commitRequests.remove(startTimestamp);
                 if (e == null) {
                     LOG.debug("Received commit response for request that doesn't exist."
                             + " Start timestamp: {}", startTimestamp);
                     return;
                 }
+                if (e.getTimeout() != null) {
+                    e.getTimeout().cancel();
+                }
                 if (resp.getCommitResponse().getAborted()) {
-                    e.error(new AbortException());
+                    e.getRequest().error(new AbortException());
                 } else {
-                    e.success(resp.getCommitResponse().getCommitTimestamp());
+                    e.getRequest().success(resp.getCommitResponse().getCommitTimestamp());
                 }
             }
         }
 
         public State handleEvent(TimestampRequestTimeoutEvent e) {
             if (!timestampRequests.isEmpty()) {
-                queueRetryOrError(fsm, timestampRequests.remove());
+                RequestAndTimeout r = timestampRequests.remove();
+                if (r.getTimeout() != null) {
+                    r.getTimeout().cancel();
+                }
+                queueRetryOrError(fsm, r.getRequest());
             }
             return this;
         }
@@ -372,13 +410,17 @@ class TSOClientImpl extends TSOClient {
         public State handleEvent(CommitRequestTimeoutEvent e) {
             long startTimestamp = e.getStartTimestamp();
             if (commitRequests.containsKey(startTimestamp)) {
-                queueRetryOrError(fsm, commitRequests.remove(startTimestamp));
+                RequestAndTimeout r = commitRequests.remove(startTimestamp);
+                if (r.getTimeout() != null) {
+                    r.getTimeout().cancel();
+                }
+                queueRetryOrError(fsm, r.getRequest());
             }
             return this;
         }
 
         public State handleEvent(CloseEvent e) {
-            timeoutExecutor.shutdownNow();
+            timeoutExecutor.stop();
             closeChannelAndErrorRequests();
             fsm.deferEvent(e);
             return new ClosingState(fsm);
@@ -395,19 +437,26 @@ class TSOClientImpl extends TSOClient {
         }
 
         public State handleEvent(ErrorEvent e) {
-            timeoutExecutor.shutdownNow();
+            timeoutExecutor.stop();
             handleError(fsm);
             return new ClosingState(fsm);
         }
 
         private void handleError(Fsm fsm) {
             while (timestampRequests.size() > 0) {
-                queueRetryOrError(fsm, timestampRequests.remove());
+                RequestAndTimeout r = timestampRequests.remove();
+                if (r.getTimeout() != null) {
+                    r.getTimeout().cancel();
+                }
+                queueRetryOrError(fsm, r.getRequest());
             }
-            Iterator<Map.Entry<Long, RequestEvent>> iter = commitRequests.entrySet().iterator();
+            Iterator<Map.Entry<Long, RequestAndTimeout>> iter = commitRequests.entrySet().iterator();
             while (iter.hasNext()) {
-                RequestEvent e = iter.next().getValue();
-                queueRetryOrError(fsm, e);
+                RequestAndTimeout r = iter.next().getValue();
+                if (r.getTimeout() != null) {
+                    r.getTimeout().cancel();
+                }
+                queueRetryOrError(fsm, r.getRequest());
                 iter.remove();
             }
             channel.close();
@@ -435,11 +484,17 @@ class TSOClientImpl extends TSOClient {
 
         private void closeChannelAndErrorRequests() {
             channel.close();
-            for (RequestEvent r : timestampRequests) {
-                r.error(new ClosingException());
+            for (RequestAndTimeout r : timestampRequests) {
+                if (r.getTimeout() != null) {
+                    r.getTimeout().cancel();
+                }
+                r.getRequest().error(new ClosingException());
             }
-            for (RequestEvent r : commitRequests.values()) {
-                r.error(new ClosingException());
+            for (RequestAndTimeout r : commitRequests.values()) {
+                if (r.getTimeout() != null) {
+                    r.getTimeout().cancel();
+                }
+                r.getRequest().error(new ClosingException());
             }
         }
     }
