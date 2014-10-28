@@ -1,0 +1,18 @@
+PRODUCT_NAME = `echo omid_$(POM_ARTIFACT_ID) |  tr -s ' ' | tr '-' '_'`
+SRCPATH=`pwd`
+VERSION = `echo $POM_VERSION |  tr -s ' ' | tr '-' '_'`
+SHORT_DESC = $(POM_DESCRIPTION)
+LONG_DESC = `cat ../README.md`
+CUSTODIAN = sieve-all@yahoo-inc.com https://git.corp.yahoo.com/scalable-computing/omid/tree/omid2
+SRCDIRS = .
+PACKAGE_OS_SPECIFIC = no
+#YMAVEN_TRANSITIVE_ENABLED
+
+YINST bug-product Omid
+YINST bug-component General
+
+LIB_JARS = lib/jars
+
+f - - - $(LIB_JARS)/$(POM_ARTIFACT_ID).jar      target/$(POM_ARTIFACT_ID).jar
+f - - - $(LIB_JARS)/$(POM_ARTIFACT_ID).pom      pom.xml
+

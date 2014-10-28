@@ -106,3 +106,35 @@ public class Example {
     }
 }
 ```
+
+HBase Co-processor Usage
+------------------------
+Omid2 includes an HBase co-processor that operates during compactions (minor and major) and performs
+data cleanup. Specifically, it does the following:
+ * Cleans up garbage data from aborted transactions
+ * Purges deleted cells. Omid deletes work by placing a special tombstone marker in cells. The compactor
+   detects these and actually purges data when it is safe to do so (i.e. when there are no committable transactions
+   that may read the data).
+ * 'Heals' committed cells for which the writer failed to write shadow cells.
+
+To deploy the co-processor, the co-processor jar must be placed in a location (typically on HDFS) that is accessible
+by HBase region servers. The co-processor may then be enabled on a transactional table by the following steps:
+ * Add a co-processor specification to the table via a "co-processor attribute". The co-processor spec may (and usually will)
+   also include the name of the Omid commit table.
+ * Add an "OMID_ENABLED => true" flag to any column families which the co-processor should work on.
+ * Disable and re-enable the table.
+
+Sample co-processor enabled table:
+```
+'omid_enabled_table', {TABLE_ATTRIBUTES =>
+   {coprocessor$1 => 'hdfs:///hbase/co_processor/omid/omid2-hbase-coprocessor-2.2.11.jar|
+                      com.yahoo.omid.transaction.OmidCompactor|1001|
+                      omid.committable.tablename=ns:OMID_COMMIT_TABLE},
+   {NAME => 'n', DATA_BLOCK_ENCODING => 'NONE', BLOOMFILTER => 'ROW', REPLICATION_SCOPE => '0',
+    COMPRESSION => 'LZO', VERSIONS => '2147483647', TTL => 'FOREVER', MIN_VERSIONS => '0',
+    KEEP_DELETED_CELLS => 'false', BLOCKSIZE => '65536', IN_MEMORY => 'true', BLOCKCACHE => 'true'},
+   {NAME => 's', DATA_BLOCK_ENCODING => 'PREFIX', BLOOMFILTER => 'ROW', REPLICATION_SCOPE => '0',
+    COMPRESSION => 'LZO', VERSIONS => '1', TTL => 'FOREVER', MIN_VERSIONS => '0',
+    KEEP_DELETED_CELLS => 'false', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true',
+    METADATA => {'OMID_ENABLED' => 'true'}}
+```
