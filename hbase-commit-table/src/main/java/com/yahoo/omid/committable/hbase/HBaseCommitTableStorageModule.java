@@ -19,8 +19,4 @@ public class HBaseCommitTableStorageModule extends AbstractModule {
 
     }
 
-    @Provides
-    Configuration provideHBaseConfiguration() {
-        return HBaseConfiguration.create();
-    }
 }

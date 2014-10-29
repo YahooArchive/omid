@@ -21,9 +21,4 @@ public class HBaseTimestampStorageModule extends AbstractModule {
 
     }
 
-    @Provides
-    Configuration provideHBaseConfiguration() {
-        return HBaseConfiguration.create();
-    }
-
 }

@@ -9,6 +9,8 @@ import java.util.concurrent.Executors;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFactory;
@@ -20,9 +22,11 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.AbstractIdleService;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
+import com.google.inject.Provides;
 import com.yahoo.omid.committable.hbase.HBaseCommitTableStorageModule;
 import com.yahoo.omid.committable.hbase.HBaseLogin;
 import com.yahoo.omid.metrics.CodahaleMetricsConfig;
@@ -59,6 +63,16 @@ public class TSOServer extends AbstractIdleService {
         return injector.getInstance(TSOServer.class);
     }
 
+    private static class HBaseConfigModule extends AbstractModule {
+        @Override
+        protected void configure() { }
+
+        @Provides
+        public Configuration provideHBaseConfig() {
+            return HBaseConfiguration.create();
+        }
+    }
+
     // NOTE: The guice config is in here following the best practices in:
     // https://code.google.com/p/google-guice/wiki/AvoidConditionalLogicInModules
     // This is due to the fact that the target storage for timestamps or
@@ -78,6 +92,7 @@ public class TSOServer extends AbstractIdleService {
             addTSOModule();
             addTimestampStorageModule();
             addCommitTableStorageModule();
+            maybeAddHBaseConfigModule();
             return guiceModules;
         }
 
@@ -105,7 +120,6 @@ public class TSOServer extends AbstractIdleService {
             switch (timestampStore) {
             case HBASE:
                 guiceModules.add(new HBaseTimestampStorageModule());
-                HBaseLogin.loginIfNeeded(config.getLoginFlags());
                 break;
             case MEMORY:
                 guiceModules.add(new InMemoryTimestampStorageModule());
@@ -124,7 +138,6 @@ public class TSOServer extends AbstractIdleService {
             switch (commitTableStore) {
             case HBASE:
                 guiceModules.add(new HBaseCommitTableStorageModule());
-                HBaseLogin.loginIfNeeded(config.getLoginFlags());
                 break;
             case MEMORY:
                 guiceModules.add(new InMemoryCommitTableStorageModule());
@@ -133,6 +146,14 @@ public class TSOServer extends AbstractIdleService {
                 throw new IllegalArgumentException("Unknown commit table store" + commitTableStore);
             }
             LOG.info("\t* Commit table store set to {}", commitTableStore);
+        }
+
+        private void maybeAddHBaseConfigModule() throws IOException {
+            if (config.getCommitTableStore() == CommitTableStore.HBASE ||
+                    config.getTimestampStore() == TimestampStore.HBASE) {
+                guiceModules.add(new HBaseConfigModule());
+                HBaseLogin.loginIfNeeded(config.getLoginFlags());
+            }
         }
 
     }
