@@ -105,7 +105,7 @@
               <include>com.yahoo.omid:*</include>
             </includes>
           </artifactSet>
-          <finalName>omid2-hbase-coprocessor-${project.version}</finalName>
+          <finalName>omid-hbase-coprocessor-${project.version}</finalName>
         </configuration>
       </plugin>
     </plugins>
