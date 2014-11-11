@@ -19,7 +19,7 @@
 
   <scm>
     <connection>scm:git:git@git.corp.yahoo.com:scalable-computing/omid.git</connection>
-    <tag>omid2</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <properties>
@@ -49,9 +49,13 @@
     <hamcrest.version>1.3</hamcrest.version>
     <curator.version>2.6.0</curator.version>
     <statemachine.version>1.0.9</statemachine.version>
+    <zookeeper.version>3.4.3</zookeeper.version>
+    <bookkeeper.version>4.3.0</bookkeeper.version>
+    <ledgerset.version>0.1.4-SNAPSHOT</ledgerset.version>
   </properties>
 
   <modules>
+    <module>common</module>
     <module>hbase-client</module>
     <module>transaction-client</module>
     <module>tso-server</module>

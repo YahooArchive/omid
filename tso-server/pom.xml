@@ -80,6 +80,11 @@
     <!-- Dependencies on Omid modules -->
     <dependency>
       <groupId>com.yahoo.omid</groupId>
+      <artifactId>common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.yahoo.omid</groupId>
       <artifactId>transaction-client</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -167,12 +172,14 @@
       <artifactId>hbase-client</artifactId>
       <version>${hbase.version}</version>
     </dependency>
+
     <!--daemon related-->
     <dependency>
       <groupId>commons-daemon</groupId>
       <artifactId>commons-daemon</artifactId>
       <version>1.0.10</version>
     </dependency>
+
     <!-- distributed comm -->
     <dependency>
       <groupId>org.apache.curator</groupId>
@@ -184,6 +191,14 @@
       <artifactId>curator-recipes</artifactId>
       <version>${curator.version}</version>
     </dependency>
+
+    <!-- log tools -->
+    <dependency>
+      <groupId>org.apache.bookkeeper</groupId>
+      <artifactId>bookkeeper-server</artifactId>
+      <version>${bookkeeper.version}</version>
+    </dependency>
+
     <!-- testing -->
     <dependency>
       <groupId>org.testng</groupId>

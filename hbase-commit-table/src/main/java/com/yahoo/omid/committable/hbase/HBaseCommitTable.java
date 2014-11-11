@@ -4,30 +4,40 @@ import static com.google.common.base.Charsets.UTF_8;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.List;
 import java.util.ArrayList;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
 
+import org.apache.bookkeeper.client.BookKeeper;
+import org.apache.bookkeeper.client.LedgerSet.MetadataStorage;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
+import com.codahale.metrics.ConsoleReporter;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricFilter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.graphite.Graphite;
+import com.codahale.metrics.graphite.GraphiteReporter;
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -36,13 +46,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.CodedInputStream;
 import com.google.protobuf.CodedOutputStream;
 import com.yahoo.omid.committable.CommitTable;
-import com.codahale.metrics.MetricFilter;
-import com.codahale.metrics.Timer;
-import com.codahale.metrics.Meter;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.ConsoleReporter;
-import com.codahale.metrics.graphite.Graphite;
-import com.codahale.metrics.graphite.GraphiteReporter;
 
 public class HBaseCommitTable implements CommitTable {
 
@@ -56,9 +59,10 @@ public class HBaseCommitTable implements CommitTable {
     static final byte[] LOW_WATERMARK_QUALIFIER = "LWC".getBytes(UTF_8);
 
     public static final String HBASE_COMMIT_TABLE_NAME_KEY = "omid.committable.tablename";
+    public static final String HBASE_COMMIT_TABLE_ENABLE_HA_KEY = "omid.committable.ha.enabled";
 
-    private final String tableName;
-    private final Configuration hbaseConfig;
+    protected final String tableName;
+    protected final Configuration hbaseConfig;
     private final KeyGenerator keygen;
 
     /**
@@ -71,11 +75,15 @@ public class HBaseCommitTable implements CommitTable {
         this(hbaseConfig, config.getTableName(), defaultKeyGenerator());
     }
 
-    private HBaseCommitTable(Configuration hbaseConfig, String tableName, KeyGenerator keygen) {
+    protected HBaseCommitTable(Configuration hbaseConfig, String tableName, KeyGenerator keygen) {
+
         this.hbaseConfig = hbaseConfig;
         this.tableName = tableName;
         this.keygen = keygen;
+
     }
+
+    // ************************* Reader and writer *************************
 
     public class HBaseWriter implements Writer {
         final HTable table;
@@ -84,6 +92,8 @@ public class HBaseCommitTable implements CommitTable {
             table = new HTable(hbaseConfig, tableName);
             table.setAutoFlush(false, true);
         }
+
+        // Writer Implementation
 
         @Override
         public void addCommittedTransaction(long startTimestamp, long commitTimestamp) throws IOException {
@@ -119,6 +129,7 @@ public class HBaseCommitTable implements CommitTable {
         public void close() throws IOException {
             table.close();
         }
+
     }
 
     public class HBaseClient implements Client, Runnable {
@@ -322,6 +333,8 @@ public class HBaseCommitTable implements CommitTable {
         }
     }
 
+    // ******************************* Getters ********************************
+
     @Override
     public ListenableFuture<Writer> getWriter() {
         SettableFuture<Writer> f = SettableFuture.<Writer> create();
@@ -344,6 +357,8 @@ public class HBaseCommitTable implements CommitTable {
         return f;
     }
 
+    // *************************** Helper methods *****************************
+
     protected byte[] startTimestampToKey(long startTimestamp) throws IOException {
         return keygen.startTimestampToKey(startTimestamp);
     }
@@ -364,6 +379,8 @@ public class HBaseCommitTable implements CommitTable {
         long diff = cis.readInt64();
         return startTimestamp + diff;
     }
+
+    // *************************** Key Generator ******************************
 
     /**
      * Implementations of this interface determine how keys are spread in HBase
@@ -466,13 +483,12 @@ public class HBaseCommitTable implements CommitTable {
 
     }
 
-
     static class SeqKeyGenerator implements KeyGenerator {
         @Override
         public byte[] startTimestampToKey(long startTimestamp) throws IOException {
             // Convert to a byte array with big endian format
             byte[] bytes = new byte[8];
-           
+
             bytes[0] = (byte) ((startTimestamp >> 56) & 0xFF);
             bytes[1] = (byte) ((startTimestamp >> 48) & 0xFF);
             bytes[2] = (byte) ((startTimestamp >> 40) & 0xFF);
@@ -501,6 +517,12 @@ public class HBaseCommitTable implements CommitTable {
     }
 
     static class Config {
+        @Parameter(names = "-enableHA", description = "Enable HA instrumentation for commit table")
+        boolean isHAEnabled = false;
+
+        @Parameter(names = "-zkCluster", description = "Zookeeper cluster in form: <host>:<port>,<host>,<port>,...")
+        String zkCluster = "localhost:2181";
+
         @Parameter(names = "-fullRandomAlgo", description = "Full random algo")
         boolean fullRandomAlgo = false;
 
@@ -545,7 +567,16 @@ public class HBaseCommitTable implements CommitTable {
 
         HBaseLogin.loginIfNeeded(config.loginFlags);
 
-        CommitTable commitTable = new HBaseCommitTable(hbaseConfig, COMMIT_TABLE_DEFAULT_NAME, keygen);
+        CommitTable commitTable;
+        if (config.isHAEnabled) {
+            CuratorFramework zk = HBaseHACommitTable.provideZookeeperClient(config.zkCluster);
+            MetadataStorage metadataStore = new ZKBasedMetadataStorage(zk);
+            BookKeeper bk = HBaseHACommitTable.provideBookKeeperClient(config.zkCluster);
+            commitTable = new HBaseHACommitTable(hbaseConfig, COMMIT_TABLE_DEFAULT_NAME, keygen, bk, metadataStore);
+        } else {
+            commitTable = new HBaseCommitTable(hbaseConfig, COMMIT_TABLE_DEFAULT_NAME, keygen);
+        }
+
         CommitTable.Writer writer = commitTable.getWriter().get();
 
         MetricRegistry metrics = new MetricRegistry();
@@ -584,4 +615,5 @@ public class HBaseCommitTable implements CommitTable {
             }
         }
     }
+
 }
