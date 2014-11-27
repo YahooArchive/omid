@@ -1,14 +1,28 @@
 package com.yahoo.omid.tsoclient;
 
-import com.codahale.metrics.MetricRegistry;
-import com.google.common.util.concurrent.AbstractFuture;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.proto.TSOProto;
-import com.yahoo.statemachine.StateMachine.*;
+import java.net.InetSocketAddress;
+import java.util.ArrayDeque;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.configuration.Configuration;
 import org.jboss.netty.bootstrap.ClientBootstrap;
-import org.jboss.netty.channel.*;
+import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelFactory;
+import org.jboss.netty.channel.ChannelFuture;
+import org.jboss.netty.channel.ChannelFutureListener;
+import org.jboss.netty.channel.ChannelHandlerContext;
+import org.jboss.netty.channel.ChannelPipeline;
+import org.jboss.netty.channel.ChannelStateEvent;
+import org.jboss.netty.channel.ExceptionEvent;
+import org.jboss.netty.channel.MessageEvent;
+import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.handler.codec.frame.LengthFieldBasedFrameDecoder;
 import org.jboss.netty.handler.codec.frame.LengthFieldPrepender;
@@ -20,16 +34,21 @@ import org.jboss.netty.util.TimerTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetSocketAddress;
-import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import com.codahale.metrics.MetricRegistry;
+import com.google.common.util.concurrent.AbstractFuture;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.yahoo.omid.proto.TSOProto;
+import com.yahoo.statemachine.StateMachine.DeferrableEvent;
+import com.yahoo.statemachine.StateMachine.Event;
+import com.yahoo.statemachine.StateMachine.Fsm;
+import com.yahoo.statemachine.StateMachine.FsmImpl;
+import com.yahoo.statemachine.StateMachine.State;
 
 /**
  * Communication endpoint for TSO clients.
  */
 class TSOClientImpl extends TSOClient {
+
     private static final Logger LOG = LoggerFactory.getLogger(TSOClient.class);
 
     private ChannelFactory factory;
@@ -44,6 +63,7 @@ class TSOClientImpl extends TSOClient {
     private final MetricRegistry metrics;
 
     TSOClientImpl(Configuration conf, MetricRegistry metrics) {
+
         this.metrics = metrics;
 
         // Start client with Nb of active threads = 3 as maximum.
@@ -130,6 +150,10 @@ class TSOClientImpl extends TSOClient {
         return new ForwardingTSOFuture<Void>(closeEvent);
     }
 
+    // ************************* State Machine ********************************
+
+    // ***************************** Events ***********************************
+
     private static class ParamEvent<T> implements Event {
         final T param;
 
@@ -169,7 +193,10 @@ class TSOClientImpl extends TSOClient {
     private static class CloseEvent extends UserEvent<Void> {
     }
 
-    private static class ChannelClosedEvent implements Event {
+    private static class ChannelClosedEvent extends ParamEvent<Throwable> {
+        ChannelClosedEvent(Throwable t) {
+            super(t);
+        }
     }
 
     private static class HandshakeTimeoutEvent implements Event {
@@ -223,6 +250,8 @@ class TSOClientImpl extends TSOClient {
         }
     }
 
+    // ***************************** States ***********************************
+
     private class BaseState extends State {
         BaseState(Fsm fsm) {
             super(fsm);
@@ -234,7 +263,7 @@ class TSOClientImpl extends TSOClient {
         }
     }
 
-    private class DisconnectedState extends BaseState {
+    class DisconnectedState extends BaseState {
         DisconnectedState(Fsm fsm) {
             super(fsm);
         }
@@ -261,6 +290,7 @@ class TSOClientImpl extends TSOClient {
     }
 
     private class ConnectingState extends BaseState {
+
         ConnectingState(Fsm fsm) {
             super(fsm);
         }
@@ -274,10 +304,15 @@ class TSOClientImpl extends TSOClient {
             return new HandshakingState(fsm, e.getParam());
         }
 
+        public State handleEvent(ChannelClosedEvent e) {
+            return new ConnectionFailedState(fsm, e.getParam());
+        }
+
         public State handleEvent(ErrorEvent e) {
             LOG.error("Error connecting", e.getParam());
             return new DisconnectedState(fsm);
         }
+
     }
 
     static class RequestAndTimeout {
@@ -299,6 +334,7 @@ class TSOClientImpl extends TSOClient {
     }
 
     private class HandshakingState extends BaseState {
+
         final Channel channel;
 
         final HashedWheelTimer timeoutExecutor = new HashedWheelTimer(
@@ -372,12 +408,11 @@ class TSOClientImpl extends TSOClient {
 
     }
 
-
-    private class HandshakeFailedState extends BaseState {
+    private class ConnectionFailedState extends BaseState {
 
         Throwable exception;
 
-        HandshakeFailedState(Fsm fsm, Throwable exception) {
+        ConnectionFailedState(Fsm fsm, Throwable exception) {
             super(fsm);
             this.exception = exception;
         }
@@ -387,12 +422,23 @@ class TSOClientImpl extends TSOClient {
             return this;
         }
 
+        public State handleEvent(ErrorEvent e) {
+            return new DisconnectedState(fsm);
+        }
+
         public State handleEvent(ChannelClosedEvent e) {
             return new DisconnectedState(fsm);
         }
 
     }
 
+    private class HandshakeFailedState extends ConnectionFailedState {
+
+        HandshakeFailedState(Fsm fsm, Throwable exception) {
+            super(fsm, exception);
+        }
+
+    }
 
     class ConnectedState extends BaseState {
         final Queue<RequestAndTimeout> timestampRequests;
@@ -647,7 +693,7 @@ class TSOClientImpl extends TSOClient {
         @Override
         public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e)
                 throws Exception {
-            fsm.sendEvent(new ChannelClosedEvent());
+            fsm.sendEvent(new ChannelClosedEvent(new ConnectionException()));
         }
 
         @Override
