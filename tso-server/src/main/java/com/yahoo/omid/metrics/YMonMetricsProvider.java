@@ -152,8 +152,8 @@ public class YMonMetricsProvider extends AbstractScheduledService implements Met
         private long startTimeInNs;
 
         public YMonTimerWrapper(String name) {
-            meter = meter(name + ":rate");
-            histogram = histogram(name + ":latency");
+            meter = meter(name + "_rate");
+            histogram = histogram(name + "_latency");
         }
 
         @Override
