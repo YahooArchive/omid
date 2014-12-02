@@ -13,17 +13,6 @@
   <packaging>jar</packaging>
   <name>Omid HBase Commit Table Implementation</name>
 
-  <repositories>
-    <repository>
-      <id>local-release</id>
-      <url>http://artifactory.ops.yahoo.com:9999/artifactory/maven-local-release/</url>
-    </repository>
-    <repository>
-      <id>local-snapshot</id>
-      <url>http://artifactory.ops.yahoo.com:9999/artifactory/maven-local-snapshot/</url>
-    </repository>
-  </repositories>
-
   <dependencies>
 
     <!-- Dependencies on Omid modules -->
