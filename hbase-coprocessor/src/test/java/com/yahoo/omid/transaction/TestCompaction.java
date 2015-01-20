@@ -1,8 +1,5 @@
 package com.yahoo.omid.transaction;
 
-
-
-
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -14,11 +11,9 @@ import com.yahoo.omid.tsoclient.TSOClient;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.hadoop.conf.Configuration;
@@ -537,6 +532,105 @@ public class TestCompaction {
                  .getOnlineRegions(TableName.valueOf(TEST_TABLE))) {
             r.flushcache();
         }
+    }
+
+    @Test
+    public void testOldCellsAreDiscardedAfterCompaction() throws Exception {
+        byte[] rowId = Bytes.toBytes("row");
+
+        // Create 3 transactions modifying the same cell in a particular row
+        HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
+        Put put1 = new Put(rowId);
+        put1.add(fam, qual, Bytes.toBytes("testValue 1"));
+        txTable.put(tx1, put1);
+        tm.commit(tx1);
+
+        HBaseTransaction tx2 = (HBaseTransaction) tm.begin();
+        Put put2 = new Put(rowId);
+        put2.add(fam, qual, Bytes.toBytes("testValue 2"));
+        txTable.put(tx2, put2);
+        tm.commit(tx2);
+
+        HBaseTransaction tx3 = (HBaseTransaction) tm.begin();
+        Put put3 = new Put(rowId);
+        put3.add(fam, qual, Bytes.toBytes("testValue 3"));
+        txTable.put(tx3, put3);
+        tm.commit(tx3);
+
+        // Before compaction, the three timestamped values for the cell should be there
+        TTableCellGetterAdapter getter = new TTableCellGetterAdapter(txTable);
+        assertTrue("Put cell of Tx1 should be there",
+                HBaseUtils.hasCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
+        assertTrue("Put shadow cell of Tx1 should be there",
+                HBaseUtils.hasShadowCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
+        assertTrue("Put cell of Tx2 cell should be there",
+                HBaseUtils.hasCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
+        assertTrue("Put shadow cell of Tx2 should be there",
+                HBaseUtils.hasShadowCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
+        assertTrue("Put cell of Tx3 cell should be there",
+                HBaseUtils.hasCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
+        assertTrue("Put shadow cell of Tx3 should be there",
+                HBaseUtils.hasShadowCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
+
+        // Compact
+        HBaseTransaction lwmTx = (HBaseTransaction) tm.begin();
+        compactWithLWM(lwmTx.getStartTimestamp());
+
+        // After compaction, only the last value for the cell should have survived
+        assertFalse("Put cell of Tx1 should not be there",
+                HBaseUtils.hasCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
+        assertFalse("Put shadow cell of Tx1 should not be there",
+                HBaseUtils.hasShadowCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
+        assertFalse("Put cell of Tx2 should not be there",
+                HBaseUtils.hasCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
+        assertFalse("Put shadow cell of Tx2 should not be there",
+                HBaseUtils.hasShadowCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
+        assertTrue("Put cell of Tx3 cell should be there",
+                HBaseUtils.hasCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
+        assertTrue("Put shadow cell of Tx3 should be there",
+                HBaseUtils.hasShadowCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
+
+        // A new transaction after compaction should read the last value written
+        HBaseTransaction newTx1 = (HBaseTransaction) tm.begin();
+        Get newGet1 = new Get(rowId);
+        newGet1.addColumn(fam, qual);
+        Result result = txTable.get(newTx1, newGet1);
+        assertEquals(Bytes.toBytes("testValue 3"), result.getValue(fam, qual));
+        // Write a new value
+        Put newPut1 = new Put(rowId);
+        newPut1.add(fam, qual, Bytes.toBytes("new testValue 1"));
+        txTable.put(newTx1, newPut1);
+
+        // Start a second new transaction
+        HBaseTransaction newTx2 = (HBaseTransaction) tm.begin();
+        // Commit first of the new tx
+        tm.commit(newTx1);
+
+        // The second transaction should still read the previous value
+        Get newGet2 = new Get(rowId);
+        newGet2.addColumn(fam, qual);
+        result = txTable.get(newTx2, newGet2);
+        assertEquals(Bytes.toBytes("testValue 3"), result.getValue(fam, qual));
+        tm.commit(newTx2);
+
+        // Only two values -the new written by newTx1 and the last value
+        // for the cell after compaction- should have survived
+        assertFalse("Put cell of Tx1 should not be there",
+                HBaseUtils.hasCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
+        assertFalse("Put shadow cell of Tx1 should not be there",
+                HBaseUtils.hasShadowCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
+        assertFalse("Put cell of Tx2 should not be there",
+                HBaseUtils.hasCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
+        assertFalse("Put shadow cell of Tx2 should not be there",
+                HBaseUtils.hasShadowCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
+        assertTrue("Put cell of Tx3 cell should be there",
+                HBaseUtils.hasCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
+        assertTrue("Put shadow cell of Tx3 should be there",
+                HBaseUtils.hasShadowCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
+        assertTrue("Put cell of NewTx1 cell should be there",
+                HBaseUtils.hasCell(rowId, fam, qual, newTx1.getStartTimestamp(), getter));
+        assertTrue("Put shadow cell of NewTx1 should be there",
+                HBaseUtils.hasShadowCell(rowId, fam, qual, newTx1.getStartTimestamp(), getter));
     }
 
     /**

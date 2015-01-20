@@ -8,8 +8,10 @@ import java.util.Arrays;
 
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.util.Bytes;
 
 public class HBaseUtils {
 
@@ -131,4 +133,24 @@ public class HBaseUtils {
         return index > 0 && index == (qualifier.length - SHADOW_CELL_SUFFIX.length)
             || index2 > 0 && index2 == (qualifier.length - LEGACY_SHADOW_CELL_SUFFIX.length);
     }
+
+    /**
+     * Returns a new shadow cell created from a particular cell.
+     * @param cell
+     *            the cell to reconstruct the shadow cell from.
+     * @param shadowCellValue
+     *            the value for the new shadow cell created
+     * @return the brand-new shadow cell
+     */
+    public static Cell buildShadowCellFromCell(Cell cell, byte[] shadowCellValue) {
+        byte[] shadowCellQualifier =
+                addShadowCellSuffix(CellUtil.cloneQualifier(cell));cell.getTypeByte();
+        return new KeyValue(
+                cell.getRowArray(), cell.getRowOffset(), (int) cell.getRowLength(),
+                cell.getFamilyArray(), cell.getFamilyOffset(), (int) cell.getFamilyLength(),
+                shadowCellQualifier, 0, shadowCellQualifier.length,
+                cell.getTimestamp(), KeyValue.Type.codeToType(cell.getTypeByte()),
+                shadowCellValue, 0, shadowCellValue.length);
+    }
+
 }
