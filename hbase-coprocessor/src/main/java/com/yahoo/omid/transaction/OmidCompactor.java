@@ -1,26 +1,20 @@
 package com.yahoo.omid.transaction;
 
 import static com.yahoo.omid.committable.hbase.HBaseCommitTable.HBASE_COMMIT_TABLE_NAME_KEY;
-import static com.yahoo.omid.transaction.HBaseUtils.buildShadowCellFromCell;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Queue;
-import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.SortedMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
-import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -39,15 +33,15 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Objects;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
-import com.google.common.hash.Hashing;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.Client;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
+import com.yahoo.omid.transaction.CellUtils.CellInfo;
 
 /**
  * Garbage collector for stale data: triggered upon HBase
@@ -160,45 +154,6 @@ public class OmidCompactor extends BaseRegionObserver {
             return next(results, -1);
         }
 
-        private static void retain(List<Cell> result,
-                                   Cell cell, Optional<Cell> shadowCell) {
-            LOG.trace("Retaining cell {}", cell);
-            result.add(cell);
-            if (shadowCell.isPresent()) {
-                LOG.trace("...with shadow cell {}", cell, shadowCell.get());
-                result.add(shadowCell.get());
-            } else {
-                LOG.trace("...without shadow cell! (TS is above Low Watermark)");
-            }
-        }
-
-        private static void retainLastTimestampedCellsSaved(
-                            List<Cell> result,
-                            Map<String, CellInfo> lastTimestampedCellsInRow) {
-
-            for (CellInfo cellInfo : lastTimestampedCellsInRow.values()) {
-                LOG.trace("Retaining last cell {} with shadow cell {}",
-                        cellInfo.getCell(),
-                        cellInfo.getShadowCell());
-                result.add(cellInfo.getCell());
-                result.add(cellInfo.getShadowCell());
-            }
-
-        }
-
-        private static void skipToNextColumn(Cell cell,
-                                             PeekingIterator<Map.Entry<Cell, Optional<Cell>>> iter) {
-            while (iter.hasNext()
-                   && CellUtil.matchingFamily(iter.peek().getKey(), cell)
-                   && CellUtil.matchingQualifier(iter.peek().getKey(), cell)) {
-                iter.next();
-            }
-        }
-
-        private static boolean isTombstone(Cell cell) {
-            return CellUtil.matchingValue(cell, TTable.DELETE_TOMBSTONE);
-        }
-
         @Override
         public boolean next(List<Cell> result, int limit) throws IOException {
 
@@ -212,7 +167,7 @@ public class OmidCompactor extends BaseRegionObserver {
                 }
                 // 2) Traverse result list separating normal cells from shadow
                 // cells and building a map to access easily the shadow cells.
-                SortedMap<Cell, Optional<Cell>> cellToSc = mapCellsToShadowCells(scanResult);
+                SortedMap<Cell, Optional<Cell>> cellToSc = CellUtils.mapCellsToShadowCells(scanResult);
 
                 // 3) traverse the list of row key values isolated before and
                 // check which ones should be discarded
@@ -229,7 +184,7 @@ public class OmidCompactor extends BaseRegionObserver {
                         continue;
                     }
 
-                    if (isTombstone(cell)) {
+                    if (CellUtils.isTombstone(cell)) {
                         if (shadowCellOp.isPresent()) {
                             skipToNextColumn(cell, iter);
                         } else {
@@ -248,7 +203,7 @@ public class OmidCompactor extends BaseRegionObserver {
                         if (commitTimestamp.isPresent()) {
                             // Build the missing shadow cell...
                             byte[] shadowCellValue = Bytes.toBytes(commitTimestamp.get());
-                            Cell shadowCell = buildShadowCellFromCell(cell, shadowCellValue);
+                            Cell shadowCell = CellUtils.buildShadowCellFromCell(cell, shadowCellValue);
                             saveLastTimestampedCell(lastTimestampedCellsInRow, cell, shadowCell);
                         } else {
                             LOG.trace("Discarding cell {}", cell);
@@ -279,6 +234,12 @@ public class OmidCompactor extends BaseRegionObserver {
             internalScanner.close();
             commitTableClientQueue.add(commitTableClient);
         }
+
+        // ********************************************************************
+        // *
+        // * Private methods
+        // *
+        // ********************************************************************
 
         private void saveLastTimestampedCell(Map<String, CellInfo> lastCells, Cell cell, Cell shadowCell) {
             String cellKey = Bytes.toString(cell.getFamilyArray(), cell.getFamilyOffset(), cell.getFamilyLength())
@@ -318,7 +279,7 @@ public class OmidCompactor extends BaseRegionObserver {
             } else {
                 Get g = new Get(CellUtil.cloneRow(cell));
                 byte[] family = CellUtil.cloneFamily(cell);
-                byte[] qualifier = HBaseUtils.addShadowCellSuffix(CellUtil.cloneQualifier(cell));
+                byte[] qualifier = CellUtils.addShadowCellSuffix(CellUtil.cloneQualifier(cell));
                 g.addColumn(family, qualifier);
                 g.setTimeStamp(cell.getTimestamp());
                 Result r = hRegion.get(g);
@@ -341,150 +302,38 @@ public class OmidCompactor extends BaseRegionObserver {
 
         }
 
-        private static SortedMap<Cell, Optional<Cell>> mapCellsToShadowCells(List<Cell> result)
-                throws IOException {
-
-            SortedMap<Cell, Optional<Cell>> cellToShadowCellMap
-                = new TreeMap<Cell, Optional<Cell>>(new CellComparator());
-
-            Map<CellId, Cell> cellIdToCellMap = new HashMap<CellId, Cell>();
-            for (Cell cell : result) {
-                if (!HBaseUtils.isShadowCell(CellUtil.cloneQualifier(cell))) {
-                    CellId key = new CellId(CellUtil.cloneRow(cell),
-                                            CellUtil.cloneFamily(cell),
-                                            CellUtil.cloneQualifier(cell),
-                                            cell.getTimestamp());
-                    if (cellIdToCellMap.containsKey(key)
-                        && !cellIdToCellMap.get(key).equals(cell)) {
-                        throw new IOException(
-                                "A value is already present for key " + key +
-                                ". This should not happen. Current row elements: " + result);
-                    }
-                    LOG.trace("Adding KV key {} to map with absent value", cell);
-                    cellToShadowCellMap.put(cell, Optional.<Cell> absent());
-                    cellIdToCellMap.put(key, cell);
-                } else {
-                    byte[] originalQualifier = HBaseUtils.removeShadowCellSuffix(CellUtil.cloneQualifier(cell));
-                    CellId key = new CellId(CellUtil.cloneRow(cell),
-                                            CellUtil.cloneFamily(cell),
-                                            originalQualifier,
-                                            cell.getTimestamp());
-                    if (cellIdToCellMap.containsKey(key)) {
-                        Cell originalCell = cellIdToCellMap.get(key);
-                        LOG.trace("Adding to key {} value {}", key, cell);
-                        cellToShadowCellMap.put(originalCell, Optional.of(cell));
-                    } else {
-                        LOG.trace("Map does not contain key {}", key);
-                    }
-                }
-            }
-
-            return cellToShadowCellMap;
-        }
-
-        static class CellId {
-
-            private static final int MIN_BITS = 32;
-
-            private final byte[] row;
-            private final byte[] family;
-            private final byte[] qualifier;
-            private final long timestamp;
-
-            public CellId(
-                    byte[] row, byte[] family, byte[] qualifier, long timestamp) {
-
-                this.row = row;
-                this.family = family;
-                this.qualifier = qualifier;
-                this.timestamp = timestamp;
-            }
-
-            byte[] getRow() {
-                return row;
-            }
-
-            byte[] getFamily() {
-                return family;
-            }
-
-            byte[] getQualifier() {
-                return qualifier;
-            }
-
-            long getTimestamp() {
-                return timestamp;
-            }
-
-            @Override
-            public boolean equals(Object o) {
-                if (o == this)
-                    return true;
-                if (!(o instanceof CellId))
-                    return false;
-                CellId otherCellId = (CellId) o;
-                return Arrays.equals(otherCellId.getRow(), row)
-                        && Arrays.equals(otherCellId.getFamily(), family)
-                        && Arrays.equals(otherCellId.getQualifier(), qualifier)
-                        && otherCellId.getTimestamp() == timestamp;
-            }
-
-            @Override
-            public int hashCode() {
-                return Hashing.goodFastHash(MIN_BITS).newHasher()
-                        .putBytes(row)
-                        .putBytes(family)
-                        .putBytes(qualifier)
-                        .putLong(timestamp)
-                        .hash().asInt();
-            }
-
-            @Override
-            public String toString() {
-                return Objects.toStringHelper(this)
-                              .add("row", Bytes.toStringBinary(row))
-                              .add("family", Bytes.toString(family))
-                              .add("qualifier", Bytes.toString(qualifier))
-                              .add("ts", timestamp)
-                              .toString();
+        private void retain(List<Cell> result,
+                                   Cell cell, Optional<Cell> shadowCell) {
+            LOG.trace("Retaining cell {}", cell);
+            result.add(cell);
+            if (shadowCell.isPresent()) {
+                LOG.trace("...with shadow cell {}", cell, shadowCell.get());
+                result.add(shadowCell.get());
+            } else {
+                LOG.trace("...without shadow cell! (TS is above Low Watermark)");
             }
         }
 
-        static class CellInfo {
+        private void retainLastTimestampedCellsSaved(
+                            List<Cell> result,
+                            Map<String, CellInfo> lastTimestampedCellsInRow) {
 
-            private final Cell cell;
-            private final Cell shadowCell;
-            private final long timestamp;
-
-            CellInfo(Cell cell, Cell shadowCell) {
-                assert (cell != null && shadowCell != null);
-                assert(cell.getTimestamp() == shadowCell.getTimestamp());
-                this.cell = cell;
-                this.shadowCell = shadowCell;
-                this.timestamp = cell.getTimestamp();
+            for (CellInfo cellInfo : lastTimestampedCellsInRow.values()) {
+                LOG.trace("Retaining last cell {} with shadow cell {}",
+                        cellInfo.getCell(),
+                        cellInfo.getShadowCell());
+                result.add(cellInfo.getCell());
+                result.add(cellInfo.getShadowCell());
             }
+        }
 
-            Cell getCell() {
-                return cell;
+        private void skipToNextColumn(Cell cell,
+                                             PeekingIterator<Map.Entry<Cell, Optional<Cell>>> iter) {
+            while (iter.hasNext()
+                   && CellUtil.matchingFamily(iter.peek().getKey(), cell)
+                   && CellUtil.matchingQualifier(iter.peek().getKey(), cell)) {
+                iter.next();
             }
-
-            Cell getShadowCell() {
-                return shadowCell;
-            }
-
-            long getTimestamp() {
-                return timestamp;
-            }
-
-            @Override
-            public String toString() {
-                return Objects.toStringHelper(this)
-                              .add("ts", timestamp)
-                              .add("cell", cell)
-                              .add("shadow cell", shadowCell)
-                              .toString();
-            }
-
         }
 
     }

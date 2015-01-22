@@ -129,7 +129,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
         for (HBaseCellId cell : cells) {
             Put put = new Put(cell.getRow());
             put.add(cell.getFamily(),
-                    HBaseUtils.addShadowCellSuffix(cell.getQualifier()),
+                    CellUtils.addShadowCellSuffix(cell.getQualifier()),
                     transaction.getStartTimestamp(),
                     Bytes.toBytes(transaction.getCommitTimestamp()));
             try {
@@ -241,7 +241,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
 
             Get get = new Get(hBaseCellId.getRow());
             byte[] family = hBaseCellId.getFamily();
-            byte[] shadowCellQualifier = HBaseUtils.addShadowCellSuffix(hBaseCellId.getQualifier());
+            byte[] shadowCellQualifier = CellUtils.addShadowCellSuffix(hBaseCellId.getQualifier());
             get.addColumn(family, shadowCellQualifier);
             get.setMaxVersions(1);
             get.setTimeStamp(startTimestamp);

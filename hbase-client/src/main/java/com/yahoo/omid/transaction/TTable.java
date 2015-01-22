@@ -99,8 +99,8 @@ public class TTable {
             } else {
                 for (byte[] qualifier : qualifiers) {
                     tsget.addColumn(family, qualifier);
-                    tsget.addColumn(family, HBaseUtils.addShadowCellSuffix(qualifier));
-                    tsget.addColumn(family, HBaseUtils.addLegacyShadowCellSuffix(qualifier));
+                    tsget.addColumn(family, CellUtils.addShadowCellSuffix(qualifier));
+                    tsget.addColumn(family, CellUtils.addLegacyShadowCellSuffix(qualifier));
                 }
             }
         }
@@ -252,8 +252,8 @@ public class TTable {
                 continue;
             }
             for (byte[] qualifier : qualifiers) {
-                tsscan.addColumn(family, HBaseUtils.addShadowCellSuffix(qualifier));
-                tsscan.addColumn(family, HBaseUtils.addLegacyShadowCellSuffix(qualifier));
+                tsscan.addColumn(family, CellUtils.addShadowCellSuffix(qualifier));
+                tsscan.addColumn(family, CellUtils.addLegacyShadowCellSuffix(qualifier));
             }
         }
         TransactionalClientScanner scanner = new TransactionalClientScanner(transaction,
@@ -332,7 +332,7 @@ public class TTable {
         Map<Long, Long> commitCache = new HashMap<Long, Long>();
 
         for (Cell cell : rawCells) {
-            if (HBaseUtils.isShadowCell(CellUtil.cloneQualifier(cell))) {
+            if (CellUtils.isShadowCell(CellUtil.cloneQualifier(cell))) {
                 commitCache.put(cell.getTimestamp(), Bytes.toLong(CellUtil.cloneValue(cell)));
             }
         }
@@ -359,9 +359,9 @@ public class TTable {
 
         Get pendingGet = new Get(CellUtil.cloneRow(cell));
         pendingGet.addColumn(CellUtil.cloneFamily(cell), CellUtil.cloneQualifier(cell));
-        pendingGet.addColumn(CellUtil.cloneFamily(cell), HBaseUtils.addShadowCellSuffix(CellUtil.cloneQualifier(cell)));
+        pendingGet.addColumn(CellUtil.cloneFamily(cell), CellUtils.addShadowCellSuffix(CellUtil.cloneQualifier(cell)));
         pendingGet.addColumn(CellUtil.cloneFamily(cell),
-                             HBaseUtils.addLegacyShadowCellSuffix(CellUtil.cloneQualifier(cell)));
+                             CellUtils.addLegacyShadowCellSuffix(CellUtil.cloneQualifier(cell)));
         pendingGet.setMaxVersions(versionCount);
         pendingGet.setTimeRange(0, cell.getTimestamp());
 
@@ -406,7 +406,7 @@ public class TTable {
     void healShadowCell(Cell cell, long commitTimestamp) {
         Put put = new Put(CellUtil.cloneRow(cell));
         byte[] family = CellUtil.cloneFamily(cell);
-        byte[] shadowCellQualifier = HBaseUtils.addShadowCellSuffix(CellUtil.cloneQualifier(cell));
+        byte[] shadowCellQualifier = CellUtils.addShadowCellSuffix(CellUtil.cloneQualifier(cell));
         put.add(family, shadowCellQualifier, cell.getTimestamp(), Bytes.toBytes(commitTimestamp));
         try {
             healerTable.put(put);
@@ -658,7 +658,7 @@ public class TTable {
                     "Timestamp not allowed in transactional user operations");
         }
         // Throw exception if using a non-allowed qualifier
-        if (HBaseUtils.isShadowCell(CellUtil.cloneQualifier(cell))) {
+        if (CellUtils.isShadowCell(CellUtil.cloneQualifier(cell))) {
             throw new IllegalArgumentException(
                     "Reserved string used in column qualifier");
         }
@@ -680,7 +680,7 @@ public class TTable {
 
             @Override
             public boolean apply(Cell cell) {
-                return !HBaseUtils.isShadowCell(CellUtil.cloneQualifier(cell));
+                return !CellUtils.isShadowCell(CellUtil.cloneQualifier(cell));
             }
 
         };

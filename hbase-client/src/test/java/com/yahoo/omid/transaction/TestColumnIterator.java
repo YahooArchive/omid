@@ -2,7 +2,6 @@ package com.yahoo.omid.transaction;
 
 import static org.testng.AssertJUnit.assertEquals;
 import org.testng.annotations.Test;
-import org.testng.AssertJUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -30,13 +29,13 @@ public class TestColumnIterator {
                     // Group 1 (3 elems but grouping should filter shadow cell, so check for 2)
                     new KeyValue(row, family1, qualifier1, 0, data),
                     new KeyValue(row, family1, qualifier1, 1, data),
-                    new KeyValue(row, family1, HBaseUtils.addShadowCellSuffix(qualifier1), 0, data),
+                    new KeyValue(row, family1, CellUtils.addShadowCellSuffix(qualifier1), 0, data),
                     // Group 2 (2 elems but grouping should filter shadow cell, so check for 1)
                     new KeyValue(row, family1, qualifier2, 0, data),
-                    new KeyValue(row, family1, HBaseUtils.addShadowCellSuffix(qualifier2), 0, data),
+                    new KeyValue(row, family1, CellUtils.addShadowCellSuffix(qualifier2), 0, data),
                     // Group 3 (2 elems but grouping should filter shadow cell, so check for 1)
                     new KeyValue(row, family2, qualifier1, 0, data),
-                    new KeyValue(row, family2, HBaseUtils.addShadowCellSuffix(qualifier1), 0, data)
+                    new KeyValue(row, family2, CellUtils.addShadowCellSuffix(qualifier1), 0, data)
                         )
     );
 

@@ -6,7 +6,7 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 
-import com.yahoo.omid.transaction.HBaseUtils.CellGetter;
+import com.yahoo.omid.transaction.CellUtils.CellGetter;
 
 public class HRegionCellGetterAdapter implements CellGetter {
 

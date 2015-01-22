@@ -75,13 +75,13 @@ public class TestHBaseTransactionClient extends OmidTestBase {
         }
 
         assertTrue("Cell should be there",
-                HBaseUtils.hasCell(row1,
+                CellUtils.hasCell(row1,
                                    family,
                                    qualifier,
                                    t1.getStartTimestamp(),
                                    new TTableCellGetterAdapter(table)));
         assertFalse("Shadow cell should not be there",
-                HBaseUtils.hasShadowCell(row1,
+                CellUtils.hasShadowCell(row1,
                                          family,
                                          qualifier,
                                          t1.getStartTimestamp(),

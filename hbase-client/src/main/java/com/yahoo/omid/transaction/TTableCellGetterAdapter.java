@@ -5,7 +5,7 @@ import java.io.IOException;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
 
-import com.yahoo.omid.transaction.HBaseUtils.CellGetter;
+import com.yahoo.omid.transaction.CellUtils.CellGetter;
 
 public class TTableCellGetterAdapter implements CellGetter {
 

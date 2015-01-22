@@ -59,26 +59,26 @@ public class TestShadowCells extends OmidTestBase {
         put.add(family, qualifier, data1);
         table.put(t1, put);
         assertTrue("Cell should be there",
-                HBaseUtils.hasCell(row,
+                CellUtils.hasCell(row,
                                    family,
                                    qualifier,
                                    t1.getStartTimestamp(),
                                    new TTableCellGetterAdapter(table)));
         assertFalse("Shadow cell shouldn't be there",
-                HBaseUtils.hasShadowCell(row,
+                CellUtils.hasShadowCell(row,
                                          family,
                                          qualifier,
                                          t1.getStartTimestamp(),
                                          new TTableCellGetterAdapter(table)));
         tm.commit(t1);
         assertTrue("Cell should be there",
-                HBaseUtils.hasCell(row,
+                CellUtils.hasCell(row,
                                    family,
                                    qualifier,
                                    t1.getStartTimestamp(),
                                    new TTableCellGetterAdapter(table)));
         assertTrue("Shadow cell should be there",
-                HBaseUtils.hasShadowCell(row,
+                CellUtils.hasShadowCell(row,
                                          family,
                                          qualifier,
                                          t1.getStartTimestamp(),
@@ -130,13 +130,13 @@ public class TestShadowCells extends OmidTestBase {
         }
 
         assertTrue("Cell should be there",
-                HBaseUtils.hasCell(row,
+                CellUtils.hasCell(row,
                                    family,
                                    qualifier,
                                    t1.getStartTimestamp(),
                                    new TTableCellGetterAdapter(table)));
         assertFalse("Shadow cell should not be there",
-                HBaseUtils.hasShadowCell(row,
+                CellUtils.hasShadowCell(row,
                                          family,
                                          qualifier,
                                          t1.getStartTimestamp(),
@@ -179,13 +179,13 @@ public class TestShadowCells extends OmidTestBase {
         }
 
         assertTrue("Cell should be there",
-                HBaseUtils.hasCell(row,
+                CellUtils.hasCell(row,
                                    family,
                                    qualifier,
                                    t1.getStartTimestamp(),
                                    new TTableCellGetterAdapter(table)));
         assertFalse("Shadow cell should not be there",
-                HBaseUtils.hasShadowCell(row,
+                CellUtils.hasShadowCell(row,
                                          family,
                                          qualifier,
                                          t1.getStartTimestamp(),
@@ -201,13 +201,13 @@ public class TestShadowCells extends OmidTestBase {
         verify(commitTableClient, times(1)).getCommitTimestamp(anyLong());
 
         assertTrue("Cell should be there",
-                HBaseUtils.hasCell(row,
+                CellUtils.hasCell(row,
                                    family,
                                    qualifier,
                                    t1.getStartTimestamp(),
                                    new TTableCellGetterAdapter(table)));
         assertTrue("Shadow cell should be there after being healed",
-                HBaseUtils.hasShadowCell(row,
+                CellUtils.hasShadowCell(row,
                                          family,
                                          qualifier,
                                          t1.getStartTimestamp(),
@@ -264,13 +264,13 @@ public class TestShadowCells extends OmidTestBase {
 
         // 1) check that shadow cell is not created...
         assertTrue("Cell should be there",
-                HBaseUtils.hasCell(row,
+                CellUtils.hasCell(row,
                         family,
                         qualifier,
                         tx.getStartTimestamp(),
                         new TTableCellGetterAdapter(table)));
         assertFalse("Shadow cell should not be there",
-                HBaseUtils.hasShadowCell(row,
+                CellUtils.hasShadowCell(row,
                         family,
                         qualifier,
                         tx.getStartTimestamp(),
@@ -332,7 +332,7 @@ public class TestShadowCells extends OmidTestBase {
                             any(HBaseTransaction.class), anyInt());
 
                     TransactionManager tm = newTransactionManager();
-                    if (HBaseUtils.hasShadowCell(row,
+                    if (CellUtils.hasShadowCell(row,
                                                  family,
                                                  qualifier,
                                                  t1.getStartTimestamp(),
@@ -347,7 +347,7 @@ public class TestShadowCells extends OmidTestBase {
                     Result getResult = table.get(t, get);
                     Cell cell = getResult.getColumnLatestCell(family, qualifier);
                     if (!Arrays.equals(data1, CellUtil.cloneValue(cell))
-                            || !HBaseUtils.hasShadowCell(row,
+                            || !CellUtils.hasShadowCell(row,
                                                          family,
                                                          qualifier,
                                                          cell.getTimestamp(),

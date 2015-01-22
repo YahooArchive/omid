@@ -272,13 +272,13 @@ public class TestCompaction {
         }
 
         assertTrue("Cell should be there",
-                HBaseUtils.hasCell(Bytes.toBytes(row),
+                CellUtils.hasCell(Bytes.toBytes(row),
                                    fam,
                                    qual,
                                    problematicTx.getStartTimestamp(),
                                    new TTableCellGetterAdapter(txTable)));
         assertFalse("Shadow cell should not be there",
-                HBaseUtils.hasShadowCell(Bytes.toBytes(row),
+                CellUtils.hasShadowCell(Bytes.toBytes(row),
                                          fam,
                                          qual,
                                          problematicTx.getStartTimestamp(),
@@ -306,13 +306,13 @@ public class TestCompaction {
         LOG.info("Waking up after 3 secs");
 
         assertTrue("Cell should be there",
-                HBaseUtils.hasCell(Bytes.toBytes(row),
+                CellUtils.hasCell(Bytes.toBytes(row),
                                    fam,
                                    qual,
                                    problematicTx.getStartTimestamp(),
                                    new TTableCellGetterAdapter(txTable)));
         assertTrue("Shadow cell should not be there",
-                HBaseUtils.hasShadowCell(Bytes.toBytes(row),
+                CellUtils.hasShadowCell(Bytes.toBytes(row),
                                          fam,
                                          qual,
                                          problematicTx.getStartTimestamp(),
@@ -330,13 +330,13 @@ public class TestCompaction {
         put.add(fam, qual, data);
         txTable.put(neverendingTxBelowLowWatermark, put);
         assertTrue("Cell should be there",
-                HBaseUtils.hasCell(Bytes.toBytes(rowId),
+                CellUtils.hasCell(Bytes.toBytes(rowId),
                                    fam,
                                    qual,
                                    neverendingTxBelowLowWatermark.getStartTimestamp(),
                                    new TTableCellGetterAdapter(txTable)));
         assertFalse("Shadow cell should not be there",
-                HBaseUtils.hasShadowCell(Bytes.toBytes(rowId),
+                CellUtils.hasShadowCell(Bytes.toBytes(rowId),
                                          fam,
                                          qual,
                                          neverendingTxBelowLowWatermark.getStartTimestamp(),
@@ -349,13 +349,13 @@ public class TestCompaction {
         put.add(fam, qual, data);
         txTable.put(neverendingTxAboveLowWatermark, put);
         assertTrue("Cell should be there",
-                HBaseUtils.hasCell(Bytes.toBytes(anotherRowId),
+                CellUtils.hasCell(Bytes.toBytes(anotherRowId),
                                    fam,
                                    qual,
                                    neverendingTxAboveLowWatermark.getStartTimestamp(),
                                    new TTableCellGetterAdapter(txTable)));
         assertFalse("Shadow cell should not be there",
-                HBaseUtils.hasShadowCell(Bytes.toBytes(anotherRowId),
+                CellUtils.hasShadowCell(Bytes.toBytes(anotherRowId),
                                          fam,
                                          qual,
                                          neverendingTxAboveLowWatermark.getStartTimestamp(),
@@ -387,26 +387,26 @@ public class TestCompaction {
         assertEquals("There should be only one row in table after compacting", 1, rowCount(TABLE_NAME, fam));
         // The row from the TX below the LWM should not be there (nor its Shadow Cell)
         assertFalse("Cell should not be there",
-                HBaseUtils.hasCell(Bytes.toBytes(rowId),
+                CellUtils.hasCell(Bytes.toBytes(rowId),
                                    fam,
                                    qual,
                                    neverendingTxBelowLowWatermark.getStartTimestamp(),
                                    new TTableCellGetterAdapter(txTable)));
         assertFalse("Shadow cell should not be there",
-                HBaseUtils.hasShadowCell(Bytes.toBytes(rowId),
+                CellUtils.hasShadowCell(Bytes.toBytes(rowId),
                                          fam,
                                          qual,
                                          neverendingTxBelowLowWatermark.getStartTimestamp(),
                                          new TTableCellGetterAdapter(txTable)));
         // The row from the TX above the LWM should be there without the Shadow Cell
         assertTrue("Cell should be there",
-                HBaseUtils.hasCell(Bytes.toBytes(anotherRowId),
+                CellUtils.hasCell(Bytes.toBytes(anotherRowId),
                                    fam,
                                    qual,
                                    neverendingTxAboveLowWatermark.getStartTimestamp(),
                                    new TTableCellGetterAdapter(txTable)));
         assertFalse("Shadow cell should not be there",
-                HBaseUtils.hasShadowCell(Bytes.toBytes(anotherRowId),
+                CellUtils.hasShadowCell(Bytes.toBytes(anotherRowId),
                                          fam,
                                          qual,
                                          neverendingTxAboveLowWatermark.getStartTimestamp(),
@@ -425,13 +425,13 @@ public class TestCompaction {
         put.add(fam, qual, data);
         txTable.put(neverendingTx, put);
         assertTrue("Cell should be there",
-                HBaseUtils.hasCell(Bytes.toBytes(rowId),
+                CellUtils.hasCell(Bytes.toBytes(rowId),
                                    fam,
                                    qual,
                                    neverendingTx.getStartTimestamp(),
                                    new TTableCellGetterAdapter(txTable)));
         assertFalse("Shadow cell should not be there",
-                HBaseUtils.hasShadowCell(Bytes.toBytes(rowId),
+                CellUtils.hasShadowCell(Bytes.toBytes(rowId),
                                          fam,
                                          qual,
                                          neverendingTx.getStartTimestamp(),
@@ -463,13 +463,13 @@ public class TestCompaction {
         // All rows should be there after the failed compaction
         assertEquals("There should be only one row in table after compacting", 1, rowCount(TABLE_NAME, fam));
         assertTrue("Cell should be there",
-                HBaseUtils.hasCell(Bytes.toBytes(rowId),
+                CellUtils.hasCell(Bytes.toBytes(rowId),
                                    fam,
                                    qual,
                                    neverendingTx.getStartTimestamp(),
                                    new TTableCellGetterAdapter(txTable)));
         assertFalse("Shadow cell should not be there",
-                HBaseUtils.hasShadowCell(Bytes.toBytes(rowId),
+                CellUtils.hasShadowCell(Bytes.toBytes(rowId),
                                          fam,
                                          qual,
                                          neverendingTx.getStartTimestamp(),
@@ -560,17 +560,17 @@ public class TestCompaction {
         // Before compaction, the three timestamped values for the cell should be there
         TTableCellGetterAdapter getter = new TTableCellGetterAdapter(txTable);
         assertTrue("Put cell of Tx1 should be there",
-                HBaseUtils.hasCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
+                CellUtils.hasCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
         assertTrue("Put shadow cell of Tx1 should be there",
-                HBaseUtils.hasShadowCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
+                CellUtils.hasShadowCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
         assertTrue("Put cell of Tx2 cell should be there",
-                HBaseUtils.hasCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
+                CellUtils.hasCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
         assertTrue("Put shadow cell of Tx2 should be there",
-                HBaseUtils.hasShadowCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
+                CellUtils.hasShadowCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
         assertTrue("Put cell of Tx3 cell should be there",
-                HBaseUtils.hasCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
+                CellUtils.hasCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
         assertTrue("Put shadow cell of Tx3 should be there",
-                HBaseUtils.hasShadowCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
+                CellUtils.hasShadowCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
 
         // Compact
         HBaseTransaction lwmTx = (HBaseTransaction) tm.begin();
@@ -578,17 +578,17 @@ public class TestCompaction {
 
         // After compaction, only the last value for the cell should have survived
         assertFalse("Put cell of Tx1 should not be there",
-                HBaseUtils.hasCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
+                CellUtils.hasCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
         assertFalse("Put shadow cell of Tx1 should not be there",
-                HBaseUtils.hasShadowCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
+                CellUtils.hasShadowCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
         assertFalse("Put cell of Tx2 should not be there",
-                HBaseUtils.hasCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
+                CellUtils.hasCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
         assertFalse("Put shadow cell of Tx2 should not be there",
-                HBaseUtils.hasShadowCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
+                CellUtils.hasShadowCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
         assertTrue("Put cell of Tx3 cell should be there",
-                HBaseUtils.hasCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
+                CellUtils.hasCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
         assertTrue("Put shadow cell of Tx3 should be there",
-                HBaseUtils.hasShadowCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
+                CellUtils.hasShadowCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
 
         // A new transaction after compaction should read the last value written
         HBaseTransaction newTx1 = (HBaseTransaction) tm.begin();
@@ -616,21 +616,21 @@ public class TestCompaction {
         // Only two values -the new written by newTx1 and the last value
         // for the cell after compaction- should have survived
         assertFalse("Put cell of Tx1 should not be there",
-                HBaseUtils.hasCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
+                CellUtils.hasCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
         assertFalse("Put shadow cell of Tx1 should not be there",
-                HBaseUtils.hasShadowCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
+                CellUtils.hasShadowCell(rowId, fam, qual, tx1.getStartTimestamp(), getter));
         assertFalse("Put cell of Tx2 should not be there",
-                HBaseUtils.hasCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
+                CellUtils.hasCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
         assertFalse("Put shadow cell of Tx2 should not be there",
-                HBaseUtils.hasShadowCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
+                CellUtils.hasShadowCell(rowId, fam, qual, tx2.getStartTimestamp(), getter));
         assertTrue("Put cell of Tx3 cell should be there",
-                HBaseUtils.hasCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
+                CellUtils.hasCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
         assertTrue("Put shadow cell of Tx3 should be there",
-                HBaseUtils.hasShadowCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
+                CellUtils.hasShadowCell(rowId, fam, qual, tx3.getStartTimestamp(), getter));
         assertTrue("Put cell of NewTx1 cell should be there",
-                HBaseUtils.hasCell(rowId, fam, qual, newTx1.getStartTimestamp(), getter));
+                CellUtils.hasCell(rowId, fam, qual, newTx1.getStartTimestamp(), getter));
         assertTrue("Put shadow cell of NewTx1 should be there",
-                HBaseUtils.hasShadowCell(rowId, fam, qual, newTx1.getStartTimestamp(), getter));
+                CellUtils.hasShadowCell(rowId, fam, qual, newTx1.getStartTimestamp(), getter));
     }
 
     /**
@@ -736,7 +736,7 @@ public class TestCompaction {
 
         // check if the cell that should be compacted, is compacted
         assertFalse("Cell should not be be there",
-                   HBaseUtils.hasCell(rowToBeCompactedAway, fam, qual,
+                   CellUtils.hasCell(rowToBeCompactedAway, fam, qual,
                                       tx1.getStartTimestamp(),
                                       new TTableCellGetterAdapter(txTable)));
     }
@@ -803,16 +803,16 @@ public class TestCompaction {
 
         TTableCellGetterAdapter getter = new TTableCellGetterAdapter(txTable);
         assertTrue("Put cell should be there",
-                   HBaseUtils.hasCell(rowId, fam, qual,
+                   CellUtils.hasCell(rowId, fam, qual,
                                       tx1.getStartTimestamp(), getter));
         assertTrue("Put shadow cell should be there",
-                   HBaseUtils.hasShadowCell(rowId, fam, qual,
+                   CellUtils.hasShadowCell(rowId, fam, qual,
                                             tx1.getStartTimestamp(), getter));
         assertTrue("Delete cell should be there",
-                   HBaseUtils.hasCell(rowId, fam, qual,
+                   CellUtils.hasCell(rowId, fam, qual,
                                       tx2.getStartTimestamp(), getter));
         assertTrue("Delete shadow cell should be there",
-                   HBaseUtils.hasShadowCell(rowId, fam, qual,
+                   CellUtils.hasShadowCell(rowId, fam, qual,
                                             tx2.getStartTimestamp(), getter));
     }
 
@@ -841,16 +841,16 @@ public class TestCompaction {
 
         TTableCellGetterAdapter getter = new TTableCellGetterAdapter(txTable);
         assertFalse("Put cell shouldn't be there",
-                    HBaseUtils.hasCell(rowId, fam, qual,
+                    CellUtils.hasCell(rowId, fam, qual,
                                       tx1.getStartTimestamp(), getter));
         assertFalse("Put shadow cell shouldn't be there",
-                    HBaseUtils.hasShadowCell(rowId, fam, qual,
+                    CellUtils.hasShadowCell(rowId, fam, qual,
                                              tx1.getStartTimestamp(), getter));
         assertFalse("Delete cell shouldn't be there",
-                    HBaseUtils.hasCell(rowId, fam, qual,
+                    CellUtils.hasCell(rowId, fam, qual,
                                        tx2.getStartTimestamp(), getter));
         assertFalse("Delete shadow cell shouldn't be there",
-                    HBaseUtils.hasShadowCell(rowId, fam, qual,
+                    CellUtils.hasShadowCell(rowId, fam, qual,
                                              tx2.getStartTimestamp(), getter));
     }
 
@@ -878,16 +878,16 @@ public class TestCompaction {
 
         TTableCellGetterAdapter getter = new TTableCellGetterAdapter(txTable);
         assertTrue("Put cell should be there",
-                   HBaseUtils.hasCell(rowId, fam, qual,
+                   CellUtils.hasCell(rowId, fam, qual,
                                       tx1.getStartTimestamp(), getter));
         assertTrue("Put shadow cell shouldn't be there",
-                   HBaseUtils.hasShadowCell(rowId, fam, qual,
+                   CellUtils.hasShadowCell(rowId, fam, qual,
                                             tx1.getStartTimestamp(), getter));
         assertFalse("Delete cell shouldn't be there",
-                    HBaseUtils.hasCell(rowId, fam, qual,
+                    CellUtils.hasCell(rowId, fam, qual,
                                        tx2.getStartTimestamp(), getter));
         assertFalse("Delete shadow cell shouldn't be there",
-                    HBaseUtils.hasShadowCell(rowId, fam, qual,
+                    CellUtils.hasShadowCell(rowId, fam, qual,
                                              tx2.getStartTimestamp(), getter));
     }
 
@@ -915,16 +915,16 @@ public class TestCompaction {
 
         TTableCellGetterAdapter getter = new TTableCellGetterAdapter(txTable);
         assertTrue("Put cell should be there",
-                   HBaseUtils.hasCell(rowId, fam, qual,
+                   CellUtils.hasCell(rowId, fam, qual,
                                       tx1.getStartTimestamp(), getter));
         assertTrue("Put shadow cell shouldn't be there",
-                   HBaseUtils.hasShadowCell(rowId, fam, qual,
+                   CellUtils.hasShadowCell(rowId, fam, qual,
                                             tx1.getStartTimestamp(), getter));
         assertTrue("Delete cell should be there",
-                   HBaseUtils.hasCell(rowId, fam, qual,
+                   CellUtils.hasCell(rowId, fam, qual,
                                       tx2.getStartTimestamp(), getter));
         assertFalse("Delete shadow cell shouldn't be there",
-                    HBaseUtils.hasShadowCell(rowId, fam, qual,
+                    CellUtils.hasShadowCell(rowId, fam, qual,
                                              tx2.getStartTimestamp(), getter));
     }
 
@@ -947,10 +947,10 @@ public class TestCompaction {
 
         TTableCellGetterAdapter getter = new TTableCellGetterAdapter(txTable);
         assertFalse("Delete cell shouldn't be there",
-                    HBaseUtils.hasCell(rowId, fam, qual,
+                    CellUtils.hasCell(rowId, fam, qual,
                                        tx1.getStartTimestamp(), getter));
         assertFalse("Delete shadow cell shouldn't be there",
-                    HBaseUtils.hasShadowCell(rowId, fam, qual,
+                    CellUtils.hasShadowCell(rowId, fam, qual,
                                              tx1.getStartTimestamp(), getter));
     }
 
@@ -980,16 +980,16 @@ public class TestCompaction {
 
         TTableCellGetterAdapter getter = new TTableCellGetterAdapter(txTable);
         assertFalse("Delete cell shouldn't be there",
-                    HBaseUtils.hasCell(rowId, fam, qual,
+                    CellUtils.hasCell(rowId, fam, qual,
                                        tx1.getStartTimestamp(), getter));
         assertFalse("Delete shadow cell shouldn't be there",
-                    HBaseUtils.hasShadowCell(rowId, fam, qual,
+                    CellUtils.hasShadowCell(rowId, fam, qual,
                                              tx1.getStartTimestamp(), getter));
         assertTrue("Put cell should be there",
-                   HBaseUtils.hasCell(rowId, fam, qual,
+                   CellUtils.hasCell(rowId, fam, qual,
                                       tx2.getStartTimestamp(), getter));
         assertTrue("Put shadow cell shouldn't be there",
-                   HBaseUtils.hasShadowCell(rowId, fam, qual,
+                   CellUtils.hasShadowCell(rowId, fam, qual,
                                             tx2.getStartTimestamp(), getter));
     }
 

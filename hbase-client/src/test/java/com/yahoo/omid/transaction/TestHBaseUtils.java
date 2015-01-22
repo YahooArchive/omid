@@ -38,14 +38,14 @@ public class TestHBaseUtils {
         baos.write(Bytes.toBytes(QUALIFIER));
         baos.write(SHADOW_CELL_SUFFIX);
         assertTrue("Should be a valid shadowCell",
-                HBaseUtils.isShadowCell(baos.toByteArray()));
+                CellUtils.isShadowCell(baos.toByteArray()));
         baos.reset();
 
         // Test the qualifier passed is not a shadow cell
         // qualifier if there's nothing else apart from the suffix
         baos.write(SHADOW_CELL_SUFFIX);
         assertFalse("Should not be a valid shadowCell identifier",
-                HBaseUtils.isShadowCell(baos.toByteArray()));
+                CellUtils.isShadowCell(baos.toByteArray()));
         baos.reset();
 
         // Test the qualifier passed is not a shadow cell
@@ -55,7 +55,7 @@ public class TestHBaseUtils {
         baos.write(SHADOW_CELL_SUFFIX);
         baos.write(Bytes.toBytes(QUALIFIER));
         assertFalse("Should not be a valid shadowCell identifier",
-                HBaseUtils.isShadowCell(baos.toByteArray()));
+                CellUtils.isShadowCell(baos.toByteArray()));
         baos.reset();
 
         // Test the qualifier passed is not a shadow cell
@@ -64,7 +64,7 @@ public class TestHBaseUtils {
         baos.write(SHADOW_CELL_SUFFIX);
         baos.write(SHADOW_CELL_SUFFIX);
         assertFalse("Should not be a valid shadowCell identifier",
-                HBaseUtils.isShadowCell(baos.toByteArray()));
+                CellUtils.isShadowCell(baos.toByteArray()));
         baos.reset();
 
         // Test the qualifier passed is not a shadow cell
@@ -77,7 +77,7 @@ public class TestHBaseUtils {
         baos.write(Bytes.toBytes(QUALIFIER));
         baos.write(SHADOW_CELL_SUFFIX);
         assertFalse("Should not be a valid shadowCell identifier",
-                HBaseUtils.isShadowCell(baos.toByteArray()));
+                CellUtils.isShadowCell(baos.toByteArray()));
         baos.reset();
 
     }

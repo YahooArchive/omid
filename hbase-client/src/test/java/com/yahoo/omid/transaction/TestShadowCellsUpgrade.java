@@ -1,7 +1,5 @@
 package com.yahoo.omid.transaction;
 
-
-
 import com.google.common.base.Charsets;
 import com.google.common.base.Optional;
 import com.yahoo.omid.committable.CommitTable;
@@ -78,7 +76,7 @@ public class TestShadowCellsUpgrade extends OmidTestBase {
 
         // delete new shadow cell
         Delete del = new Delete(row2);
-        del.deleteColumn(family, HBaseUtils.addShadowCellSuffix(qualifier));
+        del.deleteColumn(family, CellUtils.addShadowCellSuffix(qualifier));
         htable.delete(del);
         htable.flushCommits();
 
@@ -107,7 +105,7 @@ public class TestShadowCellsUpgrade extends OmidTestBase {
         // now add in a legacy shadow cell for that row
         put = new Put(row2);
         put.add(family,
-                HBaseUtils.addLegacyShadowCellSuffix(qualifier),
+                CellUtils.addLegacyShadowCellSuffix(qualifier),
                 t2.getStartTimestamp(),
                 Bytes.toBytes(t2.getCommitTimestamp()));
         htable.put(put);
