@@ -20,7 +20,7 @@ public class TestClientFailure extends TSOTestBase {
         clientConf.setProperty(TSOClient.REQUEST_MAX_RETRIES_CONFKEY, 0);
     }
 
-    @Test(timeOut=10000)
+    @Test(timeOut = 30000)
     public void testCommitFailure() throws Exception {
         List<Long> startTimestamps = new ArrayList<Long>();
         for (int i = 0; i < 10; i++) {

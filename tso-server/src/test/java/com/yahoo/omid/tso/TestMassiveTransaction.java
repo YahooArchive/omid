@@ -9,16 +9,16 @@ import com.yahoo.omid.tsoclient.CellId;
 
 public class TestMassiveTransaction extends TSOTestBase {
 
-    @Test(timeOut=10000)
-    public void testMassiveTransaction() throws Exception {
-        long ts = client.getNewStartTimestamp().get();
+    @Test(timeOut = 30000)
+    public void testTransactionWithMassiveWriteSet() throws Exception {
+        long startTs = client.getNewStartTimestamp().get();
 
         Set<CellId> cells = new HashSet<CellId>();
         for (int i = 0; i < 1000000; i++) {
             cells.add(new DummyCellIdImpl(i));
         }
 
-        long commitTs = client.commit(ts, cells).get();
-        AssertJUnit.assertTrue("commit timestamp should be higher than start timestamp", commitTs > ts);
+        long commitTs = client.commit(startTs, cells).get();
+        AssertJUnit.assertTrue("commit timestamp should be higher than start timestamp", commitTs > startTs);
     }
 }
