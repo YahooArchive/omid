@@ -1,34 +1,20 @@
-/**
- * Copyright (c) 2011 Yahoo! Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License. See accompanying LICENSE file.
- */
-
 package com.yahoo.omid.tso;
 
-import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertTrue;
+
 import org.testng.annotations.Test;
+
 import com.google.common.collect.Sets;
 import com.yahoo.omid.tsoclient.CellId;
 
+// TODO: I think we should remove this test. This functionality is already tested in TestCommitQuery
 public class TestCommit extends TSOTestBase {
-   
-    @Test(timeOut=10000)
+
+    @Test(timeOut = 30000)
     public void testCommit() throws Exception {
-        Long tr1 = client.getNewStartTimestamp().get();
-        Long cr1 = client.commit(tr1, Sets.<CellId>newHashSet()).get();
-        assertTrue(cr1 > tr1);
+        Long startTsTx1 = client.getNewStartTimestamp().get();
+        Long commitTsTx1 = client.commit(startTsTx1, Sets.<CellId>newHashSet()).get();
+        assertTrue(commitTsTx1 > startTsTx1);
    }
-   
+
 }
