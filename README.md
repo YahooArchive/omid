@@ -138,3 +138,12 @@ Sample co-processor enabled table:
     KEEP_DELETED_CELLS => 'false', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true',
     METADATA => {'OMID_ENABLED' => 'true'}}
 ```
+
+Module Dependencies
+-------------------
+![Module dependencies](https://git.corp.yahoo.com/scalable-computing/omid/raw/master/doc/images/ModuleDependencies.png "Module dependencies")
+
+More Info
+---------
+* Omid 2 paper published on [TechPulse 2014](https://git.corp.yahoo.com/scalable-computing/techpulse2014-omid2/raw/master/omid2-submitted.pdf)
+
