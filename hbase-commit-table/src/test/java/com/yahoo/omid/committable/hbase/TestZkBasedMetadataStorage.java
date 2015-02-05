@@ -52,7 +52,7 @@ public class TestZkBasedMetadataStorage {
         @Provides
         CuratorFramework provideZookeeperClient()
         {
-            String zkCluster = (new HBaseCommitTable.Config()).zkCluster;
+            String zkCluster = (new HBaseCommitTableTester.Config()).zkCluster;
             LOG.info("Creating Zookeeper Client connected to {}", zkCluster);
             RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
             return CuratorFrameworkFactory.builder()
@@ -66,7 +66,7 @@ public class TestZkBasedMetadataStorage {
         TestingServer provideZookeeperServer() throws Exception {
             LOG.info("Creating ZK server instance...");
             return new TestingServer(
-                    Integer.parseInt((new HBaseCommitTable.Config()).zkCluster.split(":")[1]));
+                    Integer.parseInt((new HBaseCommitTableTester.Config()).zkCluster.split(":")[1]));
         }
 
     }
