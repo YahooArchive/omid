@@ -14,6 +14,7 @@ import java.util.TreeMap;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
@@ -136,6 +137,32 @@ public class CellUtils {
     }
 
     /**
+     * Check that the cell passed meets the requirements for a valid cell
+     * identifier with Omid. Basically, users can't:
+     * 1) specify a timestamp
+     * 2) use a particular suffix in the qualifier
+     * @param cell
+     * @param startTimestamp
+     */
+    public static void validateCell(Cell cell, long startTimestamp) {
+        // Throw exception if timestamp is set by the user
+        if (cell.getTimestamp() != HConstants.LATEST_TIMESTAMP
+                && cell.getTimestamp() != startTimestamp) {
+            throw new IllegalArgumentException(
+                    "Timestamp not allowed in transactional user operations");
+        }
+        // Throw exception if using a non-allowed qualifier
+        if (isShadowCell(cell)) {
+            throw new IllegalArgumentException(
+                    "Reserved string used in column qualifier");
+        }
+    }
+
+    /**
+     * TODO: This has been deprecated in favor of isShadowCell(Cell) (see below)
+     *       The new method avoids clone the qualifier and pass directly the cell, which
+     *       avoids array copies. This method and the corresponding tests will be removed
+     *       in a future commit
      * Returns if a qualifier is a shadow cell column qualifier.
      * @param qualifier
      *            the qualifier to learn whether is a shadow cell or not.
@@ -146,6 +173,34 @@ public class CellUtils {
         int index2 = com.google.common.primitives.Bytes.indexOf(qualifier, LEGACY_SHADOW_CELL_SUFFIX);
         return index > 0 && index == (qualifier.length - SHADOW_CELL_SUFFIX.length)
             || index2 > 0 && index2 == (qualifier.length - LEGACY_SHADOW_CELL_SUFFIX.length);
+    }
+
+    /**
+     * Returns whether a cell contains a qualifier that is a shadow cell
+     * column qualifier or not.
+     * @param cell
+     *            the cell to check if contains the shadow cell qualifier
+     * @return whether the cell passed contains a shadow cell qualifier or not
+     */
+    public static boolean isShadowCell(Cell cell) {
+        byte[] qualifier = cell.getQualifierArray();
+        int qualOffset = cell.getQualifierOffset();
+        int qualLength = cell.getQualifierLength();
+
+        return endsWith(qualifier, qualOffset, qualLength, SHADOW_CELL_SUFFIX)
+               ||
+               endsWith(qualifier, qualOffset, qualLength, LEGACY_SHADOW_CELL_SUFFIX);
+    }
+
+    private static boolean endsWith(byte[] value, int offset, int length, byte[] suffix) {
+        if (length <= suffix.length) {
+            return false;
+        }
+
+        int suffixOffset = offset + length - suffix.length;
+        int result = Bytes.compareTo(value, suffixOffset, suffix.length,
+                                     suffix, 0, suffix.length);
+        return result == 0 ? true : false;
     }
 
     /**
@@ -170,8 +225,8 @@ public class CellUtils {
         byte[] shadowCellQualifier =
                 addShadowCellSuffix(CellUtil.cloneQualifier(cell));cell.getTypeByte();
         return new KeyValue(
-                cell.getRowArray(), cell.getRowOffset(), (int) cell.getRowLength(),
-                cell.getFamilyArray(), cell.getFamilyOffset(), (int) cell.getFamilyLength(),
+                cell.getRowArray(), cell.getRowOffset(), cell.getRowLength(),
+                cell.getFamilyArray(), cell.getFamilyOffset(), cell.getFamilyLength(),
                 shadowCellQualifier, 0, shadowCellQualifier.length,
                 cell.getTimestamp(), KeyValue.Type.codeToType(cell.getTypeByte()),
                 shadowCellValue, 0, shadowCellValue.length);
@@ -192,7 +247,7 @@ public class CellUtils {
 
         Map<CellId, Cell> cellIdToCellMap = new HashMap<CellId, Cell>();
         for (Cell cell : cells) {
-            if (!isShadowCell(CellUtil.cloneQualifier(cell))) {
+            if (!isShadowCell(cell)) {
                 CellId key = new CellId(CellUtil.cloneRow(cell),
                                         CellUtil.cloneFamily(cell),
                                         CellUtil.cloneQualifier(cell),

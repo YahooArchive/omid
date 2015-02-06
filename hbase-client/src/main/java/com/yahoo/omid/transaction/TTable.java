@@ -137,7 +137,7 @@ public class TTable {
         }
         for (List<Cell> cells : fmap.values()) {
             for (Cell cell : cells) {
-                validateCell(cell, startTimestamp);
+                CellUtils.validateCell(cell, startTimestamp);
                 switch (KeyValue.Type.codeToType(cell.getTypeByte())) {
                 case DeleteColumn:
                     deleteP.add(CellUtil.cloneFamily(cell),
@@ -212,7 +212,7 @@ public class TTable {
         Map<byte[], List<Cell>> kvs = put.getFamilyCellMap();
         for (List<Cell> kvl : kvs.values()) {
             for (Cell c : kvl) {
-                validateCell(c, startTimestamp);
+                CellUtils.validateCell(c, startTimestamp);
                 // Reach into keyvalue to update timestamp.
                 // It's not nice to reach into keyvalue internals,
                 // but we want to avoid having to copy the whole thing
@@ -332,7 +332,7 @@ public class TTable {
         Map<Long, Long> commitCache = new HashMap<Long, Long>();
 
         for (Cell cell : rawCells) {
-            if (CellUtils.isShadowCell(CellUtil.cloneQualifier(cell))) {
+            if (CellUtils.isShadowCell(cell)) {
                 commitCache.put(cell.getTimestamp(), Bytes.toLong(CellUtil.cloneValue(cell)));
             }
         }
@@ -349,7 +349,7 @@ public class TTable {
             return true;
         }
 
-        Optional<Long> commitTimestamp = 
+        Optional<Long> commitTimestamp =
                 tryToLocateCellCommitTimestamp(transaction.getTransactionManager(), kv, commitCache);
 
         return commitTimestamp.isPresent() && commitTimestamp.get() < startTimestamp;
@@ -372,7 +372,7 @@ public class TTable {
                                                         Cell cell,
                                                         Map<Long, Long> commitCache)
             throws IOException {
-        
+
         CommitTimestamp tentativeCommitTimestamp =
                 transactionManager.locateCellCommitTimestamp(
                         cell.getTimestamp(),
@@ -383,7 +383,7 @@ public class TTable {
                                                                        CellUtil.cloneQualifier(cell),
                                                                        cell.getTimestamp()),
                                                                        commitCache));
-        
+
         switch(tentativeCommitTimestamp.getLocation()) {
         case COMMIT_TABLE:
             // If the commit timestamp is found in the persisted commit table,
@@ -504,14 +504,14 @@ public class TTable {
     /* TODO What should we do with this methods???
      * @Override public void batch(Transaction transaction, List<? extends Row>
      * actions, Object[] results) throws IOException, InterruptedException {}
-     * 
+     *
      * @Override public Object[] batch(Transaction transaction, List<? extends
      * Row> actions) throws IOException, InterruptedException {}
-     * 
+     *
      * @Override public <R> void batchCallback(Transaction transaction, List<?
      * extends Row> actions, Object[] results, Callback<R> callback) throws
      * IOException, InterruptedException {}
-     * 
+     *
      * @Override public <R> Object[] batchCallback(List<? extends Row> actions,
      * Callback<R> callback) throws IOException, InterruptedException {}
      */
@@ -650,20 +650,6 @@ public class TTable {
         }
     }
 
-    private void validateCell(Cell cell, long startTimestamp) {
-        // Throw exception if timestamp is set by the user
-        if (cell.getTimestamp() != HConstants.LATEST_TIMESTAMP
-            && cell.getTimestamp() != startTimestamp) {
-            throw new IllegalArgumentException(
-                    "Timestamp not allowed in transactional user operations");
-        }
-        // Throw exception if using a non-allowed qualifier
-        if (CellUtils.isShadowCell(CellUtil.cloneQualifier(cell))) {
-            throw new IllegalArgumentException(
-                    "Reserved string used in column qualifier");
-        }
-    }
-
     private HBaseTransaction enforceHBaseTransactionAsParam(Transaction tx) {
         if (tx instanceof HBaseTransaction) {
             return (HBaseTransaction) tx;
@@ -680,7 +666,7 @@ public class TTable {
 
             @Override
             public boolean apply(Cell cell) {
-                return !CellUtils.isShadowCell(CellUtil.cloneQualifier(cell));
+                return !CellUtils.isShadowCell(cell);
             }
 
         };
