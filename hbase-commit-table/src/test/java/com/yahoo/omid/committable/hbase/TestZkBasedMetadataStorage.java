@@ -160,11 +160,10 @@ public class TestZkBasedMetadataStorage {
         }
 
         // Finally test metadata storage close
-        dataFuture = zkMetadataStorage.read(LEDGERSET);
         ZKBasedMetadataStorage zkMTS = (ZKBasedMetadataStorage) zkMetadataStorage;
-        assertEquals(zkMTS.outstandingCallbackFutures.size(), 1);
         zkMetadataStorage.close();
         assertEquals(zkMTS.outstandingCallbackFutures.size(), 0);
+        dataFuture = zkMetadataStorage.read(LEDGERSET);
         try {
             dataFuture.get();
         } catch (ExecutionException e) {
