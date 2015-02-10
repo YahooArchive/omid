@@ -84,22 +84,6 @@ public class CellUtils {
     }
 
     /**
-     * Returns true if the particular cell passed has a corresponding shadow cell in the datastore.
-     * @param cell
-     * @param cellGetter
-     * @return true if it has a shadow cell. false otherwise.
-     * @throws IOException
-     */
-    public static boolean hasShadowCell(Cell cell, CellGetter cellGetter) throws IOException {
-        return hasCell(CellUtil.cloneRow(cell), CellUtil.cloneFamily(cell),
-                       addShadowCellSuffix(CellUtil.cloneQualifier(cell)),
-                       cell.getTimestamp(), cellGetter)
-            || hasCell(CellUtil.cloneRow(cell), CellUtil.cloneFamily(cell),
-                       addLegacyShadowCellSuffix(CellUtil.cloneQualifier(cell)),
-                       cell.getTimestamp(), cellGetter);
-    }
-
-    /**
      * Adds the shadow cell suffix to an HBase column qualifier.
      * @param qualifier
      *            the qualifier to add the suffix to.
@@ -156,23 +140,6 @@ public class CellUtils {
             throw new IllegalArgumentException(
                     "Reserved string used in column qualifier");
         }
-    }
-
-    /**
-     * TODO: This has been deprecated in favor of isShadowCell(Cell) (see below)
-     *       The new method avoids clone the qualifier and pass directly the cell, which
-     *       avoids array copies. This method and the corresponding tests will be removed
-     *       in a future commit
-     * Returns if a qualifier is a shadow cell column qualifier.
-     * @param qualifier
-     *            the qualifier to learn whether is a shadow cell or not.
-     * @return whether the qualifier passed is a shadow cell or not
-     */
-    public static boolean isShadowCell(byte[] qualifier) {
-        int index = com.google.common.primitives.Bytes.indexOf(qualifier, SHADOW_CELL_SUFFIX);
-        int index2 = com.google.common.primitives.Bytes.indexOf(qualifier, LEGACY_SHADOW_CELL_SUFFIX);
-        return index > 0 && index == (qualifier.length - SHADOW_CELL_SUFFIX.length)
-            || index2 > 0 && index2 == (qualifier.length - LEGACY_SHADOW_CELL_SUFFIX.length);
     }
 
     /**
