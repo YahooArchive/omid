@@ -23,7 +23,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Objects;
+import com.google.common.base.Objects.ToStringHelper;
 import com.google.common.base.Optional;
+import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
 
 public class CellUtils {
@@ -102,10 +104,8 @@ public class CellUtils {
      * @param qualifier
      *            the qualifier to remove the suffix from.
      * @return the qualifier without the suffix
-     * @throws IOException
-     *             when there's no suffix to remove
      */
-    public static byte[] removeShadowCellSuffix(byte[] qualifier) throws IOException {
+    public static byte[] removeShadowCellSuffix(byte[] qualifier) {
 
         int shadowCellSuffixIdx = com.google.common.primitives.Bytes.indexOf(qualifier,
                 HBaseTransactionManager.SHADOW_CELL_SUFFIX);
@@ -116,7 +116,9 @@ public class CellUtils {
         } else if (shadowCellSuffixIdx2 >= 0) {
             return Arrays.copyOfRange(qualifier, 0, shadowCellSuffixIdx2);
         } else {
-            throw new IOException("Can not get qualifier from shadow cell");
+            throw new IllegalArgumentException(
+                    "Can't find shadow cell suffix in qualifier "
+                    + Bytes.toString(qualifier));
         }
     }
 
@@ -215,28 +217,25 @@ public class CellUtils {
         Map<CellId, Cell> cellIdToCellMap = new HashMap<CellId, Cell>();
         for (Cell cell : cells) {
             if (!isShadowCell(cell)) {
-                CellId key = new CellId(CellUtil.cloneRow(cell),
-                                        CellUtil.cloneFamily(cell),
-                                        CellUtil.cloneQualifier(cell),
-                                        cell.getTimestamp());
-                if (cellIdToCellMap.containsKey(key)
-                    && !cellIdToCellMap.get(key).equals(cell)) {
-                    throw new IOException(
-                            "A value is already present for key " + key +
-                                    ". This should not happen. Current row elements: " + cells);
+                CellId key = new CellId(cell, false);
+                if (cellIdToCellMap.containsKey(key)) {
+                    // Get the current cell and compare the values
+                    Cell currentCell = cellIdToCellMap.get(key);
+                    if (CellUtil.matchingValue(cell, currentCell)) {
+                        continue; // Values are the same, ignore
+                    } else { // TODO: Solve this properly and avoid throwing the exception
+                        throw new IOException(
+                                "A cell with the same value (" + currentCell + ") is already present for key " +
+                                key + " (Cell " + cell + "). This may happen, but have to decide how to solve it. " +
+                                "Current row elements: " + cells);
+                    }
                 }
-                LOG.trace("Adding KV key {} to map with absent value", cell);
                 cellToShadowCellMap.put(cell, Optional.<Cell> absent());
                 cellIdToCellMap.put(key, cell);
             } else {
-                byte[] originalQualifier = removeShadowCellSuffix(CellUtil.cloneQualifier(cell));
-                CellId key = new CellId(CellUtil.cloneRow(cell),
-                                        CellUtil.cloneFamily(cell),
-                                        originalQualifier,
-                                        cell.getTimestamp());
+                CellId key = new CellId(cell, true);
                 if (cellIdToCellMap.containsKey(key)) {
                     Cell originalCell = cellIdToCellMap.get(key);
-                    LOG.trace("Adding to key {} value {}", key, cell);
                     cellToShadowCellMap.put(originalCell, Optional.of(cell));
                 } else {
                     LOG.trace("Map does not contain key {}", key);
@@ -251,34 +250,22 @@ public class CellUtils {
 
         private static final int MIN_BITS = 32;
 
-        private final byte[] row;
-        private final byte[] family;
-        private final byte[] qualifier;
-        private final long timestamp;
+        private final Cell cell;
+        private final boolean isShadowCell;
 
-        public CellId(
-                byte[] row, byte[] family, byte[] qualifier, long timestamp) {
+        public CellId(Cell cell, boolean isShadowCell) {
 
-            this.row = row;
-            this.family = family;
-            this.qualifier = qualifier;
-            this.timestamp = timestamp;
+            this.cell = cell;
+            this.isShadowCell = isShadowCell;
+
         }
 
-        byte[] getRow() {
-            return row;
+        Cell getCell() {
+            return cell;
         }
 
-        byte[] getFamily() {
-            return family;
-        }
-
-        byte[] getQualifier() {
-            return qualifier;
-        }
-
-        long getTimestamp() {
-            return timestamp;
+        boolean isShadowCell() {
+            return isShadowCell;
         }
 
         @Override
@@ -288,30 +275,72 @@ public class CellUtils {
             if (!(o instanceof CellId))
                 return false;
             CellId otherCellId = (CellId) o;
-            return Arrays.equals(otherCellId.getRow(), row)
-                    && Arrays.equals(otherCellId.getFamily(), family)
-                    && Arrays.equals(otherCellId.getQualifier(), qualifier)
-                    && otherCellId.getTimestamp() == timestamp;
+            Cell otherCell = otherCellId.getCell();
+
+            // Row comparison
+            if (!CellUtil.matchingRow(otherCell, cell)) {
+                return false;
+            }
+
+            // Family comparison
+            if (!CellUtil.matchingFamily(otherCell, cell)) {
+                return false;
+            }
+
+            // Qualifier comparison
+            if (isShadowCell()) {
+                byte[] originalQualifier = removeShadowCellSuffix(CellUtil.cloneQualifier(cell)); // Will be improved in
+                                                                                                  // next commit
+                if (!CellUtil.matchingQualifier(otherCell, originalQualifier)) {
+                    return false;
+                }
+            } else {
+                if (!CellUtil.matchingQualifier(otherCell, cell)) {
+                    return false;
+                }
+
+            }
+
+            // Timestamp comparison
+            if(otherCell.getTimestamp() != cell.getTimestamp()) {
+                return false;
+            }
+
+            return true;
+
         }
 
         @Override
         public int hashCode() {
-            return Hashing.goodFastHash(MIN_BITS).newHasher()
-                    .putBytes(row)
-                    .putBytes(family)
-                    .putBytes(qualifier)
-                    .putLong(timestamp)
-                    .hash().asInt();
+            Hasher hasher = Hashing.goodFastHash(MIN_BITS).newHasher();
+            hasher.putBytes(cell.getRowArray(), cell.getRowOffset(), cell.getRowLength());
+            hasher.putBytes(cell.getFamilyArray(), cell.getFamilyOffset(), cell.getFamilyLength());
+            if(isShadowCell()) {
+                byte[] originalQualifier = removeShadowCellSuffix(CellUtil.cloneQualifier(cell)); // Will be improved in
+                                                                                                  // next commit
+                hasher.putBytes(originalQualifier, 0, originalQualifier.length);
+            } else {
+                hasher.putBytes(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength());
+            }
+            hasher.putLong(cell.getTimestamp());
+            return hasher.hash().asInt();
         }
 
         @Override
         public String toString() {
-            return Objects.toStringHelper(this)
-                          .add("row", Bytes.toStringBinary(row))
-                          .add("family", Bytes.toString(family))
-                          .add("qualifier", Bytes.toString(qualifier))
-                          .add("ts", timestamp)
-                          .toString();
+            ToStringHelper helper = Objects.toStringHelper(this);
+            helper.add("row", Bytes.toStringBinary(cell.getRowArray(), cell.getRowOffset(), cell.getRowLength()));
+            helper.add("family", Bytes.toString(cell.getFamilyArray(), cell.getFamilyOffset(), cell.getFamilyLength()));
+            helper.add("is shadow cell?", isShadowCell);
+            helper.add("qualifier",
+                    Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength()));
+            if(isShadowCell()) {
+                byte[] originalQualifier = removeShadowCellSuffix(CellUtil.cloneQualifier(cell)); // Will be improved in
+                                                                                                  // next commit
+                helper.add("qualifier wo sc suffix", Bytes.toString(originalQualifier, 0, originalQualifier.length));
+            }
+            helper.add("ts", cell.getTimestamp());
+            return helper.toString();
         }
     }
 
