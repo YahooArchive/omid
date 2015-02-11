@@ -279,7 +279,9 @@ public class OmidCompactor extends BaseRegionObserver {
             } else {
                 Get g = new Get(CellUtil.cloneRow(cell));
                 byte[] family = CellUtil.cloneFamily(cell);
-                byte[] qualifier = CellUtils.addShadowCellSuffix(CellUtil.cloneQualifier(cell));
+                byte[] qualifier = CellUtils.addShadowCellSuffix(cell.getQualifierArray(),
+                                                                 cell.getQualifierOffset(),
+                                                                 cell.getQualifierLength());
                 g.addColumn(family, qualifier);
                 g.setTimeStamp(cell.getTimestamp());
                 Result r = hRegion.get(g);

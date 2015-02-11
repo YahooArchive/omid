@@ -384,7 +384,9 @@ public class TTable implements Closeable {
 
         Get pendingGet = new Get(CellUtil.cloneRow(cell));
         pendingGet.addColumn(CellUtil.cloneFamily(cell), CellUtil.cloneQualifier(cell));
-        pendingGet.addColumn(CellUtil.cloneFamily(cell), CellUtils.addShadowCellSuffix(CellUtil.cloneQualifier(cell)));
+        pendingGet.addColumn(CellUtil.cloneFamily(cell), CellUtils.addShadowCellSuffix(cell.getQualifierArray(),
+                                                                                       cell.getQualifierOffset(),
+                                                                                       cell.getQualifierLength()));
         pendingGet.addColumn(CellUtil.cloneFamily(cell),
                              CellUtils.addLegacyShadowCellSuffix(CellUtil.cloneQualifier(cell)));
         pendingGet.setMaxVersions(versionCount);
@@ -431,7 +433,9 @@ public class TTable implements Closeable {
     void healShadowCell(Cell cell, long commitTimestamp) {
         Put put = new Put(CellUtil.cloneRow(cell));
         byte[] family = CellUtil.cloneFamily(cell);
-        byte[] shadowCellQualifier = CellUtils.addShadowCellSuffix(CellUtil.cloneQualifier(cell));
+        byte[] shadowCellQualifier = CellUtils.addShadowCellSuffix(cell.getQualifierArray(),
+                                                                   cell.getQualifierOffset(),
+                                                                   cell.getQualifierLength());
         put.add(family, shadowCellQualifier, cell.getTimestamp(), Bytes.toBytes(commitTimestamp));
         try {
             healerTable.put(put);

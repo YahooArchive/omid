@@ -86,40 +86,70 @@ public class CellUtils {
     }
 
     /**
-     * Adds the shadow cell suffix to an HBase column qualifier.
+     * Builds a new qualifier composed of the HBase qualifier
+     * passed suffixed with the shadow cell suffix.
+     * @param qualifierArray
+     *            the qualifier to be suffixed
+     * @param qualOffset
+     *            the offset where the qualifier starts
+     * @param qualLength
+     *            the qualifier length
+     * @return the suffixed qualifier
+     */
+    public static byte[] addShadowCellSuffix(byte[] qualifierArray, int qualOffset, int qualLength) {
+        byte[] result = new byte[qualLength + SHADOW_CELL_SUFFIX.length];
+        System.arraycopy(qualifierArray, qualOffset, result, 0, qualLength);
+        System.arraycopy(SHADOW_CELL_SUFFIX, 0, result, qualLength, SHADOW_CELL_SUFFIX.length);
+        return result;
+    }
+
+    /**
+     * Builds a new qualifier composed of the HBase qualifier passed suffixed
+     * with the shadow cell suffix.
+     * Contains a reduced signature to avoid boilerplate code in client side.
      * @param qualifier
-     *            the qualifier to add the suffix to.
+     *            the qualifier to be suffixed
      * @return the suffixed qualifier
      */
     public static byte[] addShadowCellSuffix(byte[] qualifier) {
-        return com.google.common.primitives.Bytes.concat(qualifier, SHADOW_CELL_SUFFIX);
+        return addShadowCellSuffix(qualifier, 0, qualifier.length);
     }
 
+    /**
+     * Used in tests. Not optimized, don't use in production code
+     */
     public static byte[] addLegacyShadowCellSuffix(byte[] qualifier) {
         return com.google.common.primitives.Bytes.concat(qualifier, LEGACY_SHADOW_CELL_SUFFIX);
     }
 
     /**
-     * Removes the shadow cell suffix from an HBase column qualifier.
+     * Builds a new qualifier removing the shadow cell suffix from the
+     * passed HBase qualifier.
      * @param qualifier
-     *            the qualifier to remove the suffix from.
-     * @return the qualifier without the suffix
+     *            the qualifier to remove the suffix from
+     * @param qualOffset
+     *            the offset where the qualifier starts
+     * @param qualLength
+     *            the qualifier length
+     * @return the new qualifier without the suffix
      */
-    public static byte[] removeShadowCellSuffix(byte[] qualifier) {
+    public static byte[] removeShadowCellSuffix(byte[] qualifier, int qualOffset, int qualLength) {
 
-        int shadowCellSuffixIdx = com.google.common.primitives.Bytes.indexOf(qualifier,
-                HBaseTransactionManager.SHADOW_CELL_SUFFIX);
-        int shadowCellSuffixIdx2 = com.google.common.primitives.Bytes.indexOf(qualifier,
-                HBaseTransactionManager.LEGACY_SHADOW_CELL_SUFFIX);
-        if (shadowCellSuffixIdx >= 0) {
-            return Arrays.copyOfRange(qualifier, 0, shadowCellSuffixIdx);
-        } else if (shadowCellSuffixIdx2 >= 0) {
-            return Arrays.copyOfRange(qualifier, 0, shadowCellSuffixIdx2);
-        } else {
-            throw new IllegalArgumentException(
-                    "Can't find shadow cell suffix in qualifier "
-                    + Bytes.toString(qualifier));
+        if (endsWith(qualifier, qualOffset, qualLength, SHADOW_CELL_SUFFIX)) {
+            return Arrays.copyOfRange(qualifier,
+                                      qualOffset,
+                                      qualOffset + (qualLength - SHADOW_CELL_SUFFIX.length));
         }
+
+        if (endsWith(qualifier, qualOffset, qualLength, LEGACY_SHADOW_CELL_SUFFIX)) {
+            return Arrays.copyOfRange(qualifier,
+                                      qualOffset,
+                                      qualOffset + (qualLength - LEGACY_SHADOW_CELL_SUFFIX.length));
+        }
+
+        throw new IllegalArgumentException(
+                "Can't find shadow cell suffix in qualifier "
+                + Bytes.toString(qualifier));
     }
 
     /**
@@ -191,8 +221,9 @@ public class CellUtils {
      * @return the brand-new shadow cell
      */
     public static Cell buildShadowCellFromCell(Cell cell, byte[] shadowCellValue) {
-        byte[] shadowCellQualifier =
-                addShadowCellSuffix(CellUtil.cloneQualifier(cell));cell.getTypeByte();
+        byte[] shadowCellQualifier = addShadowCellSuffix(cell.getQualifierArray(),
+                                                         cell.getQualifierOffset(),
+                                                         cell.getQualifierLength());
         return new KeyValue(
                 cell.getRowArray(), cell.getRowOffset(), cell.getRowLength(),
                 cell.getFamilyArray(), cell.getFamilyOffset(), cell.getFamilyLength(),
@@ -289,8 +320,10 @@ public class CellUtils {
 
             // Qualifier comparison
             if (isShadowCell()) {
-                byte[] originalQualifier = removeShadowCellSuffix(CellUtil.cloneQualifier(cell)); // Will be improved in
-                                                                                                  // next commit
+
+                byte[] originalQualifier = removeShadowCellSuffix(cell.getQualifierArray(),
+                                                                  cell.getQualifierOffset(),
+                                                                  cell.getQualifierLength());
                 if (!CellUtil.matchingQualifier(otherCell, originalQualifier)) {
                     return false;
                 }
@@ -316,8 +349,9 @@ public class CellUtils {
             hasher.putBytes(cell.getRowArray(), cell.getRowOffset(), cell.getRowLength());
             hasher.putBytes(cell.getFamilyArray(), cell.getFamilyOffset(), cell.getFamilyLength());
             if(isShadowCell()) {
-                byte[] originalQualifier = removeShadowCellSuffix(CellUtil.cloneQualifier(cell)); // Will be improved in
-                                                                                                  // next commit
+                byte[] originalQualifier = removeShadowCellSuffix(cell.getQualifierArray(),
+                                                                  cell.getQualifierOffset(),
+                                                                  cell.getQualifierLength());
                 hasher.putBytes(originalQualifier, 0, originalQualifier.length);
             } else {
                 hasher.putBytes(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength());
@@ -335,8 +369,9 @@ public class CellUtils {
             helper.add("qualifier",
                     Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength()));
             if(isShadowCell()) {
-                byte[] originalQualifier = removeShadowCellSuffix(CellUtil.cloneQualifier(cell)); // Will be improved in
-                                                                                                  // next commit
+                byte[] originalQualifier = removeShadowCellSuffix(cell.getQualifierArray(),
+                                                                  cell.getQualifierOffset(),
+                                                                  cell.getQualifierLength());
                 helper.add("qualifier wo sc suffix", Bytes.toString(originalQualifier, 0, originalQualifier.length));
             }
             helper.add("ts", cell.getTimestamp());

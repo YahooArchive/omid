@@ -5,6 +5,7 @@ import static com.yahoo.omid.transaction.HBaseTransactionManager.SHADOW_CELL_SUF
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.AssertJUnit.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -137,4 +138,42 @@ public class TestCellUtils {
         assertTrue(cellsToShadowCells.get(cell3).equals(Optional.absent()));
 
     }
+
+    @Test
+    public void testShadowCellSuffixConcatenationToQualifier() {
+
+        Cell cell = new KeyValue(row, family, qualifier, 1, Bytes.toBytes("value"));
+        byte[] suffixedQualifier = CellUtils.addShadowCellSuffix(cell.getQualifierArray(),
+                                                                 cell.getQualifierOffset(),
+                                                                 cell.getQualifierLength());
+        byte[] expectedQualifier = com.google.common.primitives.Bytes.concat(qualifier, SHADOW_CELL_SUFFIX);
+        assertEquals(expectedQualifier, suffixedQualifier);
+
+    }
+
+    @Test(dataProvider = "shadow-cell-suffixes")
+    public void testShadowCellSuffixRemovalFromQualifier(byte[] shadowCellSuffixToTest) throws IOException {
+
+        // Test removal from a correclty suffixed qualifier
+        byte[] suffixedQualifier = com.google.common.primitives.Bytes.concat(qualifier, shadowCellSuffixToTest);
+        Cell cell = new KeyValue(row, family, suffixedQualifier, 1, Bytes.toBytes("value"));
+        byte[] resultedQualifier = CellUtils.removeShadowCellSuffix(cell.getQualifierArray(),
+                                                                     cell.getQualifierOffset(),
+                                                                     cell.getQualifierLength());
+        byte[] expectedQualifier = qualifier;
+        assertEquals(expectedQualifier, resultedQualifier);
+
+        // Test removal from a badly suffixed qualifier
+        byte[] badlySuffixedQualifier = com.google.common.primitives.Bytes.concat(qualifier, Bytes.toBytes("BAD"));
+        Cell badCell = new KeyValue(row, family, badlySuffixedQualifier, 1, Bytes.toBytes("value"));
+        try {
+            CellUtils.removeShadowCellSuffix(badCell.getQualifierArray(),
+                                             badCell.getQualifierOffset(),
+                                             badCell.getQualifierLength());
+            fail();
+        } catch (IllegalArgumentException e) {
+            // Expected
+        }
+    }
+
 }
