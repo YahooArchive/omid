@@ -252,7 +252,7 @@ class TSOClientImpl extends TSOClient {
 
     // ***************************** States ***********************************
 
-    private class BaseState extends State {
+    class BaseState extends State {
         BaseState(Fsm fsm) {
             super(fsm);
         }
@@ -408,7 +408,7 @@ class TSOClientImpl extends TSOClient {
 
     }
 
-    private class ConnectionFailedState extends BaseState {
+    class ConnectionFailedState extends BaseState {
 
         Throwable exception;
 

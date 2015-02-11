@@ -5,8 +5,11 @@ import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
 import static org.slf4j.LoggerFactory.getLogger;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.commons.configuration.BaseConfiguration;
@@ -16,6 +19,8 @@ import org.testng.annotations.Test;
 
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
 import com.yahoo.omid.tsoclient.TSOClient.ConnectionException;
+import com.yahoo.omid.tsoclient.TSOClientImpl.BaseState;
+import com.yahoo.omid.tsoclient.TSOClientImpl.ConnectionFailedState;
 import com.yahoo.omid.tsoclient.TSOClientImpl.DisconnectedState;
 import com.yahoo.statemachine.StateMachine.FsmImpl;
 
@@ -46,13 +51,15 @@ public class TestUnconnectedTSOClient {
 
         // Test requests to the 3 relevant methods in TSO client
 
+        List<Class<? extends BaseState>> EXPECTED_EXCEPTIONS =
+                Arrays.asList(DisconnectedState.class, ConnectionFailedState.class);
         try {
             tsoClient.getNewStartTimestamp().get();
             fail();
         } catch (ExecutionException e) {
             LOG.info("Exception expected");
             assertEquals(e.getCause().getClass(), ConnectionException.class);
-            assertEquals(fsm.getState().getClass(), DisconnectedState.class);
+            assertTrue(EXPECTED_EXCEPTIONS.contains(fsm.getState().getClass()));
         }
 
         try {
@@ -61,7 +68,7 @@ public class TestUnconnectedTSOClient {
         } catch (ExecutionException e) {
             LOG.info("Exception expected");
             assertEquals(e.getCause().getClass(), ConnectionException.class);
-            assertEquals(fsm.getState().getClass(), DisconnectedState.class);
+            assertTrue(EXPECTED_EXCEPTIONS.contains(fsm.getState().getClass()));
         }
 
         tsoClient.close().get();
