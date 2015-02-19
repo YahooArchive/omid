@@ -1,5 +1,6 @@
 package com.yahoo.omid.transaction;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -47,7 +48,7 @@ import com.yahoo.omid.transaction.HBaseTransactionManager.CommitTimestampLocator
  * of data identified by an opaque {@link Transaction} object. It mimics the
  * behavior in {@link org.apache.hadoop.hbase.client.HTableInterface}
  */
-public class TTable {
+public class TTable implements Closeable {
 
     private static Logger LOG = LoggerFactory.getLogger(TTable.class);
 
@@ -56,6 +57,10 @@ public class TTable {
     private final HTableInterface healerTable;
 
     private HTableInterface table;
+
+    // ////////////////////////////////////////////////////////////////////////
+    // Instantiation
+    // ////////////////////////////////////////////////////////////////////////
 
     public TTable(Configuration conf, byte[] tableName) throws IOException {
         this(new HTable(conf, tableName));
@@ -74,6 +79,26 @@ public class TTable {
         table = hTable;
         this.healerTable = healerTable;
     }
+
+    // ////////////////////////////////////////////////////////////////////////
+    // Closeable implementation
+    // ////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Releases any resources held or pending changes in internal buffers.
+     *
+     * @throws IOException
+     *             if a remote or network exception occurs.
+     */
+    @Override
+    public void close() throws IOException {
+        table.close();
+        healerTable.close();
+    }
+
+    // ////////////////////////////////////////////////////////////////////////
+    // Transactional operations
+    // ////////////////////////////////////////////////////////////////////////
 
     /**
      * Transactional version of {@link HTableInterface#get(Get get)}
@@ -574,17 +599,6 @@ public class TTable {
      */
     public HTableInterface getHTable() {
         return table;
-    }
-
-    /**
-     * Releases any resources held or pending changes in internal buffers.
-     *
-     * @throws IOException
-     *             if a remote or network exception occurs.
-     */
-    public void close() throws IOException {
-        table.close();
-        healerTable.close();
     }
 
     /**
