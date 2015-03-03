@@ -20,7 +20,6 @@ import com.google.common.base.Optional;
 import com.google.common.collect.Maps;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
-import com.yahoo.omid.committable.hbase.CommitTableConstants;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
 import com.yahoo.omid.metrics.MetricsRegistry;
@@ -29,19 +28,28 @@ import com.yahoo.omid.tsoclient.CellId;
 import com.yahoo.omid.tsoclient.TSOClient;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
+
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_NAME_KEY;
 
 public class HBaseTransactionManager extends AbstractTransactionManager implements HBaseTransactionClient {
 
+    private static final Logger LOG = LoggerFactory.getLogger(HBaseTransactionManager.class);
+
     static final byte[] SHADOW_CELL_SUFFIX = "\u0080".getBytes(Charsets.UTF_8); // Non printable char (128 ASCII)
+
+    public enum PostCommitMode {
+        SYNC, ASYNC
+    }
 
     private static class HBaseTransactionFactory implements TransactionFactory<HBaseCellId> {
 
@@ -57,8 +65,10 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
     public static class Builder {
         Configuration conf = new Configuration();
         MetricsRegistry metricsRegistry = new NullMetricsProvider();
+        PostCommitMode postCommitMode = PostCommitMode.SYNC;
         TSOClient tsoClient;
         CommitTable.Client commitTableClient;
+        PostCommitActions postCommitter;
 
         private Builder() {
         }
@@ -83,6 +93,16 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
             return this;
         }
 
+        public Builder postCommitter(PostCommitActions postCommitter) {
+            this.postCommitter = postCommitter;
+            return this;
+        }
+
+        public Builder postCommitMode(PostCommitMode postCommitMode) {
+            this.postCommitMode = postCommitMode;
+            return this;
+        }
+
         public HBaseTransactionManager build() throws OmidInstantiationException {
 
             boolean ownsTsoClient = false;
@@ -96,7 +116,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
             boolean ownsCommitTableClient = false;
             if (commitTableClient == null) {
                 try {
-                    String commitTableName = conf.get(CommitTableConstants.COMMIT_TABLE_NAME_KEY, CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME);
+                    String commitTableName = conf.get(COMMIT_TABLE_NAME_KEY, COMMIT_TABLE_DEFAULT_NAME);
                     HBaseCommitTableConfig config = new HBaseCommitTableConfig(commitTableName);
                     CommitTable commitTable = new HBaseCommitTable(conf, config);
                     commitTableClient = commitTable.getClient();
@@ -105,8 +125,26 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
                     throw new OmidInstantiationException("Exception whilst getting the CommitTable client", e);
                 }
             }
-            return new HBaseTransactionManager(metricsRegistry, tsoClient, ownsTsoClient,
-                                               commitTableClient, ownsCommitTableClient,
+
+            if (postCommitter == null) {
+                PostCommitActions syncPostCommitter = new HBaseSyncPostCommitter(metricsRegistry, commitTableClient);
+                switch(postCommitMode) {
+                    case ASYNC:
+                        postCommitter = new HBaseAsyncPostCommitter(syncPostCommitter);
+                        break;
+                    case SYNC:
+                    default:
+                        postCommitter = syncPostCommitter;
+                        break;
+                }
+            }
+
+            return new HBaseTransactionManager(metricsRegistry,
+                                               postCommitter,
+                                               tsoClient,
+                                               ownsTsoClient,
+                                               commitTableClient,
+                                               ownsCommitTableClient,
                                                new HBaseTransactionFactory());
         }
 
@@ -126,43 +164,22 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
     }
 
     private HBaseTransactionManager(MetricsRegistry metrics,
+                                    PostCommitActions postCommitter,
                                     TSOClient tsoClient,
                                     boolean ownsTSOClient,
                                     CommitTable.Client commitTableClient,
                                     boolean ownsCommitTableClient,
-                                    HBaseTransactionFactory hBaseTransactionFactory) {
-        super(metrics, tsoClient, ownsTSOClient, commitTableClient, ownsCommitTableClient, hBaseTransactionFactory);
-    }
+                                    HBaseTransactionFactory hBaseTransactionFactory)
+    {
 
-    @Override
-    public void updateShadowCells(AbstractTransaction<? extends CellId> tx)
-            throws TransactionManagerException {
+        super(metrics,
+              postCommitter,
+              tsoClient,
+              ownsTSOClient,
+              commitTableClient,
+              ownsCommitTableClient,
+              hBaseTransactionFactory);
 
-        HBaseTransaction transaction = enforceHBaseTransactionAsParam(tx);
-
-        Set<HBaseCellId> cells = transaction.getWriteSet();
-
-        // Add shadow cells
-        for (HBaseCellId cell : cells) {
-            Put put = new Put(cell.getRow());
-            put.add(cell.getFamily(),
-                    CellUtils.addShadowCellSuffix(cell.getQualifier()),
-                    transaction.getStartTimestamp(),
-                    Bytes.toBytes(transaction.getCommitTimestamp()));
-            try {
-                cell.getTable().put(put);
-            } catch (IOException e) {
-                throw new TransactionManagerException(
-                        "Failed inserting shadow cell " + cell + " for Tx " + transaction, e);
-            }
-        }
-        // Flush affected tables before returning to avoid loss of shadow cells updates
-        // when autoflush is disabled
-        try {
-            transaction.flushTables();
-        } catch (IOException e) {
-            throw new TransactionManagerException("Exception while flushing writes", e);
-        }
     }
 
     @Override
@@ -226,12 +243,12 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
         }
     }
 
-    // ****************************************************************************************************************
+    // ----------------------------------------------------------------------------------------------------------------
     // Helper methods
-    // ****************************************************************************************************************
+    // ----------------------------------------------------------------------------------------------------------------
 
-    private HBaseTransaction
-    enforceHBaseTransactionAsParam(AbstractTransaction<? extends CellId> tx) {
+    // TODO: move to hbase commons package
+    static HBaseTransaction enforceHBaseTransactionAsParam(AbstractTransaction<? extends CellId> tx) {
 
         if (tx instanceof HBaseTransaction) {
             return (HBaseTransaction) tx;
@@ -243,6 +260,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
     }
 
     static class CommitTimestampLocatorImpl implements CommitTimestampLocator {
+
         private HBaseCellId hBaseCellId;
         private final Map<Long, Long> commitCache;
 

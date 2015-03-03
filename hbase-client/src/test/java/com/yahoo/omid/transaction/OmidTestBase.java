@@ -152,6 +152,15 @@ public abstract class OmidTestBase {
         return newTransactionManager(context, getClient(context));
     }
 
+    protected TransactionManager newTransactionManager(ITestContext context, PostCommitActions postCommitActions) throws Exception {
+        return HBaseTransactionManager.newBuilder()
+                .withConfiguration(hbaseConf)
+                .withCommitTableClient(getCommitTable(context).getClient())
+                .withTSOClient(getClient(context))
+                .postCommitter(postCommitActions)
+                .build();
+    }
+
     protected TransactionManager newTransactionManager(ITestContext context, TSOClient tsoClient) throws Exception {
         return HBaseTransactionManager.newBuilder()
                 .withConfiguration(hbaseConf)

@@ -6,6 +6,7 @@ import com.google.inject.Injector;
 import com.yahoo.omid.HBaseShims;
 import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.metrics.NullMetricsProvider;
 import com.yahoo.omid.tso.TSOServer;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig;
 import com.yahoo.omid.tsoclient.TSOClient;
@@ -92,6 +93,7 @@ public class TestCompaction {
     private AggregationClient aggregationClient;
     private CommitTable commitTable;
     private TSOClient client;
+    private PostCommitActions syncPostCommitter;
 
     @BeforeClass
     public void setupTestCompation() throws Exception {
@@ -117,6 +119,7 @@ public class TestCompaction {
         commitTable = injector.getInstance(CommitTable.class);
 
         client = TSOClient.newBuilder().withConfiguration(clientConf).build();
+
     }
 
     private void setupHBase() throws Exception {
@@ -177,10 +180,15 @@ public class TestCompaction {
     }
 
     private TransactionManager newTransactionManager() throws Exception {
+        CommitTable.Client commitTableClient =  commitTable.getClient();
+        syncPostCommitter =
+                spy(new HBaseSyncPostCommitter(new NullMetricsProvider(),commitTableClient));
+
         return HBaseTransactionManager.newBuilder()
                 .withConfiguration(hbaseConf)
-                .withCommitTableClient(commitTable.getClient())
+                .withCommitTableClient(commitTableClient)
                 .withTSOClient(client)
+                .postCommitter(syncPostCommitter)
                 .build();
     }
 
@@ -237,7 +245,7 @@ public class TestCompaction {
         TTable txTable = new TTable(hbaseConf, TEST_TABLE);
 
         // The following line emulates a crash after commit that is observed in (*) below
-        doThrow(new RuntimeException()).when(tm).updateShadowCells(any(HBaseTransaction.class));
+        doThrow(new RuntimeException()).when(syncPostCommitter).updateShadowCells(any(HBaseTransaction.class));
 
         HBaseTransaction problematicTx = (HBaseTransaction) tm.begin();
 

@@ -2,6 +2,7 @@ package com.yahoo.omid.transaction;
 
 
 import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.metrics.NullMetricsProvider;
 import com.yahoo.omid.tsoclient.TSOClient;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
@@ -54,12 +55,16 @@ public class TestFilters extends OmidTestBase {
                 .build();
 
         TTable table = new TTable(hbaseConf, TEST_TABLE);
-        AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.newBuilder()
+        PostCommitActions syncPostCommitter = spy(
+                new HBaseSyncPostCommitter(new NullMetricsProvider(), commitTableClient));
+        AbstractTransactionManager tm = HBaseTransactionManager.newBuilder()
                 .withConfiguration(hbaseConf)
                 .withCommitTableClient(commitTableClient)
-                .withTSOClient(client).build());
+                .withTSOClient(client)
+                .postCommitter(syncPostCommitter)
+                .build();
 
-        writeRows(table, tm);
+        writeRows(table, tm, syncPostCommitter);
 
         Transaction t = tm.begin();
         Get g = new Get(row1);
@@ -96,12 +101,16 @@ public class TestFilters extends OmidTestBase {
         TSOClient client = TSOClient.newBuilder().withConfiguration(getClientConfiguration(context))
                 .build();
         TTable table = new TTable(hbaseConf, TEST_TABLE);
-        AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.newBuilder()
+        PostCommitActions syncPostCommitter = spy(
+                new HBaseSyncPostCommitter(new NullMetricsProvider(), commitTableClient));
+        AbstractTransactionManager tm = HBaseTransactionManager.newBuilder()
                 .withConfiguration(hbaseConf)
                 .withCommitTableClient(commitTableClient)
-                .withTSOClient(client).build());
+                .withTSOClient(client)
+                .postCommitter(syncPostCommitter)
+                .build();
 
-        writeRows(table, tm);
+        writeRows(table, tm, syncPostCommitter);
 
         Transaction t = tm.begin();
         Scan s = new Scan().setFilter(f);
@@ -121,7 +130,8 @@ public class TestFilters extends OmidTestBase {
     }
 
 
-    private void writeRows(TTable table, TransactionManager tm) throws Exception {
+    private void writeRows(TTable table, TransactionManager tm, PostCommitActions postCommitter)
+            throws Exception {
         // create normal row with both cells
         Transaction t = tm.begin();
         Put p = new Put(row1);
@@ -132,7 +142,7 @@ public class TestFilters extends OmidTestBase {
 
         // create normal row, but fail to update shadow cells
         doThrow(new TransactionManagerException("fail"))
-                .when((HBaseTransactionManager) tm)
+                .when(postCommitter)
                 .updateShadowCells(any(HBaseTransaction.class));
 
         t = tm.begin();

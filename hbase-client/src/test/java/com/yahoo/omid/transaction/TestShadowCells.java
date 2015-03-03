@@ -3,6 +3,7 @@ package com.yahoo.omid.transaction;
 import com.google.common.base.Charsets;
 import com.google.common.base.Optional;
 import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.metrics.NullMetricsProvider;
 import com.yahoo.omid.tsoclient.TSOClient;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.hadoop.hbase.Cell;
@@ -115,12 +116,16 @@ public class TestShadowCells extends OmidTestBase {
         CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(getTSOClientDefaultConfiguration()).build();
-        AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.newBuilder()
+        PostCommitActions syncPostCommitter = spy(
+                new HBaseSyncPostCommitter(new NullMetricsProvider(), commitTableClient));
+        AbstractTransactionManager tm = HBaseTransactionManager.newBuilder()
                 .withConfiguration(hbaseConf)
                 .withCommitTableClient(commitTableClient)
-                .withTSOClient(client).build());
+                .withTSOClient(client)
+                .postCommitter(syncPostCommitter)
+                .build();
         // The following line emulates a crash after commit that is observed in (*) below
-        doThrow(new RuntimeException()).when(tm).updateShadowCells(any(HBaseTransaction.class));
+        doThrow(new RuntimeException()).when(syncPostCommitter).updateShadowCells(any(HBaseTransaction.class));
 
         TTable table = new TTable(hbaseConf, TEST_TABLE);
 
@@ -156,12 +161,16 @@ public class TestShadowCells extends OmidTestBase {
         CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(getTSOClientDefaultConfiguration()).build();
-        AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.newBuilder()
+        PostCommitActions syncPostCommitter = spy(
+                new HBaseSyncPostCommitter(new NullMetricsProvider(), commitTableClient));
+        AbstractTransactionManager tm = HBaseTransactionManager.newBuilder()
                 .withConfiguration(hbaseConf)
                 .withCommitTableClient(commitTableClient)
-                .withTSOClient(client).build());
+                .withTSOClient(client)
+                .postCommitter(syncPostCommitter)
+                .build();
         // The following line emulates a crash after commit that is observed in (*) below
-        doThrow(new RuntimeException()).when(tm).updateShadowCells(any(HBaseTransaction.class));
+        doThrow(new RuntimeException()).when(syncPostCommitter).updateShadowCells(any(HBaseTransaction.class));
 
         TTable table = new TTable(hbaseConf, TEST_TABLE);
 
@@ -211,10 +220,14 @@ public class TestShadowCells extends OmidTestBase {
         CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(getTSOClientDefaultConfiguration()).build();
-        AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.newBuilder()
+        PostCommitActions syncPostCommitter = spy(
+                new HBaseSyncPostCommitter(new NullMetricsProvider(), commitTableClient));
+        AbstractTransactionManager tm = HBaseTransactionManager.newBuilder()
                 .withConfiguration(hbaseConf)
                 .withCommitTableClient(commitTableClient)
-                .withTSOClient(client).build());
+                .withTSOClient(client)
+                .postCommitter(syncPostCommitter)
+                .build();
 
         final TTable table = new TTable(hbaseConf, TEST_TABLE);
 
@@ -234,7 +247,7 @@ public class TestShadowCells extends OmidTestBase {
                 invocation.callRealMethod();
                 return null;
             }
-        }).when(tm).updateShadowCells(any(HBaseTransaction.class));
+        }).when(syncPostCommitter).updateShadowCells(any(HBaseTransaction.class));
 
         // When committing, a TransactionManagerException should be thrown by tm.updateShadowCells(). The exception
         // must be catch internally by tm.commit(), avoiding the transaction completion on the commit table.
@@ -270,7 +283,9 @@ public class TestShadowCells extends OmidTestBase {
         final CountDownLatch postCommitEnd = new CountDownLatch(1);
 
         final AtomicBoolean readFailed = new AtomicBoolean(false);
-        AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context));
+        PostCommitActions syncPostCommitter =
+                spy(new HBaseSyncPostCommitter(new NullMetricsProvider(), getCommitTable(context).getClient()));
+        AbstractTransactionManager tm = (AbstractTransactionManager) newTransactionManager(context, syncPostCommitter);
 
         doAnswer(new Answer<Void>() {
             @Override
@@ -284,7 +299,7 @@ public class TestShadowCells extends OmidTestBase {
                 postCommitEnd.countDown();
                 return null;
             }
-        }).when(tm).updateShadowCells(any(HBaseTransaction.class));
+        }).when(syncPostCommitter).updateShadowCells(any(HBaseTransaction.class));
 
         // Start transaction on write thread
         TTable table = new TTable(hbaseConf, TEST_TABLE);
