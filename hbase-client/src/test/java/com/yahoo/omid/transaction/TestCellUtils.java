@@ -110,13 +110,30 @@ public class TestCellUtils {
         List<Cell> badListWithDups = new ArrayList<>();
         badListWithDups.add(cell1);
         badListWithDups.add(dupCell1WithAnotherValue);
-        // Check an exception is thrown when the list contains the same CellId with different values
-        try {
-            CellUtils.mapCellsToShadowCells(badListWithDups);
-        } catch (IOException e) {
-            // Expected
-        }
 
+        // Check dup shadow cell with same MVCC is ignored
+        SortedMap<Cell, Optional<Cell>> cellsToShadowCells = CellUtils.mapCellsToShadowCells(badListWithDups);
+        assertEquals("There should be only 1 key-value maps", 1, cellsToShadowCells.size());
+        assertTrue(cellsToShadowCells.containsKey(cell1));
+        KeyValue firstKey = (KeyValue) cellsToShadowCells.firstKey();
+        KeyValue lastKey = (KeyValue) cellsToShadowCells.lastKey();
+        assertTrue(firstKey.equals(lastKey));
+        assertTrue("Should be equal", 0 == Bytes.compareTo(
+                firstKey.getValueArray(), firstKey.getValueOffset(), firstKey.getValueLength(),
+                cell1.getValueArray(), cell1.getValueOffset(), cell1.getValueLength()));
+
+        // Modify dup shadow cell to have a greater MVCC and check that is replaced
+        ((KeyValue) dupCell1WithAnotherValue).setMvccVersion(1);
+        cellsToShadowCells = CellUtils.mapCellsToShadowCells(badListWithDups);
+        assertEquals("There should be only 1 key-value maps", 1, cellsToShadowCells.size());
+        assertTrue(cellsToShadowCells.containsKey(dupCell1WithAnotherValue));
+        firstKey = (KeyValue) cellsToShadowCells.firstKey();
+        lastKey = (KeyValue) cellsToShadowCells.lastKey();
+        assertTrue(firstKey.equals(lastKey));
+        assertTrue("Should be equal", 0 == Bytes.compareTo(
+                firstKey.getValueArray(), firstKey.getValueOffset(), firstKey.getValueLength(),
+                dupCell1WithAnotherValue.getValueArray(), dupCell1WithAnotherValue.getValueOffset(),
+                dupCell1WithAnotherValue.getValueLength()));
         // Check a list of cells with duplicate values
         List<Cell> cellListWithDups = new ArrayList<>();
         cellListWithDups.add(cell1);
@@ -127,7 +144,7 @@ public class TestCellUtils {
         cellListWithDups.add(cell3);
         cellListWithDups.add(shadowCell2);
 
-        SortedMap<Cell, Optional<Cell>> cellsToShadowCells = CellUtils.mapCellsToShadowCells(cellListWithDups);
+        cellsToShadowCells = CellUtils.mapCellsToShadowCells(cellListWithDups);
         assertEquals("There should be only 3 key-value maps", 3, cellsToShadowCells.size());
         assertTrue(cellsToShadowCells.get(cell1).get().equals(shadowCell1));
         assertTrue(cellsToShadowCells.get(dupCell1).get().equals(shadowCell1));

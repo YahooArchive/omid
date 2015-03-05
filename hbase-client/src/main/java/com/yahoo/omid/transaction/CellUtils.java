@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Objects;
 import com.google.common.base.Objects.ToStringHelper;
 import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
 import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
 
@@ -239,8 +240,7 @@ public class CellUtils {
      *            the list of cells to classify
      * @return a sorted map associating each cell with its shadow cell
      */
-    public static SortedMap<Cell, Optional<Cell>> mapCellsToShadowCells(List<Cell> cells)
-            throws IOException {
+    public static SortedMap<Cell, Optional<Cell>> mapCellsToShadowCells(List<Cell> cells) {
 
         SortedMap<Cell, Optional<Cell>> cellToShadowCellMap
             = new TreeMap<Cell, Optional<Cell>>(new CellComparator());
@@ -251,18 +251,25 @@ public class CellUtils {
                 CellId key = new CellId(cell, false);
                 if (cellIdToCellMap.containsKey(key)) {
                     // Get the current cell and compare the values
-                    Cell currentCell = cellIdToCellMap.get(key);
-                    if (CellUtil.matchingValue(cell, currentCell)) {
+                    Cell storedCell = cellIdToCellMap.get(key);
+                    if (CellUtil.matchingValue(cell, storedCell)) {
+                        // TODO: Should we check also here the MVCC and swap if its greater???
                         continue; // Values are the same, ignore
-                    } else { // TODO: Solve this properly and avoid throwing the exception
-                        throw new IOException(
-                                "A cell with the same value (" + currentCell + ") is already present for key " +
-                                key + " (Cell " + cell + "). This may happen, but have to decide how to solve it. " +
-                                "Current row elements: " + cells);
+                    } else {
+                        if (cell.getMvccVersion() > storedCell.getMvccVersion()) { // Swap values
+                            Optional<Cell> previousValue = cellToShadowCellMap.remove(storedCell);
+                            Preconditions.checkNotNull(previousValue, "Should contain an Optional<Cell> value");
+                            cellIdToCellMap.put(key, cell);
+                            cellToShadowCellMap.put(cell, previousValue);
+                        } else {
+                            LOG.warn("Cell {} with an earlier MVCC found. Ignoring...", cell);
+                            continue;
+                        }
                     }
+                } else {
+                    cellIdToCellMap.put(key, cell);
+                    cellToShadowCellMap.put(cell, Optional.<Cell> absent());
                 }
-                cellToShadowCellMap.put(cell, Optional.<Cell> absent());
-                cellIdToCellMap.put(key, cell);
             } else {
                 CellId key = new CellId(cell, true);
                 if (cellIdToCellMap.containsKey(key)) {
