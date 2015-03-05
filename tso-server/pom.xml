@@ -90,11 +90,6 @@
     </dependency>
     <dependency>
       <groupId>com.yahoo.omid</groupId>
-      <artifactId>commit-table</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.yahoo.omid</groupId>
       <artifactId>hbase-commit-table</artifactId>
       <version>${project.version}</version>
     </dependency>

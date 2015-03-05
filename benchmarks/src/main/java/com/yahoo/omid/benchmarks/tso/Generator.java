@@ -15,7 +15,7 @@
  * LICENSE file.                                                                                                                                                                   
  */
 
-package com.yahoo.omid.tso.util;
+package com.yahoo.omid.benchmarks.tso;
 
 /**
  * An expression that generates a sequence of string values, following some distribution (Uniform, Zipfian, Sequential, etc.)

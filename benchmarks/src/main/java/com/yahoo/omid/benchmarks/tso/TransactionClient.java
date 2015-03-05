@@ -1,4 +1,4 @@
-package com.yahoo.omid.tso.util;
+package com.yahoo.omid.benchmarks.tso;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +21,7 @@ import com.yahoo.omid.committable.NullCommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
 import com.yahoo.omid.committable.hbase.HBaseLogin;
-import com.yahoo.omid.tso.util.ClientHandler.RowDistribution;
+import com.yahoo.omid.benchmarks.tso.ClientHandler.RowDistribution;
 
 /**
  * Simple Transaction Client using Serialization

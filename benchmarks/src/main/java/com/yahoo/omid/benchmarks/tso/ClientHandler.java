@@ -1,20 +1,4 @@
-/**
- * Copyright (c) 2011 Yahoo! Inc. All rights reserved. 
- * 
- * Licensed under the Apache License, Version 2.0 (the "License"); 
- * you may not use this file except in compliance with the License. 
- * You may obtain a copy of the License at 
- * 
- *     http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software 
- * distributed under the License is distributed on an "AS IS" BASIS, 
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
- * See the License for the specific language governing permissions and 
- * limitations under the License. See accompanying LICENSE file.
- */
-
-package com.yahoo.omid.tso.util;
+package com.yahoo.omid.benchmarks.tso;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
@@ -42,15 +26,16 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.tso.util.DummyCellIdImpl;
 import com.yahoo.omid.tsoclient.CellId;
 import com.yahoo.omid.tsoclient.TSOClient;
 import com.yahoo.omid.tsoclient.TSOFuture;
 
 /**
  * Example of ChannelHandler for the Transaction Client
- * 
+ *
  * @author maysam
- * 
+ *
  */
 public class ClientHandler {
 
@@ -144,13 +129,13 @@ public class ClientHandler {
 
     /**
      * Constructor
-     * 
+     *
      * @param nbMessage
      * @param inflight
      * @throws IOException
      */
-    public ClientHandler(Configuration conf, CommitTable.Client commitTableClient, MetricRegistry metrics, int runFor, 
-            long nbMessage, int inflight, int commitDelay, float percentReads, int maxTxSize, 
+    public ClientHandler(Configuration conf, CommitTable.Client commitTableClient, MetricRegistry metrics, int runFor,
+            long nbMessage, int inflight, int commitDelay, float percentReads, int maxTxSize,
             IntegerGenerator intGenerator) throws IOException {
         if (nbMessage < 0) {
             throw new IllegalArgumentException("nbMessage: " + nbMessage);
@@ -235,7 +220,7 @@ public class ClientHandler {
             int size = readOnly ? 0 : rnd.nextInt(maxTxSize);
             final Set<CellId> cells = new HashSet<CellId>();
             for (byte i = 0; i < size; i++) {
-                long l = intGenerator.nextInt();                
+                long l = intGenerator.nextInt();
                 cells.add(new DummyCellIdImpl(l));
             }
             final TSOFuture<Long> f = client.commit(txnid, cells);

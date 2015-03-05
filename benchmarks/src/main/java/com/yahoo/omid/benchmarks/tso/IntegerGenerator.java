@@ -15,7 +15,7 @@
  * LICENSE file.                                                                                                                                                                   
  */
 
-package com.yahoo.omid.tso.util;
+package com.yahoo.omid.benchmarks.tso;
 
 /**
  * A generator that is capable of generating ints as well as strings
