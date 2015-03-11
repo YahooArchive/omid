@@ -22,6 +22,11 @@
       <artifactId>hbase-commit-table</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.yahoo.omid</groupId>
+      <artifactId>tso-server</artifactId>
+      <version>${project.version}</version>
+    </dependency>
     <!-- End of Dependencies on Omid modules -->
     
     <!-- testing -->
