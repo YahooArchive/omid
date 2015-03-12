@@ -154,6 +154,49 @@ public class CellUtils {
     }
 
     /**
+     * Returns the qualifier length removing the shadow cell suffix. In case
+     * that que suffix is not found, just returns the length of the qualifier
+     * passed.
+     * @param qualifier
+     *            the qualifier to remove the suffix from
+     * @param qualOffset
+     *            the offset where the qualifier starts
+     * @param qualLength
+     *            the qualifier length
+     * @return the qualifier length without the suffix
+     */
+    public static int qualifierLengthFromShadowCellQualifier(byte[] qualifier, int qualOffset, int qualLength) {
+
+        if (endsWith(qualifier, qualOffset, qualLength, SHADOW_CELL_SUFFIX)) {
+            return qualLength - SHADOW_CELL_SUFFIX.length;
+        }
+
+        if (endsWith(qualifier, qualOffset, qualLength, LEGACY_SHADOW_CELL_SUFFIX)) {
+            return qualLength - LEGACY_SHADOW_CELL_SUFFIX.length;
+        }
+
+        return qualLength;
+
+    }
+
+    /**
+     * Complement to matchingQualifier() methods in HBase's CellUtil.class
+     * @param left
+     *            the cell to compare the qualifier
+     * @param qualArray
+     *            the explicit qualifier array passed
+     * @param qualOffset
+     *            the explicit qualifier offset passed
+     * @param qualLen
+     *            the explicit qualifier length passed
+     * @return whether the qualifiers are equal or not
+     */
+    public static boolean matchingQualifier(final Cell left, final byte[] qualArray, int qualOffset, int qualLen) {
+        return Bytes.equals(left.getQualifierArray(), left.getQualifierOffset(), left.getQualifierLength(),
+                            qualArray, qualOffset, qualLen);
+    }
+
+    /**
      * Check that the cell passed meets the requirements for a valid cell
      * identifier with Omid. Basically, users can't:
      * 1) specify a timestamp
@@ -327,18 +370,17 @@ public class CellUtils {
 
             // Qualifier comparison
             if (isShadowCell()) {
-
-                byte[] originalQualifier = removeShadowCellSuffix(cell.getQualifierArray(),
-                                                                  cell.getQualifierOffset(),
-                                                                  cell.getQualifierLength());
-                if (!CellUtil.matchingQualifier(otherCell, originalQualifier)) {
+                int qualifierLength = qualifierLengthFromShadowCellQualifier(cell.getQualifierArray(),
+                                                                             cell.getQualifierOffset(),
+                                                                             cell.getQualifierLength());
+                if (!matchingQualifier(otherCell,
+                                       cell.getQualifierArray(), cell.getQualifierOffset(), qualifierLength)) {
                     return false;
                 }
             } else {
                 if (!CellUtil.matchingQualifier(otherCell, cell)) {
                     return false;
                 }
-
             }
 
             // Timestamp comparison
@@ -355,14 +397,13 @@ public class CellUtils {
             Hasher hasher = Hashing.goodFastHash(MIN_BITS).newHasher();
             hasher.putBytes(cell.getRowArray(), cell.getRowOffset(), cell.getRowLength());
             hasher.putBytes(cell.getFamilyArray(), cell.getFamilyOffset(), cell.getFamilyLength());
-            if(isShadowCell()) {
-                byte[] originalQualifier = removeShadowCellSuffix(cell.getQualifierArray(),
-                                                                  cell.getQualifierOffset(),
-                                                                  cell.getQualifierLength());
-                hasher.putBytes(originalQualifier, 0, originalQualifier.length);
-            } else {
-                hasher.putBytes(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength());
+            int qualifierLength = cell.getQualifierLength();
+            if(isShadowCell()) { // Update qualifier length when qualifier is shadow cell
+                qualifierLength = qualifierLengthFromShadowCellQualifier(cell.getQualifierArray(),
+                                                                         cell.getQualifierOffset(),
+                                                                         cell.getQualifierLength());
             }
+            hasher.putBytes(cell.getQualifierArray(), cell.getQualifierOffset(), qualifierLength);
             hasher.putLong(cell.getTimestamp());
             return hasher.hash().asInt();
         }
@@ -376,10 +417,11 @@ public class CellUtils {
             helper.add("qualifier",
                     Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength()));
             if(isShadowCell()) {
-                byte[] originalQualifier = removeShadowCellSuffix(cell.getQualifierArray(),
-                                                                  cell.getQualifierOffset(),
-                                                                  cell.getQualifierLength());
-                helper.add("qualifier wo sc suffix", Bytes.toString(originalQualifier, 0, originalQualifier.length));
+                int qualifierLength = qualifierLengthFromShadowCellQualifier(cell.getQualifierArray(),
+                                                                             cell.getQualifierOffset(),
+                                                                             cell.getQualifierLength());
+                helper.add("qualifier whithout shadow cell suffix",
+                        Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(), qualifierLength));
             }
             helper.add("ts", cell.getTimestamp());
             return helper.toString();

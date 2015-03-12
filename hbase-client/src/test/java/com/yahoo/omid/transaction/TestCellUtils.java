@@ -30,6 +30,7 @@ public class TestCellUtils {
     private final byte[] row = Bytes.toBytes("test-row");
     private final byte[] family = Bytes.toBytes("test-family");
     private final byte[] qualifier = Bytes.toBytes("test-qual");
+    private final byte[] otherQualifier = Bytes.toBytes("other-test-qual");
 
     @DataProvider(name = "shadow-cell-suffixes")
     public Object[][] createShadowCellSuffixes() {
@@ -191,6 +192,27 @@ public class TestCellUtils {
         } catch (IllegalArgumentException e) {
             // Expected
         }
+    }
+
+    @Test
+    public void testMatchingQualifiers() {
+        Cell cell = new KeyValue(row, family, qualifier, 1, Bytes.toBytes("value"));
+        assertTrue(CellUtils.matchingQualifier(cell, qualifier, 0, qualifier.length));
+        assertFalse(CellUtils.matchingQualifier(cell, otherQualifier, 0, otherQualifier.length));
+    }
+
+    @Test(dataProvider = "shadow-cell-suffixes")
+    public void testQualifierLengthFromShadowCellQualifier(byte[] shadowCellSuffixToTest) {
+        // Test suffixed qualifier
+        byte[] suffixedQualifier = com.google.common.primitives.Bytes.concat(qualifier, shadowCellSuffixToTest);
+        int originalQualifierLength =
+                CellUtils.qualifierLengthFromShadowCellQualifier(suffixedQualifier, 0, suffixedQualifier.length);
+        assertEquals(qualifier.length, originalQualifierLength);
+
+        // Test passing qualifier without shadow cell suffix
+        originalQualifierLength =
+                CellUtils.qualifierLengthFromShadowCellQualifier(qualifier, 0, qualifier.length);
+        assertEquals(qualifier.length, originalQualifierLength);
     }
 
 }
