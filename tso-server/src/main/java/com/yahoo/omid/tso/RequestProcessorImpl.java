@@ -74,7 +74,7 @@ public class RequestProcessorImpl
         if (event.getType() == RequestEvent.Type.TIMESTAMP) {
             handleTimestamp(event.getChannel());
         } else if (event.getType() == RequestEvent.Type.COMMIT) {
-            handleCommit(event.getStartTimestamp(), event.rows(), event.isRetry(), event.getChannel());
+            handleCommit(event.getStartTimestamp(), event.writeSet(), event.isRetry(), event.getChannel());
         }
     }
 
@@ -87,13 +87,13 @@ public class RequestProcessorImpl
     }
 
     @Override
-    public void commitRequest(long startTimestamp, Collection<Long> rows, boolean isRetry, Channel c) {
+    public void commitRequest(long startTimestamp, Collection<Long> writeSet, boolean isRetry, Channel c) {
         long seq = requestRing.next();
         RequestEvent e = requestRing.get(seq);
-        RequestEvent.makeCommitRequest(e, startTimestamp, rows, isRetry, c);
+        RequestEvent.makeCommitRequest(e, startTimestamp, writeSet, isRetry, c);
         requestRing.publish(seq);
     }
-    
+
     public void handleTimestamp(Channel c) {
         long timestamp;
 
@@ -107,25 +107,24 @@ public class RequestProcessorImpl
         persistProc.persistTimestamp(timestamp, c);
     }
 
-    public long handleCommit(long startTimestamp, Iterable<Long> rows, boolean isRetry, Channel c) {
+    public long handleCommit(long startTimestamp, Iterable<Long> writeSet, boolean isRetry, Channel c) {
         boolean committed = false;
         long commitTimestamp = 0L;
-        
-        int numRows = 0;
+
+        int numCellsInWriteset = 0;
         // 0. check if it should abort
         if (startTimestamp <= lowWatermark) {
             committed = false;
         } else {
             // 1. check the write-write conflicts
             committed = true;
-            for (long r : rows) {
-                long value;
-                value = hashmap.getLatestWriteForRow(r);
+            for (long cellId : writeSet) {
+                long value = hashmap.getLatestWriteForCell(cellId);
                 if (value != 0 && value >= startTimestamp) {
                     committed = false;
                     break;
                 }
-                numRows++;
+                numCellsInWriteset++;
             }
         }
 
@@ -134,11 +133,11 @@ public class RequestProcessorImpl
             try {
                 commitTimestamp = timestampOracle.next();
 
-                if (numRows > 0) {
+                if (numCellsInWriteset > 0) {
                     long newLowWatermark = lowWatermark;
 
-                    for (long r : rows) {
-                        long removed = hashmap.putLatestWriteForRow(r, commitTimestamp);
+                    for (long r : writeSet) {
+                        long removed = hashmap.putLatestWriteForCell(r, commitTimestamp);
                         newLowWatermark = Math.max(removed, newLowWatermark);
                     }
 
@@ -158,41 +157,42 @@ public class RequestProcessorImpl
     }
 
     final static class RequestEvent implements Iterable<Long> {
+
         enum Type {
             TIMESTAMP, COMMIT
         };
+
         private Type type = null;
         private Channel channel = null;
 
         private boolean isRetry = false;
         private long startTimestamp = 0;
-        private long numRows = 0;
+        private long numCells = 0;
 
         private static final int MAX_INLINE = 40;
-        private Long rows[] = new Long[MAX_INLINE];
-        private Collection<Long> rowCollection = null; // for the case where there's more than MAX_INLINE
+        private Long writeSet[] = new Long[MAX_INLINE];
+        private Collection<Long> writeSetAsCollection = null; // for the case where there's more than MAX_INLINE
 
         static void makeTimestampRequest(RequestEvent e, Channel c) {
             e.type = Type.TIMESTAMP;
             e.channel = c;
         }
 
-        // TODO Rename rows to cells
         static void makeCommitRequest(RequestEvent e,
-                                      long startTimestamp, Collection<Long> rows, boolean isRetry, Channel c) {
+                                      long startTimestamp, Collection<Long> writeSet, boolean isRetry, Channel c) {
             e.type = Type.COMMIT;
             e.channel = c;
             e.startTimestamp = startTimestamp;
             e.isRetry = isRetry;
-            if (rows.size() > 40) {
-                e.numRows = rows.size();
-                e.rowCollection = rows;
+            if (writeSet.size() > MAX_INLINE) {
+                e.numCells = writeSet.size();
+                e.writeSetAsCollection = writeSet;
             } else {
-                e.rowCollection = null;
-                e.numRows = rows.size();
+                e.writeSetAsCollection = null;
+                e.numCells = writeSet.size();
                 int i = 0;
-                for (Long l : rows) {
-                    e.rows[i] = l;
+                for (Long cellId : writeSet) {
+                    e.writeSet[i] = cellId;
                     i++;
                 }
             }
@@ -212,20 +212,20 @@ public class RequestProcessorImpl
 
         @Override
         public Iterator<Long> iterator() {
-            if (rowCollection != null) {
-                return rowCollection.iterator();
+            if (writeSetAsCollection != null) {
+                return writeSetAsCollection.iterator();
             }
             return new Iterator<Long>() {
                 int i = 0;
 
                 @Override
                 public boolean hasNext() {
-                    return i < numRows;
+                    return i < numCells;
                 }
 
                 @Override
                 public Long next() {
-                    return rows[i++];
+                    return writeSet[i++];
                 }
 
                 @Override
@@ -235,10 +235,10 @@ public class RequestProcessorImpl
             };
         }
 
-        Iterable<Long> rows() {
+        Iterable<Long> writeSet() {
             return this;
         }
-        
+
         boolean isRetry() {
             return isRetry;
         }
@@ -246,6 +246,7 @@ public class RequestProcessorImpl
         public final static EventFactory<RequestEvent> EVENT_FACTORY
             = new EventFactory<RequestEvent>()
         {
+            @Override
             public RequestEvent newInstance()
             {
                 return new RequestEvent();

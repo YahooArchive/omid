@@ -45,7 +45,7 @@ public class TestRequestProcessor {
 
     @Test(timeOut = 30000)
     public void testCommit() throws Exception {
-        List<Long> rows = Lists.newArrayList(1L, 20L, 203L);
+        List<Long> writeSet = Lists.newArrayList(1L, 20L, 203L);
         PersistenceProcessor persist = mock(PersistenceProcessor.class);
         RequestProcessor proc = buildRequestProcessor(persist);
 
@@ -55,10 +55,10 @@ public class TestRequestProcessor {
                 TScapture.capture(), any(Channel.class));
         long firstTS = TScapture.getValue();
 
-        proc.commitRequest(firstTS - 1, rows, false, null);
+        proc.commitRequest(firstTS - 1, writeSet, false, null);
         verify(persist, timeout(100).times(1)).persistAbort(eq(firstTS - 1), anyBoolean(), any(Channel.class));
 
-        proc.commitRequest(firstTS, rows, false, null);
+        proc.commitRequest(firstTS, writeSet, false, null);
         ArgumentCaptor<Long> commitTScapture = ArgumentCaptor.forClass(Long.class);
 
         verify(persist, timeout(100).times(1)).persistCommit(eq(firstTS), commitTScapture.capture(),
@@ -78,10 +78,10 @@ public class TestRequestProcessor {
                 TScapture.capture(), any(Channel.class));
         long thirdTS = TScapture.getValue();
 
-        proc.commitRequest(thirdTS, rows, false, null);
+        proc.commitRequest(thirdTS, writeSet, false, null);
         verify(persist, timeout(100).times(1)).persistCommit(eq(thirdTS), anyLong(),
                                                              any(Channel.class));
-        proc.commitRequest(secondTS, rows, false, null);
+        proc.commitRequest(secondTS, writeSet, false, null);
         verify(persist, timeout(100).times(1)).persistAbort(eq(secondTS), anyBoolean(),
                                                             any(Channel.class));
     }
