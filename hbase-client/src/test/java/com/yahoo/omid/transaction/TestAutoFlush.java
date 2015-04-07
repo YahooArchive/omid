@@ -36,9 +36,10 @@ public class TestAutoFlush extends OmidTestBase {
 
         tm.commit(t);
 
-        // After commit data should be there
+        // After commit, both the cell and shadow cell should be there.
+        // That's why we check for two elements in the test assertion
         result = table.getHTable().get(get);
-        assertEquals("Writes were not flushed to DB", 1, result.size());
+        assertEquals("Writes were not flushed to DB", 2, result.size());
     }
 
 }

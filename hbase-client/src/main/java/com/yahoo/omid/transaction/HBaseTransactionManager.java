@@ -139,18 +139,33 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
                         "Failed inserting shadow cell " + cell + " for Tx " + transaction, e);
             }
         }
+        // Flush affected tables before returning to avoid loss of shadow cells updates
+        // when autoflush is disabled
+        try {
+            flushTables(transaction);
+        } catch (IOException e) {
+            throw new TransactionManagerException("Exception while flushing writes", e);
+        }
     }
 
     @Override
     public void preCommit(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {
-        // Flush all pending writes
-        flushTables(enforceHBaseTransactionAsParam(transaction));
+        try {
+            // Flush all pending writes
+            flushTables(enforceHBaseTransactionAsParam(transaction));
+        } catch (IOException e) {
+            throw new TransactionManagerException("Exception while flushing writes", e);
+        }
     }
 
     @Override
     public void preRollback(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {
-        // Flush all pending writes
-        flushTables(enforceHBaseTransactionAsParam(transaction));
+        try {
+            // Flush all pending writes
+            flushTables(enforceHBaseTransactionAsParam(transaction));
+        } catch (IOException e) {
+            throw new TransactionManagerException("Exception while flushing writes", e);
+        }
     }
 
     @Override
@@ -195,15 +210,12 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
     /**
      * Flushes pending operations for tables touched by transaction
      */
-    private void flushTables(HBaseTransaction transaction) throws TransactionManagerException {
-        try {
-            for (HTableInterface writtenTable : transaction.getWrittenTables()) {
-                writtenTable.flushCommits();
-            }
-        } catch (IOException e) {
-            transaction.cleanup();
-            throw new TransactionManagerException("Exception while flushing writes", e);
+    private void flushTables(HBaseTransaction transaction) throws IOException {
+
+        for (HTableInterface writtenTable : transaction.getWrittenTables()) {
+            writtenTable.flushCommits();
         }
+
     }
 
     private HBaseTransaction

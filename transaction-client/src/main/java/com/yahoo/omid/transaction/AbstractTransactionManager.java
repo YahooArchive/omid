@@ -30,7 +30,7 @@ import com.yahoo.omid.tsoclient.TSOClient.AbortException;
 public abstract class AbstractTransactionManager implements TransactionManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractTransactionManager.class);
-    
+
     public enum Location {
         NOT_PRESENT, CACHE, COMMIT_TABLE, SHADOW_CELL
     }
@@ -67,7 +67,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
     protected final CommitTable.Client commitTableClient;
     private final boolean ownsCommitTableClient;
     private final TransactionFactory<? extends CellId> transactionFactory;
-    
+
     /**
      * Base constructor
      *
@@ -97,7 +97,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
         this.ownsCommitTableClient = ownsCommitTableClient;
         this.transactionFactory = transactionFactory;
     }
-    
+
     /**
      * Allows specific implementations to update the shadow cells.
      * @param transaction
@@ -152,7 +152,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      */
     public void postBegin(AbstractTransaction<? extends CellId> transaction)
             throws TransactionManagerException {};
-    
+
     /**
      * Allows transaction manager developers to perform actions before
      * committing a transaction.
@@ -162,7 +162,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      */
     public void preCommit(AbstractTransaction<? extends CellId> transaction)
             throws TransactionManagerException {};
-    
+
     /**
      * @see com.yahoo.omid.transaction.TransactionManager#commit()
      */
@@ -182,6 +182,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             try {
                 preCommit(tx);
             } catch (TransactionManagerException e) {
+                tx.cleanup();
                 throw new TransactionException(e.getMessage(), e);
             }
             long commitTs = tsoClient.commit(tx.getStartTimestamp(), tx.getWriteSet()).get();
@@ -220,7 +221,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      */
     public void postCommit(AbstractTransaction<? extends CellId> transaction)
             throws TransactionManagerException {};
-    
+
     /**
      * Allows transaction manager developers to perform actions before
      * rolling-back a transaction.
@@ -258,7 +259,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
         } finally {
             tx.cleanup();
         }
-        
+
     }
 
     /**
@@ -281,11 +282,11 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      *          a locator to find the commit timestamp in the system.
      * @return the commit timestamp joint with the location where it was found
      *         or an object indicating that it was not found in the system
-     * @throws IOException 
+     * @throws IOException
      */
     public CommitTimestamp locateCellCommitTimestamp(long cellStartTimestamp,
             CommitTimestampLocator locator) throws IOException {
-        
+
         try {
             // 1) First check the cache
             Optional<Long> commitTimestamp =
@@ -330,9 +331,9 @@ public abstract class AbstractTransactionManager implements TransactionManager {
         if (ownsCommitTableClient) {
             commitTableClient.close();
         }
-        
+
     }
-    
+
     // ****************************************************************************************************************
     // Helper methods
     // ****************************************************************************************************************
