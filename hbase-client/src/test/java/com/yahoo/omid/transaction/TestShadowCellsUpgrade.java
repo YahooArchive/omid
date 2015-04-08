@@ -32,6 +32,9 @@ public class TestShadowCellsUpgrade extends OmidTestBase {
     static final byte[] data1 = Bytes.toBytes("testWrite-1");
     static final byte[] data2 = Bytes.toBytes("testWrite-2");
 
+    // TODO: After removing the legacy shadow cell suffix, maybe we should
+    // mix the assertions in this test with the ones in TestShadowCells in
+    // a further commit
     /**
      * Test that the new client can read shadow cells written by the old
      * client.
@@ -102,22 +105,22 @@ public class TestShadowCellsUpgrade extends OmidTestBase {
         assertTrue("Should have column family", result1.containsColumn(family, qualifier));
         assertTrue("Should have column family", result2.containsColumn(family, qualifier));
 
-        // now add in a legacy shadow cell for that row
+        // now add in the previous legacy shadow cell for that row
         put = new Put(row2);
         put.add(family,
-                CellUtils.addLegacyShadowCellSuffix(qualifier),
+                addLegacyShadowCellSuffix(qualifier),
                 t2.getStartTimestamp(),
                 Bytes.toBytes(t2.getCommitTimestamp()));
         htable.put(put);
 
-        // we should be able to read that row now, even though
+        // we should NOT be able to read that row now, even though
         // it has a legacy shadow cell
         Transaction t6 = tm.begin();
         get = new Get(row2);
         get.addColumn(family, qualifier);
 
         getResult = table.get(t6, get);
-        assertTrue("Should have column", getResult.containsColumn(family, qualifier));
+        assertFalse("Should NOT have column", getResult.containsColumn(family, qualifier));
 
         Transaction t7 = tm.begin();
         s = new Scan();
@@ -125,16 +128,13 @@ public class TestShadowCellsUpgrade extends OmidTestBase {
         result1 = scanner.next();
         result2 = scanner.next();
         result3 = scanner.next();
-        Result result4 = scanner.next();
         scanner.close();
 
-        assertNull("There should only be 3 rows", result4);
+        assertNull("There should only be 2 rows", result3);
         assertTrue("Should have first row", Arrays.equals(result1.getRow(), row1));
-        assertTrue("Should have second row", Arrays.equals(result2.getRow(), row2));
-        assertTrue("Should have third row", Arrays.equals(result3.getRow(), row3));
+        assertTrue("Should have third row", Arrays.equals(result2.getRow(), row3));
         assertTrue("Should have column family", result1.containsColumn(family, qualifier));
         assertTrue("Should have column family", result2.containsColumn(family, qualifier));
-        assertTrue("Should have column family", result3.containsColumn(family, qualifier));
     }
 
     /**
@@ -143,7 +143,7 @@ public class TestShadowCellsUpgrade extends OmidTestBase {
     @Test
     public void testReservedNames() throws Exception {
         byte[] nonValidQualifier1 = "blahblah\u0080".getBytes(Charsets.UTF_8);
-        byte[] nonValidQualifier2 = "blahblah:OMID_CTS".getBytes(Charsets.UTF_8);
+        byte[] validQualifierIncludingOldShadowCellSuffix = "blahblah:OMID_CTS".getBytes(Charsets.UTF_8);
         TransactionManager tm = newTransactionManager();
 
         TTable table = new TTable(hbaseConf, TEST_TABLE);
@@ -166,21 +166,32 @@ public class TestShadowCellsUpgrade extends OmidTestBase {
             // correct
         }
 
+        // TODO: Probably we should remove the following test assertions in
+        // other commit and move this test into TestShadowCells class
         put = new Put(row1);
-        put.add(family, nonValidQualifier2, data1);
+        put.add(family, validQualifierIncludingOldShadowCellSuffix, data1);
         try {
             table.put(t1, put);
-            fail("Shouldn't be able to put this");
         } catch (IllegalArgumentException iae) {
-            // correct
+            fail("Qualifier shouldn't be rejected anymore");
         }
         del = new Delete(row1);
-        del.deleteColumn(family, nonValidQualifier2);
+        del.deleteColumn(family, validQualifierIncludingOldShadowCellSuffix);
         try {
             table.delete(t1, del);
-            fail("Shouldn't be able to delete this");
         } catch (IllegalArgumentException iae) {
-            // correct
+            fail("Qualifier shouldn't be rejected anymore");
         }
     }
+
+    // ////////////////////////////////////////////////////////////////////////
+    // Helper methods
+    // ////////////////////////////////////////////////////////////////////////
+
+    private static final byte[] LEGACY_SHADOW_CELL_SUFFIX = ":OMID_CTS".getBytes(Charsets.UTF_8);
+
+    private static byte[] addLegacyShadowCellSuffix(byte[] qualifier) {
+        return com.google.common.primitives.Bytes.concat(qualifier, LEGACY_SHADOW_CELL_SUFFIX);
+    }
+
 }

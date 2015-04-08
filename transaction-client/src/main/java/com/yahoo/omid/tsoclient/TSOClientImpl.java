@@ -345,9 +345,8 @@ class TSOClientImpl extends TSOClient {
             super(fsm);
             this.channel = channel;
             TSOProto.HandshakeRequest.Builder handshake = TSOProto.HandshakeRequest.newBuilder();
-            handshake.setClientCapabilities(
-                    TSOProto.Capabilities.newBuilder()
-                    .setShortSuffixes(true).build());
+            // Add the required handshake capabilities when necessary
+            handshake.setClientCapabilities(TSOProto.Capabilities.newBuilder().build());
             channel.write(TSOProto.Request.newBuilder()
                           .setHandshakeRequest(handshake.build()).build());
             timeout = newTimeout();

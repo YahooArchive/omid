@@ -125,7 +125,6 @@ public class TTable implements Closeable {
                 for (byte[] qualifier : qualifiers) {
                     tsget.addColumn(family, qualifier);
                     tsget.addColumn(family, CellUtils.addShadowCellSuffix(qualifier));
-                    tsget.addColumn(family, CellUtils.addLegacyShadowCellSuffix(qualifier));
                 }
             }
         }
@@ -278,7 +277,6 @@ public class TTable implements Closeable {
             }
             for (byte[] qualifier : qualifiers) {
                 tsscan.addColumn(family, CellUtils.addShadowCellSuffix(qualifier));
-                tsscan.addColumn(family, CellUtils.addLegacyShadowCellSuffix(qualifier));
             }
         }
         TransactionalClientScanner scanner = new TransactionalClientScanner(transaction,
@@ -387,8 +385,6 @@ public class TTable implements Closeable {
         pendingGet.addColumn(CellUtil.cloneFamily(cell), CellUtils.addShadowCellSuffix(cell.getQualifierArray(),
                                                                                        cell.getQualifierOffset(),
                                                                                        cell.getQualifierLength()));
-        pendingGet.addColumn(CellUtil.cloneFamily(cell),
-                             CellUtils.addLegacyShadowCellSuffix(CellUtil.cloneQualifier(cell)));
         pendingGet.setMaxVersions(versionCount);
         pendingGet.setTimeRange(0, cell.getTimestamp());
 

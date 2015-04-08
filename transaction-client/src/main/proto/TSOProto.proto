@@ -32,11 +32,8 @@ message CommitResponse {
 }
 
 message Capabilities {
-  // this states that the hbase client will use short suffixes
-  // rather than the longer versions originally used. All clients
-  // must use short suffixes, or none many. Otherwise clients could
-  // see different views of the data, violating snapshot isolation.
-  optional bool shortSuffixes = 1;
+  // place here the capabilities a client has to have
+  // to pass the handshake
 }
 
 message HandshakeRequest {

@@ -3689,33 +3689,14 @@ public final class TSOProto {
 
   public interface CapabilitiesOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
-
-    // optional bool shortSuffixes = 1;
-    /**
-     * <code>optional bool shortSuffixes = 1;</code>
-     *
-     * <pre>
-     * this states that the hbase client will use short suffixes
-     * rather than the longer versions originally used. All clients
-     * must use short suffixes, or none many. Otherwise clients could
-     * see different views of the data, violating snapshot isolation.
-     * </pre>
-     */
-    boolean hasShortSuffixes();
-    /**
-     * <code>optional bool shortSuffixes = 1;</code>
-     *
-     * <pre>
-     * this states that the hbase client will use short suffixes
-     * rather than the longer versions originally used. All clients
-     * must use short suffixes, or none many. Otherwise clients could
-     * see different views of the data, violating snapshot isolation.
-     * </pre>
-     */
-    boolean getShortSuffixes();
   }
   /**
    * Protobuf type {@code Capabilities}
+   *
+   * <pre>
+   * place here the capabilities a client has to have
+   * to pass the handshake
+   * </pre>
    */
   public static final class Capabilities extends
       com.google.protobuf.GeneratedMessage
@@ -3747,7 +3728,6 @@ public final class TSOProto {
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       initFields();
-      int mutable_bitField0_ = 0;
       com.google.protobuf.UnknownFieldSet.Builder unknownFields =
           com.google.protobuf.UnknownFieldSet.newBuilder();
       try {
@@ -3763,11 +3743,6 @@ public final class TSOProto {
                                      extensionRegistry, tag)) {
                 done = true;
               }
-              break;
-            }
-            case 8: {
-              bitField0_ |= 0x00000001;
-              shortSuffixes_ = input.readBool();
               break;
             }
           }
@@ -3809,39 +3784,7 @@ public final class TSOProto {
       return PARSER;
     }
 
-    private int bitField0_;
-    // optional bool shortSuffixes = 1;
-    public static final int SHORTSUFFIXES_FIELD_NUMBER = 1;
-    private boolean shortSuffixes_;
-    /**
-     * <code>optional bool shortSuffixes = 1;</code>
-     *
-     * <pre>
-     * this states that the hbase client will use short suffixes
-     * rather than the longer versions originally used. All clients
-     * must use short suffixes, or none many. Otherwise clients could
-     * see different views of the data, violating snapshot isolation.
-     * </pre>
-     */
-    public boolean hasShortSuffixes() {
-      return ((bitField0_ & 0x00000001) == 0x00000001);
-    }
-    /**
-     * <code>optional bool shortSuffixes = 1;</code>
-     *
-     * <pre>
-     * this states that the hbase client will use short suffixes
-     * rather than the longer versions originally used. All clients
-     * must use short suffixes, or none many. Otherwise clients could
-     * see different views of the data, violating snapshot isolation.
-     * </pre>
-     */
-    public boolean getShortSuffixes() {
-      return shortSuffixes_;
-    }
-
     private void initFields() {
-      shortSuffixes_ = false;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -3855,9 +3798,6 @@ public final class TSOProto {
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        output.writeBool(1, shortSuffixes_);
-      }
       getUnknownFields().writeTo(output);
     }
 
@@ -3867,10 +3807,6 @@ public final class TSOProto {
       if (size != -1) return size;
 
       size = 0;
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBoolSize(1, shortSuffixes_);
-      }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
       return size;
@@ -3951,6 +3887,11 @@ public final class TSOProto {
     }
     /**
      * Protobuf type {@code Capabilities}
+     *
+     * <pre>
+     * place here the capabilities a client has to have
+     * to pass the handshake
+     * </pre>
      */
     public static final class Builder extends
         com.google.protobuf.GeneratedMessage.Builder<Builder>
@@ -3987,8 +3928,6 @@ public final class TSOProto {
 
       public Builder clear() {
         super.clear();
-        shortSuffixes_ = false;
-        bitField0_ = (bitField0_ & ~0x00000001);
         return this;
       }
 
@@ -4015,13 +3954,6 @@ public final class TSOProto {
 
       public com.yahoo.omid.proto.TSOProto.Capabilities buildPartial() {
         com.yahoo.omid.proto.TSOProto.Capabilities result = new com.yahoo.omid.proto.TSOProto.Capabilities(this);
-        int from_bitField0_ = bitField0_;
-        int to_bitField0_ = 0;
-        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
-          to_bitField0_ |= 0x00000001;
-        }
-        result.shortSuffixes_ = shortSuffixes_;
-        result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
       }
@@ -4037,9 +3969,6 @@ public final class TSOProto {
 
       public Builder mergeFrom(com.yahoo.omid.proto.TSOProto.Capabilities other) {
         if (other == com.yahoo.omid.proto.TSOProto.Capabilities.getDefaultInstance()) return this;
-        if (other.hasShortSuffixes()) {
-          setShortSuffixes(other.getShortSuffixes());
-        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
@@ -4063,68 +3992,6 @@ public final class TSOProto {
             mergeFrom(parsedMessage);
           }
         }
-        return this;
-      }
-      private int bitField0_;
-
-      // optional bool shortSuffixes = 1;
-      private boolean shortSuffixes_ ;
-      /**
-       * <code>optional bool shortSuffixes = 1;</code>
-       *
-       * <pre>
-       * this states that the hbase client will use short suffixes
-       * rather than the longer versions originally used. All clients
-       * must use short suffixes, or none many. Otherwise clients could
-       * see different views of the data, violating snapshot isolation.
-       * </pre>
-       */
-      public boolean hasShortSuffixes() {
-        return ((bitField0_ & 0x00000001) == 0x00000001);
-      }
-      /**
-       * <code>optional bool shortSuffixes = 1;</code>
-       *
-       * <pre>
-       * this states that the hbase client will use short suffixes
-       * rather than the longer versions originally used. All clients
-       * must use short suffixes, or none many. Otherwise clients could
-       * see different views of the data, violating snapshot isolation.
-       * </pre>
-       */
-      public boolean getShortSuffixes() {
-        return shortSuffixes_;
-      }
-      /**
-       * <code>optional bool shortSuffixes = 1;</code>
-       *
-       * <pre>
-       * this states that the hbase client will use short suffixes
-       * rather than the longer versions originally used. All clients
-       * must use short suffixes, or none many. Otherwise clients could
-       * see different views of the data, violating snapshot isolation.
-       * </pre>
-       */
-      public Builder setShortSuffixes(boolean value) {
-        bitField0_ |= 0x00000001;
-        shortSuffixes_ = value;
-        onChanged();
-        return this;
-      }
-      /**
-       * <code>optional bool shortSuffixes = 1;</code>
-       *
-       * <pre>
-       * this states that the hbase client will use short suffixes
-       * rather than the longer versions originally used. All clients
-       * must use short suffixes, or none many. Otherwise clients could
-       * see different views of the data, violating snapshot isolation.
-       * </pre>
-       */
-      public Builder clearShortSuffixes() {
-        bitField0_ = (bitField0_ & ~0x00000001);
-        shortSuffixes_ = false;
-        onChanged();
         return this;
       }
 
@@ -5301,13 +5168,12 @@ public final class TSOProto {
       "\0132\022.HandshakeResponse\"+\n\021TimestampRespon" +
       "se\022\026\n\016startTimestamp\030\001 \001(\003\"R\n\016CommitResp" +
       "onse\022\017\n\007aborted\030\001 \001(\010\022\026\n\016startTimestamp\030" +
-      "\002 \001(\003\022\027\n\017commitTimestamp\030\003 \001(\003\"%\n\014Capabi" +
-      "lities\022\025\n\rshortSuffixes\030\001 \001(\010\"=\n\020Handsha" +
-      "keRequest\022)\n\022clientCapabilities\030\001 \001(\0132\r." +
-      "Capabilities\"X\n\021HandshakeResponse\022\030\n\020cli" +
-      "entCompatible\030\001 \001(\010\022)\n\022serverCapabilitie" +
-      "s\030\002 \001(\0132\r.CapabilitiesB\030\n\024com.yahoo.omid" +
-      ".protoH\001"
+      "\002 \001(\003\022\027\n\017commitTimestamp\030\003 \001(\003\"\016\n\014Capabi" +
+      "lities\"=\n\020HandshakeRequest\022)\n\022clientCapa" +
+      "bilities\030\001 \001(\0132\r.Capabilities\"X\n\021Handsha" +
+      "keResponse\022\030\n\020clientCompatible\030\001 \001(\010\022)\n\022" +
+      "serverCapabilities\030\002 \001(\0132\r.CapabilitiesB" +
+      "\030\n\024com.yahoo.omid.protoH\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -5355,7 +5221,7 @@ public final class TSOProto {
           internal_static_Capabilities_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_Capabilities_descriptor,
-              new java.lang.String[] { "ShortSuffixes", });
+              new java.lang.String[] { });
           internal_static_HandshakeRequest_descriptor =
             getDescriptor().getMessageTypes().get(7);
           internal_static_HandshakeRequest_fieldAccessorTable = new

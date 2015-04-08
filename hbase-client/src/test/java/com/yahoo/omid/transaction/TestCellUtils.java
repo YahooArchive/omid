@@ -1,6 +1,5 @@
 package com.yahoo.omid.transaction;
 
-import static com.yahoo.omid.transaction.HBaseTransactionManager.LEGACY_SHADOW_CELL_SUFFIX;
 import static com.yahoo.omid.transaction.HBaseTransactionManager.SHADOW_CELL_SUFFIX;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertFalse;
@@ -36,7 +35,6 @@ public class TestCellUtils {
     public Object[][] createShadowCellSuffixes() {
         return new Object[][] {
                 { SHADOW_CELL_SUFFIX },
-                { LEGACY_SHADOW_CELL_SUFFIX },
         };
     }
 

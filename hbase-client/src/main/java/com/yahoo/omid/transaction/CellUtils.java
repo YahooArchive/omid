@@ -1,7 +1,6 @@
 package com.yahoo.omid.transaction;
 
 import static com.yahoo.omid.transaction.HBaseTransactionManager.SHADOW_CELL_SUFFIX;
-import static com.yahoo.omid.transaction.HBaseTransactionManager.LEGACY_SHADOW_CELL_SUFFIX;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -81,8 +80,6 @@ public class CellUtils {
                                         long version,
                                         CellGetter cellGetter) throws IOException {
         return hasCell(row, family, addShadowCellSuffix(qualifier),
-                       version, cellGetter)
-            || hasCell(row, family, addLegacyShadowCellSuffix(qualifier),
                        version, cellGetter);
     }
 
@@ -117,13 +114,6 @@ public class CellUtils {
     }
 
     /**
-     * Used in tests. Not optimized, don't use in production code
-     */
-    public static byte[] addLegacyShadowCellSuffix(byte[] qualifier) {
-        return com.google.common.primitives.Bytes.concat(qualifier, LEGACY_SHADOW_CELL_SUFFIX);
-    }
-
-    /**
      * Builds a new qualifier removing the shadow cell suffix from the
      * passed HBase qualifier.
      * @param qualifier
@@ -140,12 +130,6 @@ public class CellUtils {
             return Arrays.copyOfRange(qualifier,
                                       qualOffset,
                                       qualOffset + (qualLength - SHADOW_CELL_SUFFIX.length));
-        }
-
-        if (endsWith(qualifier, qualOffset, qualLength, LEGACY_SHADOW_CELL_SUFFIX)) {
-            return Arrays.copyOfRange(qualifier,
-                                      qualOffset,
-                                      qualOffset + (qualLength - LEGACY_SHADOW_CELL_SUFFIX.length));
         }
 
         throw new IllegalArgumentException(
@@ -169,10 +153,6 @@ public class CellUtils {
 
         if (endsWith(qualifier, qualOffset, qualLength, SHADOW_CELL_SUFFIX)) {
             return qualLength - SHADOW_CELL_SUFFIX.length;
-        }
-
-        if (endsWith(qualifier, qualOffset, qualLength, LEGACY_SHADOW_CELL_SUFFIX)) {
-            return qualLength - LEGACY_SHADOW_CELL_SUFFIX.length;
         }
 
         return qualLength;
@@ -230,9 +210,7 @@ public class CellUtils {
         int qualOffset = cell.getQualifierOffset();
         int qualLength = cell.getQualifierLength();
 
-        return endsWith(qualifier, qualOffset, qualLength, SHADOW_CELL_SUFFIX)
-               ||
-               endsWith(qualifier, qualOffset, qualLength, LEGACY_SHADOW_CELL_SUFFIX);
+        return endsWith(qualifier, qualOffset, qualLength, SHADOW_CELL_SUFFIX);
     }
 
     private static boolean endsWith(byte[] value, int offset, int length, byte[] suffix) {
