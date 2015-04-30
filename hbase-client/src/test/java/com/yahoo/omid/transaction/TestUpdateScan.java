@@ -26,6 +26,7 @@ public class TestUpdateScan extends OmidTestBase {
     private static final Logger LOG = LoggerFactory.getLogger(TestUpdateScan.class);
 
     private static final String TEST_COL = "value";
+    private static final String TEST_COL_2 = "col_2";
 
     @Test
     public void testGet() throws Exception {
@@ -92,51 +93,54 @@ public class TestUpdateScan extends OmidTestBase {
 
     @Test
     public void testScan() throws Exception {
-        try{
+
+        try (TTable table = new TTable(hbaseConf, TEST_TABLE)) {
             TransactionManager tm = newTransactionManager();
-            TTable table = new TTable(hbaseConf, TEST_TABLE);
-            Transaction t=tm.begin();
-            int[] lInts=new int[]{100,243,2342,22,1,5,43,56};
-            for (int i=0;i<lInts.length;i++) {
-                byte[]data=Bytes.toBytes(lInts[i]);
-                Put put=new Put(data);
+            Transaction t = tm.begin();
+            int[] lInts = new int[] { 100, 243, 2342, 22, 1, 5, 43, 56 };
+            for (int i = 0; i < lInts.length; i++) {
+                byte[] data = Bytes.toBytes(lInts[i]);
+                Put put = new Put(data);
                 put.add(Bytes.toBytes(TEST_FAMILY), Bytes.toBytes(TEST_COL), data);
-                table.put(t,put);
+                put.add(Bytes.toBytes(TEST_FAMILY), Bytes.toBytes(TEST_COL_2), data);
+                table.put(t, put);
             }
-         
-            Scan s=new Scan();
-            ResultScanner res=table.getScanner(t, s);
+
+            Scan s = new Scan();
+            // Adding two columns to the scanner should not throw a
+            // ConcurrentModificationException when getting the scanner
+            s.addColumn(Bytes.toBytes(TEST_FAMILY), Bytes.toBytes(TEST_COL));
+            s.addColumn(Bytes.toBytes(TEST_FAMILY), Bytes.toBytes(TEST_COL_2));
+            ResultScanner res = table.getScanner(t, s);
             Result rr;
             int count = 0;
-            while ((rr=res.next())!=null) {
-                int iTmp=Bytes.toInt(rr.getValue(Bytes.toBytes(TEST_FAMILY), 
-                                                 Bytes.toBytes(TEST_COL)));
-                LOG.info("Result: "+iTmp);
+            while ((rr = res.next()) != null) {
+                int iTmp = Bytes.toInt(rr.getValue(Bytes.toBytes(TEST_FAMILY),
+                        Bytes.toBytes(TEST_COL)));
+                LOG.info("Result: " + iTmp);
                 count++;
             }
-            assertTrue("Count should be " + lInts.length + " but is " + count, 
-                       count == lInts.length);
+            assertTrue("Count should be " + lInts.length + " but is " + count,
+                    count == lInts.length);
             LOG.info("Rows found " + count);
 
             tm.commit(t);
 
-            t=tm.begin();
-            res=table.getScanner(t,s);
+            t = tm.begin();
+            res = table.getScanner(t, s);
             count = 0;
-            while ((rr=res.next())!=null) {
-                int iTmp=Bytes.toInt(rr.getValue(Bytes.toBytes(TEST_FAMILY), 
-                                                 Bytes.toBytes(TEST_COL)));
-                LOG.info("Result: "+iTmp);
+            while ((rr = res.next()) != null) {
+                int iTmp = Bytes.toInt(rr.getValue(Bytes.toBytes(TEST_FAMILY),
+                        Bytes.toBytes(TEST_COL)));
+                LOG.info("Result: " + iTmp);
                 count++;
             }
-            assertTrue("Count should be " + lInts.length + " but is " + count, 
-                       count == lInts.length);
+            assertTrue("Count should be " + lInts.length + " but is " + count,
+                    count == lInts.length);
             LOG.info("Rows found " + count);
             tm.commit(t);
-            table.close();
-        } catch (Exception e) {
-            LOG.error("Exception in test", e);
         }
+
     }
    
 
