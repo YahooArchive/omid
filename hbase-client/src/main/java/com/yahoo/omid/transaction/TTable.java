@@ -52,7 +52,7 @@ public class TTable implements Closeable {
 
     private static Logger LOG = LoggerFactory.getLogger(TTable.class);
 
-    public static byte[] DELETE_TOMBSTONE = Bytes.toBytes("__OMID_TOMBSTONE__");;
+    public static byte[] DELETE_TOMBSTONE = Bytes.toBytes("__OMID_TOMBSTONE__");
 
     private final HTableInterface healerTable;
 
@@ -268,7 +268,7 @@ public class TTable implements Closeable {
         Scan tsscan = new Scan(scan);
         tsscan.setMaxVersions(1);
         tsscan.setTimeRange(0, transaction.getStartTimestamp() + 1);
-        Map<byte[], NavigableSet<byte[]>> kvs = tsscan.getFamilyMap();
+        Map<byte[], NavigableSet<byte[]>> kvs = scan.getFamilyMap();
         for (Map.Entry<byte[], NavigableSet<byte[]>> entry : kvs.entrySet()) {
             byte[] family = entry.getKey();
             NavigableSet<byte[]> qualifiers = entry.getValue();
@@ -279,9 +279,7 @@ public class TTable implements Closeable {
                 tsscan.addColumn(family, CellUtils.addShadowCellSuffix(qualifier));
             }
         }
-        TransactionalClientScanner scanner = new TransactionalClientScanner(transaction,
-                tsscan, 1);
-        return scanner;
+        return new TransactionalClientScanner(transaction, tsscan, 1);
     }
 
     /**
@@ -304,8 +302,8 @@ public class TTable implements Closeable {
 
         assert (rawCells != null && transaction != null && versionsToRequest >= 1);
 
-        List<Cell> keyValuesInSnapshot = new ArrayList<Cell>();
-        List<Get> pendingGetsList = new ArrayList<Get>();
+        List<Cell> keyValuesInSnapshot = new ArrayList<>();
+        List<Get> pendingGetsList = new ArrayList<>();
 
         int numberOfVersionsToFetch = versionsToRequest * 2;
         if (numberOfVersionsToFetch < 1) {
@@ -352,7 +350,7 @@ public class TTable implements Closeable {
 
     private Map<Long, Long> buildCommitCache(List<Cell> rawCells) {
 
-        Map<Long, Long> commitCache = new HashMap<Long, Long>();
+        Map<Long, Long> commitCache = new HashMap<>();
 
         for (Cell cell : rawCells) {
             if (CellUtils.isShadowCell(cell)) {
@@ -481,7 +479,7 @@ public class TTable implements Closeable {
         @Override
         public Result[] next(int nbRows) throws IOException {
             // Collect values to be returned here
-            ArrayList<Result> resultSets = new ArrayList<Result>(nbRows);
+            ArrayList<Result> resultSets = new ArrayList<>(nbRows);
             for (int i = 0; i < nbRows; i++) {
                 Result next = next();
                 if (next != null) {
