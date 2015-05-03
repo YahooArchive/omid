@@ -187,13 +187,6 @@
       <version>${curator.version}</version>
     </dependency>
 
-    <!-- log tools -->
-    <dependency>
-      <groupId>org.apache.bookkeeper</groupId>
-      <artifactId>bookkeeper-server</artifactId>
-      <version>${bookkeeper.version}</version>
-    </dependency>
-
     <!-- testing -->
     <dependency>
       <groupId>org.testng</groupId>

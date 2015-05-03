@@ -28,7 +28,6 @@ import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.yahoo.omid.committable.hbase.HBaseCommitTableStorageModule;
-import com.yahoo.omid.committable.hbase.HBaseHACommitTableStorageModule;
 import com.yahoo.omid.committable.hbase.HBaseLogin;
 import com.yahoo.omid.metrics.CodahaleMetricsConfig;
 import com.yahoo.omid.metrics.MetricsProvider.Provider;
@@ -138,11 +137,7 @@ public class TSOServer extends AbstractIdleService {
             CommitTableStore commitTableStore = config.getCommitTableStore();
             switch (commitTableStore) {
             case HBASE:
-                if (config.isHAEnabled()) {
-                    guiceModules.add(new HBaseHACommitTableStorageModule(config.getZKCluster()));
-                } else {
-                    guiceModules.add(new HBaseCommitTableStorageModule());
-                }
+                guiceModules.add(new HBaseCommitTableStorageModule());
                 break;
             case MEMORY:
                 guiceModules.add(new InMemoryCommitTableStorageModule());

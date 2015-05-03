@@ -73,18 +73,6 @@
       <version>${curator.version}</version>
     </dependency>
 
-    <!-- log tools -->
-    <dependency>
-      <groupId>org.apache.bookkeeper</groupId>
-      <artifactId>bookkeeper-server</artifactId>
-      <version>${bookkeeper.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.bookkeeper</groupId>
-      <artifactId>ledgerset</artifactId>
-      <version>${ledgerset.version}</version>
-    </dependency>
-
     <!-- testing -->
     <dependency>
       <groupId>org.testng</groupId>
@@ -102,13 +90,6 @@
       <groupId>org.apache.curator</groupId>
       <artifactId>curator-test</artifactId>
       <version>${curator.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.bookkeeper</groupId>
-      <artifactId>bookkeeper-server</artifactId>
-      <version>${bookkeeper.version}</version>
-      <type>test-jar</type>
       <scope>test</scope>
     </dependency>
     <dependency>

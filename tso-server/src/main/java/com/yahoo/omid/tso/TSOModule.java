@@ -43,11 +43,6 @@ public class TSOModule extends AbstractModule {
         // Disruptor setup
         install(new DisruptorModule());
 
-        if (config.isHAEnabled()) {
-            // BK setup (Required for BK-based log mechanism)
-            install(new BKModule(config));
-        }
-
     }
 
     @Provides

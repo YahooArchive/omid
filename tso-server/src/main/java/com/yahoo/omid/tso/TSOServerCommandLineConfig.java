@@ -59,9 +59,6 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
     @Parameter(names="-help", description = "Print command options and exit", help = true)
     private boolean help = false;
 
-    @Parameter(names = "-enableHA", description = "Enable HA instrumentation for commit table")
-    private boolean isHAEnabled = false;
-
     @Parameter(names = "-timestampStore", description = "Available stores, MEMORY, HBASE, ZK")
     private TimestampStore timestampStore = TimestampStore.MEMORY;
 
@@ -113,10 +110,6 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
 
     public boolean hasHelpFlag() {
         return help;
-    }
-
-    public boolean isHAEnabled() {
-        return isHAEnabled;
     }
 
     public TimestampStore getTimestampStore() {

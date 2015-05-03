@@ -44,10 +44,9 @@ public class HBaseCommitTable implements CommitTable {
     static final byte[] LOW_WATERMARK_QUALIFIER = "LWC".getBytes(UTF_8);
 
     public static final String HBASE_COMMIT_TABLE_NAME_KEY = "omid.committable.tablename";
-    public static final String HBASE_COMMIT_TABLE_ENABLE_HA_KEY = "omid.committable.ha.enabled";
 
-    protected final String tableName;
-    protected final Configuration hbaseConfig;
+    private final String tableName;
+    private final Configuration hbaseConfig;
     private final KeyGenerator keygen;
 
     /**

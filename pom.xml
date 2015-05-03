@@ -57,8 +57,6 @@
     <curator.version>2.6.0</curator.version>
     <statemachine.version>1.0.9</statemachine.version>
     <zookeeper.version>3.4.3</zookeeper.version>
-    <bookkeeper.version>4.3.0</bookkeeper.version>
-    <ledgerset.version>0.1.5</ledgerset.version>
   </properties>
 
   <modules>
@@ -99,6 +97,7 @@
             <Werror />
             <Xlint:deprecation />
             <Xlint:unchecked />
+            <Xlint:-options />
           </compilerArguments>
         </configuration>
       </plugin>

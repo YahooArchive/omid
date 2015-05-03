@@ -5,9 +5,6 @@ import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_DEF
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.bookkeeper.client.BookKeeper;
-import org.apache.bookkeeper.client.LedgerSet.MetadataStorage;
-import org.apache.curator.framework.CuratorFramework;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 
@@ -31,11 +28,6 @@ import com.yahoo.omid.committable.hbase.HBaseCommitTable.SeqKeyGenerator;
 public class HBaseCommitTableTester {
 
     static class Config {
-        @Parameter(names = "-enableHA", description = "Enable HA instrumentation for commit table")
-        boolean isHAEnabled = false;
-
-        @Parameter(names = "-zkCluster", description = "Zookeeper cluster in form: <host>:<port>,<host>,<port>,...")
-        String zkCluster = "localhost:2181";
 
         @Parameter(names = "-fullRandomAlgo", description = "Full random algo")
         boolean fullRandomAlgo = false;
@@ -81,15 +73,7 @@ public class HBaseCommitTableTester {
 
         HBaseLogin.loginIfNeeded(config.loginFlags);
 
-        CommitTable commitTable;
-        if (config.isHAEnabled) {
-            CuratorFramework zk = HBaseHACommitTable.provideZookeeperClient(config.zkCluster);
-            MetadataStorage metadataStore = new ZKBasedMetadataStorage(zk);
-            BookKeeper bk = HBaseHACommitTable.provideBookKeeperClient(config.zkCluster);
-            commitTable = new HBaseHACommitTable(hbaseConfig, COMMIT_TABLE_DEFAULT_NAME, keygen, bk, metadataStore);
-        } else {
-            commitTable = new HBaseCommitTable(hbaseConfig, COMMIT_TABLE_DEFAULT_NAME, keygen);
-        }
+        CommitTable commitTable = new HBaseCommitTable(hbaseConfig, COMMIT_TABLE_DEFAULT_NAME, keygen);
 
         CommitTable.Writer writer = commitTable.getWriter().get();
 
