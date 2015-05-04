@@ -1,5 +1,9 @@
 package com.yahoo.omid.tsoclient;
 
+import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
+import static com.yahoo.omid.zk.ZKUtils.provideZookeeperClient;
+
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayDeque;
 import java.util.HashMap;
@@ -7,11 +11,16 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.configuration.Configuration;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.recipes.cache.ChildData;
+import org.apache.curator.framework.recipes.cache.NodeCache;
+import org.apache.curator.framework.recipes.cache.NodeCacheListener;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFactory;
@@ -35,9 +44,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.MetricRegistry;
+import com.google.common.base.Charsets;
+import com.google.common.net.HostAndPort;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.proto.TSOProto;
+import com.yahoo.omid.zk.ZKUtils.ZKException;
 import com.yahoo.statemachine.StateMachine.DeferrableEvent;
 import com.yahoo.statemachine.StateMachine.Event;
 import com.yahoo.statemachine.StateMachine.Fsm;
@@ -45,11 +57,14 @@ import com.yahoo.statemachine.StateMachine.FsmImpl;
 import com.yahoo.statemachine.StateMachine.State;
 
 /**
- * Communication endpoint for TSO clients.
+ * This client allows to communicate with a TSO server instance.
  */
-class TSOClientImpl extends TSOClient {
+class TSOClientImpl extends TSOClient implements NodeCacheListener {
 
     private static final Logger LOG = LoggerFactory.getLogger(TSOClient.class);
+
+    private CuratorFramework zkClient;
+    private NodeCache currentTSOZNode;
 
     private ChannelFactory factory;
     private ClientBootstrap bootstrap;
@@ -59,7 +74,7 @@ class TSOClientImpl extends TSOClient {
     private final int requestTimeoutMs;
     private final int requestMaxRetries;
     private final int retryDelayMs; // ignored for now
-    private final InetSocketAddress addr;
+    private InetSocketAddress tsoAddr;
     private final MetricRegistry metrics;
 
     TSOClientImpl(Configuration conf, MetricRegistry metrics) {
@@ -77,17 +92,28 @@ class TSOClientImpl extends TSOClient {
         // Create the bootstrap
         bootstrap = new ClientBootstrap(factory);
 
-        String host = conf.getString(TSO_HOST_CONFKEY);
-        int port = conf.getInt(TSO_PORT_CONFKEY, DEFAULT_TSO_PORT);
         requestTimeoutMs = conf.getInt(REQUEST_TIMEOUT_IN_MS_CONFKEY, DEFAULT_REQUEST_TIMEOUT_MS);
         requestMaxRetries = conf.getInt(REQUEST_MAX_RETRIES_CONFKEY, DEFAULT_TSO_MAX_REQUEST_RETRIES);
         retryDelayMs = conf.getInt(TSO_RETRY_DELAY_MS_CONFKEY, DEFAULT_TSO_RETRY_DELAY_MS);
 
-        if (host == null) {
-            throw new IllegalArgumentException("tso.host missing from configuration");
+        LOG.info("Connecting to TSO...");
+        // Try to connect to TSO from ZK. If fails, go through host:port config
+        try {
+            connectToZK(conf);
+            configureCurrentTSOServerZNodeCache();
+            HostAndPort hp = getCurrentTSOHostAndPortFoundInZK();
+            LOG.info("\t* Current TSO host:port found in ZK: {}", hp);
+            setTSOAddress(hp.getHostText(), hp.getPort());
+        } catch (ZKException e) {
+            LOG.warn("A problem connecting to TSO was found ({}). Trying to connect directly with host:port",
+                    e.getMessage());
+            String host = conf.getString(TSO_HOST_CONFKEY);
+            int port = conf.getInt(TSO_PORT_CONFKEY, DEFAULT_TSO_PORT);
+            if (host == null) {
+                throw new IllegalArgumentException("tso.host missing from configuration");
+            }
+            setTSOAddress(host, port);
         }
-
-        addr = new InetSocketAddress(host, port);
 
         fsmExecutor = Executors.newSingleThreadScheduledExecutor(
                 new ThreadFactoryBuilder().setNameFormat("tsofsm-%d").build());
@@ -109,9 +135,71 @@ class TSOClientImpl extends TSOClient {
         bootstrap.setOption("connectTimeoutMillis", 100);
     }
 
-    InetSocketAddress getAddress() {
-        return addr;
+    // *********************** Helper methods & classes ***********************
+
+    synchronized void setTSOAddress(String host, int port) {
+        tsoAddr = new InetSocketAddress(host, port);
     }
+
+    synchronized InetSocketAddress getAddress() {
+        return tsoAddr;
+    }
+
+    private void connectToZK(Configuration conf) throws ZKException {
+
+        String zkCluster = conf.getString(TSO_ZK_CLUSTER_CONFKEY, DEFAULT_ZK_CLUSTER);
+        try {
+            zkClient = provideZookeeperClient(zkCluster);
+            LOG.info("\t* Connecting to ZK cluster {}", zkClient.getState());
+            zkClient.start();
+            if (!zkClient.blockUntilConnected(3, TimeUnit.SECONDS)) {
+                throw new ZKException("Cannot connect to ZK Cluster " + zkCluster + " after 3 seconds");
+            }
+            LOG.info("\t* Connection to ZK cluster {}", zkClient.getState());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ZKException("Cannot connect to ZK Cluster " + zkCluster + " Cause: " + e.getMessage());
+        }
+    }
+
+    private void configureCurrentTSOServerZNodeCache() throws ZKException {
+        try {
+            currentTSOZNode = new NodeCache(zkClient, CURRENT_TSO_PATH);
+            currentTSOZNode.getListenable().addListener(this);
+            currentTSOZNode.start(true);
+        } catch (Exception e) {
+            throw new ZKException("Cannot start watcher on current TSO Server ZNode: " + e.getMessage());
+        }
+    }
+
+    private HostAndPort getCurrentTSOHostAndPortFoundInZK() throws ZKException {
+        ChildData currentTSOData = currentTSOZNode.getCurrentData();
+        if (currentTSOData == null) {
+            throw new ZKException("No ZKNode found " + CURRENT_TSO_PATH);
+        }
+        byte[] currentTSOAsBytes = currentTSOData.getData();
+        if (currentTSOAsBytes == null) {
+            throw new ZKException(
+                    "No data found for current TSO in ZKNode " + CURRENT_TSO_PATH);
+        }
+        String currentTSO = new String(currentTSOAsBytes, Charsets.UTF_8);
+        HostAndPort hp = HostAndPort.fromString(currentTSO);
+        return hp;
+    }
+
+    // ****************** NodeCacheListener interface *************************
+
+    @Override
+    public void nodeChanged() throws Exception {
+
+        LOG.debug("CurrentTSO ZNode changed");
+        HostAndPort hp = getCurrentTSOHostAndPortFoundInZK();
+        setTSOAddress(hp.getHostText(), hp.getPort());
+        fsm.sendEvent(new ErrorEvent(new NewTSOException()));
+
+    }
+
+    // *********************** TSOClient interface ****************************
 
     @Override
     public TSOFuture<Long> getNewStartTimestamp() {
@@ -139,12 +227,32 @@ class TSOClientImpl extends TSOClient {
 
     @Override
     public TSOFuture<Void> close() {
-        CloseEvent closeEvent = new CloseEvent();
+        final CloseEvent closeEvent = new CloseEvent();
         fsm.sendEvent(closeEvent);
         closeEvent.addListener(new Runnable() {
             @Override
             public void run() {
-                fsmExecutor.shutdown();
+                try {
+                    closeEvent.get();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    e.printStackTrace();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                } finally {
+                    fsmExecutor.shutdown();
+                    if (currentTSOZNode != null) {
+                        try {
+                            currentTSOZNode.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    if (zkClient != null) {
+                        zkClient.close();
+                    }
+                }
+
             }
         }, fsmExecutor);
         return new ForwardingTSOFuture<Void>(closeEvent);

@@ -27,6 +27,7 @@ import com.yahoo.omid.tso.Panicker;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig;
 import com.yahoo.omid.tso.TimestampOracle;
 import com.yahoo.omid.tso.TimestampOracleImpl;
+import com.yahoo.omid.tso.ZKModule;
 import com.yahoo.omid.tso.hbase.HBaseTimestampStorage;
 
 public class TSOForHBaseCompactorTestModule extends AbstractModule {
@@ -54,6 +55,9 @@ public class TSOForHBaseCompactorTestModule extends AbstractModule {
         bindConstant().annotatedWith(Names.named(TSO_MAX_ITEMS_KEY)).to(config.getMaxItems());
         LOG.info("Overriding {} with value {}", TSO_MAX_ITEMS_KEY, config.getMaxItems());
         install(new DisruptorModule());
+
+        // ZK Module
+        install(new ZKModule(config));
 
     }
 

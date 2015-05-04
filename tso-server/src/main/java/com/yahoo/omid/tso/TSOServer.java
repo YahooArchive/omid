@@ -1,16 +1,23 @@
 package com.yahoo.omid.tso;
 
+import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
+import javax.inject.Named;
 import javax.inject.Singleton;
 
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.utils.EnsurePath;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.zookeeper.data.Stat;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFactory;
@@ -20,6 +27,7 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Charsets;
 import com.google.common.util.concurrent.AbstractIdleService;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.AbstractModule;
@@ -42,7 +50,19 @@ public class TSOServer extends AbstractIdleService {
 
     private static final Logger LOG = LoggerFactory.getLogger(TSOServer.class);
 
+    // Default network interface where this instance is running
+    static final String DEFAULT_TSO_NET_IFACE = "eth0";
+
+    public static final String TSO_HOST_AND_PORT_KEY = "tso.hostandport";
+
     private final TSOServerCommandLineConfig config;
+
+    @Inject
+    private CuratorFramework zkClient;
+
+    @Inject
+    @Named(TSO_HOST_AND_PORT_KEY)
+    private String tsoHostAndPortAsString;
 
     private RequestProcessor requestProc;
 
@@ -65,7 +85,8 @@ public class TSOServer extends AbstractIdleService {
 
     private static class HBaseConfigModule extends AbstractModule {
         @Override
-        protected void configure() { }
+        protected void configure() {
+        }
 
         @Provides
         public Configuration provideHBaseConfig() {
@@ -92,7 +113,7 @@ public class TSOServer extends AbstractIdleService {
             addTSOModule();
             addTimestampStorageModule();
             addCommitTableStorageModule();
-            maybeAddHBaseConfigModule();
+            addHBaseConfigModuleIfRequired();
             return guiceModules;
         }
 
@@ -148,9 +169,9 @@ public class TSOServer extends AbstractIdleService {
             LOG.info("\t* Commit table store set to {}", commitTableStore);
         }
 
-        private void maybeAddHBaseConfigModule() throws IOException {
-            if (config.getCommitTableStore() == CommitTableStore.HBASE ||
-                    config.getTimestampStore() == TimestampStore.HBASE) {
+        private void addHBaseConfigModuleIfRequired() throws IOException {
+            if (config.getCommitTableStore() == CommitTableStore.HBASE
+                    || config.getTimestampStore() == TimestampStore.HBASE) {
                 guiceModules.add(new HBaseConfigModule());
                 HBaseLogin.loginIfNeeded(config.getLoginFlags());
             }
@@ -186,15 +207,33 @@ public class TSOServer extends AbstractIdleService {
         Channel channel = bootstrap.bind(new InetSocketAddress(config.getPort()));
         channelGroup.add(channel);
 
+        // TODO Remove the variable of the condition in the future if ZK
+        // becomes the only possible way of configuring the TSOClient
+        if (config.shouldHostAndPortBePublishedInZK) {
+            try {
+                LOG.info("Connecting to ZK cluster {}", zkClient.getState());
+                zkClient.start();
+                if (zkClient.blockUntilConnected(3, TimeUnit.SECONDS)) {
+                    LOG.info("Connection to ZK cluster {}", zkClient.getState());
+                    createCurrentTSOZNode();
+                    advertiseTSOServerInfoThroughZK();
+                } else {
+                    LOG.warn("Can't contact ZK after 3 seconds. TSO host:port won't be published");
+                }
+            } catch (Exception e) {
+                LOG.warn("Current TSO host:port could not be published through ZK", e);
+            }
+        }
+
         LOG.info("********** TSO Server initialized on port {} **********", config.getPort());
     }
 
     public void stopIt() {
         // Netty shutdown
-        if(channelGroup != null) {
+        if (channelGroup != null) {
             channelGroup.close().awaitUninterruptibly();
         }
-        if(factory != null) {
+        if (factory != null) {
             factory.releaseExternalResources();
         }
         LOG.info("********** TSO Server stopped successfully **********");
@@ -225,6 +264,28 @@ public class TSOServer extends AbstractIdleService {
         TSOServer tsoServer = getInitializedTsoServer(config);
         tsoServer.attachShutDownHook();
         tsoServer.startAndWait();
+
+    }
+
+    // ************************* Helper methods *******************************
+
+    public void createCurrentTSOZNode() throws Exception {
+
+        EnsurePath path = zkClient.newNamespaceAwareEnsurePath(CURRENT_TSO_PATH);
+        path.ensure(zkClient.getZookeeperClient());
+        Stat stat = zkClient.checkExists().forPath(CURRENT_TSO_PATH);
+        assert (stat != null);
+        LOG.info("Path {} ensured", path.getPath());
+
+    }
+
+    protected int advertiseTSOServerInfoThroughZK()
+    throws Exception {
+
+        LOG.info("Advertising TSO host:port through ZK {}", tsoHostAndPortAsString);
+        byte[] hostAndPortAsBytes = tsoHostAndPortAsString.getBytes(Charsets.UTF_8);
+        Stat currentTSOZNodeStat = zkClient.setData().forPath(CURRENT_TSO_PATH, hostAndPortAsBytes);
+        return currentTSOZNodeStat.getVersion();
 
     }
 

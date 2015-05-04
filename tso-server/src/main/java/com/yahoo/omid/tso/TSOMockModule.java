@@ -35,6 +35,9 @@ public class TSOMockModule extends AbstractModule {
         bindConstant().annotatedWith(Names.named(TSO_MAX_ITEMS_KEY)).to(config.getMaxItems());
         install(new DisruptorModule());
 
+        // ZK Module
+        install(new ZKModule(config));
+
     }
 
     @Provides
