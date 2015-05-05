@@ -1,7 +1,9 @@
 package com.yahoo.omid.tso;
 
 import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;
+import static com.yahoo.omid.tso.TSOServer.TSO_EPOCH_KEY;
 
+import javax.inject.Named;
 import javax.inject.Singleton;
 
 import com.google.inject.AbstractModule;
@@ -48,6 +50,12 @@ public class TSOMockModule extends AbstractModule {
     @Provides @Singleton
     MetricsRegistry provideMetricsRegistry() {
         return new NullMetricsProvider();
+    }
+
+    @Provides
+    @Named(TSO_EPOCH_KEY)
+    long provideEpoch(TimestampOracle timestampOracle) {
+        return timestampOracle.getLast();
     }
 
 }

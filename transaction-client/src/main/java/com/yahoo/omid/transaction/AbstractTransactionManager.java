@@ -58,7 +58,8 @@ public abstract class AbstractTransactionManager implements TransactionManager {
     public interface TransactionFactory<T extends CellId> {
 
         public AbstractTransaction<T> createTransaction(long transactionId,
-                AbstractTransactionManager tm);
+                                                        long epoch,
+                                                        AbstractTransactionManager tm);
 
     }
 
@@ -126,9 +127,21 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             } catch (TransactionManagerException e) {
                 LOG.warn(e.getMessage());
             }
-            long startTimestamp = tsoClient.getNewStartTimestamp().get();
+
+            long startTimestamp, epoch;
+            // The loop is required for HA scenarios where we get the timestamp
+            // but when getting the epoch, the client is connected to a new TSOServer
+            // When this happen, the epoch will be larger than the startTimestamp,
+            // so we need to start the transaction again. We use the fact that epoch
+            // is always smaller or equal to a timestamp, and therefore, we first need
+            // to get the timestamp and then the epoch.
+            do {
+                startTimestamp = tsoClient.getNewStartTimestamp().get();
+                epoch = tsoClient.getEpoch();
+            } while (epoch > startTimestamp);
+
             AbstractTransaction<? extends CellId> tx =
-                    transactionFactory.createTransaction(startTimestamp, this);
+                    transactionFactory.createTransaction(startTimestamp, epoch, this);
             try {
                 postBegin(tx);
             } catch (TransactionManagerException e) {

@@ -1,11 +1,14 @@
 package com.yahoo.omid.transaction;
 
+import static com.yahoo.omid.tso.TSOServer.TSO_EPOCH_KEY;
+
 import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
+import javax.inject.Named;
 import javax.inject.Singleton;
 
 import org.apache.hadoop.conf.Configuration;
@@ -97,6 +100,12 @@ public class TSOForHBaseCompactorTestModule extends AbstractModule {
         }
         if (!f.delete())
             throw new FileNotFoundException("Failed to delete file: " + f);
+    }
+
+    @Provides
+    @Named(TSO_EPOCH_KEY)
+    long provideEpoch(TimestampOracle timestampOracle) {
+        return timestampOracle.getLast();
     }
 
 }

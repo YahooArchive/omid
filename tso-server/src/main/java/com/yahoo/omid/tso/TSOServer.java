@@ -55,6 +55,8 @@ public class TSOServer extends AbstractIdleService {
 
     public static final String TSO_HOST_AND_PORT_KEY = "tso.hostandport";
 
+    public static final String TSO_EPOCH_KEY = "tso.epoch";
+
     private final TSOServerCommandLineConfig config;
 
     @Inject
@@ -68,6 +70,11 @@ public class TSOServer extends AbstractIdleService {
 
     private ChannelFactory factory;
     private ChannelGroup channelGroup;
+
+    // Epoch representing the TSO startup time. Used in HA
+    @Inject
+    @Named(TSO_EPOCH_KEY)
+    private long epoch;
 
     @Inject
     public TSOServer(TSOServerCommandLineConfig config, RequestProcessor requestProc) {
@@ -225,7 +232,7 @@ public class TSOServer extends AbstractIdleService {
             }
         }
 
-        LOG.info("********** TSO Server initialized on port {} **********", config.getPort());
+        LOG.info("********** TSO Server running on port {}. Epoch {} **********", config.getPort(), epoch);
     }
 
     public void stopIt() {
@@ -247,6 +254,17 @@ public class TSOServer extends AbstractIdleService {
             }
         });
         LOG.info("Shutdown Hook Attached");
+    }
+
+    /**
+     * Exposes the TSO epoch.
+     * Required for implementing High Availability.
+     * The LowWatermark is used as the TSO epoch.
+     *
+     * @return the current TSO epoch
+     */
+    public long getEpoch() {
+        return epoch;
     }
 
     /**

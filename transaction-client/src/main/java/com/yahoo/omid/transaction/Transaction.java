@@ -9,7 +9,7 @@ import java.util.List;
  * This interface defines the transaction state & behavior exposed to users.
  */
 public interface Transaction {
-    
+
     public enum Status {
         RUNNING, COMMITTED, ROLLEDBACK
     }
@@ -19,6 +19,12 @@ public interface Transaction {
      * @return the transaction identifier
      */
     public long getTransactionId();
+
+    /**
+     * Returns the epoch of the TSOServer
+     * @return the transaction's TSOServer epoch
+     */
+    public long getEpoch();
 
     /**
      * Returns the current transaction {@link Status}

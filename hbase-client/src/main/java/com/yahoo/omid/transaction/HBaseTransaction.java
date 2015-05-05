@@ -9,14 +9,11 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
-* @author Igor Katkov
-*/
 public class HBaseTransaction extends AbstractTransaction<HBaseCellId> {
     private static final Logger LOG = LoggerFactory.getLogger(HBaseTransaction.class);
 
-    HBaseTransaction(long transactionId, Set<HBaseCellId> writeSet, AbstractTransactionManager tm) {
-        super(transactionId, writeSet, tm);
+    HBaseTransaction(long transactionId, long epoch, Set<HBaseCellId> writeSet, AbstractTransactionManager tm) {
+        super(transactionId, epoch, writeSet, tm);
     }
 
     @Override

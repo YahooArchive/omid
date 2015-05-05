@@ -19,6 +19,7 @@ public abstract class AbstractTransaction<T extends CellId> implements Transacti
     private transient Map<String, Object> metadata = new HashMap<String, Object>();
     private final AbstractTransactionManager transactionManager;
     private final long startTimestamp;
+    private final long epoch;
     private long commitTimestamp;
     private boolean isRollbackOnly;
     private final Set<T> writeSet;
@@ -29,6 +30,9 @@ public abstract class AbstractTransaction<T extends CellId> implements Transacti
      *
      * @param transactionId
      *            transaction identifier to assign
+     * @param epoch
+     *            epoch of the TSOServer instance that created this transaction
+     *            Used in High Availability to guarantee data consistency
      * @param writeSet
      *            initial write set for the transaction.
      *            Should be empty in most cases.
@@ -38,9 +42,11 @@ public abstract class AbstractTransaction<T extends CellId> implements Transacti
      *            instance.
      */
     public AbstractTransaction(long transactionId,
+                               long epoch,
                                Set<T> writeSet,
                                AbstractTransactionManager transactionManager) {
         this.startTimestamp = transactionId;
+        this.epoch = epoch;
         this.writeSet = writeSet;
         this.transactionManager = transactionManager;
     }
@@ -56,6 +62,14 @@ public abstract class AbstractTransaction<T extends CellId> implements Transacti
     @Override
     public long getTransactionId() {
         return startTimestamp;
+    }
+
+    /**
+     * @see com.yahoo.omid.transaction.Transaction#getEpoch()
+     */
+    @Override
+    public long getEpoch() {
+        return epoch;
     }
 
     /**
@@ -89,7 +103,7 @@ public abstract class AbstractTransaction<T extends CellId> implements Transacti
     public AbstractTransactionManager getTransactionManager() {
         return transactionManager;
     }
-    
+
     /**
      * Returns the start timestamp for this transaction.
      * @return start timestamp
@@ -141,13 +155,16 @@ public abstract class AbstractTransaction<T extends CellId> implements Transacti
         writeSet.add(element);
     }
 
+    @Override
     public String toString() {
-        return String.format("Tx-%s (ST=%d, CT=%d)",
+        return String.format("Tx-%s (ST=%d, CT=%d, Epoch=%d)",
                 Long.toHexString(getTransactionId()),
                 startTimestamp,
-                commitTimestamp);
+                commitTimestamp,
+                epoch);
     }
 
+    @Override
     public Optional<Object> getMetadata(String key) {
         return Optional.fromNullable(metadata.get(key));
     }
@@ -156,6 +173,7 @@ public abstract class AbstractTransaction<T extends CellId> implements Transacti
      * Expects they metadata stored under key "key" to be of the "Set" type,
      * append "value" to the existing set or creates a new one
      */
+    @Override
     @SuppressWarnings("unchecked")
     public void appendMetadata(String key, Object value) {
         List existingValue = (List) metadata.get(key);
@@ -168,6 +186,7 @@ public abstract class AbstractTransaction<T extends CellId> implements Transacti
         }
     }
 
+    @Override
     public void setMetadata(String key, Object value) {
         metadata.put(key, value);
     }

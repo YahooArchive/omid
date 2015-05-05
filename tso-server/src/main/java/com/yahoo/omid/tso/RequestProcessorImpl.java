@@ -12,6 +12,7 @@ import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.BusySpinWaitStrategy;
@@ -26,7 +27,7 @@ public class RequestProcessorImpl
 {
     private static final Logger LOG = LoggerFactory.getLogger(RequestProcessorImpl.class);
 
-    static final int DEFAULT_MAX_ITEMS = 1000000;
+    static final int DEFAULT_MAX_ITEMS = 1_000_000;
     public static final String TSO_MAX_ITEMS_KEY = "tso.maxitems";
 
     private final TimestampOracle timestampOracle;

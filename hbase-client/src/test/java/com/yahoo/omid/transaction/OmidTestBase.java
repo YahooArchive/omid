@@ -4,7 +4,9 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeClass;
+
 import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -34,11 +36,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.yahoo.omid.tso.TSOTestBase;
+import com.yahoo.omid.tsoclient.TSOClient;
 
 public class OmidTestBase {
     private static final Logger LOG = LoggerFactory.getLogger(OmidTestBase.class);
 
-    private static TSOTestBase tso = null;   
+    static TSOTestBase tso = null;
     protected static HBaseTestingUtility testutil;
     private static MiniHBaseCluster hbasecluster;
     protected static Configuration hbaseConf;
@@ -98,7 +101,14 @@ public class OmidTestBase {
             .withTSOClient(tso.getClient()).build();
     }
 
-    @AfterClass 
+    protected TransactionManager newTransactionManager(TSOClient tsoClient) throws Exception {
+        return HBaseTransactionManager.newBuilder()
+                .withConfiguration(hbaseConf)
+                .withCommitTableClient(tso.getCommitTable().getClient().get())
+                .withTSOClient(tsoClient).build();
+    }
+
+    @AfterClass
     public static void teardownOmid() throws Exception {
         LOG.info("Tearing down OmidTestBase...");
         if (hbasecluster != null) {
@@ -153,7 +163,7 @@ public class OmidTestBase {
 
     protected static boolean verifyValue(byte[] tableName, byte[] row,
                                          byte[] fam, byte[] col, byte[] value) {
-        
+
         try (HTable table = new HTable(hbaseConf, tableName)) {
             Get g = new Get(row).setMaxVersions(1);
             Result r = table.get(g);
@@ -161,7 +171,7 @@ public class OmidTestBase {
 
             if (LOG.isTraceEnabled()) {
                 LOG.trace("Value for " + Bytes.toString(tableName) + ":"
-                          + Bytes.toString(row) + ":" + Bytes.toString(fam) 
+                          + Bytes.toString(row) + ":" + Bytes.toString(fam)
                           + Bytes.toString(col) + "=>" + Bytes.toString(CellUtil.cloneValue(cell))
                           + " (" + Bytes.toString(value) + " expected)");
             }
@@ -169,7 +179,7 @@ public class OmidTestBase {
             return Bytes.equals(CellUtil.cloneValue(cell), value);
         } catch (IOException e) {
             LOG.error("Error reading row " + Bytes.toString(tableName) + ":"
-                      + Bytes.toString(row) + ":" + Bytes.toString(fam) 
+                      + Bytes.toString(row) + ":" + Bytes.toString(fam)
                       + Bytes.toString(col), e);
             return false;
         }

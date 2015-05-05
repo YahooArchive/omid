@@ -30,6 +30,9 @@ public abstract class TSOClient {
     public static final String TSO_EXECUTOR_THREAD_NUM_CONFKEY = "tso.executor.threads";
     public static final int DEFAULT_TSO_EXECUTOR_THREAD_NUM = 3;
 
+    private static final long DEFAULT_EPOCH = -1L;
+    private volatile long epoch = DEFAULT_EPOCH;
+
     // ************* Abstract interface to communicate to the TSO *************
 
     public abstract TSOFuture<Long> getNewStartTimestamp();
@@ -39,8 +42,8 @@ public abstract class TSOClient {
      *             if the TSO server has aborted the transaction we try to commit.
      *
      * @throws ServiceUnavailableException
-     *             if the request to the TSO server has been retried a certain number of times and couldn't reach the
-     *             endpoint
+     *             if the request to the TSO server has been retried a certain 
+     *             number of times and couldn't reach the endpoint
      */
     public abstract TSOFuture<Long> commit(long transactionId, Set<? extends CellId> cells);
 
@@ -49,6 +52,14 @@ public abstract class TSOClient {
      *             if there's a problem when closing the link with the TSO server
      */
     public abstract TSOFuture<Void> close();
+
+    /**
+     * Returns the epoch of the TSO server that initialized this transaction.
+     * Used for high availability support.
+     */
+    public long getEpoch() {
+        return epoch;
+    }
 
     // ************************* Useful exceptions ****************************
 
