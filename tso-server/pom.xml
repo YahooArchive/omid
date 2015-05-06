@@ -243,9 +243,6 @@
                 <goals>
                   <goal>create</goal>
                 </goals>
-                <configuration>
-                  <buildtype>release</buildtype>
-                </configuration>
               </execution>
             </executions>
           </plugin>

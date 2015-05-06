@@ -8,7 +8,7 @@
             "build": {
                 "test": {
                     "task": "script",
-                    "command": "mvn clean install -DskipTests && mvn -Dmaven.clover.licenseLocation=/home/y/conf/clover/clover.license -B -Pclover clover2:setup test clover2:aggregate clover2:clover",
+                    "command": "mvn clean install -Dmaven.yinst.create.buildtype=release -DskipTests && mvn -Dmaven.clover.licenseLocation=/home/y/conf/clover/clover.license -B -Pclover clover2:setup test clover2:aggregate clover2:clover",
                     "after": "cp ${SRC_DIR}/*/target/surefire-reports/TEST-*xml ${TEST_RESULTS_DIR}/",
                     "before": [{
                             "task": "script",

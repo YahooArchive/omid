@@ -111,4 +111,5 @@ com.yahoo.omid.tso.TsoServerDaemon \
  -commitTableStore $(COMMIT_TABLE_STORE) -hbaseCommitTable $(HBASE_COMMIT_TABLE) \
  -port $(PORT) -maxItems $(MAX_ITEMS) \
  -metricsProvider $(METRICS_PROVIDER) -metricsConfigs $(METRICS_CONFIGS) -hbaseClientPrincipal $(HBASE_CLIENT_PRINCIPAL) \
- -hbaseClientKeytab $(HBASE_CLIENT_KEYTAB))
+ -hbaseClientKeytab $(HBASE_CLIENT_KEYTAB) \
+ -maxBatchSize $(MAX_BATCH_SIZE))
