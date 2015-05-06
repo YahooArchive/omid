@@ -171,8 +171,13 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
     public boolean isCommitted(HBaseCellId hBaseCellId) throws TransactionException {
         try {
             CommitTimestamp tentativeCommitTimestamp =
-                    locateCellCommitTimestamp(hBaseCellId.getTimestamp(),
+                    locateCellCommitTimestamp(hBaseCellId.getTimestamp(), tsoClient.getEpoch(),
                             new CommitTimestampLocatorImpl(hBaseCellId, Maps.<Long, Long>newHashMap()));
+
+            // If transaction that added the cell was invalidated
+            if (!tentativeCommitTimestamp.isValid()) {
+                return false;
+            }
 
             switch (tentativeCommitTimestamp.getLocation()) {
                 case COMMIT_TABLE:

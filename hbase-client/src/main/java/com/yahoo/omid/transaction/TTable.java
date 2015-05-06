@@ -373,7 +373,7 @@ public class TTable implements Closeable {
         }
 
         Optional<Long> commitTimestamp =
-                tryToLocateCellCommitTimestamp(transaction.getTransactionManager(), kv, commitCache);
+                tryToLocateCellCommitTimestamp(transaction.getTransactionManager(), transaction.getEpoch(), kv, commitCache);
 
         return commitTimestamp.isPresent() && commitTimestamp.get() < startTimestamp;
     }
@@ -392,6 +392,7 @@ public class TTable implements Closeable {
     }
 
     private Optional<Long> tryToLocateCellCommitTimestamp(AbstractTransactionManager transactionManager,
+                                                        long epoch,
                                                         Cell cell,
                                                         Map<Long, Long> commitCache)
             throws IOException {
@@ -399,6 +400,7 @@ public class TTable implements Closeable {
         CommitTimestamp tentativeCommitTimestamp =
                 transactionManager.locateCellCommitTimestamp(
                         cell.getTimestamp(),
+                        epoch,
                         new CommitTimestampLocatorImpl(
                                                        new HBaseCellId(table,
                                                                        CellUtil.cloneRow(cell),
@@ -406,6 +408,11 @@ public class TTable implements Closeable {
                                                                        CellUtil.cloneQualifier(cell),
                                                                        cell.getTimestamp()),
                                                                        commitCache));
+
+        // If transaction that added the cell was invalidated
+        if (! tentativeCommitTimestamp.isValid()) {
+            return Optional.absent();
+        }
 
         switch(tentativeCommitTimestamp.getLocation()) {
         case COMMIT_TABLE:

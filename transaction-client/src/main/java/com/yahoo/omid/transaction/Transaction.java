@@ -2,9 +2,6 @@ package com.yahoo.omid.transaction;
 
 import com.google.common.base.Optional;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * This interface defines the transaction state & behavior exposed to users.
  */
@@ -21,7 +18,7 @@ public interface Transaction {
     public long getTransactionId();
 
     /**
-     * Returns the epoch of the TSOServer
+     * Returns the epoch given by the TSOServer
      * @return the transaction's TSOServer epoch
      */
     public long getEpoch();

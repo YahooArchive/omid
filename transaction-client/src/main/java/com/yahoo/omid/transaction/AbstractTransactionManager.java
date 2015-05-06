@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
 import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.transaction.AbstractTransactionManager.CommitTimestamp.Location;
 import com.yahoo.omid.transaction.RollbackException;
 import com.yahoo.omid.transaction.TransactionException;
 import com.yahoo.omid.transaction.Transaction.Status;
@@ -31,18 +32,20 @@ public abstract class AbstractTransactionManager implements TransactionManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractTransactionManager.class);
 
-    public enum Location {
-        NOT_PRESENT, CACHE, COMMIT_TABLE, SHADOW_CELL
-    }
+    abstract static class CommitTimestamp {
 
-    public class CommitTimestamp {
+        public enum Location {
+            NOT_PRESENT, CACHE, COMMIT_TABLE, SHADOW_CELL
+        }
 
         private final Location location;
         private final long value;
+        private final boolean isValid;
 
-        public CommitTimestamp(Location location, long value) {
+        public CommitTimestamp(Location location, long value, boolean isValid) {
             this.location = location;
             this.value = value;
+            this.isValid = isValid;
         }
 
         public Location getLocation() {
@@ -53,6 +56,31 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             return value;
         }
 
+        public boolean isValid() {
+            return isValid;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("Is valid=%s, Location=%s, Value=%d)",
+                                 isValid,
+                                 location,
+                                 value);
+        }
+    }
+
+    class ValidCommitTimestamp extends CommitTimestamp {
+
+        public ValidCommitTimestamp(Location location, long value) {
+            super(location, value, true);
+        }
+    }
+
+    class InvalidCommitTimestamp extends CommitTimestamp {
+
+        public InvalidCommitTimestamp() {
+            super(Location.NOT_PRESENT, CommitTable.INVALID_TRANSACTION_MARKER, false);
+        }
     }
 
     public interface TransactionFactory<T extends CellId> {
@@ -129,6 +157,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             }
 
             long startTimestamp, epoch;
+
             // The loop is required for HA scenarios where we get the timestamp
             // but when getting the epoch, the client is connected to a new TSOServer
             // When this happen, the epoch will be larger than the startTimestamp,
@@ -285,19 +314,75 @@ public abstract class AbstractTransactionManager implements TransactionManager {
     public void postRollback(AbstractTransaction<? extends CellId> transaction)
             throws TransactionManagerException {};
 
+
     /**
-     * Allows to find/locate the commit timestamp for a particular cell
-     * if the transaction was already committed in the system. Otherwise it
-     * returns a value that indicates that the commit timestamp was not found.
+     * Check whether a transaction commit data is inside the commit table
+     * The function also checks whether the transaction was invalidated and returns
+     * a commit time stamp accordingly.
+     * @param cellStartTimestamp
+     *            the transaction start timestamp
+     * @return Optional<CommitTimestamp> that represents a valid, invalid, or no timestamp.
+     * @throws InterruptedException, ExecutionException
+     */
+    Optional<CommitTimestamp> readCommitTimestampFromCommitTable(long cellStartTimestamp)
+             throws InterruptedException, ExecutionException {
+        Optional<CommitTimestamp> commitTS = Optional.absent();
+
+        Future<Optional<Long>> f =
+                commitTableClient.getCommitTimestamp(cellStartTimestamp);
+        Optional<Long> commitTimestamp = f.get();
+
+        if (commitTimestamp.isPresent()) {
+            if (commitTimestamp.get() == CommitTable.INVALID_TRANSACTION_MARKER) {
+                commitTS =  Optional.of((CommitTimestamp) new InvalidCommitTimestamp());
+            } else {
+                commitTS = Optional.of((CommitTimestamp) new ValidCommitTimestamp(Location.COMMIT_TABLE, commitTimestamp.get()));
+            }
+        }
+
+        return commitTS;
+    }
+
+    /**
+     * Check if the transaction commit data is in the shadow cell
+     * @param cellStartTimestamp
+     *            the transaction start timestamp
+     *        locator
+     *            the timestamp locator
+     * @throws InterruptedException, ExecutionException
+     */
+    Optional<CommitTimestamp> readCommitTimestampFromShadowCell(long cellStartTimestamp,
+                                                                 CommitTimestampLocator locator)
+            throws IOException {
+        Optional<CommitTimestamp> commitTS = Optional.absent();
+
+        Optional<Long> commitTimestamp =
+                locator.readCommitTimestampFromShadowCell(cellStartTimestamp);
+        if (commitTimestamp.isPresent()) {
+            commitTS = Optional.of((CommitTimestamp) new ValidCommitTimestamp(Location.SHADOW_CELL, commitTimestamp.get()));
+        }
+
+        return commitTS;
+    }
+
+    /**
+     * This function returns the commit timestamp for a particular cell
+     * if the transaction was already committed in the system. In case the
+     * transaction was not committed and the cell was written by transaction
+     * initialized by a previous TSO server, an invalidation try occurs.
+     * Otherwise the function returns a value that indicates that the commit
+     * timestamp was not found.
      * @param cellStartTimestamp
      *          start timestamp of the cell to locate the commit timestamp for.
+     * @param epoch
+     *          the epoch of the TSO server the current tso client is working with.
      * @param locator
      *          a locator to find the commit timestamp in the system.
      * @return the commit timestamp joint with the location where it was found
      *         or an object indicating that it was not found in the system
      * @throws IOException
      */
-    public CommitTimestamp locateCellCommitTimestamp(long cellStartTimestamp,
+    public CommitTimestamp locateCellCommitTimestamp(long cellStartTimestamp, long epoch,
             CommitTimestampLocator locator) throws IOException {
 
         try {
@@ -305,30 +390,58 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             Optional<Long> commitTimestamp =
                     locator.readCommitTimestampFromCache(cellStartTimestamp);
             if (commitTimestamp.isPresent()) {
-                return new CommitTimestamp(Location.CACHE, commitTimestamp.get());
+                return new ValidCommitTimestamp(Location.CACHE, commitTimestamp.get());
             }
+
             // 2) Then check the commit table
-            Future<Optional<Long>> f =
-                    commitTableClient.getCommitTimestamp(cellStartTimestamp);
-            commitTimestamp = f.get();
-            if (commitTimestamp.isPresent()) {
-                return new CommitTimestamp(Location.COMMIT_TABLE, commitTimestamp.get());
+            // If the data was written at a previous epoch,
+            // check whether the transaction was invalidated
+
+            Optional<CommitTimestamp> commitTimeStamp = readCommitTimestampFromCommitTable(cellStartTimestamp);
+            if (commitTimeStamp.isPresent()) {
+                return commitTimeStamp.get();
             }
-            // 3) Finally, read from shadow cell
-            commitTimestamp =
-                    locator.readCommitTimestampFromShadowCell(cellStartTimestamp);
-            if (commitTimestamp.isPresent()) {
-                return new CommitTimestamp(Location.SHADOW_CELL, commitTimestamp.get());
+
+            // 3) Read from shadow cell
+
+            commitTimeStamp = readCommitTimestampFromShadowCell(cellStartTimestamp, locator);
+            if (commitTimeStamp.isPresent()) {
+                return commitTimeStamp.get();
             }
+
+            // 4) Check the epoch and invalidate the entry
+
+            // if the data was written by a transaction from a previous epoch (previous TSO)
+            if (cellStartTimestamp < epoch) {
+                boolean invalidated = commitTableClient.tryInvalidateTransaction(cellStartTimestamp).get();
+                if (invalidated) {
+                    return new InvalidCommitTimestamp();
+                }
+            }
+
+            // 5) We did not manage to invalidate the transactions then
+            // check the commit table
+            // TODO: Maybe this step is not necessary. Check in a future commit
+            commitTimeStamp = readCommitTimestampFromCommitTable(cellStartTimestamp);
+            if (commitTimeStamp.isPresent()) {
+                return commitTimeStamp.get();
+            }
+
+            // 6) Read from shadow cell
+            // TODO: Maybe this step is not necessary. Check in a future commit
+            commitTimeStamp = readCommitTimestampFromShadowCell(cellStartTimestamp, locator);
+            if (commitTimeStamp.isPresent()) {
+                return commitTimeStamp.get();
+            }
+
             // *) Otherwise return not found
-            return new CommitTimestamp(Location.NOT_PRESENT, -1L /** TODO Check if we should return this */);
+            return new ValidCommitTimestamp(Location.NOT_PRESENT, -1L /** TODO Check if we should return this */);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("Interrupted while finding commit timestamp", e);
         } catch (ExecutionException e) {
             throw new IOException("Problem finding commit timestamp", e);
         }
-
 
     }
 

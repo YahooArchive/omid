@@ -1,15 +1,19 @@
 package com.yahoo.omid.committable.hbase;
 
+import static org.testng.AssertJUnit.assertTrue;
 import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertEquals;
+
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.Assert;
+
 import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_FAMILY;
 import static com.yahoo.omid.committable.hbase.HBaseCommitTable.LOW_WATERMARK_FAMILY;
+
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -30,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.Client;
 import com.yahoo.omid.committable.CommitTable.Writer;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable.HBaseClient;
@@ -185,6 +190,63 @@ public class HBaseCommitTableTest {
         long lowWatermark = lowWatermarkFuture.get();
         assertEquals("Low watermark should be 999", 999, lowWatermark);
         assertEquals("Should there be only one row!", 1, rowCount(TABLE_NAME, LOW_WATERMARK_FAMILY));
+
+    }
+
+    @Test
+    public void testTransactionInvalidation() throws Throwable {
+
+        // Prepare test
+        final int TX1_ST = 1;
+        final int TX1_CT = 2;
+        final int TX2_ST = 11;
+        final int TX2_CT = 12;
+
+        HBaseCommitTableConfig config = new HBaseCommitTableConfig();
+        config.setTableName(TEST_TABLE);
+        HBaseCommitTable commitTable = new HBaseCommitTable(hbaseConf, config);
+
+        // Components under test
+        Writer writer = commitTable.getWriter().get();
+        Client client = commitTable.getClient().get();
+
+        // Test that initially the table is empty
+        assertEquals("Rows should be 0!", 0, rowCount(TABLE_NAME, COMMIT_TABLE_FAMILY));
+
+        // Test that a transaction can be added properly to the commit table
+        writer.addCommittedTransaction(TX1_ST, TX1_CT);
+        writer.flush().get();
+        ListenableFuture<Optional<Long>> ctf = client.getCommitTimestamp(TX1_ST);
+        long ct = ctf.get().get();
+        assertEquals("Commit timestamp should be " + TX1_CT, TX1_CT, ct);
+
+        // Test that a committed transaction cannot be invalidated and
+        // preserves its commit timestamp after that
+        boolean wasInvalidated = client.tryInvalidateTransaction(TX1_ST).get();
+        assertFalse("Transaction should not be invalidated", wasInvalidated);
+        ctf = client.getCommitTimestamp(TX1_ST);
+        ct = ctf.get().get();
+        assertEquals("Commit timestamp should be " + TX1_CT, TX1_CT, ct);
+
+        // Test that a non-committed transaction can be invalidated...
+        wasInvalidated = client.tryInvalidateTransaction(TX2_ST).get();
+        assertTrue("Transaction should be invalidated", wasInvalidated);
+        ctf = client.getCommitTimestamp(TX2_ST);
+        ct = ctf.get().get();
+        assertEquals("Commit timestamp should be " + CommitTable.INVALID_TRANSACTION_MARKER,
+                     CommitTable.INVALID_TRANSACTION_MARKER, ct);
+        // ...and that if it has been already invalidated, it remains
+        // invalidated when someone tries to commit it
+        writer.addCommittedTransaction(TX2_ST, TX2_CT);
+        writer.flush().get();
+        ctf = client.getCommitTimestamp(TX2_ST);
+        ct = ctf.get().get();
+        assertEquals("Commit timestamp should be " + CommitTable.INVALID_TRANSACTION_MARKER,
+                     CommitTable.INVALID_TRANSACTION_MARKER, ct);
+
+        // Test that at the end of the test, the commit table contains 2
+        // elements, which correspond to the two rows added in the test
+        assertEquals("Rows should be 2!", 2, rowCount(TABLE_NAME, COMMIT_TABLE_FAMILY));
 
     }
 

@@ -33,6 +33,12 @@ public class NullCommitTableTest {
                 // expected
             }
 
+            try {
+                commitTableClient.tryInvalidateTransaction(TEST_ST).get();
+            } catch (UnsupportedOperationException e) {
+                // expected
+            }
+
             assertNull(commitTableClient.completeTransaction(TEST_ST).get());
 
             // Test writer

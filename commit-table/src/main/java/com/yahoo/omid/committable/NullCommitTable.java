@@ -62,6 +62,11 @@ public class NullCommitTable implements CommitTable {
         }
 
         @Override
+        public ListenableFuture<Boolean> tryInvalidateTransaction(long startTimestamp) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public void close() {}
     }
 }

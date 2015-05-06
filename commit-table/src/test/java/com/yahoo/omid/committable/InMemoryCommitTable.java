@@ -29,7 +29,10 @@ public class InMemoryCommitTable implements CommitTable {
     public class Writer implements CommitTable.Writer {
         @Override
         public void addCommittedTransaction(long startTimestamp, long commitTimestamp) {
-            table.put(startTimestamp, commitTimestamp);
+            // In this implementation, we use only one location that represents
+            // both the value and the invalidation. Therefore, putIfAbsent is
+            // required to make sure the entry was not invalidated.
+            table.putIfAbsent(startTimestamp, commitTimestamp);
         }
 
         @Override
@@ -73,6 +76,35 @@ public class InMemoryCommitTable implements CommitTable {
             SettableFuture<Void> f = SettableFuture.<Void>create();
             table.remove(startTimestamp);
             f.set(null);
+            return f;
+        }
+
+        @Override
+        public ListenableFuture<Boolean> tryInvalidateTransaction(long startTimestamp) {
+
+            SettableFuture<Boolean> f = SettableFuture.<Boolean>create();
+            Long old = table.get(startTimestamp);
+
+            // If the transaction represented by startTimestamp is not in the map
+            if (old == null) {
+                // Try to invalidate the transaction
+                old = table.putIfAbsent(startTimestamp, INVALID_TRANSACTION_MARKER);
+                // If we were able to invalidate or someone else invalidate before us
+                if (old == null || old == INVALID_TRANSACTION_MARKER) {
+                    f.set(true);
+                    return f;
+                }
+            } else {
+                // Check if the value we read marked the transaction as invalid
+                if (old == INVALID_TRANSACTION_MARKER) {
+                    f.set(true);
+                    return f;
+                }
+            }
+
+            // At this point the transaction was already in the map at the beginning
+            // of the method or was added right before we tried to invalidate.
+            f.set(false);
             return f;
         }
 
