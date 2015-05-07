@@ -1,12 +1,3 @@
-// -*- Java -*-
-/**
- * HBaseLogin.java
- *
- * @author sameerp
- *
- * Copyright (c) 2014, Yahoo! Inc.
- */
-
 package com.yahoo.omid.committable.hbase;
 
 import java.io.IOException;
