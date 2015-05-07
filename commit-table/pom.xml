@@ -30,11 +30,11 @@
 
   </dependencies>
 
-  <!--  this create jar file of code from src/test/java so modules with tests can share code -->
   <build>
 
     <plugins>
 
+      <!--  Create a jar file of code from src/test/java so modules with tests can share code -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
@@ -47,8 +47,41 @@
         </executions>
       </plugin>
 
-    </plugins>
+      <!-- License Management plugins -->
+      <plugin>
+        <groupId>com.mycila</groupId>
+        <artifactId>license-maven-plugin</artifactId>
+        <version>${license.maven-plugin.version}</version>
+        <inherited>true</inherited> <!-- for multi-module config -->
+        <configuration>
+          <aggregate>false</aggregate> <!-- for multi-module config -->
+          <properties>
+            <owner>${license.owner}</owner>
+            <inceptionYear>${license.inceptionYear}</inceptionYear>
+            <latestYearOfContribution>${license.currentYear}</latestYearOfContribution>
+          </properties>
+          <excludes>
+            <!-- Exclude pom -->
+            <exclude>**/pom.xml</exclude>
 
+            <!-- Exclude config and scripts -->
+            <exclude>**/bin/*</exclude>
+            <exclude>**/conf/*</exclude>
+
+            <!-- Exclude assembly -->
+            <exclude>**/src/main/assembly/*</exclude>
+
+            <!-- Exclude tests -->
+            <exclude>**/src/test/**/*</exclude>
+
+            <!-- Project specific exclusions (e.g. they've been copied/modified from other open-source projects -->
+
+          </excludes>
+        </configuration>       
+      </plugin>
+      
+    </plugins>
+    
   </build>
 
 </project>
