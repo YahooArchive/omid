@@ -1,3 +1,21 @@
+/**
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.yahoo.omid.committable.hbase;
 
 import java.io.IOException;
@@ -28,7 +46,7 @@ public class RegionSplitter {
     public interface SplitAlgorithm {
         /**
          * Split a pre-existing region into 2 regions.
-         * 
+         *
          * @param start
          *            first row (inclusive)
          * @param end
@@ -39,10 +57,10 @@ public class RegionSplitter {
 
         /**
          * Split an entire table.
-         * 
+         *
          * @param numRegions
          *            number of regions to split the table into
-         * 
+         *
          * @throws RuntimeException
          *             user input is validated at this time. may throw a runtime exception in response to a parse
          *             failure
@@ -54,7 +72,7 @@ public class RegionSplitter {
         /**
          * In HBase, the first row is represented by an empty byte array. This might cause problems with your split
          * algorithm or row printing. All your APIs will be passed firstRow() instead of empty array.
-         * 
+         *
          * @return your representation of your first row
          */
         byte[] firstRow();
@@ -62,7 +80,7 @@ public class RegionSplitter {
         /**
          * In HBase, the last row is represented by an empty byte array. This might cause problems with your split
          * algorithm or row printing. All your APIs will be passed firstRow() instead of empty array.
-         * 
+         *
          * @return your representation of your last row
          */
         byte[] lastRow();
@@ -70,7 +88,7 @@ public class RegionSplitter {
         /**
          * In HBase, the last row is represented by an empty byte array. Set this value to help the split code
          * understand how to evenly divide the first region.
-         * 
+         *
          * @param userInput
          *            raw user input (may throw RuntimeException on parse failure)
          */
@@ -80,7 +98,7 @@ public class RegionSplitter {
          * In HBase, the last row is represented by an empty byte array. Set this value to help the split code
          * understand how to evenly divide the last region. Note that this last row is inclusive for all rows sharing
          * the same prefix.
-         * 
+         *
          * @param userInput
          *            raw user input (may throw RuntimeException on parse failure)
          */
@@ -107,7 +125,7 @@ public class RegionSplitter {
 
         /**
          * Set the first row
-         * 
+         *
          * @param userInput
          *            byte array of the row key.
          */
@@ -115,7 +133,7 @@ public class RegionSplitter {
 
         /**
          * Set the last row
-         * 
+         *
          * @param userInput
          *            byte array of the row key.
          */
@@ -167,6 +185,7 @@ public class RegionSplitter {
         byte[] lastRowBytes =
                 new byte[] { xFF, xFF, xFF, xFF, xFF, xFF, xFF, xFF };
 
+        @Override
         public byte[] split(byte[] start, byte[] end) {
             return Bytes.split(start, end, 1)[1];
         }
