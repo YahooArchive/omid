@@ -1,9 +1,9 @@
-Omid2
-=====
+Omid
+====
 
-The Omid2 project provides transactional support for key-value stores using Snapshot Isolation. Omid stands for Optimistically transactional Management in Datasources. HBase is the only datastore currently supported, though adaption to any datastore that provides multiple versions per cell should be straightforward.
+The Omid project provides transactional support for key-value stores using Snapshot Isolation. Omid stands for Optimistically transactional Management in Datasources. HBase is the only datastore currently supported, though adaption to any datastore that provides multiple versions per cell should be straightforward.
 
-There are 3 components in OMID2;
+There are 3 components in OMID;
  * The Transaction Status Oracle (TSO), which assigns transaction timestamps and resolves conflicts between transactions.
  * The commit table which stores a mapping from start timestamp to commit timestamp
  * Shadow cells, which are written alongside data cells in the datastore to allow client to resolve reads without consulting the commit table.
@@ -12,7 +12,7 @@ To start a transaction, the client requests a start timestamp from the TSO. It t
 
 To read a cell transactionally, the client first checks if the cell has a shadow cell. If the commit timestamp of the shadow cell is lower than the start timestamp of the reading transaction, then the client can "see" the cell. If there is no shadow cell, the commit table is consulted to find the commit timestamp of the cell. If the commit timestamp does not exist in the commit table, then the cell is assumed to below to an aborted transaction.
 
-There are currently two implementations of the commit table, a hbase implementation and an inmemory implementation. The in-memory implementation gives no persistence guarantee and is only useful for benchmarking the TSO. 
+There are currently two implementations of the commit table, a HBase implementation and an In-Memory implementation. The In-Memory implementation gives no persistence guarantee and is only useful for benchmarking the TSO. 
 
 Quickstart
 ----------
@@ -42,15 +42,6 @@ By default the tso listens on port 54758.
 
 HBase Client usage
 ------------------
-
-Add the following to your pom.xml dependencies:
-```xml
-    <dependency>
-      <groupId>yahoo.yinst.omid_hbase_client</groupId>
-      <artifactId>omid_hbase_client</artifactId>
-      <version>[2.2.0,)</version>
-    </dependency>
-```
 
 The client interfaces for OMID2 are _TTable_ and _TransactionManager_. A builder is provided in the
 _HBaseTransactionManager_ class in order to get the TransactionManager interface, which is used for creating and
@@ -109,7 +100,7 @@ public class Example {
 
 HBase Co-processor Usage
 ------------------------
-Omid2 includes an HBase co-processor that operates during compactions (minor and major) and performs
+Omid includes an HBase co-processor that operates during compactions (minor and major) and performs
 data cleanup. Specifically, it does the following:
  * Cleans up garbage data from aborted transactions
  * Purges deleted cells. Omid deletes work by placing a special tombstone marker in cells. The compactor
@@ -142,8 +133,3 @@ Sample co-processor enabled table:
 Module Dependencies
 -------------------
 ![Module dependencies](https://git.corp.yahoo.com/scalable-computing/omid/raw/master/doc/images/ModuleDependencies.png "Module dependencies")
-
-More Info
----------
-* Omid 2 paper published on [TechPulse 2014](https://git.corp.yahoo.com/scalable-computing/techpulse2014-omid2/raw/master/omid2-submitted.pdf)
-

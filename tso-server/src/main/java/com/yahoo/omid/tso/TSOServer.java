@@ -39,7 +39,6 @@ import com.yahoo.omid.committable.hbase.HBaseCommitTableStorageModule;
 import com.yahoo.omid.committable.hbase.HBaseLogin;
 import com.yahoo.omid.metrics.CodahaleMetricsConfig;
 import com.yahoo.omid.metrics.MetricsProvider.Provider;
-import com.yahoo.omid.metrics.YMonMetricsConfig;
 import com.yahoo.omid.timestamp.storage.ZKTimestampStorageModule;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig.CommitTableStore;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig.TimestampStore;
@@ -122,9 +121,6 @@ public class TSOServer extends AbstractIdleService {
             switch (metricsProvider) {
             case CODAHALE:
                 guiceModules.add(new CodahaleModule(config, new CodahaleMetricsConfig()));
-                break;
-            case YMON:
-                guiceModules.add(new YMonModule(new YMonMetricsConfig()));
                 break;
             default:
                 throw new IllegalArgumentException("Unknown metrics provider" + metricsProvider);

@@ -3,12 +3,6 @@
 
   <modelVersion>4.0.0</modelVersion>
 
-  <parent>
-    <groupId>yahoo.yinst.yjava_base_build</groupId>
-    <artifactId>yjava_base_build</artifactId>
-    <version>3.1.6.153</version>
-  </parent>
-
   <groupId>com.yahoo.omid</groupId>
   <artifactId>omid</artifactId>
   <inceptionYear>2011</inceptionYear>
@@ -17,18 +11,6 @@
   <version>2.3.11</version>
   <name>Omid</name>
   <url>http://www.github.com/yahoo/omid</url>
-
-  <scm>
-    <connection>scm:git:git@git.corp.yahoo.com:scalable-computing/omid.git</connection>
-    <tag>HEAD</tag>
-  </scm>
-
-  <repositories>
-    <repository>
-      <id>local-release</id>
-      <url>http://artifactory.ops.yahoo.com:9999/artifactory/maven-local-release/</url>
-    </repository>
-  </repositories>
 
   <properties>
 
@@ -43,9 +25,6 @@
 
     <!-- Java Version -->
     <java.version>1.7</java.version>
-
-    <!-- Yahoo Library Versioning -->
-    <yahoo.mon_metrics.version>0.2.11_25</yahoo.mon_metrics.version>
 
     <!-- 3rd-Party Library Versioning -->
     <hbase.version>0.98.7.3.1410020120_h2</hbase.version>
@@ -64,7 +43,6 @@
     <clover.version>3.3.0</clover.version>
     <hamcrest.version>1.3</hamcrest.version>
     <curator.version>2.6.0</curator.version>
-    <statemachine.version>1.0.9</statemachine.version>
     <zookeeper.version>3.4.3</zookeeper.version>
     
     <!-- Maven Plugin Versioning -->
@@ -78,7 +56,6 @@
     <module>tso-server</module>
     <module>commit-table</module>
     <module>hbase-commit-table</module>
-    <module>omid-hbase-client</module>
     <module>hbase-coprocessor</module>
     <module>benchmarks</module>
   </modules>

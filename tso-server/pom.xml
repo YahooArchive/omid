@@ -138,14 +138,6 @@
     </dependency>
     <!-- End of Dependencies on Omid modules -->
 
-    <!-- Dependencies on Yahoo libraries -->
-    <dependency>
-      <groupId>yahoo.yinst.mon_metrics_java</groupId>
-      <artifactId>mon_metrics_java</artifactId>
-      <version>${yahoo.mon_metrics.version}</version>
-    </dependency>
-    <!-- End of Dependencies on Yahoo libraries -->
-
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
@@ -259,38 +251,5 @@
     <!-- end testing -->
 
   </dependencies>
-  <profiles>
-    <profile>
-      <id>yinst</id>
-      <activation>
-        <file>
-          <exists>/home/y/libexec/maven/conf/settings.xml</exists>
-        </file>
-      </activation>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>yahoo.yinst.maven_plugins</groupId>
-            <artifactId>yjava_maven_plugins_yinst</artifactId>
-            <version>0.13.2</version>
-            <executions>
-              <execution>
-                <phase>package</phase>
-                <goals>
-                  <goal>create</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-      <dependencies>
-        <dependency>
-          <groupId>yahoo.yinst.yjava_daemon</groupId>
-          <artifactId>yjava_daemon</artifactId>
-          <version>2.23.187</version>
-        </dependency>
-      </dependencies>
-    </profile>
-  </profiles>
+
 </project>

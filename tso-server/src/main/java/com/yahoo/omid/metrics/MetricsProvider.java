@@ -1,6 +1,5 @@
 package com.yahoo.omid.metrics;
 
-import java.util.regex.Pattern;
 
 /**
  * Provider to provide metrics logger for different scopes.
@@ -8,7 +7,7 @@ import java.util.regex.Pattern;
 public interface MetricsProvider {
 
     public enum Provider {
-        CODAHALE, YMON;
+        CODAHALE;
     }
 
     /**

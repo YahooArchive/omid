@@ -145,34 +145,7 @@
       </plugin>
 
     </plugins>
-  </build>
 
-  <profiles>
-    <profile>
-      <id>yinst</id>
-      <activation>
-        <file>
-          <exists>/home/y/libexec/maven/conf/settings.xml</exists>
-        </file>
-      </activation>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>yahoo.yinst.maven_plugins</groupId>
-            <artifactId>yjava_maven_plugins_yinst</artifactId>
-            <version>0.13.2</version>
-            <executions>
-              <execution>
-                <phase>package</phase>
-                <goals>
-                  <goal>create</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-  </profiles>
+  </build>
 
 </project>

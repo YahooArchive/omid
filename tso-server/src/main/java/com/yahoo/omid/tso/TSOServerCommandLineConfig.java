@@ -77,7 +77,7 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
     @Parameter(names = "-port", description = "Port reserved by the Status Oracle")
     private int port = TSOClient.DEFAULT_TSO_PORT;
 
-    @Parameter(names = "-metricsProvider", description = "Metrics provider: CODAHALE | YMON")
+    @Parameter(names = "-metricsProvider", description = "Metrics provider: CODAHALE")
     private MetricsProvider.Provider metricsProvider = MetricsProvider.Provider.CODAHALE;
 
     @Parameter(names = "-metricsConfigs", description = "Metrics config", variableArity = true)
