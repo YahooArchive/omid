@@ -103,6 +103,9 @@
 
             <!-- Project specific exclusions (e.g. they've been copied/modified from other open-source projects -->
 
+            <!-- Contains some code taken from https://commons.apache.org/proper/commons-jcs/ -->
+            <exclude>**/src/main/java/com/yahoo/omid/tso/ZKModule.java</exclude>
+
           </excludes>
         </configuration>
       </plugin>

@@ -133,3 +133,7 @@ Sample co-processor enabled table:
 Module Dependencies
 -------------------
 ![Module dependencies](https://git.corp.yahoo.com/scalable-computing/omid/raw/master/doc/images/ModuleDependencies.png "Module dependencies")
+
+License
+-------
+Code licensed under the Apache License Version 2.0. See LICENSE file for terms.
