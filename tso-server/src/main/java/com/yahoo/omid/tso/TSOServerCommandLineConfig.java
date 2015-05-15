@@ -92,6 +92,14 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
     @Parameter(names = "-batchPersistTimeout", description = "Number of milliseconds the persist processer will wait without new input before flushing a batch")
     private int batchPersistTimeoutMS = DEFAULT_BATCH_PERSIST_TIMEOUT_MS;
 
+    // TODO This is probably going to be temporary. So, we should remove it later if not required. Otherwise
+    // we should make it private and provide accessors as is done with the other parameters
+    @Parameter(names = "-publishHostAndPortInZK", description = "Publishes the host:port of this TSO server in ZK")
+    public boolean shouldHostAndPortBePublishedInZK = false;
+
+    @Parameter(names = "-networkIface", description = "Network Interface where TSO is attached to (e.g. eth0, en0...)")
+    private String networkIfaceName = TSOServer.DEFAULT_TSO_NET_IFACE;
+
     @ParametersDelegate
     private HBaseLogin.Config loginFlags = new HBaseLogin.Config();
 
@@ -157,4 +165,9 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
     }
 
     public HBaseLogin.Config getLoginFlags() { return loginFlags; }
+
+    public String getNetworkIface() {
+        return networkIfaceName;
+    }
+
 }

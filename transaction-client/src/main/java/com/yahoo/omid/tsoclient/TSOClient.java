@@ -1,69 +1,137 @@
-/**
- * Copyright (c) 2011 Yahoo! Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License. See accompanying LICENSE file.
- */
-
 package com.yahoo.omid.tsoclient;
 
-import com.codahale.metrics.MetricRegistry;
+import java.io.IOException;
+import java.util.Set;
+
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.*;
-
+import com.codahale.metrics.MetricRegistry;
 
 /**
- * Communication endpoint for TSO clients.
- *
+ * Describes the abstract methods to communicate to the TSO server
  */
 public abstract class TSOClient {
+
+    // ZK-related constants
+    public static final String TSO_ZK_CLUSTER_CONFKEY = "tso.zkcluster";
+    public static final String DEFAULT_ZK_CLUSTER = "localhost:2181";
+
+    // Basic configuration constants & defaults
     public static final String TSO_HOST_CONFKEY = "tso.host";
     public static final String TSO_PORT_CONFKEY = "tso.port";
-    public static final String REQUEST_MAX_RETRIES_CONFKEY = "tso.request.max-retries";
-    public static final String REQUEST_TIMEOUT_IN_MS_CONFKEY = "tso.request.timeout-ms";
     public static final int DEFAULT_TSO_PORT = 54758;
+    public static final String REQUEST_MAX_RETRIES_CONFKEY = "tso.request.max-retries";
     public static final int DEFAULT_TSO_MAX_REQUEST_RETRIES = 5;
+    public static final String REQUEST_TIMEOUT_IN_MS_CONFKEY = "tso.request.timeout-ms";
     public static final int DEFAULT_REQUEST_TIMEOUT_MS = 5000; // 5 secs
     public static final String TSO_RETRY_DELAY_MS_CONFKEY = "tso.retry_delay_ms";
     public static final int DEFAULT_TSO_RETRY_DELAY_MS = 1000;
     public static final String TSO_EXECUTOR_THREAD_NUM_CONFKEY = "tso.executor.threads";
     public static final int DEFAULT_TSO_EXECUTOR_THREAD_NUM = 3;
+
+    // ************* Abstract interface to communicate to the TSO *************
+
+    public abstract TSOFuture<Long> getNewStartTimestamp();
+
+    /**
+     * @throws AbortException
+     *             if the TSO server has aborted the transaction we try to commit.
+     *
+     * @throws ServiceUnavailableException
+     *             if the request to the TSO server has been retried a certain number of times and couldn't reach the
+     *             endpoint
+     */
+    public abstract TSOFuture<Long> commit(long transactionId, Set<? extends CellId> cells);
+
+    /**
+     * @throws ClosingException
+     *             if there's a problem when closing the link with the TSO server
+     */
+    public abstract TSOFuture<Void> close();
+
+    // ************************* Useful exceptions ****************************
+
+    /**
+     * Thrown when a problem is found when creating the TSO client
+     */
+    public static class InstantiationException extends Exception {
+
+        private static final long serialVersionUID = 8262507672984590285L;
+
+        public InstantiationException(String message) {
+            super(message);
+        }
+
+    }
+
+    /**
+     * Thrown when there are problems with the comm channel with the TSO server
+     * (e.g. when it is closed or disconnected)
+     */
     public static class ConnectionException extends IOException {
+
+        private static final long serialVersionUID = -8489539195700267443L;
+
     }
 
+    /**
+     * Thrown when an error is produced when performing the actions required
+     * to close the communication with the TSO server
+     */
     public static class ClosingException extends Exception {
+
+        private static final long serialVersionUID = -5681694952053689884L;
+
     }
 
+    /**
+     * Thrown when some incompatibilities between the TSO client & server are
+     * found
+     */
     public static class HandshakeFailedException extends Exception {
+
+        private static final long serialVersionUID = 8545505066920548834L;
+
     }
 
+    /**
+     * Thrown when the requests from TSO client to the TSO server have reached
+     * a number of retries
+     */
     public static class ServiceUnavailableException extends Exception {
+
+        private static final long serialVersionUID = -1551974284011474385L;
+
         public ServiceUnavailableException(String message) {
             super(message);
         }
     }
 
-    public static class AbortException extends Exception {}
+    /**
+     * Thrown when the TSO server has aborted a transaction
+     */
+    public static class AbortException extends Exception {
+
+        private static final long serialVersionUID = 1861474360100681040L;
+
+    }
+
+    /**
+     * Thrown when a new TSO has been detected
+     */
+    public static class NewTSOException extends Exception {
+
+        private static final long serialVersionUID = -3250655858200759321L;
+
+    }
+
+    // ****************************** Builder *********************************
 
     public static class Builder {
+
         private Configuration conf = new BaseConfiguration();
         private MetricRegistry metrics = new MetricRegistry();
-        private String tsoHost = null;
-        private int tsoPort = -1;
 
         public Builder withConfiguration(Configuration conf) {
             this.conf = conf;
@@ -75,24 +143,10 @@ public abstract class TSOClient {
             return this;
         }
 
-        public Builder withTSOHost(String host) {
-            this.tsoHost = host;
-            return this;
-        }
-
-        public Builder withTSOPort(int port) {
-            this.tsoPort = port;
-            return this;
-        }
-
         public TSOClient build() {
-            if (tsoHost != null) {
-                conf.setProperty(TSO_HOST_CONFKEY, tsoHost);
-            }
-            if (tsoPort != -1) {
-                conf.setProperty(TSO_PORT_CONFKEY, tsoPort);
-            }
+
             return new TSOClientImpl(conf, metrics);
+
         }
     }
 
@@ -100,7 +154,4 @@ public abstract class TSOClient {
         return new Builder();
     }
 
-    public abstract TSOFuture<Long> getNewStartTimestamp();
-    public abstract TSOFuture<Long> commit(long transactionId, Set<? extends CellId> cells);
-    public abstract TSOFuture<Void> close();
 }

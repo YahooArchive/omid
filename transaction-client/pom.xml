@@ -18,17 +18,29 @@
     <!-- Dependencies on Omid modules -->
     <dependency>
       <groupId>com.yahoo.omid</groupId>
+      <artifactId>common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.yahoo.omid</groupId>
       <artifactId>commit-table</artifactId>
       <version>${project.version}</version>
     </dependency>
     <!-- End of Dependencies on Omid modules -->
 
+    <!-- distributed comm -->
+    <dependency>
+      <groupId>org.apache.curator</groupId>
+      <artifactId>curator-recipes</artifactId>
+      <version>${curator.version}</version>
+    </dependency>
     <dependency>
       <groupId>org.jboss.netty</groupId>
       <artifactId>netty</artifactId>
       <version>${netty.version}</version>
       <scope>compile</scope>
     </dependency>
+
     <dependency>
       <groupId>commons-configuration</groupId>
       <artifactId>commons-configuration</artifactId>
