@@ -29,6 +29,7 @@ import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.regionserver.ScanType;
 import org.apache.hadoop.hbase.regionserver.Store;
+import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,7 +90,8 @@ public class OmidCompactor extends BaseRegionObserver {
     public InternalScanner preCompact(ObserverContext<RegionCoprocessorEnvironment> e,
                                       Store store,
                                       InternalScanner scanner,
-                                      ScanType scanType) throws IOException
+                                      ScanType scanType,
+                                      CompactionRequest request) throws IOException
     {
         HTableDescriptor desc = e.getEnvironment().getRegion().getTableDesc();
         HColumnDescriptor famDesc
@@ -104,7 +106,8 @@ public class OmidCompactor extends BaseRegionObserver {
             if (commitTableClient == null) {
                 commitTableClient = initAndGetCommitTableClient();
             }
-            return new CompactorScanner(e, scanner, commitTableClient, commitTableClientQueue);
+            boolean isMajorCompaction = request.isMajor();
+            return new CompactorScanner(e, scanner, commitTableClient, commitTableClientQueue, isMajorCompaction);
         }
     }
 
@@ -127,6 +130,7 @@ public class OmidCompactor extends BaseRegionObserver {
         private final InternalScanner internalScanner;
         private final CommitTable.Client commitTableClient;
         private final Queue<CommitTable.Client> commitTableClientQueue;
+        private final boolean isMajorCompaction;
         private final long lowWatermark;
 
         private final HRegion hRegion;
@@ -137,11 +141,13 @@ public class OmidCompactor extends BaseRegionObserver {
         public CompactorScanner(ObserverContext<RegionCoprocessorEnvironment> e,
                                 InternalScanner internalScanner,
                                 Client commitTableClient,
-                                Queue<CommitTable.Client> commitTableClientQueue) throws IOException
+                                Queue<CommitTable.Client> commitTableClientQueue,
+                                boolean isMajorCompaction) throws IOException
         {
             this.internalScanner = internalScanner;
             this.commitTableClient = commitTableClient;
             this.commitTableClientQueue = commitTableClientQueue;
+            this.isMajorCompaction = isMajorCompaction;
             this.lowWatermark = getLowWatermarkFromCommitTable();
             // Obtain the table in which the scanner is going to operate
             this.hRegion = e.getEnvironment().getRegion();
@@ -184,16 +190,23 @@ public class OmidCompactor extends BaseRegionObserver {
                         continue;
                     }
 
-                    if (CellUtils.isTombstone(cell)) {
-                        if (shadowCellOp.isPresent()) {
-                            skipToNextColumn(cell, iter);
-                        } else {
-                            Optional<Long> commitTimestamp = queryCommitTimestamp(cell);
-                            if (commitTimestamp.isPresent()) {
+                    // During a minor compaction the coprocessor may only see a
+                    // subset of store files and not have the all the versions
+                    // of a cell available for consideration. Therefore, if it
+                    // deletes a cell with a tombstone during a minor compaction,
+                    // it may make an older version of the visible.
+                    if (isMajorCompaction) {
+                        if (CellUtils.isTombstone(cell)) {
+                            if (shadowCellOp.isPresent()) {
                                 skipToNextColumn(cell, iter);
+                            } else {
+                                Optional<Long> commitTimestamp = queryCommitTimestamp(cell);
+                                if (commitTimestamp.isPresent()) {
+                                    skipToNextColumn(cell, iter);
+                                }
                             }
+                            continue;
                         }
-                        continue;
                     }
 
                     if (shadowCellOp.isPresent()) {

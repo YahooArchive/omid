@@ -778,6 +778,89 @@ public class TestCompaction {
                 0, result.getColumnCells(fam, qual).size());
     }
 
+    // ************************************************************************
+    // Tests on tombstones
+    // ************************************************************************
+
+    /**
+     * Test that when a minor compaction runs, tombstones are not cleaned up
+     */
+    @Test(timeOut=60000)
+    public void testTombstonesAreNotCleanedUpWhenMinorCompactionOccurs()
+            throws Throwable {
+
+        // Configure the environment to create a minor compaction
+
+        HBaseTransaction tx0 = (HBaseTransaction) tm.begin();
+        byte[] rowId = Bytes.toBytes("case1");
+        Put p = new Put(rowId);
+        p.add(fam, qual, Bytes.toBytes("testValue-0"));
+        txTable.put(tx0, p);
+        tm.commit(tx0);
+
+        // create the first hfile
+        manualFlush();
+
+        // Create the tombstone
+        HBaseTransaction deleteTx = (HBaseTransaction) tm.begin();
+        Delete d = new Delete(rowId);
+        d.deleteColumn(fam, qual);
+        txTable.delete(deleteTx, d);
+        tm.commit(deleteTx);
+
+        // create the second hfile
+        manualFlush();
+
+        HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
+        Put p1 = new Put(rowId);
+        p1.add(fam, qual, Bytes.toBytes("testValue-11"));
+        txTable.put(tx1, p1);
+        tm.commit(tx1);
+
+        // create the third hfile
+        manualFlush();
+
+        HBaseTransaction lastTx = (HBaseTransaction) tm.begin();
+        Put p2 = new Put(rowId);
+        p2.add(fam, qual, Bytes.toBytes("testValue-222"));
+        txTable.put(lastTx, p2);
+        tm.commit(lastTx);
+
+        // Trigger the minor compaction
+        HBaseTransaction lwmTx = (HBaseTransaction)tm.begin();
+        setCompactorLWM(lwmTx.getStartTimestamp());
+        admin.compact(TEST_TABLE);
+        Thread.sleep(5000);
+
+        // Checks on results after compaction
+        TTableCellGetterAdapter getter = new TTableCellGetterAdapter(txTable);
+        assertFalse("Put cell should be there",
+                CellUtils.hasCell(rowId, fam, qual,
+                                  tx0.getStartTimestamp(), getter));
+        assertFalse("Put shadow cell should be there",
+                CellUtils.hasShadowCell(rowId, fam, qual,
+                                        tx0.getStartTimestamp(), getter));
+        assertTrue("Put cell should be there",
+                CellUtils.hasCell(rowId, fam, qual,
+                                  tx1.getStartTimestamp(), getter));
+        assertTrue("Put shadow cell should be there",
+                CellUtils.hasShadowCell(rowId, fam, qual,
+                                        tx1.getStartTimestamp(), getter));
+        assertTrue("Delete cell should be there",
+                CellUtils.hasCell(rowId, fam, qual,
+                                  deleteTx.getStartTimestamp(), getter));
+        assertTrue("Delete shadow cell should be there",
+                CellUtils.hasShadowCell(rowId, fam, qual,
+                                        deleteTx.getStartTimestamp(), getter));
+        assertTrue("Put cell should be there",
+                   CellUtils.hasCell(rowId, fam, qual,
+                                     lastTx.getStartTimestamp(), getter));
+        assertTrue("Put shadow cell should be there",
+                   CellUtils.hasShadowCell(rowId, fam, qual,
+                                           lastTx.getStartTimestamp(), getter));
+    }
+
+
     /**
      * Test that when compaction runs, tombstones are cleaned up
      * case1: 1 put (ts < lwm) then tombstone (ts > lwm)
