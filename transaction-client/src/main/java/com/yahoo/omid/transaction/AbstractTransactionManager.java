@@ -202,7 +202,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
                 tx.setCommitTimestamp(0);
                 tx.setStatus(Status.ROLLEDBACK);
                 tx.cleanup();
-                throw new RollbackException("Conflicts detected in tx writeset. Transaction aborted.");
+                throw new RollbackException("Conflicts detected in tx writeset. Transaction aborted.", e.getCause());
             }
             throw new TransactionException("Could not commit", e.getCause());
         } catch (InterruptedException ie) {
