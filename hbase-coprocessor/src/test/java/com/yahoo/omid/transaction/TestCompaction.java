@@ -12,6 +12,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertFalse;
+import static org.testng.AssertJUnit.assertNull;
 import static org.testng.AssertJUnit.assertTrue;
 import static org.testng.AssertJUnit.fail;
 
@@ -788,6 +789,44 @@ public class TestCompaction {
     // ************************************************************************
 
     /**
+     * Test that when a major compaction runs, cells that were deleted
+     * non-transactionally dissapear
+     */
+    @Test(timeOut = 60000)
+    public void testACellDeletedNonTransactionallyDoesNotAppearWhenAMajorCompactionOccurs() throws Throwable {
+
+        HTable table = new HTable(hbaseConf, TEST_TABLE);
+
+        // Write first a value transactionally
+        HBaseTransaction tx0 = (HBaseTransaction) tm.begin();
+        byte[] rowId = Bytes.toBytes("row1");
+        Put p0 = new Put(rowId);
+        p0.add(fam, qual, Bytes.toBytes("testValue-0"));
+        txTable.put(tx0, p0);
+        tm.commit(tx0);
+
+        // Then perform a non-transactional Delete
+        Delete d = new Delete(rowId);
+        d.deleteColumn(fam, qual);
+        table.delete(d);
+
+        // Trigger a major compaction
+        HBaseTransaction lwmTx = (HBaseTransaction) tm.begin();
+        compactWithLWM(lwmTx.getStartTimestamp());
+
+        // Then perform a non-tx (raw) scan...
+        Scan scan = new Scan();
+        scan.setRaw(true);
+        ResultScanner scannerResults = table.getScanner(scan);
+
+        // ...and test the deleted cell is not there anymore
+        assertNull("There should be no results in scan results", scannerResults.next());
+
+        table.close();
+
+    }
+
+    /**
      * Test that when a minor compaction runs, cells that were deleted
      * non-transactionally are preserved. This is to allow users still access
      * the cells when doing "improper" operations on a transactional table
@@ -797,6 +836,7 @@ public class TestCompaction {
             throws Throwable {
 
         HTable table = new HTable(hbaseConf, TEST_TABLE);
+
         // Configure the environment to create a minor compaction
 
         // Write first a value transactionally
@@ -861,6 +901,7 @@ public class TestCompaction {
         assertTrue("We should have found a non-transactionally deleted cell", wasDeletedCellFound);
         assertEquals("There should be only only one deleted cell", 1, numberOfDeletedCellsFound);
 
+        table.close();
     }
 
     /**
