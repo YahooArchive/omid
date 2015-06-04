@@ -1,13 +1,20 @@
 package com.yahoo.omid.transaction;
 
-import com.google.common.util.concurrent.SettableFuture;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.yahoo.omid.TestUtils;
-import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.tso.TSOServer;
-import com.yahoo.omid.tso.TSOServerCommandLineConfig;
-import com.yahoo.omid.tsoclient.TSOClient;
+import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_FAMILY;
+import static com.yahoo.omid.committable.hbase.HBaseCommitTable.LOW_WATERMARK_FAMILY;
+import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TSO_FAMILY;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.spy;
+import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertFalse;
+import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.AssertJUnit.fail;
+
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -15,6 +22,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
@@ -24,18 +32,22 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.RetriesExhaustedWithDetailsException;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.coprocessor.AggregationClient;
 import org.apache.hadoop.hbase.client.coprocessor.LongColumnInterpreter;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterClass;
@@ -43,22 +55,15 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_FAMILY;
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.LOW_WATERMARK_FAMILY;
-import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TSO_FAMILY;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.spy;
-import org.mockito.stubbing.Answer;
-import org.mockito.invocation.InvocationOnMock;
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertFalse;
-import static org.testng.AssertJUnit.assertTrue;
-import static org.testng.AssertJUnit.fail;
+
+import com.google.common.util.concurrent.SettableFuture;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.yahoo.omid.TestUtils;
+import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.tso.TSOServer;
+import com.yahoo.omid.tso.TSOServerCommandLineConfig;
+import com.yahoo.omid.tsoclient.TSOClient;
 
 public class TestCompaction {
 
@@ -779,8 +784,84 @@ public class TestCompaction {
     }
 
     // ************************************************************************
-    // Tests on tombstones
+    // Tests on tombstones and non-transactional Deletes
     // ************************************************************************
+
+    /**
+     * Test that when a minor compaction runs, cells that were deleted
+     * non-transactionally are preserved. This is to allow users still access
+     * the cells when doing "improper" operations on a transactional table
+     */
+    @Test(timeOut=60000)
+    public void testACellDeletedNonTransactionallyIsPreservedWhenMinorCompactionOccurs()
+            throws Throwable {
+
+        HTable table = new HTable(hbaseConf, TEST_TABLE);
+        // Configure the environment to create a minor compaction
+
+        // Write first a value transactionally
+        HBaseTransaction tx0 = (HBaseTransaction) tm.begin();
+        byte[] rowId = Bytes.toBytes("row1");
+        Put p0 = new Put(rowId);
+        p0.add(fam, qual, Bytes.toBytes("testValue-0"));
+        txTable.put(tx0, p0);
+        tm.commit(tx0);
+
+        // create the first hfile
+        manualFlush();
+
+        // Write another value transactionally
+        HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
+        Put p1 = new Put(rowId);
+        p1.add(fam, qual, Bytes.toBytes("testValue-1"));
+        txTable.put(tx1, p1);
+        tm.commit(tx1);
+
+        // create the second hfile
+        manualFlush();
+
+        // Then perform a non-transactional Delete
+        Delete d = new Delete(rowId);
+        d.deleteColumn(fam, qual);
+        table.delete(d);
+
+        // create the third hfile
+        manualFlush();
+
+        // Trigger the minor compaction
+        HBaseTransaction lwmTx = (HBaseTransaction) tm.begin();
+        setCompactorLWM(lwmTx.getStartTimestamp());
+        admin.compact(TEST_TABLE);
+        Thread.sleep(5000);
+
+        // Then perform a non-tx (raw) scan...
+        Scan scan = new Scan();
+        scan.setRaw(true);
+        ResultScanner scannerResults = table.getScanner(scan);
+
+        // ...and test the deleted cell is still there
+        int count = 0;
+        Result scanResult;
+        List<Cell> listOfCellsScanned = new ArrayList<>();
+        while ((scanResult = scannerResults.next()) != null) {
+            listOfCellsScanned = scanResult.listCells(); // equivalent to rawCells()
+            count++;
+        }
+        assertEquals("There should be only one result in scan results", 1, count);
+        assertEquals("There should be three cell entries in the scan results (2 puts, 1 delete)", 3,
+                listOfCellsScanned.size());
+        boolean wasDeletedCellFound = false;
+        int numberOfDeletedCellsFound = 0;
+        for (Cell cell : listOfCellsScanned) {
+            if (CellUtil.isDelete(cell)) {
+                wasDeletedCellFound = true;
+                numberOfDeletedCellsFound++;
+            }
+        }
+        assertTrue("We should have found a non-transactionally deleted cell", wasDeletedCellFound);
+        assertEquals("There should be only only one deleted cell", 1, numberOfDeletedCellsFound);
+
+    }
 
     /**
      * Test that when a minor compaction runs, tombstones are not cleaned up

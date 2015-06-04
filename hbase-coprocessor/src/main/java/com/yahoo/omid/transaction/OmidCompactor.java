@@ -193,10 +193,11 @@ public class OmidCompactor extends BaseRegionObserver {
                     }
 
                     // During a minor compaction the coprocessor may only see a
-                    // subset of store files and not have the all the versions
+                    // subset of store files and may not have the all the versions
                     // of a cell available for consideration. Therefore, if it
                     // deletes a cell with a tombstone during a minor compaction,
-                    // it may make an older version of the visible.
+                    // an older version of the cell may become visible again. So,
+                    // we have to remove tombstones only in major compactions.
                     if (isMajorCompaction) {
                         if (CellUtils.isTombstone(cell)) {
                             if (shadowCellOp.isPresent()) {
@@ -210,6 +211,17 @@ public class OmidCompactor extends BaseRegionObserver {
                             }
                             continue;
                         }
+                    } else {
+                        // In minor compactions, if we found a cell which has
+                        // been marked by HBase as Delete or Delete Family
+                        // (that is, non-transactionally deleted), we retain
+                        // it just in case
+                        if (CellUtil.isDelete(cell)
+                                ||
+                            CellUtil.isDeleteFamily(cell)) {
+                            retain(currentRowWorthValues, cell, shadowCellOp);
+                        }
+
                     }
 
                     if (shadowCellOp.isPresent()) {
