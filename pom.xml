@@ -8,7 +8,7 @@
   <inceptionYear>2011</inceptionYear>
   <packaging>pom</packaging>
   <!-- WARNING: do not update version manually, use mvn versions:set on a ylinux machine //-->
-  <version>2.3.11</version>
+  <version>0.8.0</version>
   <name>Omid</name>
   <url>http://www.github.com/yahoo/omid</url>
 
@@ -27,7 +27,7 @@
     <java.version>1.7</java.version>
 
     <!-- 3rd-Party Library Versioning -->
-    <hbase.version>0.98.7.3.1410020120_h2</hbase.version>
+    <hbase.version>0.98.10.1-hadoop1</hbase.version>
     <guava.version>11.0.2</guava.version>
     <guice.version>3.0</guice.version>
     <testng.version>6.8.8</testng.version>
