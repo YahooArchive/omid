@@ -54,12 +54,24 @@ import com.yahoo.omid.transaction.CellUtils.CellInfo;
 public class OmidCompactor extends BaseRegionObserver {
 
     private static final Logger LOG = LoggerFactory.getLogger(OmidCompactor.class);
+
+    private static final String HBASE_RETAIN_NON_TRANSACTIONALLY_DELETED_CELLS_KEY
+        = "omid.hbase.compactor.retain.tombstones";
+    private static final boolean HBASE_RETAIN_NON_TRANSACTIONALLY_DELETED_CELLS_DEFAULT = true;
+
     final static String OMID_COMPACTABLE_CF_FLAG = "OMID_ENABLED";
 
     private HBaseCommitTableConfig commitTableConf = null;
     private Configuration conf = null;
     @VisibleForTesting
     protected Queue<CommitTable.Client> commitTableClientQueue = new ConcurrentLinkedQueue<>();
+
+    // When compacting, if a cell which has been marked by HBase as Delete or
+    // Delete Family (that is, non-transactionally deleted), we allow the user
+    // to decide what the compactor scanner should do with it: retain it or not
+    // If retained, the deleted cell will appear after a minor compaction, but
+    // will be deleted anyways after a major one
+    private boolean retainNonTransactionallyDeletedCells;
 
     public OmidCompactor() {
         LOG.info("Compactor coprocessor initialized via empty constructor");
@@ -68,12 +80,15 @@ public class OmidCompactor extends BaseRegionObserver {
     @Override
     public void start(CoprocessorEnvironment env) throws IOException {
         LOG.info("Starting compactor coprocessor");
-        this.conf = env.getConfiguration();
-        this.commitTableConf = new HBaseCommitTableConfig();
-        String commitTableName = this.conf.get(HBASE_COMMIT_TABLE_NAME_KEY);
+        conf = env.getConfiguration();
+        commitTableConf = new HBaseCommitTableConfig();
+        String commitTableName = conf.get(HBASE_COMMIT_TABLE_NAME_KEY);
         if (commitTableName != null) {
-            this.commitTableConf.setTableName(commitTableName);
+            commitTableConf.setTableName(commitTableName);
         }
+        retainNonTransactionallyDeletedCells =
+                conf.getBoolean(HBASE_RETAIN_NON_TRANSACTIONALLY_DELETED_CELLS_KEY,
+                                HBASE_RETAIN_NON_TRANSACTIONALLY_DELETED_CELLS_DEFAULT);
         LOG.info("Compactor coprocessor started");
     }
 
@@ -109,7 +124,12 @@ public class OmidCompactor extends BaseRegionObserver {
                 commitTableClient = initAndGetCommitTableClient();
             }
             boolean isMajorCompaction = request.isMajor();
-            return new CompactorScanner(e, scanner, commitTableClient, commitTableClientQueue, isMajorCompaction);
+            return new CompactorScanner(e,
+                                        scanner,
+                                        commitTableClient,
+                                        commitTableClientQueue,
+                                        isMajorCompaction,
+                                        retainNonTransactionallyDeletedCells);
         }
     }
 
@@ -133,6 +153,7 @@ public class OmidCompactor extends BaseRegionObserver {
         private final CommitTable.Client commitTableClient;
         private final Queue<CommitTable.Client> commitTableClientQueue;
         private final boolean isMajorCompaction;
+        private final boolean retainNonTransactionallyDeletedCells;
         private final long lowWatermark;
 
         private final HRegion hRegion;
@@ -144,12 +165,14 @@ public class OmidCompactor extends BaseRegionObserver {
                                 InternalScanner internalScanner,
                                 Client commitTableClient,
                                 Queue<CommitTable.Client> commitTableClientQueue,
-                                boolean isMajorCompaction) throws IOException
+                                boolean isMajorCompaction,
+                                boolean preserveNonTransactionallyDeletedCells) throws IOException
         {
             this.internalScanner = internalScanner;
             this.commitTableClient = commitTableClient;
             this.commitTableClientQueue = commitTableClientQueue;
             this.isMajorCompaction = isMajorCompaction;
+            this.retainNonTransactionallyDeletedCells = preserveNonTransactionallyDeletedCells;
             this.lowWatermark = getLowWatermarkFromCommitTable();
             // Obtain the table in which the scanner is going to operate
             this.hRegion = e.getEnvironment().getRegion();
@@ -192,15 +215,7 @@ public class OmidCompactor extends BaseRegionObserver {
                         continue;
                     }
 
-                    // When compacting, if we've found a cell which has
-                    // been marked by HBase as Delete or Delete Family
-                    // (that is, non-transactionally deleted), we retain
-                    // it just in case. The deleted cell will appear after
-                    // a minor compaction, but will be deleted after a
-                    // major one
-                    if (CellUtil.isDelete(cell)
-                            ||
-                        CellUtil.isDeleteFamily(cell)) {
+                    if (shouldRetainNonTransactionallyDeletedCell(cell)) {
                         retain(currentRowWorthValues, cell, shadowCellOp);
                         continue;
                     }
@@ -267,9 +282,16 @@ public class OmidCompactor extends BaseRegionObserver {
 
         // ********************************************************************
         // *
-        // * Private methods
+        // * (Package) Private methods
         // *
         // ********************************************************************
+
+        @VisibleForTesting
+        boolean shouldRetainNonTransactionallyDeletedCell(Cell cell) {
+            return (CellUtil.isDelete(cell) || CellUtil.isDeleteFamily(cell))
+                    &&
+                    retainNonTransactionallyDeletedCells;
+        }
 
         private void saveLastTimestampedCell(Map<String, CellInfo> lastCells, Cell cell, Cell shadowCell) {
             String cellKey = Bytes.toString(cell.getFamilyArray(), cell.getFamilyOffset(), cell.getFamilyLength())
