@@ -9,6 +9,7 @@ import static com.yahoo.omid.tsoclient.TSOClient.TSO_ZK_CLUSTER_CONFKEY;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertTrue;
 
 import java.util.concurrent.ExecutionException;
 
@@ -151,12 +152,15 @@ public class TestTSOClientConnectionToTSO {
         // Launch a TSO publishing the address in ZK...
         TSOServerCommandLineConfig config = TSOServerCommandLineConfig.configFactory(TSO_PORT, 1000);
         config.shouldHostAndPortBePublishedInZK = true;
+        config.setLeasePeriodInMs(1000);
         injector = Guice.createInjector(new TSOMockModule(config));
         LOG.info("Starting TSO");
         tsoServer = injector.getInstance(TSOServer.class);
         tsoServer.startAndWait();
         TestUtils.waitForSocketListening(TSO_HOST, TSO_PORT, 100);
         LOG.info("Finished loading TSO");
+
+        Thread.sleep(config.getLeasePeriodInMs()); // Allow the TSO to register
 
         // When a ZK node for TSOServer is found we should get a connection
         TSOClient tsoClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
@@ -181,12 +185,15 @@ public class TestTSOClientConnectionToTSO {
         // Start a TSO with ZK...
         TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.configFactory(TSO_PORT, 1000);
         tsoConfig.shouldHostAndPortBePublishedInZK = true;
+        tsoConfig.setLeasePeriodInMs(1000);
         injector = Guice.createInjector(new TSOMockModule(tsoConfig));
         LOG.info("Starting Initial TSO");
         tsoServer = injector.getInstance(TSOServer.class);
         tsoServer.startAndWait();
         TestUtils.waitForSocketListening(TSO_HOST, TSO_PORT, 100);
         LOG.info("Finished loading TSO");
+
+        Thread.sleep(tsoConfig.getLeasePeriodInMs()); // Allow the TSO to register
 
         // Then create the TSO Client under test...
         Configuration clientConf = new BaseConfiguration();
@@ -214,7 +221,9 @@ public class TestTSOClientConnectionToTSO {
             TSOClientImpl clientimpl = (TSOClientImpl) tsoClient;
             FsmImpl fsm = (FsmImpl) clientimpl.fsm;
             assertEquals(e.getCause().getClass(), ConnectionException.class);
-            assertEquals(fsm.getState().getClass(), TSOClientImpl.DisconnectedState.class);
+            assertTrue(fsm.getState().getClass().equals(TSOClientImpl.ConnectionFailedState.class)
+                       ||
+                       fsm.getState().getClass().equals(TSOClientImpl.DisconnectedState.class));
         }
 
         // After that, simulate that a new TSO has been launched...

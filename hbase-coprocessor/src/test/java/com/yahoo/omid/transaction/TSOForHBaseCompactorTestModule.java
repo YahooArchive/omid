@@ -1,8 +1,8 @@
 package com.yahoo.omid.transaction;
 
 import static com.yahoo.omid.tso.TSOServer.TSO_EPOCH_KEY;
-
 import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;
+import static org.mockito.Mockito.mock;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -27,6 +27,7 @@ import com.yahoo.omid.timestamp.storage.TimestampStorage;
 import com.yahoo.omid.tso.DisruptorModule;
 import com.yahoo.omid.tso.MockPanicker;
 import com.yahoo.omid.tso.Panicker;
+import com.yahoo.omid.tso.TSOServer;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig;
 import com.yahoo.omid.tso.TimestampOracle;
 import com.yahoo.omid.tso.TimestampOracleImpl;
@@ -106,6 +107,11 @@ public class TSOForHBaseCompactorTestModule extends AbstractModule {
     @Named(TSO_EPOCH_KEY)
     long provideEpoch(TimestampOracle timestampOracle) {
         return timestampOracle.getLast();
+    }
+
+    @Provides
+    TSOServer.LeaseManager provideLeaseManager() {
+        return mock(TSOServer.LeaseManager.class);
     }
 
 }

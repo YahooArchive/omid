@@ -1,6 +1,7 @@
 package com.yahoo.omid.tso;
 
 import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
+import static com.yahoo.omid.ZKConstants.TSO_LEASE_PATH;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -8,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -17,6 +19,7 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.utils.EnsurePath;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
@@ -27,8 +30,11 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
+import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.AbstractIdleService;
+import com.google.common.util.concurrent.AbstractScheduledService;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
@@ -53,6 +59,9 @@ public class TSOServer extends AbstractIdleService {
     // Default network interface where this instance is running
     static final String DEFAULT_TSO_NET_IFACE = "eth0";
 
+    // Default lease period
+    static final long DEFAULT_LEASE_PERIOD_IN_MSECS = 10 * 1000; // 10 Secs
+
     public static final String TSO_HOST_AND_PORT_KEY = "tso.hostandport";
 
     public static final String TSO_EPOCH_KEY = "tso.epoch";
@@ -71,10 +80,19 @@ public class TSOServer extends AbstractIdleService {
     private ChannelFactory factory;
     private ChannelGroup channelGroup;
 
+    // ------------------------------------------------------------------------
+    // High availability related variables
+    // ------------------------------------------------------------------------
+
+    @Inject
+    private LeaseManager leaseManager;
+
     // Epoch representing the TSO startup time. Used in HA
     @Inject
     @Named(TSO_EPOCH_KEY)
     private long epoch;
+
+    // ------------------------------------------------------------------------
 
     @Inject
     public TSOServer(TSOServerCommandLineConfig config, RequestProcessor requestProc) {
@@ -186,6 +204,201 @@ public class TSOServer extends AbstractIdleService {
 
     }
 
+    /**
+     * Encompasses all the required elements to control the leases required for
+     * identifying the master instance when running multiple TSO instances for HA
+     * This includes publishing the instance information when getting the lease.
+     */
+    @VisibleForTesting
+    public static class LeaseManager extends AbstractScheduledService {
+
+        private final CuratorFramework zkClient;
+
+        private final String tsoHostAndPort;
+        private final long epoch;
+
+        private final long leasePeriodInMs;
+        private int leaseNodeVersion;
+        private final AtomicLong endLeaseInMs = new AtomicLong(0L);
+        private final AtomicLong baseTimeInMs = new AtomicLong(0L);
+
+        private final String leasePath;
+        private final String currentTSOPath;
+
+        LeaseManager(String tsoHostAndPort, long epoch, long leasePeriodInMs, CuratorFramework zkClient) {
+            this(tsoHostAndPort, epoch, leasePeriodInMs, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkClient);
+        }
+
+        @VisibleForTesting
+        LeaseManager(String tsoHostAndPort,
+                     long epoch,
+                     long leasePeriodInMs,
+                     String leasePath,
+                     String currentTSOPath,
+                     CuratorFramework zkClient) {
+            this.tsoHostAndPort = tsoHostAndPort;
+            this.epoch = epoch;
+            this.leasePeriodInMs = leasePeriodInMs;
+            this.leasePath = leasePath;
+            this.currentTSOPath = currentTSOPath;
+            this.zkClient = zkClient;
+            LOG.info("LeaseManager {} initialized. Lease period {}ms", toString(), leasePeriodInMs);
+        }
+
+        void tryToGetInitialLeasePeriod() throws Exception {
+            baseTimeInMs.set(System.currentTimeMillis());
+            if (canAcquireLease()) {
+                endLeaseInMs.set(baseTimeInMs.get() + leasePeriodInMs);
+                LOG.info("{} got the lease (Master) Ver. {}/End of lease: {}ms", tsoHostAndPort,
+                        leaseNodeVersion, endLeaseInMs);
+                advertiseTSOServerInfoThroughZK();
+            }
+        }
+
+        void tryToRenewLeasePeriod() throws Exception {
+            baseTimeInMs.set(System.currentTimeMillis());
+            if (canAcquireLease()) {
+                if (System.currentTimeMillis() > getEndLeaseInMs()) {
+                    LOG.warn("{} expired lease! Releasing lease to start Master re-election", tsoHostAndPort);
+                    endLeaseInMs.set(0L);
+                } else {
+                    endLeaseInMs.set(baseTimeInMs.get() + leasePeriodInMs);
+                    LOG.trace("{} renewed lease: Version {}/End of lease at {}ms",
+                            tsoHostAndPort, leaseNodeVersion, endLeaseInMs);
+                }
+            } else {
+                endLeaseInMs.set(0L);
+                LOG.warn("{} lost the lease (Ver. {})! Other instance is now Master",
+                        tsoHostAndPort, leaseNodeVersion);
+            }
+        }
+
+        boolean haveLease() {
+            return stillInLeasePeriod();
+        }
+
+        /**
+         * Check if this instance still is under the lease period
+         */
+        public boolean stillInLeasePeriod() {
+            return System.currentTimeMillis() <= getEndLeaseInMs();
+        }
+
+        public long getEndLeaseInMs() {
+            return endLeaseInMs.get();
+        }
+
+        private boolean canAcquireLease() throws Exception {
+            try {
+                int previousLeaseNodeVersion = leaseNodeVersion;
+                final byte[] instanceInfo = tsoHostAndPort.getBytes(Charsets.UTF_8);
+                // Try to acquire the lease
+                Stat stat = zkClient.setData().withVersion(previousLeaseNodeVersion)
+                        .forPath(leasePath, instanceInfo);
+                leaseNodeVersion = stat.getVersion();
+                LOG.trace("{} got new lease version {}", tsoHostAndPort, leaseNodeVersion);
+            } catch (KeeperException.BadVersionException e) {
+                return false;
+            }
+            return true;
+        }
+
+        // ------------------------------------------------------------------------
+        // --------------- AbstractScheduledService implementation ----------------
+        // ------------------------------------------------------------------------
+
+        @Override
+        protected void startUp() throws Exception {
+            createLeaseManagementZNode();
+            createCurrentTSOZNode();
+        }
+
+        @Override
+        protected void shutDown() throws Exception {
+        }
+
+        @Override
+        protected void runOneIteration() throws Exception {
+
+            if (!haveLease()) {
+                tryToGetInitialLeasePeriod();
+            } else {
+                tryToRenewLeasePeriod();
+            }
+
+        }
+
+        @Override
+        protected Scheduler scheduler() {
+
+            final long guardLeasePeriodInMs = leasePeriodInMs / 4;
+
+            return new AbstractScheduledService.CustomScheduler() {
+
+                @Override
+                protected Schedule getNextSchedule() throws Exception {
+                    if (!haveLease()) {
+                        // Get the current node version...
+                        Stat stat = zkClient.checkExists().forPath(leasePath);
+                        leaseNodeVersion = stat.getVersion();
+                        LOG.trace("{} will try to get lease (with Ver. {}) in {}ms", tsoHostAndPort, leaseNodeVersion,
+                                leasePeriodInMs);
+                        // ...and wait the lease period
+                        return new Schedule(leasePeriodInMs, TimeUnit.MILLISECONDS);
+                    } else {
+                        long waitTimeInMs = getEndLeaseInMs() - System.currentTimeMillis() - guardLeasePeriodInMs;
+                        LOG.trace("{} will try to renew lease (with Ver. {}) in {}ms", tsoHostAndPort,
+                                leaseNodeVersion, waitTimeInMs);
+                        return new Schedule(waitTimeInMs, TimeUnit.MILLISECONDS);
+                    }
+                }
+            };
+
+        }
+
+        // ************************* Helper methods *******************************
+
+        @Override
+        public String toString() {
+            return tsoHostAndPort;
+        }
+
+        void createLeaseManagementZNode() throws Exception {
+
+            EnsurePath path = zkClient.newNamespaceAwareEnsurePath(leasePath);
+            path.ensure(zkClient.getZookeeperClient());
+            Stat stat = zkClient.checkExists().forPath(leasePath);
+            Preconditions.checkNotNull(stat);
+            LOG.info("Path {} ensured", path.getPath());
+
+        }
+
+        void createCurrentTSOZNode() throws Exception {
+
+            EnsurePath path = zkClient.newNamespaceAwareEnsurePath(currentTSOPath);
+            path.ensure(zkClient.getZookeeperClient());
+            Stat stat = zkClient.checkExists().forPath(currentTSOPath);
+            Preconditions.checkNotNull(stat);
+            LOG.info("Path {} ensured", path.getPath());
+
+        }
+
+        int advertiseTSOServerInfoThroughZK() throws Exception {
+
+            LOG.info("Advertising TSO host:port {} (Epoch {}) through ZK", tsoHostAndPort, epoch);
+            String tsoInfoAsString = tsoHostAndPort + "#" + Long.toString(epoch);
+            byte[] tsoInfoAsBytes = tsoInfoAsString.getBytes(Charsets.UTF_8);
+            Stat currentTSOZNodeStat = zkClient.setData().forPath(currentTSOPath, tsoInfoAsBytes);
+            return currentTSOZNodeStat.getVersion();
+
+        }
+
+    }
+
+    // ------------------------------------------------------------------------
+    // ------------------- AbstractIdleService implementation -----------------
+    // ------------------------------------------------------------------------
+
     @Override
     protected void startUp() throws Exception {
         startIt();
@@ -195,6 +408,9 @@ public class TSOServer extends AbstractIdleService {
     protected void shutDown() throws Exception {
         stopIt();
     }
+
+
+    // ------------------------------------------------------------------------
 
     public void startIt() {
         // Setup netty listener
@@ -217,18 +433,19 @@ public class TSOServer extends AbstractIdleService {
         // TODO Remove the variable of the condition in the future if ZK
         // becomes the only possible way of configuring the TSOClient
         if (config.shouldHostAndPortBePublishedInZK) {
+
+            LOG.info("Connecting to ZK cluster [{}]", zkClient.getState());
+            zkClient.start();
             try {
-                LOG.info("Connecting to ZK cluster {}", zkClient.getState());
-                zkClient.start();
-                if (zkClient.blockUntilConnected(3, TimeUnit.SECONDS)) {
-                    LOG.info("Connection to ZK cluster {}", zkClient.getState());
-                    createCurrentTSOZNode();
-                    advertiseTSOServerInfoThroughZK();
+                if (zkClient.blockUntilConnected(10, TimeUnit.SECONDS)) {
+                    LOG.info("Connection to ZK cluster [{}]", zkClient.getState());
+                    leaseManager.startAndWait();
                 } else {
                     LOG.warn("Can't contact ZK after 3 seconds. TSO host:port won't be published");
                 }
-            } catch (Exception e) {
-                LOG.warn("Current TSO host:port could not be published through ZK", e);
+            } catch (InterruptedException e) {
+                LOG.error("LeaseManager interrupted!", e);
+                Thread.currentThread().interrupt();
             }
         }
 
@@ -236,6 +453,9 @@ public class TSOServer extends AbstractIdleService {
     }
 
     public void stopIt() {
+        if (config.shouldHostAndPortBePublishedInZK && leaseManager != null) {
+            leaseManager.stop();
+        }
         // Netty shutdown
         if (channelGroup != null) {
             channelGroup.close().awaitUninterruptibly();
@@ -282,28 +502,6 @@ public class TSOServer extends AbstractIdleService {
         TSOServer tsoServer = getInitializedTsoServer(config);
         tsoServer.attachShutDownHook();
         tsoServer.startAndWait();
-
-    }
-
-    // ************************* Helper methods *******************************
-
-    public void createCurrentTSOZNode() throws Exception {
-
-        EnsurePath path = zkClient.newNamespaceAwareEnsurePath(CURRENT_TSO_PATH);
-        path.ensure(zkClient.getZookeeperClient());
-        Stat stat = zkClient.checkExists().forPath(CURRENT_TSO_PATH);
-        assert (stat != null);
-        LOG.info("Path {} ensured", path.getPath());
-
-    }
-
-    protected int advertiseTSOServerInfoThroughZK()
-    throws Exception {
-
-        LOG.info("Advertising TSO host:port through ZK {}", tsoHostAndPortAsString);
-        byte[] hostAndPortAsBytes = tsoHostAndPortAsString.getBytes(Charsets.UTF_8);
-        Stat currentTSOZNodeStat = zkClient.setData().forPath(CURRENT_TSO_PATH, hostAndPortAsBytes);
-        return currentTSOZNodeStat.getVersion();
 
     }
 

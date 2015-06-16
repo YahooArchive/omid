@@ -101,9 +101,14 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         try {
             connectToZK(conf);
             configureCurrentTSOServerZNodeCache();
-            HostAndPort hp = getCurrentTSOHostAndPortFoundInZK();
-            LOG.info("\t* Current TSO host:port found in ZK: {}", hp);
+
+            String tsoInfo = getCurrentTSOInfoFoundInZK();
+            // TSO info includes the new TSO host:port address and epoch
+            String[] currentTSOAndEpochArray = tsoInfo.split("#");
+            HostAndPort hp = HostAndPort.fromString(currentTSOAndEpochArray[0]);
             setTSOAddress(hp.getHostText(), hp.getPort());
+            setEpoch(Long.parseLong(currentTSOAndEpochArray[1]));
+            LOG.info("\t* Current TSO host:port found in ZK: {} Epoch {}", hp, getEpoch());
         } catch (ZKException e) {
             LOG.warn("A problem connecting to TSO was found ({}). Trying to connect directly with host:port",
                     e.getMessage());
@@ -172,19 +177,17 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         }
     }
 
-    private HostAndPort getCurrentTSOHostAndPortFoundInZK() throws ZKException {
+    private String getCurrentTSOInfoFoundInZK() throws ZKException {
         ChildData currentTSOData = currentTSOZNode.getCurrentData();
         if (currentTSOData == null) {
-            throw new ZKException("No ZKNode found " + CURRENT_TSO_PATH);
+            throw new ZKException("No data found in ZKNode " + CURRENT_TSO_PATH);
         }
-        byte[] currentTSOAsBytes = currentTSOData.getData();
-        if (currentTSOAsBytes == null) {
+        byte[] currentTSOAndEpochAsBytes = currentTSOData.getData();
+        if (currentTSOAndEpochAsBytes == null) {
             throw new ZKException(
                     "No data found for current TSO in ZKNode " + CURRENT_TSO_PATH);
         }
-        String currentTSO = new String(currentTSOAsBytes, Charsets.UTF_8);
-        HostAndPort hp = HostAndPort.fromString(currentTSO);
-        return hp;
+        return new String(currentTSOAndEpochAsBytes, Charsets.UTF_8);
     }
 
     // ****************** NodeCacheListener interface *************************
@@ -193,9 +196,13 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     public void nodeChanged() throws Exception {
 
         LOG.debug("CurrentTSO ZNode changed");
-        HostAndPort hp = getCurrentTSOHostAndPortFoundInZK();
+        String tsoInfo = getCurrentTSOInfoFoundInZK();
+        // TSO info includes the new TSO host:port address and epoch
+        String[] currentTSOAndEpochArray = tsoInfo.split("#");
+        HostAndPort hp = HostAndPort.fromString(currentTSOAndEpochArray[0]);
         setTSOAddress(hp.getHostText(), hp.getPort());
         fsm.sendEvent(new ErrorEvent(new NewTSOException()));
+        setEpoch(Long.parseLong(currentTSOAndEpochArray[1]));
 
     }
 

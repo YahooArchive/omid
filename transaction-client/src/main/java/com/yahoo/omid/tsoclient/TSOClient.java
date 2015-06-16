@@ -53,6 +53,18 @@ public abstract class TSOClient {
      */
     public abstract TSOFuture<Void> close();
 
+    // ****************** High availability related interface *****************
+
+    /**
+     * Sets the new epoch obtained from the new TSO
+     * Used for high availability support.
+     *
+     * @param epoch the new epoch to set
+     */
+    public void setEpoch(long epoch) {
+        this.epoch = epoch;
+    }
+
     /**
      * Returns the epoch of the TSO server that initialized this transaction.
      * Used for high availability support.

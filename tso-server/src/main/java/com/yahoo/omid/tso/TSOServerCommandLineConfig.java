@@ -100,6 +100,9 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
     @Parameter(names = "-networkIface", description = "Network Interface where TSO is attached to (e.g. eth0, en0...)")
     private String networkIfaceName = TSOServer.DEFAULT_TSO_NET_IFACE;
 
+    @Parameter(names = "-leasePeriodInMs", description = "Lease period for high availability in ms")
+    private long leasePeriodInMs = TSOServer.DEFAULT_LEASE_PERIOD_IN_MSECS;
+
     @ParametersDelegate
     private HBaseLogin.Config loginFlags = new HBaseLogin.Config();
 
@@ -168,6 +171,14 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
 
     public String getNetworkIface() {
         return networkIfaceName;
+    }
+
+    public void setLeasePeriodInMs(long leasePeriodInMs) {
+        this.leasePeriodInMs = leasePeriodInMs;
+    }
+
+    public long getLeasePeriodInMs() {
+        return leasePeriodInMs;
     }
 
 }
