@@ -12,6 +12,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.AbstractIdleService;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
@@ -33,8 +34,9 @@ public class TSOServer extends AbstractIdleService {
 
     private static final Logger LOG = LoggerFactory.getLogger(TSOServer.class);
 
-    // Default network interface where this instance is running
-    static final String DEFAULT_TSO_NET_IFACE = "eth0";
+    // Default network interfaces where this instance is running
+    static final String MAC_TSO_NET_IFACE = "en0";
+    static final String LINUX_TSO_NET_IFACE = "eth0";
 
     // Default lease period
     static final long DEFAULT_LEASE_PERIOD_IN_MSECS = 10 * 1000; // 10 Secs
@@ -211,6 +213,62 @@ public class TSOServer extends AbstractIdleService {
         } catch (Exception e) {
             System.out.println(e.getMessage());
             System.exit(-1);
+        }
+
+    }
+
+    // ************************* Helper methods *******************************
+
+    public static String getDefaultNetworkIntf() {
+        BaseOperatingSystem currentOperatingSystem = BaseOperatingSystem.get();
+        switch (currentOperatingSystem) {
+        case Mac:
+            return MAC_TSO_NET_IFACE;
+        case Linux:
+            return LINUX_TSO_NET_IFACE;
+        default:
+            throw new IllegalArgumentException(currentOperatingSystem.name());
+        }
+    }
+
+    static final String OS_SYSTEM_PROPERTY = "os.name";
+
+    enum BaseOperatingSystem {
+
+        Mac("mac"),
+        Linux("linux");
+
+        private final String osId;
+
+        BaseOperatingSystem(String osId) {
+            this.osId = osId.toLowerCase();
+        }
+
+        private boolean isIncludedIn(String targetOSId) {
+
+            if (targetOSId.indexOf(osId) != -1) {
+                return true;
+            }
+            return false;
+        }
+
+        static BaseOperatingSystem get() {
+            return get(OS_SYSTEM_PROPERTY, "Unknown OS");
+        }
+
+        /**
+         * This method is intended only for testing purposes. Use get() instead
+         */
+        @VisibleForTesting
+        static BaseOperatingSystem get(String sysProperty, String defaultValue) {
+            String currentBaseOS = System.getProperty(sysProperty, defaultValue).toLowerCase();
+
+            for (BaseOperatingSystem osValue : values()) {
+                if (osValue.isIncludedIn(currentBaseOS)) {
+                    return osValue;
+                }
+            }
+            throw new IllegalArgumentException("Operating system not contemplated: " + currentBaseOS);
         }
 
     }

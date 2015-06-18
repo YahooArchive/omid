@@ -98,7 +98,7 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
     public boolean shouldHostAndPortBePublishedInZK = false;
 
     @Parameter(names = "-networkIface", description = "Network Interface where TSO is attached to (e.g. eth0, en0...)")
-    private String networkIfaceName = TSOServer.DEFAULT_TSO_NET_IFACE;
+    private String networkIfaceName = TSOServer.getDefaultNetworkIntf();
 
     @Parameter(names = "-leasePeriodInMs", description = "Lease period for high availability in ms")
     private long leasePeriodInMs = TSOServer.DEFAULT_LEASE_PERIOD_IN_MSECS;
