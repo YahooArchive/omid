@@ -42,7 +42,9 @@ import com.yahoo.omid.tsoclient.TSOClient;
 public class OmidTestBase {
     private static final Logger LOG = LoggerFactory.getLogger(OmidTestBase.class);
 
+
     static TSOTestBase tso = null;
+
     protected static HBaseTestingUtility testutil;
     private static MiniHBaseCluster hbasecluster;
     protected static Configuration hbaseConf;
@@ -96,10 +98,7 @@ public class OmidTestBase {
     }
 
     protected TransactionManager newTransactionManager() throws Exception {
-        return HBaseTransactionManager.newBuilder()
-            .withConfiguration(hbaseConf)
-            .withCommitTableClient(tso.getCommitTable().getClient().get())
-            .withTSOClient(tso.getClient()).build();
+        return newTransactionManager(tso.getClient());
     }
 
     protected TransactionManager newTransactionManager(TSOClient tsoClient) throws Exception {

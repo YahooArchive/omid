@@ -8,7 +8,6 @@ import java.util.concurrent.ExecutionException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -142,7 +141,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
         // Flush affected tables before returning to avoid loss of shadow cells updates
         // when autoflush is disabled
         try {
-            flushTables(transaction);
+            transaction.flushTables();
         } catch (IOException e) {
             throw new TransactionManagerException("Exception while flushing writes", e);
         }
@@ -152,7 +151,8 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
     public void preCommit(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {
         try {
             // Flush all pending writes
-            flushTables(enforceHBaseTransactionAsParam(transaction));
+            HBaseTransaction hBaseTx = enforceHBaseTransactionAsParam(transaction);
+            hBaseTx.flushTables();
         } catch (IOException e) {
             throw new TransactionManagerException("Exception while flushing writes", e);
         }
@@ -162,7 +162,8 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
     public void preRollback(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {
         try {
             // Flush all pending writes
-            flushTables(enforceHBaseTransactionAsParam(transaction));
+            HBaseTransaction hBaseTx = enforceHBaseTransactionAsParam(transaction);
+            hBaseTx.flushTables();
         } catch (IOException e) {
             throw new TransactionManagerException("Exception while flushing writes", e);
         }
@@ -211,17 +212,6 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
     // ****************************************************************************************************************
     // Helper methods
     // ****************************************************************************************************************
-
-    /**
-     * Flushes pending operations for tables touched by transaction
-     */
-    private void flushTables(HBaseTransaction transaction) throws IOException {
-
-        for (HTableInterface writtenTable : transaction.getWrittenTables()) {
-            writtenTable.flushCommits();
-        }
-
-    }
 
     private HBaseTransaction
     enforceHBaseTransactionAsParam(AbstractTransaction<? extends CellId> tx) {

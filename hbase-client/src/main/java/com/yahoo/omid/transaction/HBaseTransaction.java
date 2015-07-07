@@ -28,9 +28,29 @@ public class HBaseTransaction extends AbstractTransaction<HBaseCellId> {
                 LOG.warn("Failed cleanup cell {} for Tx {}. This issue has been ignored", new Object[] { cell, getTransactionId(), e });
             }
         }
+        try {
+            flushTables();
+        } catch (IOException e) {
+            LOG.warn("Failed flushing tables for Tx {}", getTransactionId(), e);
+        }
     }
 
-    public Set<HTableInterface> getWrittenTables() {
+    /**
+     * Flushes pending operations for tables touched by transaction
+     */
+    public void flushTables() throws IOException {
+
+        for (HTableInterface writtenTable : getWrittenTables()) {
+            writtenTable.flushCommits();
+        }
+
+    }
+
+    // ****************************************************************************************************************
+    // Helper methods
+    // ****************************************************************************************************************
+
+    private Set<HTableInterface> getWrittenTables() {
         HashSet<HBaseCellId> writeSet = (HashSet<HBaseCellId>) getWriteSet();
         Set<HTableInterface> tables = new HashSet<HTableInterface>();
         for (HBaseCellId cell : writeSet) {

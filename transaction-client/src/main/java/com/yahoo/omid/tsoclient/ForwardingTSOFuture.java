@@ -7,10 +7,10 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.Executor;
 import com.google.common.util.concurrent.ListenableFuture;
 
-class ForwardingTSOFuture<T> implements TSOFuture<T> {
+public class ForwardingTSOFuture<T> implements TSOFuture<T> {
     private final ListenableFuture<T> future;
 
-    ForwardingTSOFuture(ListenableFuture<T> future) {
+    public ForwardingTSOFuture(ListenableFuture<T> future) {
         this.future = future;
     }
 
