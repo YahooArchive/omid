@@ -6,6 +6,8 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.testng.AssertJUnit.assertEquals;
 
+import java.util.Set;
+
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -59,7 +61,7 @@ public class TestTransactionCleanup extends OmidTestBase {
                 .when(mockedTSOClient).getNewStartTimestamp();
 
         doReturn(abortingFF)
-                .when(mockedTSOClient).commit(eq(START_TS), anySet());
+                .when(mockedTSOClient).commit(eq(START_TS), (Set<HBaseCellId>) anySet());
 
         try (TransactionManager tm = newTransactionManager(mockedTSOClient);
              TTable txTable = new TTable(hbaseConf, TEST_TABLE)) {
