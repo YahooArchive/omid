@@ -1,12 +1,10 @@
 package com.yahoo.omid.transaction;
 
-import static org.mockito.Matchers.anySet;
+import static org.mockito.Matchers.anySetOf;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.testng.AssertJUnit.assertEquals;
-
-import java.util.Set;
 
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
@@ -39,7 +37,6 @@ public class TestTransactionCleanup extends OmidTestBase {
     // lacks some assertions and includes some magic numbers, so we should
     // try to review and improve the tests in these two classes in a further
     // commit.
-    @SuppressWarnings("unchecked")
     @Test
     public void testTransactionIsCleanedUpAfterBeingAborted() throws Exception {
 
@@ -61,7 +58,7 @@ public class TestTransactionCleanup extends OmidTestBase {
                 .when(mockedTSOClient).getNewStartTimestamp();
 
         doReturn(abortingFF)
-                .when(mockedTSOClient).commit(eq(START_TS), (Set<HBaseCellId>) anySet());
+                .when(mockedTSOClient).commit(eq(START_TS), anySetOf(HBaseCellId.class));
 
         try (TransactionManager tm = newTransactionManager(mockedTSOClient);
              TTable txTable = new TTable(hbaseConf, TEST_TABLE)) {
