@@ -3,7 +3,6 @@ package com.yahoo.omid.tso;
 import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;
 import static com.yahoo.omid.tso.TSOServer.TSO_EPOCH_KEY;
 import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
-import static org.mockito.Mockito.mock;
 
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -58,17 +57,11 @@ public class TSOMockModule extends AbstractModule {
     }
 
     @Provides
-    @Named(TSO_EPOCH_KEY)
-    long provideEpoch(TimestampOracle timestampOracle) {
-        return timestampOracle.getLast();
-    }
-
-    @Provides
     TSOServer.LeaseManager provideLeaseManager(@Named(TSO_HOST_AND_PORT_KEY) String tsoHostAndPort,
-                                               @Named(TSO_EPOCH_KEY) long epoch,
+                                               RequestProcessor requestProcessor,
                                                CuratorFramework zkClient)
     throws Exception {
-        return new LeaseManager(tsoHostAndPort, epoch, config.getLeasePeriodInMs(), zkClient);
+        return new LeaseManager(tsoHostAndPort, requestProcessor, config.getLeasePeriodInMs(), zkClient);
     }
 
 }

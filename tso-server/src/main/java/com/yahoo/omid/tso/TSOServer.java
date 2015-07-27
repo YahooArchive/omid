@@ -87,11 +87,6 @@ public class TSOServer extends AbstractIdleService {
     @Inject
     private LeaseManager leaseManager;
 
-    // Epoch representing the TSO startup time. Used in HA
-    @Inject
-    @Named(TSO_EPOCH_KEY)
-    private long epoch;
-
     // ------------------------------------------------------------------------
 
     @Inject
@@ -215,7 +210,8 @@ public class TSOServer extends AbstractIdleService {
         private final CuratorFramework zkClient;
 
         private final String tsoHostAndPort;
-        private final long epoch;
+
+        private final RequestProcessor requestProcessor;
 
         private final long leasePeriodInMs;
         private int leaseNodeVersion;
@@ -225,19 +221,20 @@ public class TSOServer extends AbstractIdleService {
         private final String leasePath;
         private final String currentTSOPath;
 
-        LeaseManager(String tsoHostAndPort, long epoch, long leasePeriodInMs, CuratorFramework zkClient) {
-            this(tsoHostAndPort, epoch, leasePeriodInMs, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkClient);
+        LeaseManager(String tsoHostAndPort, RequestProcessor requestProcessor, long leasePeriodInMs,
+                CuratorFramework zkClient) {
+            this(tsoHostAndPort, requestProcessor, leasePeriodInMs, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkClient);
         }
 
         @VisibleForTesting
         LeaseManager(String tsoHostAndPort,
-                     long epoch,
+                     RequestProcessor requestProcessor,
                      long leasePeriodInMs,
                      String leasePath,
                      String currentTSOPath,
                      CuratorFramework zkClient) {
             this.tsoHostAndPort = tsoHostAndPort;
-            this.epoch = epoch;
+            this.requestProcessor = requestProcessor;
             this.leasePeriodInMs = leasePeriodInMs;
             this.leasePath = leasePath;
             this.currentTSOPath = currentTSOPath;
@@ -251,7 +248,7 @@ public class TSOServer extends AbstractIdleService {
                 endLeaseInMs.set(baseTimeInMs.get() + leasePeriodInMs);
                 LOG.info("{} got the lease (Master) Ver. {}/End of lease: {}ms", tsoHostAndPort,
                         leaseNodeVersion, endLeaseInMs);
-                advertiseTSOServerInfoThroughZK();
+                advertiseTSOServerInfoThroughZK(requestProcessor.epoch());
             }
         }
 
@@ -383,7 +380,7 @@ public class TSOServer extends AbstractIdleService {
 
         }
 
-        int advertiseTSOServerInfoThroughZK() throws Exception {
+        int advertiseTSOServerInfoThroughZK(long epoch) throws Exception {
 
             LOG.info("Advertising TSO host:port {} (Epoch {}) through ZK", tsoHostAndPort, epoch);
             String tsoInfoAsString = tsoHostAndPort + "#" + Long.toString(epoch);
@@ -449,7 +446,7 @@ public class TSOServer extends AbstractIdleService {
             }
         }
 
-        LOG.info("********** TSO Server running on port {}. Epoch {} **********", config.getPort(), epoch);
+        LOG.info("********** TSO Server running on port {} **********", config.getPort());
     }
 
     public void stopIt() {
@@ -474,17 +471,6 @@ public class TSOServer extends AbstractIdleService {
             }
         });
         LOG.info("Shutdown Hook Attached");
-    }
-
-    /**
-     * Exposes the TSO epoch.
-     * Required for implementing High Availability.
-     * The LowWatermark is used as the TSO epoch.
-     *
-     * @return the current TSO epoch
-     */
-    public long getEpoch() {
-        return epoch;
     }
 
     /**

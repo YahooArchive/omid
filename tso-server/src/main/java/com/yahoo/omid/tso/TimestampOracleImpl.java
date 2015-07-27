@@ -73,6 +73,7 @@ public class TimestampOracleImpl implements TimestampOracle {
 
     private long maxTimestamp;
 
+    private MetricsRegistry metrics;
     private TimestampStorage storage;
     private Panicker panicker;
 
@@ -82,7 +83,37 @@ public class TimestampOracleImpl implements TimestampOracle {
     private Executor executor = Executors.newSingleThreadExecutor(
             new ThreadFactoryBuilder().setNameFormat("ts-persist-%d").build());
 
-    private final Runnable allocateTimestampsBatchTask;
+    private Runnable allocateTimestampsBatchTask;
+
+    @Inject
+    public TimestampOracleImpl(MetricsRegistry metrics,
+                               TimestampStorage tsStorage,
+                               Panicker panicker) throws IOException {
+
+        this.metrics = metrics;
+        this.storage = tsStorage;
+        this.panicker = panicker;
+
+    }
+    
+    @Override
+    public void initialize() throws IOException {
+
+        this.lastTimestamp = this.maxTimestamp = storage.getMaxTimestamp();
+
+        this.allocateTimestampsBatchTask = new AllocateTimestampBatchTask(lastTimestamp);
+
+        // Trigger first allocation of timestamps
+        executor.execute(allocateTimestampsBatchTask);
+
+        metrics.gauge(name("tso", "maxTimestamp"), new Gauge<Long>() {
+            @Override
+            public Long getValue() {
+                return maxTimestamp;
+            }
+        });
+        LOG.info("Initializing timestamp oracle with timestamp {}", this.lastTimestamp);
+    }
 
     /**
      * Returns the next timestamp if available. Otherwise spins till the
@@ -114,30 +145,6 @@ public class TimestampOracleImpl implements TimestampOracle {
     @Override
     public long getLast() {
         return lastTimestamp;
-    }
-
-    /**
-     * Constructor
-     */
-    @Inject
-    public TimestampOracleImpl(MetricsRegistry metrics,
-                               TimestampStorage tsStorage,
-                               Panicker panicker) throws IOException {
-        this.storage = tsStorage;
-        this.panicker = panicker;
-        this.lastTimestamp = this.maxTimestamp = tsStorage.getMaxTimestamp();
-        this.allocateTimestampsBatchTask = new AllocateTimestampBatchTask(lastTimestamp);
-
-        // Trigger first allocation of timestamps
-        executor.execute(allocateTimestampsBatchTask);
-
-        metrics.gauge(name("tso", "maxTimestamp"), new Gauge<Long>() {
-            @Override
-            public Long getValue() {
-                return maxTimestamp;
-            }
-        });
-        LOG.info("Initializing timestamp oracle with timestamp {}", this.lastTimestamp);
     }
 
     @Override

@@ -15,12 +15,12 @@ public class PausableLeaseManager extends LeaseManager {
     private volatile boolean pausedInStillInLeasePeriod = false;
 
     public PausableLeaseManager(String id,
-                                long epoch,
+                                RequestProcessor requestProcessor,
                                 long leasePeriodInMs,
                                 String tsoLeasePath,
                                 String currentTSOPath,
                                 CuratorFramework zkClient) {
-        super(id, epoch, leasePeriodInMs, tsoLeasePath, currentTSOPath, zkClient);
+        super(id, requestProcessor, leasePeriodInMs, tsoLeasePath, currentTSOPath, zkClient);
     }
 
     @Override

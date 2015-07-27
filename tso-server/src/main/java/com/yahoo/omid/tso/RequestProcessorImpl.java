@@ -12,7 +12,6 @@ import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.BusySpinWaitStrategy;
@@ -34,22 +33,21 @@ public class RequestProcessorImpl
     public final CommitHashMap hashmap;
     private final PersistenceProcessor persistProc;
     private final RingBuffer<RequestEvent> requestRing;
-    private long lowWatermark;
+    private long lowWatermark = -1L;
+    private volatile long epoch = -1L;
 
     @Inject
     RequestProcessorImpl(MetricsRegistry metrics,
                          TimestampOracle timestampOracle,
                          PersistenceProcessor persistProc,
                          Panicker panicker,
-                         TSOServerConfig config)
+                         TSOServerConfig config) throws IOException
     {
 
         this.persistProc = persistProc;
         this.timestampOracle = timestampOracle;
-        this.lowWatermark = timestampOracle.getLast();
-        persistProc.persistLowWatermark(lowWatermark);
 
-        this.hashmap = new CommitHashMap(config.getMaxItems(), lowWatermark);
+        this.hashmap = new CommitHashMap(config.getMaxItems());
 
         // Set up the disruptor thread
         requestRing = RingBuffer.<RequestEvent>createMultiProducer(RequestEvent.EVENT_FACTORY, 1<<12,
@@ -66,6 +64,23 @@ public class RequestProcessorImpl
                 new ThreadFactoryBuilder().setNameFormat("request-%d").build());
         // Each processor runs on a separate thread
         requestExec.submit(requestProcessor);
+
+        resetState();
+    }
+
+    @Override
+    public long epoch() {
+        return epoch;
+    }
+
+    @Override
+    public void resetState() throws IOException {
+        hashmap.reset();
+        timestampOracle.initialize();
+        this.lowWatermark = timestampOracle.getLast();
+        persistProc.persistLowWatermark(lowWatermark);
+        // The LowWatermark is used as the TSO epoch in this impl.
+        this.epoch = lowWatermark;
     }
 
     @Override

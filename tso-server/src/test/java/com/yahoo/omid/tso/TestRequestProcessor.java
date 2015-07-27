@@ -9,6 +9,7 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.testng.AssertJUnit.assertTrue;
 
+import java.util.Collections;
 import java.util.List;
 
 import org.jboss.netty.channel.Channel;
@@ -84,6 +85,32 @@ public class TestRequestProcessor {
         proc.commitRequest(secondTS, writeSet, false, null);
         verify(persist, timeout(100).times(1)).persistAbort(eq(secondTS), anyBoolean(),
                                                             any(Channel.class));
+    }
+
+    @Test(timeOut = 30000)
+    public void testCommitRequestAbortsWhenResettingRequestProcessorState() throws Exception {
+
+        List<Long> writeSet = Collections.<Long> emptyList();
+        PersistenceProcessor persist = mock(PersistenceProcessor.class);
+
+        RequestProcessor requestProc = buildRequestProcessor(persist);
+
+        // Start a transaction...
+        requestProc.timestampRequest(null);
+        ArgumentCaptor<Long> capturedTS = ArgumentCaptor.forClass(Long.class);
+        verify(persist, timeout(100).times(1)).persistTimestamp(capturedTS.capture(),
+                                                                any(Channel.class));
+        long startTS = capturedTS.getValue();
+
+        // ... simulate the reset of the RequestProcessor state (e.g. due to
+        // a change in mastership) and...
+        requestProc.resetState();
+
+        // ...check that the transaction is aborted when trying to commit
+        requestProc.commitRequest(startTS, writeSet, false, null);
+        verify(persist, timeout(100).times(1)).persistAbort(eq(startTS), anyBoolean(),
+                                                            any(Channel.class));
+
     }
 
     private RequestProcessor buildRequestProcessor(PersistenceProcessor persist) throws Exception {

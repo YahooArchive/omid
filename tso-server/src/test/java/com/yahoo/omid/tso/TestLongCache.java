@@ -1,30 +1,71 @@
 package com.yahoo.omid.tso;
 
+import static org.testng.Assert.assertEquals;
 import static org.testng.AssertJUnit.assertTrue;
-import org.testng.annotations.Test;
+
 import java.util.Random;
+import java.util.Set;
+import java.util.TreeSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.annotations.Test;
 
 public class TestLongCache {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestLongCache.class);
 
+    private static final long TEST_VALUE = 1000;
 
-    final int entries = 1000;
+    private Random random = new Random(System.currentTimeMillis());
+
+    @Test
+    public void testAddAndGetElemsAndResetCache() {
+
+        // Cache configuration
+        final int CACHE_SIZE = 10_000_000;
+        final int CACHE_ASSOCIATIVITY = 32;
+        Cache cache = new LongCache(CACHE_SIZE, CACHE_ASSOCIATIVITY);
+
+        // After creation, cache values should be the default
+        for (int i = 0; i < 1000; i++) {
+            long position = random.nextLong();
+            assertEquals(cache.get(position), LongCache.RESET_VALUE);
+        }
+
+        Set<Long> testedKeys = new TreeSet<>();
+        // Populate some of the values
+        for (int i = 0; i < 1000; i++) {
+            long position = random.nextLong();
+            cache.set(position, TEST_VALUE);
+            testedKeys.add(position);
+        }
+
+        // Get the values and check them
+        for (long key : testedKeys) {
+            assertEquals(cache.get(key), TEST_VALUE);
+        }
+
+        // Reset cache and check the values are the default again
+        long startTimeInMs = System.currentTimeMillis();
+        cache.reset();
+        long endTimeInMs = System.currentTimeMillis();
+        long resetTimeInMs = endTimeInMs - startTimeInMs;
+        LOG.info("Time in reseting cache of {}/{} elems/asoc {}ms", CACHE_SIZE, CACHE_ASSOCIATIVITY, resetTimeInMs);
+
+        for (long key : testedKeys) {
+            assertEquals(cache.get(key), LongCache.RESET_VALUE);
+        }
+
+    }
 
     @Test(timeOut=10000)
     public void testEntriesAge() {
-        
+
+        final int entries = 1000;
 
         Cache cache = new LongCache(entries, 16);
-        Random random = new Random();
 
-        long seed = random.nextLong();
-
-        LOG.info("Random seed: " + seed);
-        random.setSeed(seed);
         int removals = 0;
         long totalAge = 0;
         double tempStdDev = 0;

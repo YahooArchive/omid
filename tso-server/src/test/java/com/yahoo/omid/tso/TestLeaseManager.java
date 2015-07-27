@@ -2,6 +2,8 @@ package com.yahoo.omid.tso;
 
 import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
 import static com.yahoo.omid.tsoclient.TSOClient.DEFAULT_ZK_CLUSTER;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
 
 import org.apache.curator.RetryPolicy;
@@ -20,12 +22,13 @@ import com.google.common.base.Charsets;
 
 public class TestLeaseManager {
 
-    private static final long DUMMY_EPOCH = 1L;
+    private static final long DUMMY_EPOCH_1 = 1L;
+    private static final long DUMMY_EPOCH_2 = 2L;
 
     private static final String LEASE_MGR_ID_1 = "LM1";
     private static final String LEASE_MGR_ID_2 = "LM2";
-    private static final String INSTANCE_ID_1 = "LM1" + "#" + DUMMY_EPOCH;
-    private static final String INSTANCE_ID_2 = "LM2" + "#" + DUMMY_EPOCH;
+    private static final String INSTANCE_ID_1 = "LM1" + "#" + DUMMY_EPOCH_1;
+    private static final String INSTANCE_ID_2 = "LM2" + "#" + DUMMY_EPOCH_2;
 
     private static final Logger LOG = LoggerFactory.getLogger(TestLeaseManager.class);
 
@@ -67,9 +70,12 @@ public class TestLeaseManager {
         final String TEST_TSO_LEASE_PATH = "/test1_tsolease";
         final String TEST_CURRENT_TSO_PATH = "/test1_currenttso";
 
+        RequestProcessor requestProcessor1 = mock(RequestProcessor.class);
+        when(requestProcessor1.epoch()).thenReturn(DUMMY_EPOCH_1);
+
         // Launch the instance under test...
         leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
-                                                 DUMMY_EPOCH,
+                                                 requestProcessor1,
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,
@@ -112,8 +118,10 @@ public class TestLeaseManager {
         final String TEST_CURRENT_TSO_PATH = "/test2_currenttso";
 
         // Launch the master instance...
+        RequestProcessor requestProcessor1 = mock(RequestProcessor.class);
+        when(requestProcessor1.epoch()).thenReturn(DUMMY_EPOCH_1);
         leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
-                                                 DUMMY_EPOCH,
+                                                 requestProcessor1,
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,
@@ -129,8 +137,10 @@ public class TestLeaseManager {
         checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1);
 
         // Then launch another instance...
+        RequestProcessor requestProcessor2 = mock(RequestProcessor.class);
+        when(requestProcessor2.epoch()).thenReturn(DUMMY_EPOCH_2);
         leaseManager2 = new PausableLeaseManager(LEASE_MGR_ID_2,
-                                                 DUMMY_EPOCH,
+                                                 requestProcessor2,
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,
@@ -152,8 +162,10 @@ public class TestLeaseManager {
         final String TEST_CURRENT_TSO_PATH = "/test3_currenttso";
 
         // Launch the master instance...
+        RequestProcessor requestProcessor1 = mock(RequestProcessor.class);
+        when(requestProcessor1.epoch()).thenReturn(DUMMY_EPOCH_1);
         leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
-                                                 DUMMY_EPOCH,
+                                                 requestProcessor1,
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,
@@ -169,8 +181,10 @@ public class TestLeaseManager {
         checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1);
 
         // Then launch another instance...
+        RequestProcessor requestProcessor2 = mock(RequestProcessor.class);
+        when(requestProcessor2.epoch()).thenReturn(DUMMY_EPOCH_2);
         leaseManager2 = new PausableLeaseManager(LEASE_MGR_ID_2,
-                                                 DUMMY_EPOCH,
+                                                 requestProcessor2,
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,

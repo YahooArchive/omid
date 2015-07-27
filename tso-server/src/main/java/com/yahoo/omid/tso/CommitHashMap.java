@@ -28,8 +28,8 @@ class CommitHashMap {
     /**
      * Constructs a new, empty hashtable with a default size of 1000
      */
-    public CommitHashMap(long largestDeletedTimestamp) {
-        this(1000, largestDeletedTimestamp);
+    public CommitHashMap() {
+        this(1000);
     }
 
     /**
@@ -40,13 +40,17 @@ class CommitHashMap {
      * @throws IllegalArgumentException
      *             if the size is less than zero.
      */
-    public CommitHashMap(int size, long largestDeletedTimestamp) {
+    public CommitHashMap(int size) {
         if (size < 0) {
             throw new IllegalArgumentException("Illegal size: " + size);
         }
 
         this.cellIdToCommitMap = new LongCache(size, 32);
         LOG.info("CellId -> CommitTS map created with [{}] buckets (32 elems/bucket)", size);
+    }
+
+    public void reset() {
+        cellIdToCommitMap.reset();
     }
 
     public long getLatestWriteForCell(long hash) {

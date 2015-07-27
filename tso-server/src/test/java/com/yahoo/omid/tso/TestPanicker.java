@@ -29,6 +29,9 @@ public class TestPanicker {
 
     MetricsRegistry metrics = new NullMetricsProvider();
 
+    // Note this test has been moved and refactored to TestTimestampOracle because
+    // it tests the behaviour of the TimestampOracle.
+    // Please, remove me in a future commit
     @Test
     public void testTimestampOraclePanic() throws Exception {
         TimestampStorage storage = spy(new TimestampOracleImpl.InMemoryTimestampStorage());
@@ -39,6 +42,7 @@ public class TestPanicker {
 
         final TimestampOracleImpl tso = new TimestampOracleImpl(metrics,
                 storage, panicker);
+        tso.initialize();
         Thread allocThread = new Thread("AllocThread") {
                 @Override
                 public void run() {

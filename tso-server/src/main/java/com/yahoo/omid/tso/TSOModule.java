@@ -58,17 +58,11 @@ public class TSOModule extends AbstractModule {
     }
 
     @Provides
-    @Named(TSO_EPOCH_KEY)
-    long provideEpoch(TimestampOracle timestampOracle) {
-        return timestampOracle.getLast();
-    }
-
-    @Provides
     TSOServer.LeaseManager provideLeaseManager(@Named(TSO_HOST_AND_PORT_KEY) String tsoHostAndPort,
-                                               @Named(TSO_EPOCH_KEY) long epoch,
+                                               RequestProcessor requestProcessor,
                                                CuratorFramework zkClient)
     throws Exception {
-        return new LeaseManager(tsoHostAndPort, epoch, config.getLeasePeriodInMs(), zkClient);
+        return new LeaseManager(tsoHostAndPort, requestProcessor, config.getLeasePeriodInMs(), zkClient);
     }
 
 }
