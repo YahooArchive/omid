@@ -4,8 +4,6 @@ import org.apache.curator.framework.CuratorFramework;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.yahoo.omid.tso.TSOServer.LeaseManager;
-
 public class PausableLeaseManager extends LeaseManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(PausableLeaseManager.class);

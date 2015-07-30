@@ -25,6 +25,7 @@ import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.metrics.NullMetricsProvider;
 import com.yahoo.omid.timestamp.storage.TimestampStorage;
 import com.yahoo.omid.tso.DisruptorModule;
+import com.yahoo.omid.tso.LeaseManagement;
 import com.yahoo.omid.tso.MockPanicker;
 import com.yahoo.omid.tso.Panicker;
 import com.yahoo.omid.tso.TSOServer;
@@ -104,14 +105,8 @@ public class TSOForHBaseCompactorTestModule extends AbstractModule {
     }
 
     @Provides
-    @Named(TSO_EPOCH_KEY)
-    long provideEpoch(TimestampOracle timestampOracle) {
-        return timestampOracle.getLast();
-    }
-
-    @Provides
-    TSOServer.LeaseManager provideLeaseManager() {
-        return mock(TSOServer.LeaseManager.class);
+    LeaseManagement provideLeaseManager() {
+        return mock(LeaseManagement.class);
     }
 
 }

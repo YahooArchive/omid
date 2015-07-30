@@ -4,19 +4,13 @@ import static com.yahoo.omid.committable.hbase.HBaseCommitTable.HBASE_COMMIT_TAB
 import static com.yahoo.omid.tso.PersistenceProcessorImpl.TSO_BATCH_PERSIST_TIMEOUT_MS_KEY;
 import static com.yahoo.omid.tso.PersistenceProcessorImpl.TSO_MAX_BATCH_SIZE_KEY;
 import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;
-import static com.yahoo.omid.tso.TSOServer.TSO_EPOCH_KEY;
-import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
 import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.HBASE_TIMESTAMPSTORAGE_TABLE_NAME_KEY;
 
-import javax.inject.Named;
 import javax.inject.Singleton;
-
-import org.apache.curator.framework.CuratorFramework;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.name.Names;
-import com.yahoo.omid.tso.TSOServer.LeaseManager;
 
 public class TSOModule extends AbstractModule {
 
@@ -48,6 +42,9 @@ public class TSOModule extends AbstractModule {
         // Disruptor setup
         install(new DisruptorModule());
 
+        // LeaseManagement setup
+        install(new LeaseManagementModule(config));
+
         // ZK Module
         install(new ZKModule(config));
     }
@@ -55,14 +52,6 @@ public class TSOModule extends AbstractModule {
     @Provides
     TSOServerCommandLineConfig provideTSOServerConfig() {
         return config;
-    }
-
-    @Provides
-    TSOServer.LeaseManager provideLeaseManager(@Named(TSO_HOST_AND_PORT_KEY) String tsoHostAndPort,
-                                               RequestProcessor requestProcessor,
-                                               CuratorFramework zkClient)
-    throws Exception {
-        return new LeaseManager(tsoHostAndPort, requestProcessor, config.getLeasePeriodInMs(), zkClient);
     }
 
 }

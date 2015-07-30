@@ -1,13 +1,8 @@
 package com.yahoo.omid.tso;
 
 import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;
-import static com.yahoo.omid.tso.TSOServer.TSO_EPOCH_KEY;
-import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
 
-import javax.inject.Named;
 import javax.inject.Singleton;
-
-import org.apache.curator.framework.CuratorFramework;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -17,7 +12,6 @@ import com.yahoo.omid.committable.InMemoryCommitTable;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.metrics.NullMetricsProvider;
 import com.yahoo.omid.timestamp.storage.TimestampStorage;
-import com.yahoo.omid.tso.TSOServer.LeaseManager;
 import com.yahoo.omid.tso.TimestampOracleImpl.InMemoryTimestampStorage;
 
 public class TSOMockModule extends AbstractModule {
@@ -41,6 +35,9 @@ public class TSOMockModule extends AbstractModule {
         bindConstant().annotatedWith(Names.named(TSO_MAX_ITEMS_KEY)).to(config.getMaxItems());
         install(new DisruptorModule());
 
+        // LeaseManagement setup
+        install(new LeaseManagementModule(config));
+
         // ZK Module
         install(new ZKModule(config));
 
@@ -54,14 +51,6 @@ public class TSOMockModule extends AbstractModule {
     @Provides @Singleton
     MetricsRegistry provideMetricsRegistry() {
         return new NullMetricsProvider();
-    }
-
-    @Provides
-    TSOServer.LeaseManager provideLeaseManager(@Named(TSO_HOST_AND_PORT_KEY) String tsoHostAndPort,
-                                               RequestProcessor requestProcessor,
-                                               CuratorFramework zkClient)
-    throws Exception {
-        return new LeaseManager(tsoHostAndPort, requestProcessor, config.getLeasePeriodInMs(), zkClient);
     }
 
 }

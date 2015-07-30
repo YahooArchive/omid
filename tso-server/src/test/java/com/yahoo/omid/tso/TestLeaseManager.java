@@ -5,6 +5,8 @@ import static com.yahoo.omid.tsoclient.TSOClient.DEFAULT_ZK_CLUSTER;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
+import static org.testng.AssertJUnit.assertFalse;
+import static org.testng.AssertJUnit.assertTrue;
 
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
@@ -80,7 +82,7 @@ public class TestLeaseManager {
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,
                                                  zkClient);
-        leaseManager1.startAndWait();
+        leaseManager1.startService();
 
         // ... let the test run for some time...
         Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
@@ -88,6 +90,7 @@ public class TestLeaseManager {
         // ... check is the lease holder
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_1);
         checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1);
+        assertTrue(leaseManager1.stillInLeasePeriod());
 
         // Then, pause instance when trying to renew lease...
         leaseManager1.pausedInTryToRenewLeasePeriod();
@@ -108,6 +111,7 @@ public class TestLeaseManager {
         // ... and check again that nothing changed
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_1);
         checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1);
+        assertTrue(leaseManager1.stillInLeasePeriod());
 
     }
 
@@ -127,7 +131,7 @@ public class TestLeaseManager {
                                                  TEST_CURRENT_TSO_PATH,
                                                  zkClient);
 
-        leaseManager1.startAndWait();
+        leaseManager1.startService();
 
         // ...let the test run for some time...
         Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
@@ -135,6 +139,7 @@ public class TestLeaseManager {
         // ...so it should be the current holder of the lease
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_1);
         checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1);
+        assertTrue(leaseManager1.stillInLeasePeriod());
 
         // Then launch another instance...
         RequestProcessor requestProcessor2 = mock(RequestProcessor.class);
@@ -145,7 +150,7 @@ public class TestLeaseManager {
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,
                                                  zkClient);
-        leaseManager2.startAndWait();
+        leaseManager2.startService();
 
         // ... let the test run for some time...
         Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
@@ -153,6 +158,8 @@ public class TestLeaseManager {
         // ... and after the period, the first instance should be still the holder
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_1);
         checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1);
+        assertTrue(leaseManager1.stillInLeasePeriod());
+        assertFalse(leaseManager2.stillInLeasePeriod());
     }
 
     @Test(timeOut = 60000)
@@ -171,7 +178,7 @@ public class TestLeaseManager {
                                                  TEST_CURRENT_TSO_PATH,
                                                  zkClient);
 
-        leaseManager1.startAndWait();
+        leaseManager1.startService();
 
         // ... let the test run for some time...
         Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
@@ -179,6 +186,7 @@ public class TestLeaseManager {
         // ... so it should be the current holder of the lease
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_1);
         checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1);
+        assertTrue(leaseManager1.stillInLeasePeriod());
 
         // Then launch another instance...
         RequestProcessor requestProcessor2 = mock(RequestProcessor.class);
@@ -189,7 +197,7 @@ public class TestLeaseManager {
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,
                                                  zkClient);
-        leaseManager2.startAndWait();
+        leaseManager2.startService();
 
         // ... and pause active lease manager...
         leaseManager1.pausedInStillInLeasePeriod();
@@ -200,6 +208,7 @@ public class TestLeaseManager {
         // ... and check that lease owner should have changed to the second instance
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_2);
         checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_2);
+        assertTrue(leaseManager2.stillInLeasePeriod());
 
         // Now, lets resume the first instance...
         leaseManager1.resume();
@@ -210,6 +219,8 @@ public class TestLeaseManager {
         // and check the lease owner is still the second instance (preserves the lease)
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_2);
         checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_2);
+        assertFalse(leaseManager1.stillInLeasePeriod());
+        assertTrue(leaseManager2.stillInLeasePeriod());
 
         // Finally, pause active lease manager when trying to renew lease...
         leaseManager2.pausedInTryToRenewLeasePeriod();
@@ -220,6 +231,8 @@ public class TestLeaseManager {
         // ... and check lease owner is has changed again to the first instance
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_1);
         checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1);
+        assertFalse(leaseManager2.stillInLeasePeriod());
+        assertTrue(leaseManager1.stillInLeasePeriod());
 
         // Resume the second instance...
         leaseManager2.resume();
@@ -230,6 +243,20 @@ public class TestLeaseManager {
         // ... but the lease owner should still be the first instance
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_1);
         checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1);
+        assertFalse(leaseManager2.stillInLeasePeriod());
+        assertTrue(leaseManager1.stillInLeasePeriod());
+
+    }
+
+    @Test(timeOut = 1000)
+    public void testNonHALeaseManager() throws Exception {
+
+        // Launch the instance...
+        NonHALeaseManager leaseManager = new NonHALeaseManager();
+
+        leaseManager.startService();
+        assertTrue(leaseManager.stillInLeasePeriod());
+        leaseManager.stopService();
 
     }
 
