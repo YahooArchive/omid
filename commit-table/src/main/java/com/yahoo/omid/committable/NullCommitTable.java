@@ -33,6 +33,11 @@ public class NullCommitTable implements CommitTable {
         }
 
         @Override
+        public void clearWriteBuffer() {
+            // noop
+        }
+
+        @Override
         public ListenableFuture<Void> flush() {
             SettableFuture<Void> f = SettableFuture.<Void>create();
             f.set(null);
@@ -41,6 +46,7 @@ public class NullCommitTable implements CommitTable {
 
         @Override
         public void close() {}
+
     }
 
     public static class Client implements CommitTable.Client {

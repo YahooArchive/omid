@@ -3161,6 +3161,16 @@ public final class TSOProto {
      * <code>optional int64 commitTimestamp = 3;</code>
      */
     long getCommitTimestamp();
+
+    // optional bool makeHeuristicDecision = 4 [default = false];
+    /**
+     * <code>optional bool makeHeuristicDecision = 4 [default = false];</code>
+     */
+    boolean hasMakeHeuristicDecision();
+    /**
+     * <code>optional bool makeHeuristicDecision = 4 [default = false];</code>
+     */
+    boolean getMakeHeuristicDecision();
   }
   /**
    * Protobuf type {@code CommitResponse}
@@ -3226,6 +3236,11 @@ public final class TSOProto {
             case 24: {
               bitField0_ |= 0x00000004;
               commitTimestamp_ = input.readInt64();
+              break;
+            }
+            case 32: {
+              bitField0_ |= 0x00000008;
+              makeHeuristicDecision_ = input.readBool();
               break;
             }
           }
@@ -3316,10 +3331,27 @@ public final class TSOProto {
       return commitTimestamp_;
     }
 
+    // optional bool makeHeuristicDecision = 4 [default = false];
+    public static final int MAKEHEURISTICDECISION_FIELD_NUMBER = 4;
+    private boolean makeHeuristicDecision_;
+    /**
+     * <code>optional bool makeHeuristicDecision = 4 [default = false];</code>
+     */
+    public boolean hasMakeHeuristicDecision() {
+      return ((bitField0_ & 0x00000008) == 0x00000008);
+    }
+    /**
+     * <code>optional bool makeHeuristicDecision = 4 [default = false];</code>
+     */
+    public boolean getMakeHeuristicDecision() {
+      return makeHeuristicDecision_;
+    }
+
     private void initFields() {
       aborted_ = false;
       startTimestamp_ = 0L;
       commitTimestamp_ = 0L;
+      makeHeuristicDecision_ = false;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -3342,6 +3374,9 @@ public final class TSOProto {
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         output.writeInt64(3, commitTimestamp_);
       }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        output.writeBool(4, makeHeuristicDecision_);
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -3362,6 +3397,10 @@ public final class TSOProto {
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         size += com.google.protobuf.CodedOutputStream
           .computeInt64Size(3, commitTimestamp_);
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(4, makeHeuristicDecision_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -3485,6 +3524,8 @@ public final class TSOProto {
         bitField0_ = (bitField0_ & ~0x00000002);
         commitTimestamp_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000004);
+        makeHeuristicDecision_ = false;
+        bitField0_ = (bitField0_ & ~0x00000008);
         return this;
       }
 
@@ -3525,6 +3566,10 @@ public final class TSOProto {
           to_bitField0_ |= 0x00000004;
         }
         result.commitTimestamp_ = commitTimestamp_;
+        if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
+          to_bitField0_ |= 0x00000008;
+        }
+        result.makeHeuristicDecision_ = makeHeuristicDecision_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -3549,6 +3594,9 @@ public final class TSOProto {
         }
         if (other.hasCommitTimestamp()) {
           setCommitTimestamp(other.getCommitTimestamp());
+        }
+        if (other.hasMakeHeuristicDecision()) {
+          setMakeHeuristicDecision(other.getMakeHeuristicDecision());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -3672,6 +3720,39 @@ public final class TSOProto {
       public Builder clearCommitTimestamp() {
         bitField0_ = (bitField0_ & ~0x00000004);
         commitTimestamp_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // optional bool makeHeuristicDecision = 4 [default = false];
+      private boolean makeHeuristicDecision_ ;
+      /**
+       * <code>optional bool makeHeuristicDecision = 4 [default = false];</code>
+       */
+      public boolean hasMakeHeuristicDecision() {
+        return ((bitField0_ & 0x00000008) == 0x00000008);
+      }
+      /**
+       * <code>optional bool makeHeuristicDecision = 4 [default = false];</code>
+       */
+      public boolean getMakeHeuristicDecision() {
+        return makeHeuristicDecision_;
+      }
+      /**
+       * <code>optional bool makeHeuristicDecision = 4 [default = false];</code>
+       */
+      public Builder setMakeHeuristicDecision(boolean value) {
+        bitField0_ |= 0x00000008;
+        makeHeuristicDecision_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool makeHeuristicDecision = 4 [default = false];</code>
+       */
+      public Builder clearMakeHeuristicDecision() {
+        bitField0_ = (bitField0_ & ~0x00000008);
+        makeHeuristicDecision_ = false;
         onChanged();
         return this;
       }
@@ -5166,14 +5247,15 @@ public final class TSOProto {
       "stampResponse\022\'\n\016commitResponse\030\002 \001(\0132\017." +
       "CommitResponse\022-\n\021handshakeResponse\030\003 \001(",
       "\0132\022.HandshakeResponse\"+\n\021TimestampRespon" +
-      "se\022\026\n\016startTimestamp\030\001 \001(\003\"R\n\016CommitResp" +
+      "se\022\026\n\016startTimestamp\030\001 \001(\003\"x\n\016CommitResp" +
       "onse\022\017\n\007aborted\030\001 \001(\010\022\026\n\016startTimestamp\030" +
-      "\002 \001(\003\022\027\n\017commitTimestamp\030\003 \001(\003\"\016\n\014Capabi" +
-      "lities\"=\n\020HandshakeRequest\022)\n\022clientCapa" +
-      "bilities\030\001 \001(\0132\r.Capabilities\"X\n\021Handsha" +
-      "keResponse\022\030\n\020clientCompatible\030\001 \001(\010\022)\n\022" +
-      "serverCapabilities\030\002 \001(\0132\r.CapabilitiesB" +
-      "\030\n\024com.yahoo.omid.protoH\001"
+      "\002 \001(\003\022\027\n\017commitTimestamp\030\003 \001(\003\022$\n\025makeHe" +
+      "uristicDecision\030\004 \001(\010:\005false\"\016\n\014Capabili" +
+      "ties\"=\n\020HandshakeRequest\022)\n\022clientCapabi" +
+      "lities\030\001 \001(\0132\r.Capabilities\"X\n\021Handshake" +
+      "Response\022\030\n\020clientCompatible\030\001 \001(\010\022)\n\022se" +
+      "rverCapabilities\030\002 \001(\0132\r.CapabilitiesB\030\n" +
+      "\024com.yahoo.omid.protoH\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -5215,7 +5297,7 @@ public final class TSOProto {
           internal_static_CommitResponse_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_CommitResponse_descriptor,
-              new java.lang.String[] { "Aborted", "StartTimestamp", "CommitTimestamp", });
+              new java.lang.String[] { "Aborted", "StartTimestamp", "CommitTimestamp", "MakeHeuristicDecision", });
           internal_static_Capabilities_descriptor =
             getDescriptor().getMessageTypes().get(6);
           internal_static_Capabilities_fieldAccessorTable = new

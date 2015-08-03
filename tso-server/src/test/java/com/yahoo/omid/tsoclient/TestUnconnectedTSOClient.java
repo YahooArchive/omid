@@ -32,7 +32,7 @@ public class TestUnconnectedTSOClient {
 
     private static final Logger LOG = getLogger(TestUnconnectedTSOClient.class);
 
-    @Test(timeOut = 10_000) // 10 secs
+    @Test(timeOut = 20_000) // 20 secs
     public void testRequestsDoneOnAnUnconnectedTSOClientAlwaysReturn()
     throws Exception {
 

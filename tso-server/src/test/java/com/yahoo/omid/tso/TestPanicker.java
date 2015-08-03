@@ -60,6 +60,9 @@ public class TestPanicker {
         verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
     }
 
+    // Note this test has been moved and refactored to TestPersistenceProcessor because
+    // it tests the behaviour of the PersistenceProcessor.
+    // Please, remove me in a future commit
     @Test
     public void testCommitTablePanic() throws Exception {
         Panicker panicker = spy(new MockPanicker());
@@ -85,7 +88,11 @@ public class TestPanicker {
                     return f;
                 }
             };
+
+        LeaseManager leaseManager = mock(LeaseManager.class);
+        doReturn(true).when(leaseManager).stillInLeasePeriod();
         PersistenceProcessor proc = new PersistenceProcessorImpl(metrics,
+                                                                 leaseManager,
                                                                  commitTable,
                                                                  mock(ReplyProcessor.class),
                                                                  mock(RetryProcessor.class),
@@ -95,6 +102,9 @@ public class TestPanicker {
         verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
     }
 
+    // Note this test has been moved and refactored to TestPersistenceProcessor because
+    // it tests the behaviour of the PersistenceProcessor.
+    // Please, remove me in a future commit
     @Test
     public void testRuntimeExceptionTakesDownDaemon() throws Exception {
         Panicker panicker = spy(new MockPanicker());
@@ -120,6 +130,7 @@ public class TestPanicker {
                 }
             };
         PersistenceProcessor proc = new PersistenceProcessorImpl(metrics,
+                                                                 mock(LeaseManager.class),
                                                                  commitTable,
                                                                  mock(ReplyProcessor.class),
                                                                  mock(RetryProcessor.class),

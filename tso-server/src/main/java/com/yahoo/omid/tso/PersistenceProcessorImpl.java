@@ -13,6 +13,7 @@ import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventFactory;
@@ -38,6 +39,7 @@ class PersistenceProcessorImpl
     static final int DEFAULT_BATCH_PERSIST_TIMEOUT_MS = 100;
     static final String TSO_BATCH_PERSIST_TIMEOUT_MS_KEY = "tso.batch-persist-timeout-ms";
 
+    private final LeaseManagement leaseManager;
     final ReplyProcessor reply;
     final RetryProcessor retryProc;
     final CommitTable.Client commitTableClient;
@@ -45,7 +47,6 @@ class PersistenceProcessorImpl
     final Panicker panicker;
     final RingBuffer<PersistEvent> persistRing;
 
-    final int maxBatchSize;
 
     final Batch batch;
 
@@ -53,10 +54,32 @@ class PersistenceProcessorImpl
     final Histogram batchSizeHistogram;
     final Meter timeoutMeter;
     long lastFlush = System.nanoTime();
+
     final static int BATCH_TIMEOUT_MS = 100;
 
     @Inject
     PersistenceProcessorImpl(MetricsRegistry metrics,
+                             LeaseManagement leaseManager,
+                             CommitTable commitTable,
+                             ReplyProcessor reply,
+                             RetryProcessor retryProc,
+                             Panicker panicker,
+                             TSOServerConfig config)
+    throws InterruptedException, ExecutionException {
+        this(metrics,
+             new Batch(config.getMaxBatchSize()),
+             leaseManager,
+             commitTable,
+             reply,
+             retryProc,
+             panicker,
+             config);
+    }
+
+    @VisibleForTesting
+    PersistenceProcessorImpl(MetricsRegistry metrics,
+                             Batch batch,
+                             LeaseManagement leaseManager,
                              CommitTable commitTable,
                              ReplyProcessor reply,
                              RetryProcessor retryProc,
@@ -64,16 +87,16 @@ class PersistenceProcessorImpl
                              TSOServerConfig config)
     throws InterruptedException, ExecutionException {
 
+        this.batch = batch;
+        this.leaseManager = leaseManager;
         this.commitTableClient = commitTable.getClient().get();
         this.writer = commitTable.getWriter().get();
         this.reply = reply;
         this.retryProc = retryProc;
         this.panicker = panicker;
-        this.maxBatchSize = config.getMaxBatchSize();
 
         LOG.info("Creating the persist processor with batch size {}, and timeout {}ms",
-                 maxBatchSize, config.getBatchPersistTimeoutMS());
-        batch = new Batch(maxBatchSize);
+                 config.getMaxBatchSize(), config.getBatchPersistTimeoutMS());
 
         flushTimer = metrics.timer(name("tso", "persist", "flush"));
         batchSizeHistogram = metrics.histogram(name("tso", "persist", "batchsize"));
@@ -133,8 +156,8 @@ class PersistenceProcessorImpl
         }
 
         // If is a retry, we must check if it is a already committed request abort.
-        // This can happen because a client could have missed the reply, so it 
-        // retried the request after a timeout. So we added to the batch and when 
+        // This can happen because a client could have missed the reply, so it
+        // retried the request after a timeout. So we added to the batch and when
         // it's flushed we'll add events to the retry processor in order to check
         // for false positive aborts. It needs to be done after the flush in case
         // the commit has occurred but it hasn't been persisted yet.
@@ -160,13 +183,31 @@ class PersistenceProcessorImpl
         }
     }
 
-    private void flush() {
+    @VisibleForTesting
+    void flush() {
         lastFlush = System.nanoTime();
-        batchSizeHistogram.update(batch.getNumEvents());
         try {
-            writer.flush().get();
+            boolean areWeStillMaster = true;
+            if (!leaseManager.stillInLeasePeriod()) {
+                // The master TSO replica has changed, so we must inform the
+                // clients about it when sending the replies and avoid flushing
+                // the current batch of TXs
+                areWeStillMaster = false;
+                // We need also to clear the data in the buffer
+                writer.clearWriteBuffer();
+                LOG.trace("This replica lost mastership before flushig data");
+            } else {
+                writer.flush().get();
+                batchSizeHistogram.update(batch.getNumEvents());
+                if (!leaseManager.stillInLeasePeriod()) {
+                    // If after flushing this TSO server is not the master
+                    // replica we need inform the client about it
+                    areWeStillMaster = false;
+                    LOG.warn("This replica lost mastership after flushing data");
+                }
+            }
             flushTimer.update((System.nanoTime() - lastFlush));
-            batch.sendRepliesAndReset(reply, retryProc);
+            batch.sendRepliesAndReset(reply, retryProc, areWeStillMaster);
         } catch (ExecutionException ee) {
             panicker.panic("Error persisting commit batch", ee.getCause());
         } catch (InterruptedException ie) {
@@ -207,7 +248,7 @@ class PersistenceProcessorImpl
         persistRing.publish(seq);
     }
 
-    public final static class Batch {
+    public static class Batch {
         final PersistEvent[] events;
         final int maxBatchSize;
         int numEvents;
@@ -260,7 +301,7 @@ class PersistenceProcessorImpl
             PersistEvent.makePersistTimestamp(e, startTimestamp, c);
         }
 
-        void sendRepliesAndReset(ReplyProcessor reply, RetryProcessor retryProc) {
+        void sendRepliesAndReset(ReplyProcessor reply, RetryProcessor retryProc, boolean isTSOInstanceMaster) {
             for (int i = 0; i < numEvents; i++) {
                 PersistEvent e = events[i];
                 switch (e.getType()) {
@@ -268,7 +309,12 @@ class PersistenceProcessorImpl
                     reply.timestampResponse(e.getStartTimestamp(), e.getChannel());
                     break;
                 case COMMIT:
-                    reply.commitResponse(e.getStartTimestamp(), e.getCommitTimestamp(), e.getChannel());
+                    if (isTSOInstanceMaster) {
+                        reply.commitResponse(false, e.getStartTimestamp(), e.getCommitTimestamp(), e.getChannel());
+                    } else {
+                        // The client will need to perform heuristic actions to determine the output
+                        reply.commitResponse(true, e.getStartTimestamp(), e.getCommitTimestamp(), e.getChannel());
+                    }
                     break;
                 case ABORT:
                     if(e.isRetry()) {
@@ -336,6 +382,7 @@ class PersistenceProcessorImpl
 
         public final static EventFactory<PersistEvent> EVENT_FACTORY
             = new EventFactory<PersistEvent>() {
+            @Override
             public PersistEvent newInstance()
             {
                 return new PersistEvent();

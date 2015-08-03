@@ -101,7 +101,7 @@ class RetryProcessorImpl
             if(!commitTimestamp.isPresent()) {
                 replyProc.abortResponse(startTimestamp, event.getChannel());
             } else {
-                replyProc.commitResponse(startTimestamp, commitTimestamp.get(), event.getChannel());
+                replyProc.commitResponse(false, startTimestamp, commitTimestamp.get(), event.getChannel());
             }
         } catch (InterruptedException e) {
             LOG.error("Interrupted reading from commit table");

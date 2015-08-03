@@ -111,6 +111,11 @@ public class HBaseCommitTable implements CommitTable {
         }
 
         @Override
+        public void clearWriteBuffer() {
+            table.getWriteBuffer().clear();
+        }
+
+        @Override
         public void close() throws IOException {
             table.close();
         }

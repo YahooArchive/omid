@@ -94,7 +94,11 @@
           <source>${java.version}</source>
           <target>${java.version}</target>
           <compilerArguments>
-            <Werror />
+            <!-- 
+                Need to comment the following due to the use of deprecated
+                code for cleaning data in HBaseWriter.clearWriteBuffer() method:
+            Werror
+            /-->
             <Xlint:deprecation />
             <Xlint:unchecked />
             <Xlint:-options />

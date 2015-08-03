@@ -29,6 +29,7 @@ message CommitResponse {
   optional bool aborted = 1;
   optional int64 startTimestamp = 2;
   optional int64 commitTimestamp = 3;
+  optional bool makeHeuristicDecision = 4 [default = false];
 }
 
 message Capabilities {
@@ -44,4 +45,3 @@ message HandshakeResponse {
   optional bool clientCompatible = 1;
   optional Capabilities serverCapabilities = 2;
 }
-

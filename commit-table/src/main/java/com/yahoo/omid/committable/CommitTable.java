@@ -18,6 +18,11 @@ public interface CommitTable {
         void updateLowWatermark(long lowWatermark) throws IOException;
         // TODO Make this synchronous
         ListenableFuture<Void> flush();
+
+        /**
+         * Allows to clean the write's current buffer. It is required for HA
+         */
+        void clearWriteBuffer();
     }
 
     public interface Client extends Closeable {

@@ -152,7 +152,7 @@ public class TestTSOClientConnectionToTSO {
         // Launch a TSO publishing the address in ZK...
         TSOServerCommandLineConfig config = TSOServerCommandLineConfig.configFactory(TSO_PORT, 1000);
         config.shouldHostAndPortBePublishedInZK = true;
-        config.setLeasePeriodInMs(1000);
+        config.setLeasePeriodInMs(100);
         injector = Guice.createInjector(new TSOMockModule(config));
         LOG.info("Starting TSO");
         tsoServer = injector.getInstance(TSOServer.class);

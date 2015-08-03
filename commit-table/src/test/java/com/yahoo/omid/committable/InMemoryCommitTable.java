@@ -48,6 +48,11 @@ public class InMemoryCommitTable implements CommitTable {
         }
 
         @Override
+        public void clearWriteBuffer() {
+            table.clear();
+        }
+
+        @Override
         public void close() {}
     }
 
