@@ -1,6 +1,12 @@
 package com.yahoo.omid.tso;
 
+import java.io.IOException;
+
 public class NonHALeaseManager implements LeaseManagement {
+
+    public NonHALeaseManager(TSOStateManager stateManager) throws IOException {
+        stateManager.reset();
+    }
 
     @Override
     public void startService() throws LeaseManagementException {

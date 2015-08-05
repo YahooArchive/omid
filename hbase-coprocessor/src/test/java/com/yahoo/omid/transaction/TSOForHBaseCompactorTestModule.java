@@ -1,14 +1,11 @@
 package com.yahoo.omid.transaction;
 
-import static com.yahoo.omid.tso.TSOServer.TSO_EPOCH_KEY;
 import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;
-import static org.mockito.Mockito.mock;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
-import javax.inject.Named;
 import javax.inject.Singleton;
 
 import org.apache.hadoop.conf.Configuration;
@@ -27,9 +24,11 @@ import com.yahoo.omid.timestamp.storage.TimestampStorage;
 import com.yahoo.omid.tso.DisruptorModule;
 import com.yahoo.omid.tso.LeaseManagement;
 import com.yahoo.omid.tso.MockPanicker;
+import com.yahoo.omid.tso.NonHALeaseManager;
 import com.yahoo.omid.tso.Panicker;
-import com.yahoo.omid.tso.TSOServer;
+import com.yahoo.omid.tso.TSOStateManager;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig;
+import com.yahoo.omid.tso.TSOStateManagerImpl;
 import com.yahoo.omid.tso.TimestampOracle;
 import com.yahoo.omid.tso.TimestampOracleImpl;
 import com.yahoo.omid.tso.ZKModule;
@@ -47,6 +46,8 @@ public class TSOForHBaseCompactorTestModule extends AbstractModule {
 
     @Override
     protected void configure() {
+
+        bind(TSOStateManager.class).to(TSOStateManagerImpl.class).in(Singleton.class);
 
         bind(Panicker.class).to(MockPanicker.class);
         // HBase commit table creation
@@ -105,8 +106,9 @@ public class TSOForHBaseCompactorTestModule extends AbstractModule {
     }
 
     @Provides
-    LeaseManagement provideLeaseManager() {
-        return mock(LeaseManagement.class);
+    @Singleton
+    LeaseManagement provideLeaseManager(TSOStateManager stateManager) throws IOException {
+        return new NonHALeaseManager(stateManager);
     }
 
 }

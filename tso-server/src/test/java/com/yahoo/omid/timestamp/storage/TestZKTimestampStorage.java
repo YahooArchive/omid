@@ -77,6 +77,8 @@ public class TestZKTimestampStorage {
                                      .connectString(ZK_CLUSTER)
                                      .retryPolicy(retryPolicy)
                                      .build());
+        storageInternalZKClient.start();
+        storageInternalZKClient.blockUntilConnected();
 
         storage = new ZKTimestampStorage(storageInternalZKClient);
     }

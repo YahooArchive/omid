@@ -8,6 +8,7 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Enumeration;
+import java.util.concurrent.TimeUnit;
 
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -22,6 +23,8 @@ import org.slf4j.LoggerFactory;
 import com.google.common.net.HostAndPort;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import com.yahoo.omid.tso.TSOServerCommandLineConfig.TimestampStore;
+import com.yahoo.omid.zk.ZKUtils;
 
 public class ZKModule extends AbstractModule {
 
@@ -39,7 +42,7 @@ public class ZKModule extends AbstractModule {
 
     @Provides
     @Singleton
-    CuratorFramework provideZookeeperClient() throws Exception {
+    CuratorFramework provideInitializedZookeeperClient() throws Exception {
 
         LOG.info("Creating Zookeeper Client connecting to {}", config.getZKCluster());
 
@@ -50,6 +53,22 @@ public class ZKModule extends AbstractModule {
                                       .retryPolicy(retryPolicy)
                                       .build();
 
+        if (config.shouldHostAndPortBePublishedInZK || config.getTimestampStore().equals(TimestampStore.ZK)) {
+            try {
+                LOG.info("Connecting to ZK cluster [{}]", zkClient.getState());
+                zkClient.start();
+                if (zkClient.blockUntilConnected(10, TimeUnit.SECONDS)) {
+                    LOG.info("Connection to ZK cluster [{}]", zkClient.getState());
+                } else {
+                    throw new ZKUtils.ZKException("Can't contact ZK after 10 seconds");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new ZKUtils.ZKException("Interrupted whilst creating LeaseManager");
+            }
+        } else {
+            LOG.info("ZK Connection not necessary in this configuration");
+        }
         return zkClient;
     }
 

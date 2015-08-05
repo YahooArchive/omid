@@ -51,6 +51,7 @@ class CommitHashMap {
 
     public void reset() {
         cellIdToCommitMap.reset();
+        LOG.info("CellId -> CommitTS map reset");
     }
 
     public long getLatestWriteForCell(long hash) {

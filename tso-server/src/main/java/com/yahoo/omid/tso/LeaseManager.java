@@ -3,6 +3,7 @@ package com.yahoo.omid.tso;
 import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
 import static com.yahoo.omid.ZKConstants.TSO_LEASE_PATH;
 
+import java.text.SimpleDateFormat;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -17,6 +18,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.AbstractScheduledService;
+import com.yahoo.omid.tso.TSOStateManager.TSOState;
 
 /**
  * Encompasses all the required elements to control the leases required for
@@ -31,7 +33,7 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
 
     private final String tsoHostAndPort;
 
-    private final RequestProcessor requestProcessor;
+    private final TSOStateManager stateManager;
 
     private final long leasePeriodInMs;
     private int leaseNodeVersion;
@@ -42,21 +44,21 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
     private final String currentTSOPath;
 
     public LeaseManager(String tsoHostAndPort,
-                            RequestProcessor requestProcessor,
-                            long leasePeriodInMs,
-                            CuratorFramework zkClient) {
-        this(tsoHostAndPort, requestProcessor, leasePeriodInMs, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkClient);
+                        TSOStateManager stateManager,
+                        long leasePeriodInMs,
+                        CuratorFramework zkClient) {
+        this(tsoHostAndPort, stateManager, leasePeriodInMs, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkClient);
     }
 
     @VisibleForTesting
     LeaseManager(String tsoHostAndPort,
-                 RequestProcessor requestProcessor,
+                 TSOStateManager stateManager,
                  long leasePeriodInMs,
                  String leasePath,
                  String currentTSOPath,
                  CuratorFramework zkClient) {
         this.tsoHostAndPort = tsoHostAndPort;
-        this.requestProcessor = requestProcessor;
+        this.stateManager = stateManager;
         this.leasePeriodInMs = leasePeriodInMs;
         this.leasePath = leasePath;
         this.currentTSOPath = currentTSOPath;
@@ -94,8 +96,9 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
         if (canAcquireLease()) {
             endLeaseInMs.set(baseTimeInMs.get() + leasePeriodInMs);
             LOG.info("{} got the lease (Master) Ver. {}/End of lease: {}ms", tsoHostAndPort,
-                    leaseNodeVersion, endLeaseInMs);
-            advertiseTSOServerInfoThroughZK(requestProcessor.epoch());
+                    leaseNodeVersion, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(endLeaseInMs));
+            TSOState newTSOState = stateManager.reset();
+            advertiseTSOServerInfoThroughZK(newTSOState.getEpoch());
         }
     }
 
@@ -227,10 +230,10 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
 
     int advertiseTSOServerInfoThroughZK(long epoch) throws Exception {
 
-        LOG.info("Advertising TSO host:port {} (Epoch {}) through ZK", tsoHostAndPort, epoch);
         String tsoInfoAsString = tsoHostAndPort + "#" + Long.toString(epoch);
         byte[] tsoInfoAsBytes = tsoInfoAsString.getBytes(Charsets.UTF_8);
         Stat currentTSOZNodeStat = zkClient.setData().forPath(currentTSOPath, tsoInfoAsBytes);
+        LOG.info("TSO instance {} (Epoch {}) advertised through ZK", tsoHostAndPort, epoch);
         return currentTSOZNodeStat.getVersion();
 
     }

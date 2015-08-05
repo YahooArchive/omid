@@ -23,6 +23,8 @@ public class TSOModule extends AbstractModule {
     @Override
     protected void configure() {
 
+        bind(TSOStateManager.class).to(TSOStateManagerImpl.class).in(Singleton.class);
+
         bind(TimestampOracle.class).to(TimestampOracleImpl.class).in(Singleton.class);
         bind(Panicker.class).to(SystemExitPanicker.class).in(Singleton.class);
 

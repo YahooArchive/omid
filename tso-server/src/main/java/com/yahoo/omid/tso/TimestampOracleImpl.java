@@ -1,7 +1,5 @@
 package com.yahoo.omid.tso;
 
-import static com.codahale.metrics.MetricRegistry.name;
-
 import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -13,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.metrics.Gauge;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.timestamp.storage.TimestampStorage;
 
@@ -95,7 +92,7 @@ public class TimestampOracleImpl implements TimestampOracle {
         this.panicker = panicker;
 
     }
-    
+
     @Override
     public void initialize() throws IOException {
 
@@ -106,12 +103,6 @@ public class TimestampOracleImpl implements TimestampOracle {
         // Trigger first allocation of timestamps
         executor.execute(allocateTimestampsBatchTask);
 
-        metrics.gauge(name("tso", "maxTimestamp"), new Gauge<Long>() {
-            @Override
-            public Long getValue() {
-                return maxTimestamp;
-            }
-        });
         LOG.info("Initializing timestamp oracle with timestamp {}", this.lastTimestamp);
     }
 

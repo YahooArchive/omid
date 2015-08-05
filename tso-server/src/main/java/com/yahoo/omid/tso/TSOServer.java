@@ -150,7 +150,7 @@ public class TSOServer extends AbstractIdleService {
                 guiceModules.add(new InMemoryTimestampStorageModule());
                 break;
             case ZK:
-                guiceModules.add(new ZKTimestampStorageModule(config));
+                guiceModules.add(new ZKTimestampStorageModule());
                 break;
             default:
                 throw new IllegalArgumentException("Unknown timestamp store" + timestampStore);

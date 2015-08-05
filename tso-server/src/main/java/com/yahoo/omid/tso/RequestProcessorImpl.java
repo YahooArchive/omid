@@ -20,9 +20,13 @@ import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
 import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.tso.TSOStateManager.StateObserver;
+import com.yahoo.omid.tso.TSOStateManager.TSOState;
 
-public class RequestProcessorImpl
-    implements EventHandler<RequestProcessorImpl.RequestEvent>, RequestProcessor
+public class RequestProcessorImpl implements StateObserver,
+                                             EventHandler<RequestProcessorImpl.RequestEvent>,
+                                             RequestProcessor
+
 {
     private static final Logger LOG = LoggerFactory.getLogger(RequestProcessorImpl.class);
 
@@ -34,15 +38,19 @@ public class RequestProcessorImpl
     private final PersistenceProcessor persistProc;
     private final RingBuffer<RequestEvent> requestRing;
     private long lowWatermark = -1L;
-    private volatile long epoch = -1L;
+    private long epoch = -1L;
 
     @Inject
     RequestProcessorImpl(MetricsRegistry metrics,
+                         TSOStateManager stateManager,
                          TimestampOracle timestampOracle,
                          PersistenceProcessor persistProc,
                          Panicker panicker,
                          TSOServerConfig config) throws IOException
     {
+
+        // Register this component to receive state changes
+        stateManager.register(this);
 
         this.persistProc = persistProc;
         this.timestampOracle = timestampOracle;
@@ -65,22 +73,19 @@ public class RequestProcessorImpl
         // Each processor runs on a separate thread
         requestExec.submit(requestProcessor);
 
-        resetState();
     }
 
+    /**
+     * This should be called when the TSO gets initialized or gets leadership
+     */
     @Override
-    public long epoch() {
-        return epoch;
-    }
-
-    @Override
-    public void resetState() throws IOException {
-        hashmap.reset();
-        timestampOracle.initialize();
-        this.lowWatermark = timestampOracle.getLast();
+    public void update(TSOState state) throws IOException {
+        LOG.info("Reseting RequestProcessor...");
+        this.lowWatermark = state.getLowWatermark();
         persistProc.persistLowWatermark(lowWatermark);
-        // The LowWatermark is used as the TSO epoch in this impl.
-        this.epoch = lowWatermark;
+        this.epoch = state.getEpoch();
+        hashmap.reset();
+        LOG.info("RequestProcessor initialized with LWM {} and Epoch {}", lowWatermark, epoch);
     }
 
     @Override

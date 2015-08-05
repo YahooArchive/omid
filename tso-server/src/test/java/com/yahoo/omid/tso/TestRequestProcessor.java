@@ -16,6 +16,7 @@ import org.jboss.netty.channel.Channel;
 import org.mockito.ArgumentCaptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.Lists;
@@ -26,12 +27,43 @@ public class TestRequestProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestRequestProcessor.class);
 
+    private PersistenceProcessor persist;
+
+    private TSOStateManager stateManager;
+
+    // Request processor under test
+    private RequestProcessor requestProc;
+
+    @BeforeMethod
+    public void beforeMethod() throws Exception {
+
+        // Build the required scaffolding for the test
+        MetricsRegistry metrics = new NullMetricsProvider();
+
+        TimestampOracleImpl timestampOracle = new TimestampOracleImpl(metrics,
+                new TimestampOracleImpl.InMemoryTimestampStorage(), new MockPanicker());
+
+        stateManager = new TSOStateManagerImpl(timestampOracle);
+
+        persist = mock(PersistenceProcessor.class);
+
+        TSOServerConfig config = new TSOServerConfig();
+        config.setMaxItems(1000);
+
+        requestProc = new RequestProcessorImpl(metrics,
+                                               stateManager,
+                                               timestampOracle,
+                                               persist,
+                                               new MockPanicker(),
+                                               config);
+
+        // Initialize the state for the experiment
+        stateManager.reset();
+    }
+
     @Test(timeOut = 30000)
     public void testTimestamp() throws Exception {
-        PersistenceProcessor persist = mock(PersistenceProcessor.class);
-        RequestProcessor proc = buildRequestProcessor(persist);
-
-        proc.timestampRequest(null);
+        requestProc.timestampRequest(null);
         ArgumentCaptor<Long> firstTScapture = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(1)).persistTimestamp(
                 firstTScapture.capture(), any(Channel.class));
@@ -39,27 +71,25 @@ public class TestRequestProcessor {
         long firstTS = firstTScapture.getValue();
         // verify that timestamps increase monotonically
         for (int i = 0; i < 100; i++) {
-            proc.timestampRequest(null);
+            requestProc.timestampRequest(null);
             verify(persist, timeout(100).times(1)).persistTimestamp(eq(firstTS++), any(Channel.class));
         }
     }
 
     @Test(timeOut = 30000)
     public void testCommit() throws Exception {
-        List<Long> writeSet = Lists.newArrayList(1L, 20L, 203L);
-        PersistenceProcessor persist = mock(PersistenceProcessor.class);
-        RequestProcessor proc = buildRequestProcessor(persist);
 
-        proc.timestampRequest(null);
+        requestProc.timestampRequest(null);
         ArgumentCaptor<Long> TScapture = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(1)).persistTimestamp(
                 TScapture.capture(), any(Channel.class));
         long firstTS = TScapture.getValue();
 
-        proc.commitRequest(firstTS - 1, writeSet, false, null);
+        List<Long> writeSet = Lists.newArrayList(1L, 20L, 203L);
+        requestProc.commitRequest(firstTS - 1, writeSet, false, null);
         verify(persist, timeout(100).times(1)).persistAbort(eq(firstTS - 1), anyBoolean(), any(Channel.class));
 
-        proc.commitRequest(firstTS, writeSet, false, null);
+        requestProc.commitRequest(firstTS, writeSet, false, null);
         ArgumentCaptor<Long> commitTScapture = ArgumentCaptor.forClass(Long.class);
 
         verify(persist, timeout(100).times(1)).persistCommit(eq(firstTS), commitTScapture.capture(),
@@ -67,22 +97,22 @@ public class TestRequestProcessor {
         assertTrue("Commit TS must be greater than start TS", commitTScapture.getValue() > firstTS);
 
         // test conflict
-        proc.timestampRequest(null);
+        requestProc.timestampRequest(null);
         TScapture = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(2)).persistTimestamp(
                 TScapture.capture(), any(Channel.class));
         long secondTS = TScapture.getValue();
 
-        proc.timestampRequest(null);
+        requestProc.timestampRequest(null);
         TScapture = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(3)).persistTimestamp(
                 TScapture.capture(), any(Channel.class));
         long thirdTS = TScapture.getValue();
 
-        proc.commitRequest(thirdTS, writeSet, false, null);
+        requestProc.commitRequest(thirdTS, writeSet, false, null);
         verify(persist, timeout(100).times(1)).persistCommit(eq(thirdTS), anyLong(),
                                                              any(Channel.class));
-        proc.commitRequest(secondTS, writeSet, false, null);
+        requestProc.commitRequest(secondTS, writeSet, false, null);
         verify(persist, timeout(100).times(1)).persistAbort(eq(secondTS), anyBoolean(),
                                                             any(Channel.class));
     }
@@ -91,9 +121,6 @@ public class TestRequestProcessor {
     public void testCommitRequestAbortsWhenResettingRequestProcessorState() throws Exception {
 
         List<Long> writeSet = Collections.<Long> emptyList();
-        PersistenceProcessor persist = mock(PersistenceProcessor.class);
-
-        RequestProcessor requestProc = buildRequestProcessor(persist);
 
         // Start a transaction...
         requestProc.timestampRequest(null);
@@ -104,22 +131,13 @@ public class TestRequestProcessor {
 
         // ... simulate the reset of the RequestProcessor state (e.g. due to
         // a change in mastership) and...
-        requestProc.resetState();
+        stateManager.reset();
 
         // ...check that the transaction is aborted when trying to commit
         requestProc.commitRequest(startTS, writeSet, false, null);
         verify(persist, timeout(100).times(1)).persistAbort(eq(startTS), anyBoolean(),
                                                             any(Channel.class));
 
-    }
-
-    private RequestProcessor buildRequestProcessor(PersistenceProcessor persist) throws Exception {
-        MetricsRegistry metrics = new NullMetricsProvider();
-        TimestampOracleImpl timestampOracle = new TimestampOracleImpl(metrics,
-                new TimestampOracleImpl.InMemoryTimestampStorage(), new MockPanicker());
-        TSOServerConfig config = new TSOServerConfig();
-        config.setMaxItems(1000);
-        return new RequestProcessorImpl(metrics, timestampOracle, persist, new MockPanicker(), config);
     }
 
 }

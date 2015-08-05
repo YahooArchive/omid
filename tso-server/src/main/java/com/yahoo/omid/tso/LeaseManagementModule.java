@@ -2,7 +2,7 @@ package com.yahoo.omid.tso;
 
 import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
 
-import java.util.concurrent.TimeUnit;
+import java.io.IOException;
 
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -17,7 +17,7 @@ import com.yahoo.omid.tso.LeaseManagement.LeaseManagementException;
 
 public class LeaseManagementModule extends AbstractModule {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ZKModule.class);
+    private static final Logger LOG = LoggerFactory.getLogger(LeaseManagementModule.class);
 
     private final TSOServerCommandLineConfig config;
 
@@ -27,36 +27,27 @@ public class LeaseManagementModule extends AbstractModule {
 
     @Override
     protected void configure() {
-
     }
 
     @Provides
     @Singleton
     LeaseManagement provideLeaseManager(@Named(TSO_HOST_AND_PORT_KEY) String tsoHostAndPort,
-                                                                   RequestProcessor requestProcessor,
+                                                                   TSOStateManager stateManager,
                                                                    CuratorFramework zkClient)
     throws LeaseManagementException {
 
         if (config.shouldHostAndPortBePublishedInZK) {
-            try {
-                LOG.info("Connecting to ZK cluster [{}]", zkClient.getState());
-                zkClient.start();
-                if (zkClient.blockUntilConnected(10, TimeUnit.SECONDS)) {
-                    LOG.info("Connection to ZK cluster [{}]", zkClient.getState());
-                    return new LeaseManager(tsoHostAndPort,
-                                            requestProcessor,
-                                            config.getLeasePeriodInMs(),
-                                            zkClient);
-                } else {
-                    throw new LeaseManagementException(
-                            "Error creating LeaseManager. Can't contact ZK after 10 seconds");
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new LeaseManagementException("Interrupted whilst creating LeaseManager");
-            }
+            LOG.info("Connection to ZK cluster [{}]", zkClient.getState());
+            return new LeaseManager(tsoHostAndPort,
+                                    stateManager,
+                                    config.getLeasePeriodInMs(),
+                                    zkClient);
         } else {
-            return new NonHALeaseManager();
+            try {
+                return new NonHALeaseManager(stateManager);
+            } catch (IOException e) {
+                throw new LeaseManagementException("Error creating LeaseManager", e);
+            }
         }
 
     }

@@ -28,8 +28,6 @@ public class ZKTimestampStorage implements TimestampStorage {
     @Inject
     public ZKTimestampStorage(CuratorFramework zkClient) throws Exception {
         this.zkClient = zkClient;
-        zkClient.start();
-        zkClient.blockUntilConnected();
         LOG.info("ZK Client state {}", zkClient.getState());
         timestamp = new DistributedAtomicLong(zkClient, TIMESTAMP_ZNODE, new RetryNTimes(3, 1000)); // TODO Configure
                                                                                                     // this?

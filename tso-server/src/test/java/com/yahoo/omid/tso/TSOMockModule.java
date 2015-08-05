@@ -25,6 +25,8 @@ public class TSOMockModule extends AbstractModule {
     @Override
     protected void configure() {
 
+        bind(TSOStateManager.class).to(TSOStateManagerImpl.class).in(Singleton.class);
+
         bind(CommitTable.class).to(InMemoryCommitTable.class).in(Singleton.class);
         bind(TimestampStorage.class).to(InMemoryTimestampStorage.class).in(Singleton.class);
         bind(TimestampOracle.class).to(PausableTimestampOracle.class).in(Singleton.class);

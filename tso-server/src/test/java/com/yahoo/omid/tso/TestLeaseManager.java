@@ -2,11 +2,11 @@ package com.yahoo.omid.tso;
 
 import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
 import static com.yahoo.omid.tsoclient.TSOClient.DEFAULT_ZK_CLUSTER;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
 import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
@@ -21,11 +21,14 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import com.google.common.base.Charsets;
+import com.yahoo.omid.tso.TSOStateManager.TSOState;
 
 public class TestLeaseManager {
 
     private static final long DUMMY_EPOCH_1 = 1L;
     private static final long DUMMY_EPOCH_2 = 2L;
+    private static final long DUMMY_LOW_WATERMARK_1 = DUMMY_EPOCH_1;
+    private static final long DUMMY_LOW_WATERMARK_2 = DUMMY_EPOCH_2;
 
     private static final String LEASE_MGR_ID_1 = "LM1";
     private static final String LEASE_MGR_ID_2 = "LM2";
@@ -72,12 +75,11 @@ public class TestLeaseManager {
         final String TEST_TSO_LEASE_PATH = "/test1_tsolease";
         final String TEST_CURRENT_TSO_PATH = "/test1_currenttso";
 
-        RequestProcessor requestProcessor1 = mock(RequestProcessor.class);
-        when(requestProcessor1.epoch()).thenReturn(DUMMY_EPOCH_1);
-
         // Launch the instance under test...
+        TSOStateManager stateManager1 = mock(TSOStateManager.class);
+        when(stateManager1.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
         leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
-                                                 requestProcessor1,
+                                                 stateManager1,
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,
@@ -122,10 +124,10 @@ public class TestLeaseManager {
         final String TEST_CURRENT_TSO_PATH = "/test2_currenttso";
 
         // Launch the master instance...
-        RequestProcessor requestProcessor1 = mock(RequestProcessor.class);
-        when(requestProcessor1.epoch()).thenReturn(DUMMY_EPOCH_1);
+        TSOStateManager stateManager1 = mock(TSOStateManager.class);
+        when(stateManager1.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
         leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
-                                                 requestProcessor1,
+                                                 stateManager1,
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,
@@ -142,10 +144,10 @@ public class TestLeaseManager {
         assertTrue(leaseManager1.stillInLeasePeriod());
 
         // Then launch another instance...
-        RequestProcessor requestProcessor2 = mock(RequestProcessor.class);
-        when(requestProcessor2.epoch()).thenReturn(DUMMY_EPOCH_2);
+        TSOStateManager stateManager2 = mock(TSOStateManager.class);
+        when(stateManager2.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_2, DUMMY_EPOCH_2));
         leaseManager2 = new PausableLeaseManager(LEASE_MGR_ID_2,
-                                                 requestProcessor2,
+                                                 stateManager2,
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,
@@ -169,10 +171,10 @@ public class TestLeaseManager {
         final String TEST_CURRENT_TSO_PATH = "/test3_currenttso";
 
         // Launch the master instance...
-        RequestProcessor requestProcessor1 = mock(RequestProcessor.class);
-        when(requestProcessor1.epoch()).thenReturn(DUMMY_EPOCH_1);
+        TSOStateManager stateManager1 = mock(TSOStateManager.class);
+        when(stateManager1.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
         leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
-                                                 requestProcessor1,
+                                                 stateManager1,
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,
@@ -189,10 +191,10 @@ public class TestLeaseManager {
         assertTrue(leaseManager1.stillInLeasePeriod());
 
         // Then launch another instance...
-        RequestProcessor requestProcessor2 = mock(RequestProcessor.class);
-        when(requestProcessor2.epoch()).thenReturn(DUMMY_EPOCH_2);
+        TSOStateManager stateManager2 = mock(TSOStateManager.class);
+        when(stateManager2.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_2, DUMMY_EPOCH_2));
         leaseManager2 = new PausableLeaseManager(LEASE_MGR_ID_2,
-                                                 requestProcessor2,
+                                                 stateManager2,
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,
@@ -252,7 +254,7 @@ public class TestLeaseManager {
     public void testNonHALeaseManager() throws Exception {
 
         // Launch the instance...
-        NonHALeaseManager leaseManager = new NonHALeaseManager();
+        NonHALeaseManager leaseManager = new NonHALeaseManager(mock(TSOStateManager.class));
 
         leaseManager.startService();
         assertTrue(leaseManager.stillInLeasePeriod());

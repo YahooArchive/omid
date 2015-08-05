@@ -160,7 +160,7 @@ public class TestTSOClientConnectionToTSO {
         TestUtils.waitForSocketListening(TSO_HOST, TSO_PORT, 100);
         LOG.info("Finished loading TSO");
 
-        Thread.sleep(config.getLeasePeriodInMs()); // Allow the TSO to register
+        Thread.sleep(1500); // Allow the TSO to register
 
         // When a ZK node for TSOServer is found we should get a connection
         TSOClient tsoClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
@@ -193,7 +193,7 @@ public class TestTSOClientConnectionToTSO {
         TestUtils.waitForSocketListening(TSO_HOST, TSO_PORT, 100);
         LOG.info("Finished loading TSO");
 
-        Thread.sleep(tsoConfig.getLeasePeriodInMs()); // Allow the TSO to register
+        Thread.sleep(1500); // Allow the TSO to register
 
         // Then create the TSO Client under test...
         Configuration clientConf = new BaseConfiguration();
