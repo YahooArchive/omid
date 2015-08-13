@@ -3,6 +3,7 @@ package com.yahoo.omid.tso;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import javax.inject.Inject;
 
@@ -19,6 +20,7 @@ import com.lmax.disruptor.YieldingWaitStrategy;
 import org.jboss.netty.channel.Channel;
 
 import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
 import com.yahoo.omid.metrics.MetricsRegistry;
 
 import static com.codahale.metrics.MetricRegistry.name;
@@ -97,11 +99,19 @@ class RetryProcessorImpl
         final long startTimestamp = event.getStartTimestamp();
 
         try {
-            Optional<Long> commitTimestamp = commitTableClient.getCommitTimestamp(startTimestamp).get();
-            if(!commitTimestamp.isPresent()) {
-                replyProc.abortResponse(startTimestamp, event.getChannel());
+            Optional<CommitTimestamp> commitTimestamp = commitTableClient.getCommitTimestamp(startTimestamp).get();
+            if(commitTimestamp.isPresent()) {
+                if (commitTimestamp.get().isValid()) {
+                    LOG.trace("Valid commit TS found in Commit Table");
+                    replyProc.commitResponse(false, startTimestamp, commitTimestamp.get().getValue(),
+                            event.getChannel());
+                } else {
+                    LOG.trace("Invalid commit TS found in Commit Table");
+                    replyProc.abortResponse(startTimestamp, event.getChannel());
+                }
             } else {
-                replyProc.commitResponse(false, startTimestamp, commitTimestamp.get(), event.getChannel());
+                LOG.trace("No commit TS found in Commit Table");
+                replyProc.abortResponse(startTimestamp, event.getChannel());
             }
         } catch (InterruptedException e) {
             LOG.error("Interrupted reading from commit table");

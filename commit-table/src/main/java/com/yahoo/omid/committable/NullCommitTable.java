@@ -51,7 +51,7 @@ public class NullCommitTable implements CommitTable {
 
     public static class Client implements CommitTable.Client {
         @Override
-        public ListenableFuture<Optional<Long>> getCommitTimestamp(long startTimestamp) {
+        public ListenableFuture<Optional<CommitTimestamp>> getCommitTimestamp(long startTimestamp) {
             throw new UnsupportedOperationException();
         }
 

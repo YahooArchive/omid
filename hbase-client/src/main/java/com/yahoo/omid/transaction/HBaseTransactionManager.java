@@ -19,6 +19,7 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Optional;
 import com.google.common.collect.Maps;
 import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
 import com.yahoo.omid.tsoclient.CellId;

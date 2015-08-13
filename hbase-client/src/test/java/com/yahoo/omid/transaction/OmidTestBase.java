@@ -29,6 +29,7 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.hbase.CreateTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 
@@ -106,6 +107,13 @@ public class OmidTestBase {
                 .withConfiguration(hbaseConf)
                 .withCommitTableClient(tso.getCommitTable().getClient().get())
                 .withTSOClient(tsoClient).build();
+    }
+
+    protected TransactionManager newTransactionManager(CommitTable.Client commitTableClient) throws Exception {
+        return HBaseTransactionManager.newBuilder()
+                .withConfiguration(hbaseConf)
+                .withCommitTableClient(commitTableClient)
+                .withTSOClient(tso.getClient()).build();
     }
 
     @AfterClass

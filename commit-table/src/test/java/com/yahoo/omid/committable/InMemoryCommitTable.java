@@ -3,6 +3,7 @@ package com.yahoo.omid.committable;
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -58,13 +59,18 @@ public class InMemoryCommitTable implements CommitTable {
 
     public class Client implements CommitTable.Client {
         @Override
-        public ListenableFuture<Optional<Long>> getCommitTimestamp(long startTimestamp) {
-            SettableFuture<Optional<Long>> f = SettableFuture.<Optional<Long>> create();
+        public ListenableFuture<Optional<CommitTimestamp>> getCommitTimestamp(long startTimestamp) {
+            SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>> create();
             Long result = table.get(startTimestamp);
             if (result == null) {
-                f.set(Optional.<Long> absent());
+                f.set(Optional.<CommitTimestamp> absent());
             } else {
-                f.set(Optional.of(result));
+                if (result == INVALID_TRANSACTION_MARKER) {
+                    f.set(Optional.<CommitTimestamp> of(new CommitTimestamp(Location.COMMIT_TABLE,
+                            INVALID_TRANSACTION_MARKER, false)));
+                } else {
+                    f.set(Optional.<CommitTimestamp> of(new CommitTimestamp(Location.COMMIT_TABLE, result, true)));
+                }
             }
             return f;
         }

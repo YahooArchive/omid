@@ -26,7 +26,15 @@ public interface CommitTable {
     }
 
     public interface Client extends Closeable {
-        ListenableFuture<Optional<Long>> getCommitTimestamp(long startTimestamp);
+        /**
+         * Checks whether a transaction commit data is inside the commit table
+         * The function also checks whether the transaction was invalidated and returns
+         * a commit timestamp type accordingly.
+         * @param startTimestamp
+         *            the transaction start timestamp
+         * @return Optional<CommitTimestamp> that represents a valid, invalid, or no timestamp.
+         */
+        ListenableFuture<Optional<CommitTimestamp>> getCommitTimestamp(long startTimestamp);
         ListenableFuture<Long> readLowWatermark();
         ListenableFuture<Void> completeTransaction(long startTimestamp);
         /**
@@ -38,4 +46,47 @@ public interface CommitTable {
          */
         ListenableFuture<Boolean> tryInvalidateTransaction(long startTimeStamp);
     }
+
+    // ************************************************************************
+    // Helper classes
+    // ************************************************************************
+
+    public static class CommitTimestamp {
+
+        public enum Location {
+            NOT_PRESENT, CACHE, COMMIT_TABLE, SHADOW_CELL
+        }
+
+        private final Location location;
+        private final long value;
+        private final boolean isValid;
+
+        public CommitTimestamp(Location location, long value, boolean isValid) {
+            this.location = location;
+            this.value = value;
+            this.isValid = isValid;
+        }
+
+        public Location getLocation() {
+            return location;
+        }
+
+        public long getValue() {
+            return value;
+        }
+
+        public boolean isValid() {
+            return isValid;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("Is valid=%s, Location=%s, Value=%d)",
+                                 isValid,
+                                 location,
+                                 value);
+        }
+
+    }
+
 }

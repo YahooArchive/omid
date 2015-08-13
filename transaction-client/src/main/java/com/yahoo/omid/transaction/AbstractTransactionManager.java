@@ -1,17 +1,19 @@
 package com.yahoo.omid.transaction;
 
+import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.CACHE;
+import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.COMMIT_TABLE;
+import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.NOT_PRESENT;
+import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.SHADOW_CELL;
+
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
 import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.transaction.AbstractTransactionManager.CommitTimestamp.Location;
-import com.yahoo.omid.transaction.RollbackException;
-import com.yahoo.omid.transaction.TransactionException;
+import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
 import com.yahoo.omid.transaction.Transaction.Status;
 import com.yahoo.omid.tsoclient.CellId;
 import com.yahoo.omid.tsoclient.TSOClient;
@@ -31,57 +33,6 @@ import com.yahoo.omid.tsoclient.TSOClient.AbortException;
 public abstract class AbstractTransactionManager implements TransactionManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractTransactionManager.class);
-
-    abstract static class CommitTimestamp {
-
-        public enum Location {
-            NOT_PRESENT, CACHE, COMMIT_TABLE, SHADOW_CELL
-        }
-
-        private final Location location;
-        private final long value;
-        private final boolean isValid;
-
-        public CommitTimestamp(Location location, long value, boolean isValid) {
-            this.location = location;
-            this.value = value;
-            this.isValid = isValid;
-        }
-
-        public Location getLocation() {
-            return location;
-        }
-
-        public long getValue() {
-            return value;
-        }
-
-        public boolean isValid() {
-            return isValid;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("Is valid=%s, Location=%s, Value=%d)",
-                                 isValid,
-                                 location,
-                                 value);
-        }
-    }
-
-    class ValidCommitTimestamp extends CommitTimestamp {
-
-        public ValidCommitTimestamp(Location location, long value) {
-            super(location, value, true);
-        }
-    }
-
-    class InvalidCommitTimestamp extends CommitTimestamp {
-
-        public InvalidCommitTimestamp() {
-            super(Location.NOT_PRESENT, CommitTable.INVALID_TRANSACTION_MARKER, false);
-        }
-    }
 
     public interface TransactionFactory<T extends CellId> {
 
@@ -314,35 +265,6 @@ public abstract class AbstractTransactionManager implements TransactionManager {
     public void postRollback(AbstractTransaction<? extends CellId> transaction)
             throws TransactionManagerException {};
 
-
-    /**
-     * Check whether a transaction commit data is inside the commit table
-     * The function also checks whether the transaction was invalidated and returns
-     * a commit time stamp accordingly.
-     * @param cellStartTimestamp
-     *            the transaction start timestamp
-     * @return Optional<CommitTimestamp> that represents a valid, invalid, or no timestamp.
-     * @throws InterruptedException, ExecutionException
-     */
-    Optional<CommitTimestamp> readCommitTimestampFromCommitTable(long cellStartTimestamp)
-             throws InterruptedException, ExecutionException {
-        Optional<CommitTimestamp> commitTS = Optional.absent();
-
-        Future<Optional<Long>> f =
-                commitTableClient.getCommitTimestamp(cellStartTimestamp);
-        Optional<Long> commitTimestamp = f.get();
-
-        if (commitTimestamp.isPresent()) {
-            if (commitTimestamp.get() == CommitTable.INVALID_TRANSACTION_MARKER) {
-                commitTS =  Optional.of((CommitTimestamp) new InvalidCommitTimestamp());
-            } else {
-                commitTS = Optional.of((CommitTimestamp) new ValidCommitTimestamp(Location.COMMIT_TABLE, commitTimestamp.get()));
-            }
-        }
-
-        return commitTS;
-    }
-
     /**
      * Check if the transaction commit data is in the shadow cell
      * @param cellStartTimestamp
@@ -359,7 +281,8 @@ public abstract class AbstractTransactionManager implements TransactionManager {
         Optional<Long> commitTimestamp =
                 locator.readCommitTimestampFromShadowCell(cellStartTimestamp);
         if (commitTimestamp.isPresent()) {
-            commitTS = Optional.of((CommitTimestamp) new ValidCommitTimestamp(Location.SHADOW_CELL, commitTimestamp.get()));
+            commitTS = Optional.of(// Valid commit Timestamp
+                    new CommitTimestamp(SHADOW_CELL, commitTimestamp.get(), true));
         }
 
         return commitTS;
@@ -389,15 +312,16 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             // 1) First check the cache
             Optional<Long> commitTimestamp =
                     locator.readCommitTimestampFromCache(cellStartTimestamp);
-            if (commitTimestamp.isPresent()) {
-                return new ValidCommitTimestamp(Location.CACHE, commitTimestamp.get());
+            if (commitTimestamp.isPresent()) { // Valid commit timestamp
+                return new CommitTimestamp(CACHE, commitTimestamp.get(), true);
             }
 
             // 2) Then check the commit table
             // If the data was written at a previous epoch,
             // check whether the transaction was invalidated
 
-            Optional<CommitTimestamp> commitTimeStamp = readCommitTimestampFromCommitTable(cellStartTimestamp);
+            Optional<CommitTimestamp> commitTimeStamp =
+                    commitTableClient.getCommitTimestamp(cellStartTimestamp).get();
             if (commitTimeStamp.isPresent()) {
                 return commitTimeStamp.get();
             }
@@ -414,15 +338,15 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             // if the data was written by a transaction from a previous epoch (previous TSO)
             if (cellStartTimestamp < epoch) {
                 boolean invalidated = commitTableClient.tryInvalidateTransaction(cellStartTimestamp).get();
-                if (invalidated) {
-                    return new InvalidCommitTimestamp();
+                if (invalidated) { // Invalid commit timestamp
+                    return new CommitTimestamp(COMMIT_TABLE, CommitTable.INVALID_TRANSACTION_MARKER, false);
                 }
             }
 
             // 5) We did not manage to invalidate the transactions then
             // check the commit table
             // TODO: Maybe this step is not necessary. Check in a future commit
-            commitTimeStamp = readCommitTimestampFromCommitTable(cellStartTimestamp);
+            commitTimeStamp = commitTableClient.getCommitTimestamp(cellStartTimestamp).get();
             if (commitTimeStamp.isPresent()) {
                 return commitTimeStamp.get();
             }
@@ -435,7 +359,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             }
 
             // *) Otherwise return not found
-            return new ValidCommitTimestamp(Location.NOT_PRESENT, -1L /** TODO Check if we should return this */);
+            return new CommitTimestamp(NOT_PRESENT, -1L /** TODO Check if we should return this */, true);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("Interrupted while finding commit timestamp", e);

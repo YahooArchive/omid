@@ -31,6 +31,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.CodedInputStream;
 import com.google.protobuf.CodedOutputStream;
 import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location;
 
 public class HBaseCommitTable implements CommitTable {
 
@@ -143,9 +144,9 @@ public class HBaseCommitTable implements CommitTable {
         }
 
         @Override
-        public ListenableFuture<Optional<Long>> getCommitTimestamp(long startTimestamp) {
+        public ListenableFuture<Optional<CommitTimestamp>> getCommitTimestamp(long startTimestamp) {
 
-            SettableFuture<Optional<Long>> f = SettableFuture.<Optional<Long>>create();
+            SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>> create();
             try {
                 Get get = new Get(startTimestampToKey(startTimestamp));
                 get.addColumn(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER);
@@ -154,19 +155,20 @@ public class HBaseCommitTable implements CommitTable {
                 Result result = table.get(get);
 
                 if (containsInvalidTransaction(result)) {
-                    Optional<Long> invalid = Optional.of(INVALID_TRANSACTION_MARKER);
-                    f.set(invalid);
+                    CommitTimestamp invalidCT =
+                            new CommitTimestamp(Location.COMMIT_TABLE, INVALID_TRANSACTION_MARKER, false);
+                    f.set(Optional.of(invalidCT));
                     return f;
                 }
 
                 if (containsATimestamp(result)) {
-                    long commitTs = decodeCommitTimestamp(startTimestamp,
+                    long commitTSValue = decodeCommitTimestamp(startTimestamp,
                             result.getValue(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER));
-                    Optional<Long> commitTsValue = Optional.of(commitTs);
-                    f.set(commitTsValue);
+                    CommitTimestamp validCT =
+                            new CommitTimestamp(Location.COMMIT_TABLE, commitTSValue, true);
+                    f.set(Optional.of(validCT));
                 } else {
-                    Optional<Long> absentValue = Optional.absent();
-                    f.set(absentValue);
+                    f.set(Optional.<CommitTimestamp> absent());
                 }
             } catch (IOException e) {
                 LOG.error("Error getting commit timestamp for TX {}", startTimestamp, e);

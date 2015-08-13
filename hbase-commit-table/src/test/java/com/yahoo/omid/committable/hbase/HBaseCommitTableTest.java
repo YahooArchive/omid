@@ -36,6 +36,7 @@ import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.Client;
+import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
 import com.yahoo.omid.committable.CommitTable.Writer;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable.HBaseClient;
 
@@ -151,10 +152,11 @@ public class HBaseCommitTableTest {
 
         // Test the we get the right commit timestamps for each previously inserted tx
         for (long i = 0; i < 1000; i++) {
-            ListenableFuture<Optional<Long>> ctf = client.getCommitTimestamp(i);
-            Optional<Long> optional = ctf.get();
-            Long ct = optional.get();
-            assertEquals("Commit timestamp should be " + (i + 1), (i + 1), (long) ct);
+            Optional<CommitTimestamp> commitTimestamp = client.getCommitTimestamp(i).get();
+            assertTrue(commitTimestamp.isPresent());
+            assertTrue(commitTimestamp.get().isValid());
+            long ct = commitTimestamp.get().getValue();
+            assertEquals("Commit timestamp should be " + (i + 1), (i + 1), ct);
         }
         assertEquals("Rows should be 1000!", 1000, rowCount(TABLE_NAME, COMMIT_TABLE_FAMILY));
 
@@ -167,9 +169,8 @@ public class HBaseCommitTableTest {
         assertEquals("Rows should be 0!", 0, rowCount(TABLE_NAME, COMMIT_TABLE_FAMILY));
 
         // Test we don't get a commit timestamp for a non-existent transaction id in the table
-        ListenableFuture<Optional<Long>> ctf = client.getCommitTimestamp(0);
-        Optional<Long> optional = ctf.get();
-        assertFalse("Commit timestamp should not be present", optional.isPresent());
+        Optional<CommitTimestamp> commitTimestamp = client.getCommitTimestamp(0).get();
+        assertFalse("Commit timestamp should not be present", commitTimestamp.isPresent());
 
         // Test that the first time, the low watermark family in table is empty
         assertEquals("Rows should be 0!", 0, rowCount(TABLE_NAME, LOW_WATERMARK_FAMILY));
@@ -216,31 +217,40 @@ public class HBaseCommitTableTest {
         // Test that a transaction can be added properly to the commit table
         writer.addCommittedTransaction(TX1_ST, TX1_CT);
         writer.flush().get();
-        ListenableFuture<Optional<Long>> ctf = client.getCommitTimestamp(TX1_ST);
-        long ct = ctf.get().get();
+        Optional<CommitTimestamp> commitTimestamp = client.getCommitTimestamp(TX1_ST).get();
+        assertTrue(commitTimestamp.isPresent());
+        assertTrue(commitTimestamp.get().isValid());
+        long ct = commitTimestamp.get().getValue();
         assertEquals("Commit timestamp should be " + TX1_CT, TX1_CT, ct);
 
         // Test that a committed transaction cannot be invalidated and
         // preserves its commit timestamp after that
         boolean wasInvalidated = client.tryInvalidateTransaction(TX1_ST).get();
         assertFalse("Transaction should not be invalidated", wasInvalidated);
-        ctf = client.getCommitTimestamp(TX1_ST);
-        ct = ctf.get().get();
+
+        commitTimestamp = client.getCommitTimestamp(TX1_ST).get();
+        assertTrue(commitTimestamp.isPresent());
+        assertTrue(commitTimestamp.get().isValid());
+        ct = commitTimestamp.get().getValue();
         assertEquals("Commit timestamp should be " + TX1_CT, TX1_CT, ct);
 
         // Test that a non-committed transaction can be invalidated...
         wasInvalidated = client.tryInvalidateTransaction(TX2_ST).get();
         assertTrue("Transaction should be invalidated", wasInvalidated);
-        ctf = client.getCommitTimestamp(TX2_ST);
-        ct = ctf.get().get();
+        commitTimestamp = client.getCommitTimestamp(TX2_ST).get();
+        assertTrue(commitTimestamp.isPresent());
+        assertFalse(commitTimestamp.get().isValid());
+        ct = commitTimestamp.get().getValue();
         assertEquals("Commit timestamp should be " + CommitTable.INVALID_TRANSACTION_MARKER,
                      CommitTable.INVALID_TRANSACTION_MARKER, ct);
         // ...and that if it has been already invalidated, it remains
         // invalidated when someone tries to commit it
         writer.addCommittedTransaction(TX2_ST, TX2_CT);
         writer.flush().get();
-        ctf = client.getCommitTimestamp(TX2_ST);
-        ct = ctf.get().get();
+        commitTimestamp = client.getCommitTimestamp(TX2_ST).get();
+        assertTrue(commitTimestamp.isPresent());
+        assertFalse(commitTimestamp.get().isValid());
+        ct = commitTimestamp.get().getValue();
         assertEquals("Commit timestamp should be " + CommitTable.INVALID_TRANSACTION_MARKER,
                      CommitTable.INVALID_TRANSACTION_MARKER, ct);
 

@@ -1,5 +1,6 @@
 package com.yahoo.omid.transaction;
 
+import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.SHADOW_CELL;
 import static com.yahoo.omid.committable.hbase.HBaseCommitTable.HBASE_COMMIT_TABLE_NAME_KEY;
 
 import java.io.IOException;
@@ -40,6 +41,7 @@ import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.Client;
+import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
 import com.yahoo.omid.transaction.CellUtils.CellInfo;
@@ -200,8 +202,9 @@ public class OmidCompactor extends BaseRegionObserver {
                             if (shadowCellOp.isPresent()) {
                                 skipToNextColumn(cell, iter);
                             } else {
-                                Optional<Long> commitTimestamp = queryCommitTimestamp(cell);
-                                if (commitTimestamp.isPresent()) {
+                                Optional<CommitTimestamp> commitTimestamp = queryCommitTimestamp(cell);
+                                // Clean the cell only if it is valid
+                                if (commitTimestamp.isPresent() && commitTimestamp.get().isValid()) {
                                     skipToNextColumn(cell, iter);
                                 }
                             }
@@ -212,10 +215,10 @@ public class OmidCompactor extends BaseRegionObserver {
                     if (shadowCellOp.isPresent()) {
                         saveLastTimestampedCell(lastTimestampedCellsInRow, cell, shadowCellOp.get());
                     } else {
-                        Optional<Long> commitTimestamp = queryCommitTimestamp(cell);
-                        if (commitTimestamp.isPresent()) {
+                        Optional<CommitTimestamp> commitTimestamp = queryCommitTimestamp(cell);
+                        if (commitTimestamp.isPresent() && commitTimestamp.get().isValid()) {
                             // Build the missing shadow cell...
-                            byte[] shadowCellValue = Bytes.toBytes(commitTimestamp.get());
+                            byte[] shadowCellValue = Bytes.toBytes(commitTimestamp.get().getValue());
                             Cell shadowCell = CellUtils.buildShadowCellFromCell(cell, shadowCellValue);
                             saveLastTimestampedCell(lastTimestampedCellsInRow, cell, shadowCell);
                         } else {
@@ -285,29 +288,25 @@ public class OmidCompactor extends BaseRegionObserver {
             }
         }
 
-        private Optional<Long> queryCommitTimestamp(Cell cell) throws IOException {
-            Optional<Long> commitTimestamp = queryCommitTable(cell.getTimestamp());
-            if (commitTimestamp.isPresent()) {
-                return commitTimestamp;
-            } else {
-                Get g = new Get(CellUtil.cloneRow(cell));
-                byte[] family = CellUtil.cloneFamily(cell);
-                byte[] qualifier = CellUtils.addShadowCellSuffix(cell.getQualifierArray(),
-                                                                 cell.getQualifierOffset(),
-                                                                 cell.getQualifierLength());
-                g.addColumn(family, qualifier);
-                g.setTimeStamp(cell.getTimestamp());
-                Result r = hRegion.get(g);
-                if (r.containsColumn(family, qualifier)) {
-                    return Optional.of(Bytes.toLong(r.getValue(family, qualifier)));
-                }
-            }
-            return Optional.absent();
-        }
-
-        private Optional<Long> queryCommitTable(long startTimestamp) throws IOException {
+        private Optional<CommitTimestamp> queryCommitTimestamp(Cell cell) throws IOException {
             try {
-                return commitTableClient.getCommitTimestamp(startTimestamp).get();
+                Optional<CommitTimestamp> ct = commitTableClient.getCommitTimestamp(cell.getTimestamp()).get();
+                if (ct.isPresent()) {
+                    return Optional.of(ct.get());
+                } else {
+                    Get g = new Get(CellUtil.cloneRow(cell));
+                    byte[] family = CellUtil.cloneFamily(cell);
+                    byte[] qualifier = CellUtils.addShadowCellSuffix(cell.getQualifierArray(),
+                            cell.getQualifierOffset(),
+                            cell.getQualifierLength());
+                    g.addColumn(family, qualifier);
+                    g.setTimeStamp(cell.getTimestamp());
+                    Result r = hRegion.get(g);
+                    if (r.containsColumn(family, qualifier)) {
+                        return Optional.of(new CommitTimestamp(SHADOW_CELL,
+                                Bytes.toLong(r.getValue(family, qualifier)), true));
+                    }
+                }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new IOException("Interrupted while getting commit timestamp from commit table");
@@ -315,6 +314,7 @@ public class OmidCompactor extends BaseRegionObserver {
                 throw new IOException("Error getting commit timestamp from commit table", e);
             }
 
+            return Optional.absent();
         }
 
         private void retain(List<Cell> result,

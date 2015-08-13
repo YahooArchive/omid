@@ -20,7 +20,7 @@ public class TestCommitQuery extends TSOTestBase {
         AssertJUnit.assertTrue("Commit timestamp should be higher than start timestamp for the same tx",
                                commitTsForTx1 > startTsForTx1);
 
-        Long commitTs1InCommitTable = getCommitTableClient().getCommitTimestamp(startTsForTx1).get().get();
+        Long commitTs1InCommitTable = getCommitTableClient().getCommitTimestamp(startTsForTx1).get().get().getValue();
         AssertJUnit.assertNotNull("Tx is committed, should return as such from commit table", commitTs1InCommitTable);
         AssertJUnit.assertEquals("getCommitTimestamp() & commit() should report same commitTs value for same tx",
                                  (long) commitTs1InCommitTable, commitTsForTx1);

@@ -3,7 +3,10 @@ package com.yahoo.omid.transaction;
 import com.google.common.base.Charsets;
 import com.google.common.base.Optional;
 import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
+
 import java.util.Arrays;
+
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTableInterface;
@@ -15,6 +18,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
+
 import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertNull;
 import static org.testng.AssertJUnit.assertTrue;
@@ -70,9 +74,9 @@ public class TestShadowCellsUpgrade extends OmidTestBase {
         // ensure that transaction is no longer in commit table
         // the only place that should have the mapping is the shadow cells
         CommitTable.Client commitTableClient = getTSO().getCommitTable().getClient().get();
-        Optional<Long> ct1 = commitTableClient.getCommitTimestamp(t1.getStartTimestamp()).get();
-        Optional<Long> ct2 = commitTableClient.getCommitTimestamp(t2.getStartTimestamp()).get();
-        Optional<Long> ct3 = commitTableClient.getCommitTimestamp(t3.getStartTimestamp()).get();
+        Optional<CommitTimestamp> ct1 = commitTableClient.getCommitTimestamp(t1.getStartTimestamp()).get();
+        Optional<CommitTimestamp> ct2 = commitTableClient.getCommitTimestamp(t2.getStartTimestamp()).get();
+        Optional<CommitTimestamp> ct3 = commitTableClient.getCommitTimestamp(t3.getStartTimestamp()).get();
         assertFalse("Shouldn't exist in commit table", ct1.isPresent());
         assertFalse("Shouldn't exist in commit table", ct2.isPresent());
         assertFalse("Shouldn't exist in commit table", ct3.isPresent());

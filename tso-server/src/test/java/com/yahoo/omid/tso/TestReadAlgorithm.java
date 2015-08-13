@@ -26,9 +26,9 @@ import java.util.concurrent.ExecutionException;
 
 
 public class TestReadAlgorithm extends TSOTestBase {
-   
+
     @Test(timeOut=10000)
-    public void testReadAlgorithm() throws Exception {      
+    public void testReadAlgorithm() throws Exception {
         long tr1 = client.getNewStartTimestamp().get();
         long tr2 = client.getNewStartTimestamp().get();
         long tr3 = client.getNewStartTimestamp().get();
@@ -44,10 +44,9 @@ public class TestReadAlgorithm extends TSOTestBase {
 
         AssertJUnit.assertFalse("tr3 didn't commit",
                     getCommitTableClient().getCommitTimestamp(tr3).get().isPresent());
-        AssertJUnit.assertTrue("txn committed after start timestamp",
-                   (long) getCommitTableClient().getCommitTimestamp(tr1).get().get() > tr2);
-        AssertJUnit.assertTrue("txn committed before start timestamp",
-                   (long) getCommitTableClient().getCommitTimestamp(tr1).get().get() < tr4);
+        long commitTSTx1 = getCommitTableClient().getCommitTimestamp(tr1).get().get().getValue();
+        AssertJUnit.assertTrue("txn committed after start timestamp", commitTSTx1 > tr2);
+        AssertJUnit.assertTrue("txn committed before start timestamp", commitTSTx1 < tr4);
    }
-   
+
 }
