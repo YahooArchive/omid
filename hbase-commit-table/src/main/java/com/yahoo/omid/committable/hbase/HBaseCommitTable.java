@@ -241,6 +241,7 @@ public class HBaseCommitTable implements CommitTable {
                 // check the commit timestamp and right before the invalidation a commit
                 // timestamp is added and read by a transaction, then snapshot isolation
                 // might not be hold (due to the invalidation)
+                // TODO: Decide what we should we do if we can not contact the commit table. loop till succeed???
                 boolean result = table.checkAndPut(row, COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER, null, put);
                 f.set(result);
             } catch (IOException ioe) {

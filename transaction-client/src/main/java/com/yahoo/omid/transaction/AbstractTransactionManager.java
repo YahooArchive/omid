@@ -18,6 +18,9 @@ import com.yahoo.omid.transaction.Transaction.Status;
 import com.yahoo.omid.tsoclient.CellId;
 import com.yahoo.omid.tsoclient.TSOClient;
 import com.yahoo.omid.tsoclient.TSOClient.AbortException;
+import com.yahoo.omid.tsoclient.TSOClient.ConnectionException;
+import com.yahoo.omid.tsoclient.TSOClient.NewTSOException;
+import com.yahoo.omid.tsoclient.TSOClient.ServiceUnavailableException;
 
 /**
  * Omid's base abstract implementation of the
@@ -179,25 +182,70 @@ public abstract class AbstractTransactionManager implements TransactionManager {
                 throw new TransactionException(e.getMessage(), e);
             }
             long commitTs = tsoClient.commit(tx.getStartTimestamp(), tx.getWriteSet()).get();
-            tx.setStatus(Status.COMMITTED);
-            tx.setCommitTimestamp(commitTs);
-            try {
-                updateShadowCells(tx);
-                // Remove transaction from commit table if not failure occurred
-                commitTableClient.completeTransaction(tx.getStartTimestamp()).get();
-                postCommit(tx);
-            } catch (TransactionManagerException e) {
-                LOG.warn(e.getMessage());
-            }
+            completeCommittedTx(tx, commitTs, true);
         } catch (ExecutionException e) {
             if (e.getCause() instanceof AbortException) { // Conflicts detected, so rollback
-                // Make sure its commit timestamp is 0, so the cleanup does the right job
-                tx.setCommitTimestamp(0);
-                tx.setStatus(Status.ROLLEDBACK);
-                tx.cleanup();
+                rollback(tx);
                 throw new RollbackException("Conflicts detected in tx writeset. Transaction aborted.", e.getCause());
+            } else if (e.getCause() instanceof ServiceUnavailableException
+                       ||
+                       e.getCause() instanceof NewTSOException
+                       ||
+                       e.getCause() instanceof ConnectionException) {
+
+                try {
+                    LOG.warn("Can't contact the TSO for receiving outcome for Tx {}. Checking commit table...", tx);
+                    // Check the commit table to try to find if the target
+                    // TSO woke up in the meantime and put the commit
+                    // TODO: Decide what we should we do if we can not contact the commit table
+                    Optional<CommitTimestamp> commitTimestamp =
+                            commitTableClient.getCommitTimestamp(tx.getStartTimestamp()).get();
+                    if (commitTimestamp.isPresent()) {
+                        if (commitTimestamp.get().isValid()) {
+                            long commitTS = commitTimestamp.get().getValue();
+                            completeCommittedTx(tx, commitTS, false);
+                            LOG.warn("Valid commit TS found in Commit Table for Tx {} and was committed", tx);
+                        } else {
+                            rollback(tx);
+                            LOG.warn("Tx {} was found invalidated in Commit Table and was rolled back", tx);
+                            throw new RollbackException(tx + " rolled-back."
+                                                        + " Invalidated by another TX started in a new TSO",
+                                                        e.getCause());
+                        }
+                    } else {
+                        LOG.warn("Trying to invalidate Tx {} proactively", tx);
+                        boolean invalidated = commitTableClient.tryInvalidateTransaction(tx.getStartTimestamp()).get();
+                        if (invalidated) {
+                            rollback(tx);
+                            LOG.warn("Tx {} invalidated and rolled back", tx);
+                            throw new RollbackException(tx + " rolled-back preventively."
+                                                        + " Other TSO was detected.",
+                                                        e.getCause());
+                        } else {
+                            LOG.warn("Tx {} appeared committed in Commit Table and wasn't invalidated. "
+                                    + "Double checking Commit Table...", tx);
+                            // TODO: Decide what we should we do if we can not contact the commit table
+                            commitTimestamp = commitTableClient.getCommitTimestamp(tx.getStartTimestamp()).get();
+                            if (commitTimestamp.isPresent() && commitTimestamp.get().isValid()) {
+                                completeCommittedTx(tx, commitTimestamp.get().getValue(), false);
+                                LOG.warn("Valid commit TS found in Commit Table for Tx {} and was committedd", tx);
+                            } else {
+                                LOG.error("Can't determine the outcome of Tx {}", tx);
+                                throw new TransactionException("Cannot determite the outcome of " + tx);
+                            }
+                        }
+
+                    }
+                } catch (InterruptedException e1) {
+                    Thread.currentThread().interrupt();
+                    throw new TransactionException("Interrupted reading commit TS from Commit Table", e1);
+                } catch (ExecutionException e1) {
+                    throw new TransactionException("Could not commit. Interrupted reading commit TS from Commit Table",
+                            e1);
+                }
+            } else {
+                throw new TransactionException("Could not commit", e.getCause());
             }
-            throw new TransactionException("Could not commit", e.getCause());
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             throw new TransactionException("Interrupted committing transaction", ie);
@@ -406,6 +454,27 @@ public abstract class AbstractTransactionManager implements TransactionManager {
         } else {
             throw new IllegalArgumentException(
                     "The transaction object passed is not an instance of AbstractTransaction");
+        }
+
+    }
+
+    private void completeCommittedTx(AbstractTransaction<? extends CellId> txToSetup,
+                                     long commitTS,
+                                     boolean shouldRemoveCommitTableEntry)
+            throws InterruptedException, ExecutionException
+    {
+
+        txToSetup.setStatus(Status.COMMITTED);
+        txToSetup.setCommitTimestamp(commitTS);
+        try {
+            updateShadowCells(txToSetup);
+            if (shouldRemoveCommitTableEntry) {
+                // Remove transaction from commit table if not failure occurred
+                commitTableClient.completeTransaction(txToSetup.getStartTimestamp()).get();
+            }
+            postCommit(txToSetup);
+        } catch (TransactionManagerException e) {
+            LOG.warn(e.getMessage());
         }
 
     }
