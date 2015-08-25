@@ -44,7 +44,8 @@ public class NullCommitTableTest {
             // Test writer
             commitTableWriter.updateLowWatermark(TEST_LWM);
             commitTableWriter.addCommittedTransaction(TEST_ST, TEST_CT);
-            assertNull(commitTableWriter.flush().get());
+            commitTableWriter.clearWriteBuffer();
+            commitTableWriter.flush();
         }
     }
 

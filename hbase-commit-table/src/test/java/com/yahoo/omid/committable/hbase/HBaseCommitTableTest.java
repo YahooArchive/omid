@@ -147,7 +147,7 @@ public class HBaseCommitTableTest {
         for (int i = 0; i < 1000; i++) {
             writer.addCommittedTransaction(i, i + 1);
         }
-        writer.flush().get();
+        writer.flush();
         assertEquals("Rows should be 1000!", 1000, rowCount(TABLE_NAME, COMMIT_TABLE_FAMILY));
 
         // Test the we get the right commit timestamps for each previously inserted tx
@@ -183,7 +183,7 @@ public class HBaseCommitTableTest {
         for (int lowWatermark = 0; lowWatermark < 1000; lowWatermark++) {
             writer.updateLowWatermark(lowWatermark);
         }
-        writer.flush().get();
+        writer.flush();
         assertEquals("Should there be only one row!", 1, rowCount(TABLE_NAME, LOW_WATERMARK_FAMILY));
 
         // Test the successful read of the low watermark
@@ -216,7 +216,7 @@ public class HBaseCommitTableTest {
 
         // Test that a transaction can be added properly to the commit table
         writer.addCommittedTransaction(TX1_ST, TX1_CT);
-        writer.flush().get();
+        writer.flush();
         Optional<CommitTimestamp> commitTimestamp = client.getCommitTimestamp(TX1_ST).get();
         assertTrue(commitTimestamp.isPresent());
         assertTrue(commitTimestamp.get().isValid());
@@ -246,7 +246,7 @@ public class HBaseCommitTableTest {
         // ...and that if it has been already invalidated, it remains
         // invalidated when someone tries to commit it
         writer.addCommittedTransaction(TX2_ST, TX2_CT);
-        writer.flush().get();
+        writer.flush();
         commitTimestamp = client.getCommitTimestamp(TX2_ST).get();
         assertTrue(commitTimestamp.isPresent());
         assertFalse(commitTimestamp.get().isValid());
@@ -274,7 +274,7 @@ public class HBaseCommitTableTest {
         for (int i = 0; i < 1000; i++) {
             writer.addCommittedTransaction(i, i + 1);
         }
-        writer.flush().get();
+        writer.flush();
 
         // Completing first transaction should be fine
         client.completeTransaction(0).get();

@@ -67,10 +67,8 @@ public class TestPanicker {
     public void testCommitTablePanic() throws Exception {
         Panicker panicker = spy(new MockPanicker());
 
-        SettableFuture<Void> f = SettableFuture.<Void>create();
-        f.setException(new IOException("Unable to write"));
         final CommitTable.Writer mockWriter = mock(CommitTable.Writer.class);
-        doReturn(f).when(mockWriter).flush();
+        doThrow(new IOException("Unable to write")).when(mockWriter).flush();
 
         final CommitTable.Client mockClient = mock(CommitTable.Client.class);
         CommitTable commitTable = new CommitTable() {

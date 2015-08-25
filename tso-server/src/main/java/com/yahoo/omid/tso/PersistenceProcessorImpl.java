@@ -2,6 +2,7 @@ package com.yahoo.omid.tso;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
+import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -186,34 +187,33 @@ class PersistenceProcessorImpl
     @VisibleForTesting
     void flush() {
         lastFlush = System.nanoTime();
-        try {
-            boolean areWeStillMaster = true;
-            if (!leaseManager.stillInLeasePeriod()) {
-                // The master TSO replica has changed, so we must inform the
-                // clients about it when sending the replies and avoid flushing
-                // the current batch of TXs
-                areWeStillMaster = false;
-                // We need also to clear the data in the buffer
-                writer.clearWriteBuffer();
-                LOG.trace("This replica lost mastership before flushig data");
-            } else {
-                writer.flush().get();
-                batchSizeHistogram.update(batch.getNumEvents());
-                if (!leaseManager.stillInLeasePeriod()) {
-                    // If after flushing this TSO server is not the master
-                    // replica we need inform the client about it
-                    areWeStillMaster = false;
-                    LOG.warn("This replica lost mastership after flushing data");
-                }
+
+        boolean areWeStillMaster = true;
+        if (!leaseManager.stillInLeasePeriod()) {
+            // The master TSO replica has changed, so we must inform the
+            // clients about it when sending the replies and avoid flushing
+            // the current batch of TXs
+            areWeStillMaster = false;
+            // We need also to clear the data in the buffer
+            writer.clearWriteBuffer();
+            LOG.trace("This replica lost mastership before flushig data");
+        } else {
+            try {
+                writer.flush();
+            } catch (IOException e) {
+                panicker.panic("Error persisting commit batch", e.getCause());
             }
-            flushTimer.update((System.nanoTime() - lastFlush));
-            batch.sendRepliesAndReset(reply, retryProc, areWeStillMaster);
-        } catch (ExecutionException ee) {
-            panicker.panic("Error persisting commit batch", ee.getCause());
-        } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            LOG.error("Interrupted after persistence");
+            batchSizeHistogram.update(batch.getNumEvents());
+            if (!leaseManager.stillInLeasePeriod()) {
+                // If after flushing this TSO server is not the master
+                // replica we need inform the client about it
+                areWeStillMaster = false;
+                LOG.warn("This replica lost mastership after flushing data");
+            }
         }
+        flushTimer.update((System.nanoTime() - lastFlush));
+        batch.sendRepliesAndReset(reply, retryProc, areWeStillMaster);
+
     }
 
     @Override

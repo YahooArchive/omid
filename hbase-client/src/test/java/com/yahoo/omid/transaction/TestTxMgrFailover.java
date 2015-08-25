@@ -201,7 +201,7 @@ public class TestTxMgrFailover {
         tso.queueResponse(new ProgrammableTSOServer.CommitResponse(true, TX1_ST, TX1_CT));
         // Simulate that tx1 was committed by writing to commit table
         commitTableWriter.addCommittedTransaction(TX1_ST, TX1_CT);
-        commitTableWriter.flush().get();
+        commitTableWriter.flush();
         assertEquals(hBaseUtils.countRows(commitTable), 1, "Rows should be 1!");
 
         try (TTable txTable = new TTable(hBaseCluster.getConfiguration(), table)) {
@@ -312,7 +312,7 @@ public class TestTxMgrFailover {
 
         // Simulate that the original TSO was able to add the tx to commit table in the meantime
         commitTableWriter.addCommittedTransaction(TX1_ST, TX1_CT);
-        commitTableWriter.flush().get();
+        commitTableWriter.flush();
         assertEquals(hBaseUtils.countRows(commitTable), 1, "Rows should be 1!");
         SettableFuture<Optional<CommitTimestamp>> f1 = SettableFuture.<Optional<CommitTimestamp>> create();
         f1.set(Optional.<CommitTimestamp> absent());

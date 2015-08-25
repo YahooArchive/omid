@@ -42,10 +42,8 @@ public class InMemoryCommitTable implements CommitTable {
         }
 
         @Override
-        public ListenableFuture<Void> flush() {
-            SettableFuture<Void> f = SettableFuture.<Void>create();
-            f.set(null);
-            return f;
+        public void flush() throws IOException {
+            // noop
         }
 
         @Override

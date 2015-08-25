@@ -4,6 +4,7 @@ import static com.google.common.base.Charsets.UTF_8;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -72,11 +73,13 @@ public class HBaseCommitTable implements CommitTable {
     // ************************* Reader and writer *************************
 
     public class HBaseWriter implements Writer {
+
         final HTable table;
+        // Our own buffer for operations
+        final List<Put> writeBuffer = new LinkedList<>();
 
         HBaseWriter(Configuration hbaseConfig, String tableName) throws IOException {
             table = new HTable(hbaseConfig, tableName);
-            table.setAutoFlush(false, true);
         }
 
         // Writer Implementation
@@ -87,7 +90,7 @@ public class HBaseCommitTable implements CommitTable {
             Put put = new Put(startTimestampToKey(startTimestamp), startTimestamp);
             put.add(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER,
                     encodeCommitTimestamp(startTimestamp, commitTimestamp));
-            table.put(put);
+            writeBuffer.add(put);
         }
 
         @Override
@@ -95,29 +98,28 @@ public class HBaseCommitTable implements CommitTable {
             Put put = new Put(LOW_WATERMARK_ROW);
             put.add(LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER,
                     Bytes.toBytes(lowWatermark));
-            table.put(put);
+            writeBuffer.add(put);
         }
 
         @Override
-        public ListenableFuture<Void> flush() {
-            SettableFuture<Void> f = SettableFuture.<Void>create();
+        public void flush() throws IOException {
             try {
-                table.flushCommits();
-                f.set(null);
+                table.put(writeBuffer);
+                writeBuffer.clear();
             } catch (IOException e) {
                 LOG.error("Error flushing data", e);
-                f.setException(e);
+                throw e;
             }
-            return f;
         }
 
         @Override
         public void clearWriteBuffer() {
-            table.getWriteBuffer().clear();
+            writeBuffer.clear();
         }
 
         @Override
         public void close() throws IOException {
+            clearWriteBuffer();
             table.close();
         }
 

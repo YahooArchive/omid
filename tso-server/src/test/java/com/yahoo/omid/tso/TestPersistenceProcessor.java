@@ -49,14 +49,12 @@ public class TestPersistenceProcessor {
     private CommitTable commitTable;
 
     @BeforeMethod(alwaysRun = true)
-    public void initMocksAndComponents() {
+    public void initMocksAndComponents() throws Exception {
 
         MockitoAnnotations.initMocks(this);
 
         // Configure mock writer to flush successfully
-        SettableFuture<Void> f = SettableFuture.<Void> create();
-        f.set(null);
-        doReturn(f).when(mockWriter).flush();
+        doThrow(new IOException("Unable to write")).when(mockWriter).flush();
 
         // Configure null metrics provider
         metrics = new NullMetricsProvider();
@@ -163,9 +161,7 @@ public class TestPersistenceProcessor {
         doReturn(true).when(leaseManager).stillInLeasePeriod();
 
         // Configure commit table writer to explode when flushing changes to DB
-        SettableFuture<Void> f = SettableFuture.<Void> create();
-        f.setException(new IOException("Unable to write"));
-        doReturn(f).when(mockWriter).flush();
+        doThrow(new IOException("Unable to write")).when(mockWriter).flush();
 
         // Check the panic is extended!
         proc.persistCommit(1, 2, null);

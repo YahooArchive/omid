@@ -107,7 +107,7 @@ public class HBaseCommitTableTester {
             if (i++ == config.batchSize) {
                 commitsMeter.mark(i);
                 long start = System.nanoTime();
-                writer.flush().get();
+                writer.flush();
                 flushTimer.update((System.nanoTime() - start), TimeUnit.NANOSECONDS);
                 i = 0;
             }

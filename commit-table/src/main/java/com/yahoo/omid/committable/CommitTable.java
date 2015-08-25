@@ -16,8 +16,11 @@ public interface CommitTable {
     public interface Writer extends Closeable {
         void addCommittedTransaction(long startTimestamp, long commitTimestamp) throws IOException;
         void updateLowWatermark(long lowWatermark) throws IOException;
-        // TODO Make this synchronous
-        ListenableFuture<Void> flush();
+
+        /**
+         * Flushes all the buffered events to the underlying datastore
+         */
+        void flush() throws IOException;
 
         /**
          * Allows to clean the write's current buffer. It is required for HA

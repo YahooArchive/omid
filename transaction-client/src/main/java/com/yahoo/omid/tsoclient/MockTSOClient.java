@@ -21,7 +21,6 @@ import com.yahoo.omid.committable.CommitTable;
 
 import java.io.IOException;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class MockTSOClient extends TSOClient {
@@ -36,6 +35,7 @@ public class MockTSOClient extends TSOClient {
         this.commitTable = commitTable;
     }
 
+    @Override
     public TSOFuture<Long> getNewStartTimestamp() {
         synchronized (conflictMap) {
             SettableFuture<Long> f = SettableFuture.<Long>create();
@@ -44,6 +44,7 @@ public class MockTSOClient extends TSOClient {
         }
     }
 
+    @Override
     public TSOFuture<Long> commit(long transactionId, Set<? extends CellId> cells) {
         synchronized (conflictMap) {
             SettableFuture<Long> f = SettableFuture.<Long>create();
@@ -54,7 +55,7 @@ public class MockTSOClient extends TSOClient {
 
             boolean canCommit = true;
             for (CellId c : cells) {
-                int index = Math.abs((int) (c.getCellId() % (long) CONFLICT_MAP_SIZE));
+                int index = Math.abs((int) (c.getCellId() % CONFLICT_MAP_SIZE));
                 if (conflictMap[index] >= transactionId) {
                     canCommit = false;
                     break;
@@ -64,7 +65,7 @@ public class MockTSOClient extends TSOClient {
             if (canCommit) {
                 long commitTimestamp = timestampGenerator.incrementAndGet();
                 for (CellId c : cells) {
-                    int index = Math.abs((int) (c.getCellId() % (long) CONFLICT_MAP_SIZE));
+                    int index = Math.abs((int) (c.getCellId() % CONFLICT_MAP_SIZE));
                     long oldVal = conflictMap[index];
                     conflictMap[index] = commitTimestamp;
                     long curLwm = lwm.get();
@@ -80,14 +81,9 @@ public class MockTSOClient extends TSOClient {
                 try {
                     commitTable.addCommittedTransaction(transactionId, commitTimestamp);
                     commitTable.updateLowWatermark(lwm.get());
-                    commitTable.flush().get();
+                    commitTable.flush();
                 } catch (IOException ioe) {
                     f.setException(ioe);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    f.setException(ie);
-                } catch (ExecutionException ee) {
-                    f.setException(ee.getCause());
                 }
             } else {
                 f.setException(new AbortException());
@@ -96,6 +92,7 @@ public class MockTSOClient extends TSOClient {
         }
     }
 
+    @Override
     public TSOFuture<Void> close() {
         SettableFuture<Void> f = SettableFuture.<Void>create();
         f.set(null);
