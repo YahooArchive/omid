@@ -84,6 +84,7 @@ public class TestPersistenceProcessor {
         NonHALeaseManager leaseManager = spy(new NonHALeaseManager(mock(TSOStateManager.class)));
         // Component under test
         PersistenceProcessor proc = new PersistenceProcessorImpl(metrics,
+                                                                 "localhost:1234",
                                                                  batch,
                                                                  leaseManager,
                                                                  commitTable,
@@ -108,6 +109,7 @@ public class TestPersistenceProcessor {
         LeaseManager leaseManager = mock(LeaseManager.class);
         // Component under test
         PersistenceProcessor proc = new PersistenceProcessorImpl(metrics,
+                                                                 "localhost:1234",
                                                                  batch,
                                                                  leaseManager,
                                                                  commitTable,
@@ -150,6 +152,7 @@ public class TestPersistenceProcessor {
         // Init lease management (doesn't matter if HA or not)
         LeaseManagement leaseManager = mock(LeaseManagement.class);
         PersistenceProcessor proc = new PersistenceProcessorImpl(metrics,
+                                                                 "localhost:1234",
                                                                  leaseManager,
                                                                  commitTable,
                                                                  mock(ReplyProcessor.class),
@@ -172,6 +175,7 @@ public class TestPersistenceProcessor {
     public void testRuntimeExceptionOnCommitPersistenceTakesDownDaemon() throws Exception {
 
         PersistenceProcessor proc = new PersistenceProcessorImpl(metrics,
+                                                                 "localhost:1234",
                                                                  mock(LeaseManagement.class),
                                                                  commitTable,
                                                                  replyProcessor,

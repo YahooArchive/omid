@@ -195,14 +195,14 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     @Override
     public void nodeChanged() throws Exception {
 
-        LOG.debug("CurrentTSO ZNode changed");
         String tsoInfo = getCurrentTSOInfoFoundInZK();
         // TSO info includes the new TSO host:port address and epoch
         String[] currentTSOAndEpochArray = tsoInfo.split("#");
         HostAndPort hp = HostAndPort.fromString(currentTSOAndEpochArray[0]);
         setTSOAddress(hp.getHostText(), hp.getPort());
-        fsm.sendEvent(new ErrorEvent(new NewTSOException()));
         setEpoch(Long.parseLong(currentTSOAndEpochArray[1]));
+        fsm.sendEvent(new ErrorEvent(new NewTSOException()));
+        LOG.info("CurrentTSO ZNode changed. New TSO Host & Port {}/Epoch {}", hp, getEpoch());
 
     }
 

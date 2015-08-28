@@ -1,6 +1,7 @@
 package com.yahoo.omid.tso;
 
 import static com.codahale.metrics.MetricRegistry.name;
+import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
@@ -9,6 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
+import javax.inject.Named;
 
 import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
@@ -40,6 +42,7 @@ class PersistenceProcessorImpl
     static final int DEFAULT_BATCH_PERSIST_TIMEOUT_MS = 100;
     static final String TSO_BATCH_PERSIST_TIMEOUT_MS_KEY = "tso.batch-persist-timeout-ms";
 
+    private final String tsoHostAndPort;
     private final LeaseManagement leaseManager;
     final ReplyProcessor reply;
     final RetryProcessor retryProc;
@@ -60,6 +63,7 @@ class PersistenceProcessorImpl
 
     @Inject
     PersistenceProcessorImpl(MetricsRegistry metrics,
+                             @Named(TSO_HOST_AND_PORT_KEY) String tsoHostAndPort,
                              LeaseManagement leaseManager,
                              CommitTable commitTable,
                              ReplyProcessor reply,
@@ -68,6 +72,7 @@ class PersistenceProcessorImpl
                              TSOServerConfig config)
     throws InterruptedException, ExecutionException {
         this(metrics,
+             tsoHostAndPort,
              new Batch(config.getMaxBatchSize()),
              leaseManager,
              commitTable,
@@ -79,6 +84,7 @@ class PersistenceProcessorImpl
 
     @VisibleForTesting
     PersistenceProcessorImpl(MetricsRegistry metrics,
+                             String tsoHostAndPort,
                              Batch batch,
                              LeaseManagement leaseManager,
                              CommitTable commitTable,
@@ -88,6 +94,7 @@ class PersistenceProcessorImpl
                              TSOServerConfig config)
     throws InterruptedException, ExecutionException {
 
+        this.tsoHostAndPort = tsoHostAndPort;
         this.batch = batch;
         this.leaseManager = leaseManager;
         this.commitTableClient = commitTable.getClient().get();
@@ -196,7 +203,7 @@ class PersistenceProcessorImpl
             areWeStillMaster = false;
             // We need also to clear the data in the buffer
             writer.clearWriteBuffer();
-            LOG.trace("This replica lost mastership before flushig data");
+            LOG.trace("Replica {} lost mastership before flushig data", tsoHostAndPort);
         } else {
             try {
                 writer.flush();
@@ -208,7 +215,7 @@ class PersistenceProcessorImpl
                 // If after flushing this TSO server is not the master
                 // replica we need inform the client about it
                 areWeStillMaster = false;
-                LOG.warn("This replica lost mastership after flushing data");
+                LOG.warn("Replica {} lost mastership after flushig data", tsoHostAndPort);
             }
         }
         flushTimer.update((System.nanoTime() - lastFlush));
