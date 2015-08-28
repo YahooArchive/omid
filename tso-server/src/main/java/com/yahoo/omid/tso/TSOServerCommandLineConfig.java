@@ -127,6 +127,10 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
         return timestampStore;
     }
 
+    public void setZKCluster(String zkCluster) {
+        this.zkCluster = zkCluster;
+    }
+
     public String getZKCluster() {
         return zkCluster;
     }
