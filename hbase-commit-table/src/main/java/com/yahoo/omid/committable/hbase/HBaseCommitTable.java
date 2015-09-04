@@ -41,7 +41,7 @@ public class HBaseCommitTable implements CommitTable {
     public static final String COMMIT_TABLE_DEFAULT_NAME = "OMID_COMMIT_TABLE";
     public static final byte[] COMMIT_TABLE_FAMILY = "F".getBytes(UTF_8);
     static final byte[] COMMIT_TABLE_QUALIFIER = "C".getBytes(UTF_8);
-    private static final byte[] COMMIT_TABLE_INVALID_TX_QUALIFIER = "IT".getBytes(UTF_8);
+    private static final byte[] INVALID_TX_QUALIFIER = "IT".getBytes(UTF_8);
     static final byte[] LOW_WATERMARK_ROW = "LOW_WATERMARK".getBytes(UTF_8);
     public static final byte[] LOW_WATERMARK_FAMILY = "LWF".getBytes(UTF_8);
     static final byte[] LOW_WATERMARK_QUALIFIER = "LWC".getBytes(UTF_8);
@@ -152,7 +152,7 @@ public class HBaseCommitTable implements CommitTable {
             try {
                 Get get = new Get(startTimestampToKey(startTimestamp));
                 get.addColumn(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER);
-                get.addColumn(COMMIT_TABLE_FAMILY, COMMIT_TABLE_INVALID_TX_QUALIFIER);
+                get.addColumn(COMMIT_TABLE_FAMILY, INVALID_TX_QUALIFIER);
 
                 Result result = table.get(get);
 
@@ -235,8 +235,8 @@ public class HBaseCommitTable implements CommitTable {
             SettableFuture<Boolean> f = SettableFuture.<Boolean> create();
             try {
                 byte[] row = startTimestampToKey(startTimestamp);
-                Put put = new Put(row, startTimestamp);
-                put.add(COMMIT_TABLE_FAMILY, COMMIT_TABLE_INVALID_TX_QUALIFIER, null);
+                Put invalidationPut = new Put(row, startTimestamp);
+                invalidationPut.add(COMMIT_TABLE_FAMILY, INVALID_TX_QUALIFIER, null);
 
                 // We need to write to the invalid column only if the commit timestamp
                 // is empty. This has to be done atomically. Otherwise, if we first
@@ -244,7 +244,7 @@ public class HBaseCommitTable implements CommitTable {
                 // timestamp is added and read by a transaction, then snapshot isolation
                 // might not be hold (due to the invalidation)
                 // TODO: Decide what we should we do if we can not contact the commit table. loop till succeed???
-                boolean result = table.checkAndPut(row, COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER, null, put);
+                boolean result = table.checkAndPut(row, COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER, null, invalidationPut);
                 f.set(result);
             } catch (IOException ioe) {
                 f.setException(ioe);
@@ -333,7 +333,7 @@ public class HBaseCommitTable implements CommitTable {
         }
 
         private boolean containsInvalidTransaction(Result result) {
-            return (result != null && result.containsColumn(COMMIT_TABLE_FAMILY, COMMIT_TABLE_INVALID_TX_QUALIFIER));
+            return (result != null && result.containsColumn(COMMIT_TABLE_FAMILY, INVALID_TX_QUALIFIER));
         }
 
         private boolean containsLowWatermark(Result result) {

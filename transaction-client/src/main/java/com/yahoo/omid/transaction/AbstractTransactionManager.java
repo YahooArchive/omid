@@ -393,14 +393,12 @@ public abstract class AbstractTransactionManager implements TransactionManager {
 
             // 5) We did not manage to invalidate the transactions then
             // check the commit table
-            // TODO: Maybe this step is not necessary. Check in a future commit
             commitTimeStamp = commitTableClient.getCommitTimestamp(cellStartTimestamp).get();
             if (commitTimeStamp.isPresent()) {
                 return commitTimeStamp.get();
             }
 
             // 6) Read from shadow cell
-            // TODO: Maybe this step is not necessary. Check in a future commit
             commitTimeStamp = readCommitTimestampFromShadowCell(cellStartTimestamp, locator);
             if (commitTimeStamp.isPresent()) {
                 return commitTimeStamp.get();
