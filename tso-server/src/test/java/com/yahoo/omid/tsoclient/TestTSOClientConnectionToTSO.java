@@ -6,10 +6,12 @@ import static com.yahoo.omid.tsoclient.TSOClient.DEFAULT_ZK_CLUSTER;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_ZK_CLUSTER_CONFKEY;
+
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
 
 import java.util.concurrent.ExecutionException;
 
@@ -215,6 +217,7 @@ public class TestTSOClientConnectionToTSO {
         // ... and check that we get a conn exception when trying to access the client
         try {
             startTS = tsoClient.getNewStartTimestamp().get();
+            fail();
         } catch (ExecutionException e) {
             LOG.info("Exception expected");
             // Internal accessor to fsm to do the required checkings

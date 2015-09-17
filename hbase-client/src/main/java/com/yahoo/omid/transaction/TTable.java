@@ -218,7 +218,10 @@ public class TTable implements Closeable {
             }
         }
 
-        table.put(deleteP);
+        if (!deleteP.isEmpty()) {
+            table.put(deleteP);
+        }
+
     }
 
     /**

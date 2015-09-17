@@ -1,22 +1,17 @@
 package com.yahoo.omid.transaction;
 
+import org.apache.hadoop.hbase.client.*;
 import org.testng.annotations.Test;
 import org.testng.AssertJUnit;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.hadoop.hbase.client.Delete;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.yahoo.omid.transaction.Transaction;
-import com.yahoo.omid.transaction.TransactionManager;
+import static org.testng.Assert.assertTrue;
 
 public class TestDeletion extends OmidTestBase {
 
@@ -189,6 +184,43 @@ public class TestDeletion extends OmidTestBase {
         rowsRead = countRows(rs);
         AssertJUnit.assertTrue("Expected " + (rowsWritten - 1) + " rows but " + rowsRead + " found",
                 rowsRead == (rowsWritten - 1));
+
+    }
+
+    @Test
+    public void testDeletionOfNonExistingColumnFamilyDoesNotWriteToHBase() throws Exception {
+
+        // --------------------------------------------------------------------
+        // Setup initial environment for the test
+        // --------------------------------------------------------------------
+        TransactionManager tm = newTransactionManager();
+        TTable txTable = new TTable(hbaseConf, TEST_TABLE);
+
+        Transaction tx1 = tm.begin();
+        LOG.info("{} writing initial data created ", tx1);
+        Put p = new Put(Bytes.toBytes("row1"));
+        p.add(famA, colA, data1);
+        txTable.put(tx1, p);
+        tm.commit(tx1);
+
+        // --------------------------------------------------------------------
+        // Try to delete a non existing CF
+        // --------------------------------------------------------------------
+        Transaction deleteTx = tm.begin();
+        LOG.info("{} trying to delete a non-existing family created ", deleteTx);
+        Delete del = new Delete(Bytes.toBytes("row1"));
+        del.deleteFamily(famB);
+        // This delete should not put data on HBase
+        txTable.delete(deleteTx, del);
+
+        // --------------------------------------------------------------------
+        // Check data has not been written to HBase
+        // --------------------------------------------------------------------
+        HTable table = new HTable(hbaseConf, TEST_TABLE);
+        Get get = new Get(Bytes.toBytes("row1"));
+        get.setTimeStamp(deleteTx.getTransactionId());
+        Result result = table.get(get);
+        assertTrue(result.isEmpty());
 
     }
 
