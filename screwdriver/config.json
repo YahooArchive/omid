@@ -5,6 +5,7 @@
     },
     "jobs": {
         "component": {
+            "build_timeout": 60,
             "build": {
                 "test": {
                     "task": "script",
