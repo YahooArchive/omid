@@ -59,7 +59,7 @@ shift
 if [ "$COMMAND" = "tso" ]; then
     tso $@;
 elif [ "$COMMAND" = "tso-relauncher" ]; then
-    tsoRelauncher $@; 
+    tsoRelauncher $@;
 elif [ "$COMMAND" = "create-hbase-commit-table" ]; then
     createHBaseCommitTable $@;
 elif [ "$COMMAND" = "create-hbase-timestamp-table" ]; then

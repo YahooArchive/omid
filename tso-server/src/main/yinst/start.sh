@@ -100,6 +100,12 @@ fi
 
 echo "$0 YNET-FILTER: $YNET_FILTER"
 
+if [ "x$(PUBLISH_HOSTPORT_IN_ZK)" == "xtrue" ]; then
+    PUBLISH_HOST_AND_PORT_IN_ZK="-publishHostAndPortInZK"
+else
+    PUBLISH_HOST_AND_PORT_IN_ZK=""
+fi
+
 JVM_ARGS="-Xmx$(HEAP_SIZE_IN_MIB)m $(JVM_ARGS) ${YOURKIT_OPTS}"
 ( cd /home/y/var/$(PRODUCT_NAME)/run ; env LD_LIBRARY_PATH=${ARCH_LIB_DIR} LD_PRELOAD=${PRELOAD} ${ARCH_BIN_DIR}/yjava_daemon \
  -jvm server -pidfile /home/y/var/$(PRODUCT_NAME)/run/$(PRODUCT_NAME).pid -ynet ${YNET_FILTER}  \
@@ -112,4 +118,8 @@ com.yahoo.omid.tso.TsoServerDaemon \
  -port $(PORT) -maxItems $(MAX_ITEMS) \
  -metricsProvider $(METRICS_PROVIDER) -metricsConfigs $(METRICS_CONFIGS) -hbaseClientPrincipal $(HBASE_CLIENT_PRINCIPAL) \
  -hbaseClientKeytab $(HBASE_CLIENT_KEYTAB) \
- -maxBatchSize $(MAX_BATCH_SIZE))
+ -maxBatchSize $(MAX_BATCH_SIZE) \
+ -networkIface $(NETWORK_INTERFACE) \
+ ${PUBLISH_HOST_AND_PORT_IN_ZK} \
+ -zkCluster $(ZK_CLUSTER)
+ )

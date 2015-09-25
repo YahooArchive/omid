@@ -42,11 +42,19 @@ done
 JVM_ARGS="-Xmx$(HEAP_SIZE_IN_MIB)m $(JVM_ARGS) ${YOURKIT_OPTS}"
 
 tso() {
+
+    if [ "x$(PUBLISH_HOSTPORT_IN_ZK)" == "xtrue" ]; then
+        PUBLISH_HOST_AND_PORT_IN_ZK="-publishHostAndPortInZK"
+    else
+        PUBLISH_HOST_AND_PORT_IN_ZK=""
+    fi
+
     exec java -server $JVM_ARGS -cp $KLASSPATH com.yahoo.omid.tso.TSOServer \
               -timestampStore $(TIMESTAMP_STORE) -hbaseTimestampTable $(HBASE_TIMESTAMP_TABLE) \
               -commitTableStore $(COMMIT_TABLE_STORE) -hbaseCommitTable $(HBASE_COMMIT_TABLE) \
               -port $(PORT) -maxItems $(MAX_ITEMS) -metricsProvider $(METRICS_PROVIDER) -metricsConfigs $(METRICS_CONFIGS) \
-              -hbaseClientPrincipal $(HBASE_CLIENT_PRINCIPAL) -hbaseClientKeytab $(HBASE_CLIENT_KEYTAB)
+              -hbaseClientPrincipal $(HBASE_CLIENT_PRINCIPAL) -hbaseClientKeytab $(HBASE_CLIENT_KEYTAB) \
+              -networkIface $(NETWORK_INTERFACE) ${PUBLISH_HOST_AND_PORT_IN_ZK} -zkCluster $(ZK_CLUSTER)
 }
 
 tsobench() {
