@@ -18,7 +18,7 @@ Quickstart
 ----------
 Clone the repository and build the TSO package:
 
-      $ git clone git@git.corp.yahoo.com:scalable-computing/omid.git
+      $ git clone git@github.com:yahoo/omid.git
       $ cd omid
       $ mvn clean install assembly:single
 
@@ -132,7 +132,7 @@ Sample co-processor enabled table:
 
 Module Dependencies
 -------------------
-![Module dependencies](https://git.corp.yahoo.com/scalable-computing/omid/raw/master/doc/images/ModuleDependencies.png "Module dependencies")
+![Module dependencies](https://github.com/yahoo/omid/blob/master/doc/images/ModuleDependencies.png "Module dependencies")
 
 License
 -------

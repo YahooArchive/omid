@@ -12,8 +12,14 @@ public class TestClientTimeout extends TSOTestBase {
     private static final Logger LOG = LoggerFactory.getLogger(TestClientTimeout.class);
 
     /**
-     * Test to repro issue described in http://bug.corp.yahoo.com/show_bug.cgi?id=7120763
-     * We send a lot of timestamp requests, and wait for them to complete.
+     * Test to repro issue that caused an excess of retries when getting a
+     * timestamp.
+     *
+     * The cause was that we weren't cancelling timeouts, and as timestamp
+     * requests have no way to be correlated to timestamp responses, we were
+     * just timing out random requests after a certain time.
+     *
+     * In the test we send a lot of timestamp requests, and wait for them to complete.
      * Ensure that the next request doesn't get hit by the timeouts of the previous
      * requests. (i.e. make sure we cancel timeouts)
      */
