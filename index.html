@@ -22,7 +22,11 @@
       <h1>
 <a id="omid" class="anchor" href="#omid" aria-hidden="true"><span class="octicon octicon-link"></span></a>Omid</h1>
 
-<p>This project provides transactional support for HBase (or any other key-value store) using Snapshot Isolation.</p>
+<p>This project provides ACID transactional support for HBase.</p>
+
+<p>HBase lacks an ACID transaction manager. That’s why, back in 2011, we started the Omid project at Yahoo, aiming to provide a transactional framework on top of HBase. During these years, the project has evolved and matured internally and now is used in production at Yahoo to provide the transactional guarantees required by several applications.</p>
+
+<p>Omid uses a lock-free approach to provide ACID transactions with Snapshot Isolation guarantees, resolving the possible conflicts among concurrent transactions through a centralized component. You can find more information in the <a href="https://github.com/yahoo/omid/wiki">project wiki</a> </p>
 
       <footer class="site-footer">
         <span class="site-footer-owner"><a href="https://github.com/yahoo/omid">Omid</a> is maintained by <a href="https://github.com/yahoo">yahoo</a>.</span>
