@@ -4,9 +4,12 @@ import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
 import static com.yahoo.omid.ZKConstants.TSO_LEASE_PATH;
 
 import java.text.SimpleDateFormat;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.utils.EnsurePath;
 import org.apache.zookeeper.KeeperException;
@@ -23,7 +26,9 @@ import com.yahoo.omid.tso.TSOStateManager.TSOState;
 /**
  * Encompasses all the required elements to control the leases required for
  * identifying the master instance when running multiple TSO instances for HA
- * This includes publishing the instance information when getting the lease.
+ * It delegates the initialization of the TSO state and the publication of
+ * the instance information when getting the lease to an asynchronous task to
+ * continue managing the leases without interruptions.
  */
 public class LeaseManager extends AbstractScheduledService implements LeaseManagement {
 
@@ -31,9 +36,22 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
 
     private final CuratorFramework zkClient;
 
+    private final Panicker panicker;
+
     private final String tsoHostAndPort;
 
     private final TSOStateManager stateManager;
+    private final ExecutorService tsoStateInitializer = Executors.newSingleThreadExecutor(
+            new ThreadFactoryBuilder()
+                    .setNameFormat("tso-state-initializer")
+                    .setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+                        @Override
+                        public void uncaughtException(Thread t, Throwable e) {
+                            panicker.panic(t + " threw exception", e);
+                        }
+                    })
+                    .build());
+
 
     private final long leasePeriodInMs;
     private int leaseNodeVersion;
@@ -46,8 +64,9 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
     public LeaseManager(String tsoHostAndPort,
                         TSOStateManager stateManager,
                         long leasePeriodInMs,
-                        CuratorFramework zkClient) {
-        this(tsoHostAndPort, stateManager, leasePeriodInMs, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkClient);
+                        CuratorFramework zkClient,
+                        Panicker panicker) {
+        this(tsoHostAndPort, stateManager, leasePeriodInMs, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkClient, panicker);
     }
 
     @VisibleForTesting
@@ -56,13 +75,15 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
                  long leasePeriodInMs,
                  String leasePath,
                  String currentTSOPath,
-                 CuratorFramework zkClient) {
+                 CuratorFramework zkClient,
+                 Panicker panicker) {
         this.tsoHostAndPort = tsoHostAndPort;
         this.stateManager = stateManager;
         this.leasePeriodInMs = leasePeriodInMs;
         this.leasePath = leasePath;
         this.currentTSOPath = currentTSOPath;
         this.zkClient = zkClient;
+        this.panicker = panicker;
         LOG.info("LeaseManager {} initialized. Lease period {}ms", toString(), leasePeriodInMs);
     }
 
@@ -97,8 +118,19 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
             endLeaseInMs.set(baseTimeInMs.get() + leasePeriodInMs);
             LOG.info("{} got the lease (Master) Ver. {}/End of lease: {}ms", tsoHostAndPort,
                     leaseNodeVersion, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(endLeaseInMs));
-            TSOState newTSOState = stateManager.reset();
-            advertiseTSOServerInfoThroughZK(newTSOState.getEpoch());
+            tsoStateInitializer.submit(new Runnable() {
+                // TSO State initialization
+                @Override
+                public void run() {
+                    try {
+                        TSOState newTSOState = stateManager.reset();
+                        advertiseTSOServerInfoThroughZK(newTSOState.getEpoch());
+                   } catch (Exception e) {
+                        Thread t = Thread.currentThread();
+                        t.getUncaughtExceptionHandler().uncaughtException(t, e);
+                   }
+                }
+            });
         }
     }
 
@@ -228,14 +260,23 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
 
     }
 
-    int advertiseTSOServerInfoThroughZK(long epoch) throws Exception {
+    void advertiseTSOServerInfoThroughZK(long epoch) throws Exception {
 
+        Stat previousTSOZNodeStat = new Stat();
+        byte[] previousTSOInfoAsBytes = zkClient.getData().storingStatIn(previousTSOZNodeStat).forPath(currentTSOPath);
+        if (previousTSOInfoAsBytes != null && !new String(previousTSOInfoAsBytes, Charsets.UTF_8).isEmpty()) {
+            String previousTSOInfo = new String(previousTSOInfoAsBytes, Charsets.UTF_8);
+            String[] previousTSOAndEpochArray = previousTSOInfo.split("#");
+            Preconditions.checkArgument(previousTSOAndEpochArray.length == 2, "Incorrect TSO Info found: ", previousTSOInfo);
+            long oldEpoch = Long.parseLong(previousTSOAndEpochArray[1]);
+            if (oldEpoch > epoch) {
+                throw new LeaseManagementException("Another TSO replica was found " + previousTSOInfo);
+            }
+        }
         String tsoInfoAsString = tsoHostAndPort + "#" + Long.toString(epoch);
         byte[] tsoInfoAsBytes = tsoInfoAsString.getBytes(Charsets.UTF_8);
-        Stat currentTSOZNodeStat = zkClient.setData().forPath(currentTSOPath, tsoInfoAsBytes);
+        zkClient.setData().withVersion(previousTSOZNodeStat.getVersion()).forPath(currentTSOPath, tsoInfoAsBytes);
         LOG.info("TSO instance {} (Epoch {}) advertised through ZK", tsoHostAndPort, epoch);
-        return currentTSOZNodeStat.getVersion();
-
     }
 
 }

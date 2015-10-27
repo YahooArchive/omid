@@ -33,7 +33,8 @@ public class LeaseManagementModule extends AbstractModule {
     @Singleton
     LeaseManagement provideLeaseManager(@Named(TSO_HOST_AND_PORT_KEY) String tsoHostAndPort,
                                                                    TSOStateManager stateManager,
-                                                                   CuratorFramework zkClient)
+                                                                   CuratorFramework zkClient,
+                                                                   Panicker panicker)
     throws LeaseManagementException {
 
         if (config.shouldHostAndPortBePublishedInZK) {
@@ -41,7 +42,8 @@ public class LeaseManagementModule extends AbstractModule {
             return new LeaseManager(tsoHostAndPort,
                                     stateManager,
                                     config.getLeasePeriodInMs(),
-                                    zkClient);
+                                    zkClient,
+                                    panicker);
         } else {
             try {
                 return new NonHALeaseManager(stateManager);

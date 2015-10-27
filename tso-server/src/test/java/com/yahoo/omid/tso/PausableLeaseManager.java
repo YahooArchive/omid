@@ -17,8 +17,9 @@ public class PausableLeaseManager extends LeaseManager {
                                 long leasePeriodInMs,
                                 String tsoLeasePath,
                                 String currentTSOPath,
-                                CuratorFramework zkClient) {
-        super(id, stateManager, leasePeriodInMs, tsoLeasePath, currentTSOPath, zkClient);
+                                CuratorFramework zkClient,
+                                Panicker panicker) {
+        super(id, stateManager, leasePeriodInMs, tsoLeasePath, currentTSOPath, zkClient, panicker);
     }
 
     @Override

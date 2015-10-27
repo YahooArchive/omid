@@ -2,11 +2,10 @@ package com.yahoo.omid.tso;
 
 import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
 import static com.yahoo.omid.tsoclient.TSOClient.DEFAULT_ZK_CLUSTER;
+import static org.mockito.Mockito.*;
 import static org.testng.Assert.assertEquals;
 import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
@@ -14,6 +13,8 @@ import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.test.TestingServer;
 import org.apache.curator.utils.CloseableUtils;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterClass;
@@ -23,17 +24,21 @@ import org.testng.annotations.Test;
 import com.google.common.base.Charsets;
 import com.yahoo.omid.tso.TSOStateManager.TSOState;
 
+import java.io.IOException;
+
 public class TestLeaseManager {
 
     private static final long DUMMY_EPOCH_1 = 1L;
     private static final long DUMMY_EPOCH_2 = 2L;
+    private static final long DUMMY_EPOCH_3 = 3L;
     private static final long DUMMY_LOW_WATERMARK_1 = DUMMY_EPOCH_1;
     private static final long DUMMY_LOW_WATERMARK_2 = DUMMY_EPOCH_2;
+    private static final long DUMMY_LOW_WATERMARK_3 = DUMMY_EPOCH_3;
 
     private static final String LEASE_MGR_ID_1 = "LM1";
     private static final String LEASE_MGR_ID_2 = "LM2";
-    private static final String INSTANCE_ID_1 = "LM1" + "#" + DUMMY_EPOCH_1;
-    private static final String INSTANCE_ID_2 = "LM2" + "#" + DUMMY_EPOCH_2;
+    private static final String INSTANCE_ID_1 = "LM1" + "#";
+    private static final String INSTANCE_ID_2 = "LM2" + "#";
 
     private static final Logger LOG = LoggerFactory.getLogger(TestLeaseManager.class);
 
@@ -41,6 +46,9 @@ public class TestLeaseManager {
 
     private CuratorFramework zkClient;
     private TestingServer zkServer;
+
+    @Mock
+    private Panicker panicker;
 
     private PausableLeaseManager leaseManager1;
     private PausableLeaseManager leaseManager2;
@@ -67,6 +75,34 @@ public class TestLeaseManager {
 
     }
 
+    @Test(timeOut = 30_000)
+    public void testErrorInitializingTSOStateExitsTheTSO() throws Exception {
+
+        final String TEST_TSO_LEASE_PATH = "/test0_tsolease";
+        final String TEST_CURRENT_TSO_PATH = "/test0_currenttso";
+
+        Panicker panicker = spy(new MockPanicker());
+
+        TSOStateManager stateManager = mock(TSOStateManager.class);
+        when(stateManager.reset()).thenThrow(new IOException());
+        leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
+                stateManager,
+                TEST_LEASE_PERIOD_IN_MS,
+                TEST_TSO_LEASE_PATH,
+                TEST_CURRENT_TSO_PATH,
+                zkClient,
+                panicker);
+        leaseManager1.startService();
+
+        // ... let the test run for some time...
+        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
+
+        verify(panicker, timeout(2000).atLeastOnce()).panic(anyString(), any(IOException.class));
+
+        leaseManager1.stopService();
+
+    }
+
     @Test(timeOut = 60000)
     public void testLeaseHolderDoesNotChangeWhenPausedForALongTimeAndTheresNoOtherInstance()
             throws Exception
@@ -83,7 +119,8 @@ public class TestLeaseManager {
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,
-                                                 zkClient);
+                                                 zkClient,
+                                                 panicker);
         leaseManager1.startService();
 
         // ... let the test run for some time...
@@ -91,7 +128,7 @@ public class TestLeaseManager {
 
         // ... check is the lease holder
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_1);
-        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1);
+        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1 + "1");
         assertTrue(leaseManager1.stillInLeasePeriod());
 
         // Then, pause instance when trying to renew lease...
@@ -102,7 +139,7 @@ public class TestLeaseManager {
 
         // ...check that nothing changed...
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_1);
-        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1);
+        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1 + "1");
 
         // Finally, resume the instance...
         leaseManager1.resume();
@@ -112,12 +149,12 @@ public class TestLeaseManager {
 
         // ... and check again that nothing changed
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_1);
-        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1);
+        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1 + "1");
         assertTrue(leaseManager1.stillInLeasePeriod());
 
     }
 
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testLeaseHolderDoesNotChangeWhenANewLeaseManagerIsUp() throws Exception {
 
         final String TEST_TSO_LEASE_PATH = "/test2_tsolease";
@@ -131,7 +168,8 @@ public class TestLeaseManager {
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,
-                                                 zkClient);
+                                                 zkClient,
+                                                 panicker);
 
         leaseManager1.startService();
 
@@ -140,7 +178,7 @@ public class TestLeaseManager {
 
         // ...so it should be the current holder of the lease
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_1);
-        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1);
+        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1 + "1");
         assertTrue(leaseManager1.stillInLeasePeriod());
 
         // Then launch another instance...
@@ -151,7 +189,8 @@ public class TestLeaseManager {
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,
-                                                 zkClient);
+                                                 zkClient,
+                                                 panicker);
         leaseManager2.startService();
 
         // ... let the test run for some time...
@@ -159,12 +198,12 @@ public class TestLeaseManager {
 
         // ... and after the period, the first instance should be still the holder
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_1);
-        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1);
+        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1 + "1");
         assertTrue(leaseManager1.stillInLeasePeriod());
         assertFalse(leaseManager2.stillInLeasePeriod());
     }
 
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testLeaseHolderChangesWhenActiveLeaseManagerIsPaused() throws Exception {
 
         final String TEST_TSO_LEASE_PATH = "/test3_tsolease";
@@ -178,7 +217,8 @@ public class TestLeaseManager {
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,
-                                                 zkClient);
+                                                 zkClient,
+                                                 panicker);
 
         leaseManager1.startService();
 
@@ -187,7 +227,7 @@ public class TestLeaseManager {
 
         // ... so it should be the current holder of the lease
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_1);
-        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1);
+        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1 + "1");
         assertTrue(leaseManager1.stillInLeasePeriod());
 
         // Then launch another instance...
@@ -198,7 +238,8 @@ public class TestLeaseManager {
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
                                                  TEST_CURRENT_TSO_PATH,
-                                                 zkClient);
+                                                 zkClient,
+                                                 panicker);
         leaseManager2.startService();
 
         // ... and pause active lease manager...
@@ -209,10 +250,11 @@ public class TestLeaseManager {
 
         // ... and check that lease owner should have changed to the second instance
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_2);
-        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_2);
+        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_2 + "2");
         assertTrue(leaseManager2.stillInLeasePeriod());
 
         // Now, lets resume the first instance...
+        when(stateManager1.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_3, DUMMY_EPOCH_3));
         leaseManager1.resume();
 
         // ... let the test run for some time...
@@ -220,7 +262,7 @@ public class TestLeaseManager {
 
         // and check the lease owner is still the second instance (preserves the lease)
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_2);
-        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_2);
+        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_2 + "2");
         assertFalse(leaseManager1.stillInLeasePeriod());
         assertTrue(leaseManager2.stillInLeasePeriod());
 
@@ -232,7 +274,7 @@ public class TestLeaseManager {
 
         // ... and check lease owner is has changed again to the first instance
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_1);
-        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1);
+        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1 + "3");
         assertFalse(leaseManager2.stillInLeasePeriod());
         assertTrue(leaseManager1.stillInLeasePeriod());
 
@@ -244,10 +286,70 @@ public class TestLeaseManager {
 
         // ... but the lease owner should still be the first instance
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_1);
-        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1);
+        checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1 + "3");
         assertFalse(leaseManager2.stillInLeasePeriod());
         assertTrue(leaseManager1.stillInLeasePeriod());
 
+    }
+
+
+    @Test(timeOut = 30_000)
+    public void testLeaseManagerPanicsWhenUnexpectedInfoIsFoundInCurrentTSOZnode() throws Exception {
+
+        final String TEST_TSO_LEASE_PATH = "/test_wronginfo_tsolease";
+        final String TEST_CURRENT_TSO_PATH = "/test_wronginfo_currenttso";
+
+        MockPanicker panicker = spy(new MockPanicker());
+
+        // Launch the master instance...
+        TSOStateManager stateManager1 = mock(TSOStateManager.class);
+        when(stateManager1.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
+        PausableLeaseManager leaseManager = new PausableLeaseManager(LEASE_MGR_ID_1,
+                stateManager1,
+                TEST_LEASE_PERIOD_IN_MS,
+                TEST_TSO_LEASE_PATH,
+                TEST_CURRENT_TSO_PATH,
+                zkClient,
+                panicker);
+
+        leaseManager.startService();
+        // ...and let the test run for some time...
+        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
+
+        leaseManager.pausedInTryToRenewLeasePeriod();
+
+        // 1st Panic test) Inject corrupted data in the ZNode, force reelection and test the panicker is exercised
+        zkClient.setData().forPath(TEST_CURRENT_TSO_PATH, "CorruptedData!!!".getBytes());
+
+        // ...and let the test run for some time...
+        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
+        leaseManager.resume();
+        // ...and let the test run for some time...
+        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
+
+        ArgumentCaptor<IllegalArgumentException> trowableIAE = ArgumentCaptor.forClass(IllegalArgumentException.class);
+        verify(panicker).panic(anyString(), trowableIAE.capture());
+        assertTrue(trowableIAE.getValue() instanceof IllegalArgumentException);
+        assertTrue(trowableIAE.getValue().getMessage().contains("Incorrect TSO Info found"));
+
+        // 2nd Panic test) Simulate that a new master appeared in the meantime, force reelection
+        // and test the panicker is exercised
+        reset(panicker);
+        zkClient.setData().forPath(TEST_CURRENT_TSO_PATH, "newTSO:12345#10000".getBytes());
+
+        leaseManager.pausedInTryToRenewLeasePeriod();
+
+        // ...and let the test run for some time...
+        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
+        leaseManager.resume();
+        // ...and let the test run for some time...
+        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
+
+        ArgumentCaptor<LeaseManagement.LeaseManagementException> trowableLME =
+                ArgumentCaptor.forClass(LeaseManagement.LeaseManagementException.class);
+        verify(panicker).panic(anyString(), trowableLME.capture());
+        assertTrue(trowableLME.getValue() instanceof LeaseManagement.LeaseManagementException);
+        assertTrue(trowableLME.getValue().getMessage().contains("Another TSO replica was found"));
     }
 
     @Test(timeOut = 1000)

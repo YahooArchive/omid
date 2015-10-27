@@ -155,10 +155,16 @@ public class TestEndToEndScenariosWithHA {
         Thread.currentThread().setName("Test Thread");
 
         try {
-            zkClient.delete().forPath("/omid/omid/timestamp");
-            LOG.info("Timestamp ZKPath {}", "/omid/omid/timestamp");
+            zkClient.delete().forPath(TSO_LEASE_PATH);
+            LOG.info("ZKPath {} deleted", TSO_LEASE_PATH);
         } catch (Exception e) {
-            LOG.warn("Timestamp ZKPath {} didn't exist", "/omid/omid/timestamp");
+            LOG.info("Problem removing ZKPath {}", TSO_LEASE_PATH);
+        }
+        try {
+            zkClient.delete().forPath(CURRENT_TSO_PATH);
+            LOG.info("ZKPaths {} deleted", CURRENT_TSO_PATH);
+        } catch (Exception e) {
+            LOG.info("Problem removing ZKPath {}", CURRENT_TSO_PATH);
         }
 
         // Create commit table
@@ -241,6 +247,7 @@ public class TestEndToEndScenariosWithHA {
 
     @AfterMethod
     public void cleanup() throws Exception {
+        LOG.info("Cleanup");
         hBaseUtils.deleteTable(COMMIT_TABLE_DEFAULT_NAME);
         hBaseUtils.deleteTable(TIMESTAMP_TABLE_DEFAULT_NAME);
         hBaseUtils.deleteTable(table);
@@ -260,7 +267,7 @@ public class TestEndToEndScenariosWithHA {
     // IR TX reads R2C2 -> should get v0
     // IR TX tries to commit -> should abort because was started in TSO 1
     // End of Test state: R1C1 & R2C2 (v0)
-    @Test
+    @Test(timeOut = 60_000)
     public void testScenario1() throws Exception {
 
         try (TTable txTable = new TTable(hBaseCluster.getConfiguration(), table)) {
@@ -363,7 +370,7 @@ public class TestEndToEndScenariosWithHA {
     // TX 2 modifies cells R1C1 & R2C2 (v2)
     // TX 2 commits
     // End of Test state: R1C1 & R2C2 (v2)
-    @Test
+    @Test(timeOut = 60_000)
     public void testScenario2() throws Exception {
 
         try (TTable txTable = new TTable(hBaseCluster.getConfiguration(), table)) {
@@ -522,7 +529,8 @@ public class TestEndToEndScenariosWithHA {
         @Singleton
         LeaseManagement provideLeaseManager(@Named(TSO_HOST_AND_PORT_KEY) String tsoHostAndPort,
                                                                        TSOStateManager stateManager,
-                                                                       CuratorFramework zkClient)
+                                                                       CuratorFramework zkClient,
+                                                                       Panicker panicker)
         throws LeaseManagementException {
 
             LOG.info("Connection to ZK cluster [{}]", zkClient.getState());
@@ -531,7 +539,8 @@ public class TestEndToEndScenariosWithHA {
                                         config.getLeasePeriodInMs(),
                                         TSO_LEASE_PATH,
                                         CURRENT_TSO_PATH,
-                                        zkClient);
+                                        zkClient,
+                                        panicker);
         }
 
         @Provides
