@@ -1,5 +1,4 @@
-Omid
-====
+![Omid Logo](https://github.com/yahoo/omid/blob/master/doc/images/omid-logo.png =200x)
 
 The Omid project provides transactional support for key-value stores using Snapshot Isolation. Omid stands for Optimistically transactional Management in Datasources. HBase is the only datastore currently supported, though adaption to any datastore that provides multiple versions per cell should be straightforward.
 
