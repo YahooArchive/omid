@@ -23,6 +23,8 @@ public class TSOModule extends AbstractModule {
     @Override
     protected void configure() {
 
+        bind(TSOChannelHandler.class).in(Singleton.class);
+
         bind(TSOStateManager.class).to(TSOStateManagerImpl.class).in(Singleton.class);
 
         bind(TimestampOracle.class).to(TimestampOracleImpl.class).in(Singleton.class);

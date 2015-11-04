@@ -3,6 +3,7 @@ package com.yahoo.omid.tso;
 import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
 import static com.yahoo.omid.ZKConstants.TSO_LEASE_PATH;
 
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -54,6 +55,7 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
 
 
     private final long leasePeriodInMs;
+    private final TSOChannelHandler tsoChannelHandler;
     private int leaseNodeVersion;
     private final AtomicLong endLeaseInMs = new AtomicLong(0L);
     private final AtomicLong baseTimeInMs = new AtomicLong(0L);
@@ -62,15 +64,17 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
     private final String currentTSOPath;
 
     public LeaseManager(String tsoHostAndPort,
+                        TSOChannelHandler tsoChannelHandler,
                         TSOStateManager stateManager,
                         long leasePeriodInMs,
                         CuratorFramework zkClient,
                         Panicker panicker) {
-        this(tsoHostAndPort, stateManager, leasePeriodInMs, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkClient, panicker);
+        this(tsoHostAndPort, tsoChannelHandler, stateManager, leasePeriodInMs, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkClient, panicker);
     }
 
     @VisibleForTesting
     LeaseManager(String tsoHostAndPort,
+                 TSOChannelHandler tsoChannelHandler,
                  TSOStateManager stateManager,
                  long leasePeriodInMs,
                  String leasePath,
@@ -78,6 +82,7 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
                  CuratorFramework zkClient,
                  Panicker panicker) {
         this.tsoHostAndPort = tsoHostAndPort;
+        this.tsoChannelHandler = tsoChannelHandler;
         this.stateManager = stateManager;
         this.leasePeriodInMs = leasePeriodInMs;
         this.leasePath = leasePath;
@@ -125,10 +130,20 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
                     try {
                         TSOState newTSOState = stateManager.reset();
                         advertiseTSOServerInfoThroughZK(newTSOState.getEpoch());
+                        tsoChannelHandler.reconnect();
                    } catch (Exception e) {
                         Thread t = Thread.currentThread();
                         t.getUncaughtExceptionHandler().uncaughtException(t, e);
                    }
+                }
+            });
+        } else {
+            tsoStateInitializer.submit(new Runnable() {
+                // TSO State initialization
+                @Override
+                public void run() {
+                    // In case the TSO was paused close the connection
+                    tsoChannelHandler.closeConnection();
                 }
             });
         }
@@ -138,8 +153,9 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
         baseTimeInMs.set(System.currentTimeMillis());
         if (canAcquireLease()) {
             if (System.currentTimeMillis() > getEndLeaseInMs()) {
-                LOG.warn("{} expired lease! Releasing lease to start Master re-election", tsoHostAndPort);
                 endLeaseInMs.set(0L);
+                LOG.warn("{} expired lease! Releasing lease to start Master re-election", tsoHostAndPort);
+                tsoChannelHandler.closeConnection();
             } else {
                 endLeaseInMs.set(baseTimeInMs.get() + leasePeriodInMs);
                 LOG.trace("{} renewed lease: Version {}/End of lease at {}ms",
@@ -149,6 +165,7 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
             endLeaseInMs.set(0L);
             LOG.warn("{} lost the lease (Ver. {})! Other instance is now Master",
                     tsoHostAndPort, leaseNodeVersion);
+            tsoChannelHandler.closeConnection();
         }
     }
 
@@ -185,6 +202,12 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
 
     @Override
     protected void shutDown() {
+        try {
+            tsoChannelHandler.close();
+            LOG.info("Channel handler closed");
+        } catch (IOException e) {
+            LOG.error("Error closing TSOChannelHandler", e);
+        }
     }
 
     @Override

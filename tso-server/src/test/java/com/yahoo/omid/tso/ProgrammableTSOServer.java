@@ -50,7 +50,7 @@ public class ProgrammableTSOServer extends SimpleChannelHandler {
         channelGroup = new DefaultChannelGroup(ProgrammableTSOServer.class.getName());
 
         ServerBootstrap bootstrap = new ServerBootstrap(factory);
-        bootstrap.setPipelineFactory(new TSOPipelineFactory(this));
+        bootstrap.setPipelineFactory(new TSOChannelHandler.TSOPipelineFactory(this));
 
         // Add the parent channel to the group
         Channel channel = bootstrap.bind(new InetSocketAddress(port));

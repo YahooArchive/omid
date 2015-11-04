@@ -25,6 +25,8 @@ public class TSOMockModule extends AbstractModule {
     @Override
     protected void configure() {
 
+        bind(TSOChannelHandler.class).in(Singleton.class);
+
         bind(TSOStateManager.class).to(TSOStateManagerImpl.class).in(Singleton.class);
 
         bind(CommitTable.class).to(InMemoryCommitTable.class).in(Singleton.class);

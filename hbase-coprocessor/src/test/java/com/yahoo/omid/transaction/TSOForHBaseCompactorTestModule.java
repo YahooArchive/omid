@@ -8,6 +8,7 @@ import java.io.IOException;
 
 import javax.inject.Singleton;
 
+import com.yahoo.omid.tso.TSOChannelHandler;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.slf4j.Logger;
@@ -46,6 +47,8 @@ public class TSOForHBaseCompactorTestModule extends AbstractModule {
 
     @Override
     protected void configure() {
+
+        bind(TSOChannelHandler.class).in(Singleton.class);
 
         bind(TSOStateManager.class).to(TSOStateManagerImpl.class).in(Singleton.class);
 
@@ -107,8 +110,8 @@ public class TSOForHBaseCompactorTestModule extends AbstractModule {
 
     @Provides
     @Singleton
-    LeaseManagement provideLeaseManager(TSOStateManager stateManager) throws IOException {
-        return new NonHALeaseManager(stateManager);
+    LeaseManagement provideLeaseManager(TSOChannelHandler tsoChannelHandler, TSOStateManager stateManager) throws IOException {
+        return new NonHALeaseManager(tsoChannelHandler, stateManager);
     }
 
 }

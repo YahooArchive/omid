@@ -51,13 +51,13 @@ public class TestRequestProcessor {
         config.setMaxItems(1000);
 
         requestProc = new RequestProcessorImpl(metrics,
-                                               stateManager,
                                                timestampOracle,
                                                persist,
                                                new MockPanicker(),
                                                config);
 
         // Initialize the state for the experiment
+        stateManager.register(requestProc);
         stateManager.reset();
     }
 

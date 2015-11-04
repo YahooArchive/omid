@@ -81,7 +81,8 @@ public class TestPersistenceProcessor {
     public void testCommitPersistenceWithNonHALeaseManager() throws Exception {
 
         // Init a non-HA lease manager
-        NonHALeaseManager leaseManager = spy(new NonHALeaseManager(mock(TSOStateManager.class)));
+        NonHALeaseManager leaseManager = spy(new NonHALeaseManager(mock(TSOChannelHandler.class),
+                                                                   mock(TSOStateManager.class)));
         // Component under test
         PersistenceProcessor proc = new PersistenceProcessorImpl(metrics,
                                                                  "localhost:1234",

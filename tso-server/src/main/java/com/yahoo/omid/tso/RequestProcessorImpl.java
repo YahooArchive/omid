@@ -23,8 +23,7 @@ import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.tso.TSOStateManager.StateObserver;
 import com.yahoo.omid.tso.TSOStateManager.TSOState;
 
-public class RequestProcessorImpl implements StateObserver,
-                                             EventHandler<RequestProcessorImpl.RequestEvent>,
+public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestEvent>,
                                              RequestProcessor
 
 {
@@ -42,15 +41,11 @@ public class RequestProcessorImpl implements StateObserver,
 
     @Inject
     RequestProcessorImpl(MetricsRegistry metrics,
-                         TSOStateManager stateManager,
                          TimestampOracle timestampOracle,
                          PersistenceProcessor persistProc,
                          Panicker panicker,
                          TSOServerConfig config) throws IOException
     {
-
-        // Register this component to receive state changes
-        stateManager.register(this);
 
         this.persistProc = persistProc;
         this.timestampOracle = timestampOracle;

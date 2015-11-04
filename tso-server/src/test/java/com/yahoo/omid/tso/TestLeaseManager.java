@@ -83,9 +83,11 @@ public class TestLeaseManager {
 
         Panicker panicker = spy(new MockPanicker());
 
+        TSOChannelHandler tsoChannelHandler = mock(TSOChannelHandler.class);
         TSOStateManager stateManager = mock(TSOStateManager.class);
         when(stateManager.reset()).thenThrow(new IOException());
         leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
+                tsoChannelHandler,
                 stateManager,
                 TEST_LEASE_PERIOD_IN_MS,
                 TEST_TSO_LEASE_PATH,
@@ -112,9 +114,11 @@ public class TestLeaseManager {
         final String TEST_CURRENT_TSO_PATH = "/test1_currenttso";
 
         // Launch the instance under test...
+        TSOChannelHandler tsoChannelHandler1 = mock(TSOChannelHandler.class);
         TSOStateManager stateManager1 = mock(TSOStateManager.class);
         when(stateManager1.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
         leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
+                                                 tsoChannelHandler1,
                                                  stateManager1,
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
@@ -161,9 +165,11 @@ public class TestLeaseManager {
         final String TEST_CURRENT_TSO_PATH = "/test2_currenttso";
 
         // Launch the master instance...
+        TSOChannelHandler tsoChannelHandler1 = mock(TSOChannelHandler.class);
         TSOStateManager stateManager1 = mock(TSOStateManager.class);
         when(stateManager1.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
         leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
+                                                 tsoChannelHandler1,
                                                  stateManager1,
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
@@ -182,9 +188,11 @@ public class TestLeaseManager {
         assertTrue(leaseManager1.stillInLeasePeriod());
 
         // Then launch another instance...
+        TSOChannelHandler tsoChannelHandler2 = mock(TSOChannelHandler.class);
         TSOStateManager stateManager2 = mock(TSOStateManager.class);
         when(stateManager2.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_2, DUMMY_EPOCH_2));
         leaseManager2 = new PausableLeaseManager(LEASE_MGR_ID_2,
+                                                 tsoChannelHandler2,
                                                  stateManager2,
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
@@ -210,9 +218,11 @@ public class TestLeaseManager {
         final String TEST_CURRENT_TSO_PATH = "/test3_currenttso";
 
         // Launch the master instance...
+        TSOChannelHandler tsoChannelHandler1 = mock(TSOChannelHandler.class);
         TSOStateManager stateManager1 = mock(TSOStateManager.class);
         when(stateManager1.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
         leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
+                                                 tsoChannelHandler1,
                                                  stateManager1,
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
@@ -231,9 +241,11 @@ public class TestLeaseManager {
         assertTrue(leaseManager1.stillInLeasePeriod());
 
         // Then launch another instance...
+        TSOChannelHandler tsoChannelHandler2 = mock(TSOChannelHandler.class);
         TSOStateManager stateManager2 = mock(TSOStateManager.class);
         when(stateManager2.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_2, DUMMY_EPOCH_2));
         leaseManager2 = new PausableLeaseManager(LEASE_MGR_ID_2,
+                                                 tsoChannelHandler2,
                                                  stateManager2,
                                                  TEST_LEASE_PERIOD_IN_MS,
                                                  TEST_TSO_LEASE_PATH,
@@ -299,12 +311,13 @@ public class TestLeaseManager {
         final String TEST_TSO_LEASE_PATH = "/test_wronginfo_tsolease";
         final String TEST_CURRENT_TSO_PATH = "/test_wronginfo_currenttso";
 
-        MockPanicker panicker = spy(new MockPanicker());
+        Panicker panicker = spy(new MockPanicker());
 
         // Launch the master instance...
         TSOStateManager stateManager1 = mock(TSOStateManager.class);
         when(stateManager1.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
         PausableLeaseManager leaseManager = new PausableLeaseManager(LEASE_MGR_ID_1,
+                mock(TSOChannelHandler.class),
                 stateManager1,
                 TEST_LEASE_PERIOD_IN_MS,
                 TEST_TSO_LEASE_PATH,
@@ -356,7 +369,8 @@ public class TestLeaseManager {
     public void testNonHALeaseManager() throws Exception {
 
         // Launch the instance...
-        NonHALeaseManager leaseManager = new NonHALeaseManager(mock(TSOStateManager.class));
+        NonHALeaseManager leaseManager = new NonHALeaseManager(mock(TSOChannelHandler.class),
+                                                               mock(TSOStateManager.class));
 
         leaseManager.startService();
         assertTrue(leaseManager.stillInLeasePeriod());

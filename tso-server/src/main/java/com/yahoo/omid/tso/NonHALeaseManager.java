@@ -4,16 +4,27 @@ import java.io.IOException;
 
 public class NonHALeaseManager implements LeaseManagement {
 
-    public NonHALeaseManager(TSOStateManager stateManager) throws IOException {
-        stateManager.reset();
+    private final TSOChannelHandler tsoChannelHandler;
+    private TSOStateManager stateManager;
+
+    public NonHALeaseManager(TSOChannelHandler tsoChannelHandler, TSOStateManager stateManager) {
+        this.tsoChannelHandler = tsoChannelHandler;
+        this.stateManager = stateManager;
     }
 
     @Override
     public void startService() throws LeaseManagementException {
+        try {
+            stateManager.reset();
+            tsoChannelHandler.reconnect();
+        } catch (IOException e) {
+            throw new LeaseManagementException("Error initializing Lease Manager", e);
+        }
     }
 
     @Override
     public void stopService() throws LeaseManagementException {
+        tsoChannelHandler.closeConnection();
     }
 
     @Override

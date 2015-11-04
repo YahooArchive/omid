@@ -1,28 +1,18 @@
 package com.yahoo.omid.tso;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executors;
 
 import javax.inject.Inject;
-import javax.inject.Named;
 import javax.inject.Singleton;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.jboss.netty.bootstrap.ServerBootstrap;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelFactory;
-import org.jboss.netty.channel.group.ChannelGroup;
-import org.jboss.netty.channel.group.DefaultChannelGroup;
-import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.AbstractIdleService;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -51,18 +41,13 @@ public class TSOServer extends AbstractIdleService {
 
     public static final String TSO_HOST_AND_PORT_KEY = "tso.hostandport";
 
-    public static final String TSO_EPOCH_KEY = "tso.epoch";
-
-    private final TSOServerCommandLineConfig config;
+    @Inject
+    private TSOServerCommandLineConfig config;
 
     @Inject
-    @Named(TSO_HOST_AND_PORT_KEY)
-    private String tsoHostAndPortAsString;
-
-    private RequestProcessor requestProc;
-
-    private ChannelFactory factory;
-    private ChannelGroup channelGroup;
+    private TSOStateManager tsoStateManager;
+    @Inject
+    private RequestProcessor requestProcessor;
 
     // ------------------------------------------------------------------------
     // High availability related variables
@@ -72,12 +57,6 @@ public class TSOServer extends AbstractIdleService {
     private LeaseManagement leaseManagement;
 
     // ------------------------------------------------------------------------
-
-    @Inject
-    public TSOServer(TSOServerCommandLineConfig config, RequestProcessor requestProc) {
-        this.config = config;
-        this.requestProc = requestProc;
-    }
 
     static TSOServer getInitializedTsoServer(TSOServerCommandLineConfig config) throws IOException {
         LOG.info("Configuring TSO Server...");
@@ -189,38 +168,15 @@ public class TSOServer extends AbstractIdleService {
 
     @Override
     protected void startUp() throws Exception {
-        // Setup netty listener
-        factory = new NioServerSocketChannelFactory(Executors.newCachedThreadPool(new ThreadFactoryBuilder()
-                .setNameFormat("boss-%d").build()), Executors.newCachedThreadPool(new ThreadFactoryBuilder()
-                .setNameFormat("worker-%d").build()), (Runtime.getRuntime().availableProcessors() * 2 + 1) * 2);
-
-        // Create the global ChannelGroup
-        channelGroup = new DefaultChannelGroup(TSOServer.class.getName());
-
-        final TSOHandler handler = new TSOHandler(channelGroup, requestProc);
-
-        ServerBootstrap bootstrap = new ServerBootstrap(factory);
-        bootstrap.setPipelineFactory(new TSOPipelineFactory(handler));
-
-        // Add the parent channel to the group
-        Channel channel = bootstrap.bind(new InetSocketAddress(config.getPort()));
-        channelGroup.add(channel);
-
+        tsoStateManager.register(requestProcessor);
         leaseManagement.startService();
-
-        LOG.info("********** TSO Server running on port {} **********", config.getPort());
+        LOG.info("********** TSO Server running **********");
     }
 
     @Override
     protected void shutDown() throws Exception {
         leaseManagement.stopService();
-        // Netty shutdown
-        if (channelGroup != null) {
-            channelGroup.close().awaitUninterruptibly();
-        }
-        if (factory != null) {
-            factory.releaseExternalResources();
-        }
+        tsoStateManager.unregister(requestProcessor);
         LOG.info("********** TSO Server stopped successfully **********");
     }
 

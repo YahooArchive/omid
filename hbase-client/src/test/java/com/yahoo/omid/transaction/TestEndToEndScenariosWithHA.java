@@ -21,6 +21,7 @@ import java.util.concurrent.CountDownLatch;
 import javax.inject.Named;
 import javax.inject.Singleton;
 
+import com.yahoo.omid.tso.TSOChannelHandler;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
@@ -144,7 +145,7 @@ public class TestEndToEndScenariosWithHA {
 
     }
 
-    @BeforeMethod
+    @BeforeMethod(alwaysRun = true)
     public void setup() throws Exception {
         LOG.info("==========================================================");
         LOG.info("==========================================================");
@@ -220,7 +221,7 @@ public class TestEndToEndScenariosWithHA {
         tso2 = injector2.getInstance(TSOServer.class);
         leaseManager2 = (PausableLeaseManager) injector2.getInstance(LeaseManagement.class);
         tso2.startAndWait();
-        TestUtils.waitForSocketListening("localhost", 4321, 100);
+        // Don't do this here: TestUtils.waitForSocketListening("localhost", 4321, 100);
         LOG.info("================ Finished loading TSO 2 ==================");
 
         // Wait till the master TSO is up
@@ -252,7 +253,9 @@ public class TestEndToEndScenariosWithHA {
         hBaseUtils.deleteTable(TIMESTAMP_TABLE_DEFAULT_NAME);
         hBaseUtils.deleteTable(table);
         tso1.stopAndWait();
+        TestUtils.waitForSocketNotListening("localhost", 1234, 100);
         tso2.stopAndWait();
+        TestUtils.waitForSocketNotListening("localhost", 4321, 100);
     }
 
     //
@@ -352,6 +355,9 @@ public class TestEndToEndScenariosWithHA {
             Thread.sleep(3000);
 
             checkRowValues(txTable, initialData, initialData);
+
+            // Need to resume to let other test progress
+            leaseManager1.resume();
 
         }
 
@@ -507,6 +513,8 @@ public class TestEndToEndScenariosWithHA {
         @Override
         protected void configure() {
 
+            bind(TSOChannelHandler.class).in(Singleton.class);
+
             bind(TSOStateManager.class).to(TSOStateManagerImpl.class).in(Singleton.class);
 
             bind(CommitTable.class).to(HBaseCommitTable.class).in(Singleton.class);
@@ -528,6 +536,7 @@ public class TestEndToEndScenariosWithHA {
         @Provides
         @Singleton
         LeaseManagement provideLeaseManager(@Named(TSO_HOST_AND_PORT_KEY) String tsoHostAndPort,
+                                                                       TSOChannelHandler tsoChannelHandler,
                                                                        TSOStateManager stateManager,
                                                                        CuratorFramework zkClient,
                                                                        Panicker panicker)
@@ -535,6 +544,7 @@ public class TestEndToEndScenariosWithHA {
 
             LOG.info("Connection to ZK cluster [{}]", zkClient.getState());
             return new PausableLeaseManager(tsoHostAndPort,
+                                        tsoChannelHandler,
                                         stateManager,
                                         config.getLeasePeriodInMs(),
                                         TSO_LEASE_PATH,
