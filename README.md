@@ -14,6 +14,10 @@ To read a cell transactionally, the client first checks if the cell has a shadow
 
 There are currently two implementations of the commit table, a hbase implementation and an inmemory implementation. The in-memory implementation gives no persistence guarantee and is only useful for benchmarking the TSO. 
 
+Build
+------
+[![Build Status](http://jenkins.screwdriver.corp.yahoo.com:9999/jenkins/job/omid2-trunk-component/badge/icon)](http://jenkins.screwdriver.corp.yahoo.com:9999/jenkins/job/omid2-trunk-component/)
+
 Quickstart
 ----------
 Clone the repository and build the TSO package:
