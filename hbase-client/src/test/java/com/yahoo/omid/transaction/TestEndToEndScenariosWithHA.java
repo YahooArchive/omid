@@ -17,6 +17,7 @@ import static org.testng.Assert.fail;
 
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -207,10 +208,6 @@ public class TestEndToEndScenariosWithHA {
         TestUtils.waitForSocketListening("localhost", 1234, 100);
         LOG.info("================ Finished loading TSO 1 ==================");
 
-        CommitTable commitTable = injector1.getInstance(CommitTable.class);
-        commitTableWriter = commitTable.getWriter().get();
-        commitTableClient = commitTable.getClient().get();
-
         // Configure TSO 2
         TSOServerCommandLineConfig config2 = TSOServerCommandLineConfig.configFactory(4321, 1000);
         config2.shouldHostAndPortBePublishedInZK = true;
@@ -277,7 +274,7 @@ public class TestEndToEndScenariosWithHA {
 
             // Write initial values for the test
             HBaseTransaction tx0 = (HBaseTransaction) tm.begin();
-            LOG.info("Starting Tx {} writing initial values for cells ({}) ", Bytes.toString(initialData));
+            LOG.info("Starting Tx {} writing initial values for cells ({}) ", tx0, Bytes.toString(initialData));
             Put putInitialDataRow1 = new Put(row1);
             putInitialDataRow1.add(family, qualifier1, initialData);
             txTable.put(tx0, putInitialDataRow1);
@@ -423,7 +420,7 @@ public class TestEndToEndScenariosWithHA {
 
             LOG.info("Sleep some time till the client is informed about"
                     + "the new TSO connection parameters and how can connect");
-            Thread.sleep(5000);
+            TimeUnit.SECONDS.sleep(TSOClient.DEFAULT_TSO_RECONNECTION_DELAY_SECS);
 
             HBaseTransaction tx2 = (HBaseTransaction) tm.begin();
             LOG.info("Starting Tx {} writing values for cells ({}, {}) ", tx2, Bytes.toString(data1_q1),

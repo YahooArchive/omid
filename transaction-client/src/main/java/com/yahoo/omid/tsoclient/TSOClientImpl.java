@@ -61,19 +61,21 @@ import com.yahoo.statemachine.StateMachine.State;
  */
 class TSOClientImpl extends TSOClient implements NodeCacheListener {
 
-    private static final Logger LOG = LoggerFactory.getLogger(TSOClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TSOClientImpl.class);
 
     private CuratorFramework zkClient;
     private NodeCache currentTSOZNode;
 
     private ChannelFactory factory;
     private ClientBootstrap bootstrap;
+    private Channel currentChannel;
     private final ScheduledExecutorService fsmExecutor;
     Fsm fsm;
 
     private final int requestTimeoutMs;
     private final int requestMaxRetries;
     private final int retryDelayMs; // ignored for now
+    private final int tsoReconnectionDelaySecs;
     private InetSocketAddress tsoAddr;
     private final MetricRegistry metrics;
 
@@ -95,6 +97,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         requestTimeoutMs = conf.getInt(REQUEST_TIMEOUT_IN_MS_CONFKEY, DEFAULT_REQUEST_TIMEOUT_MS);
         requestMaxRetries = conf.getInt(REQUEST_MAX_RETRIES_CONFKEY, DEFAULT_TSO_MAX_REQUEST_RETRIES);
         retryDelayMs = conf.getInt(TSO_RETRY_DELAY_MS_CONFKEY, DEFAULT_TSO_RETRY_DELAY_MS);
+        tsoReconnectionDelaySecs = conf.getInt(TSO_RECONNECTION_DELAY_SECS, DEFAULT_TSO_RECONNECTION_DELAY_SECS);
 
         LOG.info("Connecting to TSO...");
         // Try to connect to TSO from ZK. If fails, go through host:port config
@@ -201,8 +204,11 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         HostAndPort hp = HostAndPort.fromString(currentTSOAndEpochArray[0]);
         setTSOAddress(hp.getHostText(), hp.getPort());
         setEpoch(Long.parseLong(currentTSOAndEpochArray[1]));
-        fsm.sendEvent(new ErrorEvent(new NewTSOException()));
         LOG.info("CurrentTSO ZNode changed. New TSO Host & Port {}/Epoch {}", hp, getEpoch());
+        if (currentChannel != null && currentChannel.isConnected()) {
+            LOG.info("\tClosing channel with previous TSO {}", currentChannel);
+            currentChannel.close();
+        }
 
     }
 
@@ -314,6 +320,8 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         }
     }
 
+    private static class ReconnectEvent implements Event {}
+
     private static class HandshakeTimeoutEvent implements Event {
     }
 
@@ -381,20 +389,12 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     class DisconnectedState extends BaseState {
         DisconnectedState(Fsm fsm) {
             super(fsm);
+            LOG.debug("NEW STATE: DISCONNECTED");
         }
 
         public State handleEvent(RequestEvent e) {
             fsm.deferEvent(e);
-            bootstrap.connect(getAddress()).addListener(new ChannelFutureListener() {
-                    @Override
-                    public void operationComplete(ChannelFuture future)
-                            throws Exception {
-                        if (!future.isSuccess()) {
-                            fsm.sendEvent(new ErrorEvent(future.getCause()));
-                        }
-                    }
-                });
-            return new ConnectingState(fsm);
+            return tryToConnectToTSOServer();
         }
 
         public State handleEvent(CloseEvent e) {
@@ -402,12 +402,32 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
             e.success(null);
             return this;
         }
+
+        private State tryToConnectToTSOServer() {
+            final InetSocketAddress tsoAddress = getAddress();
+            LOG.info("Trying to connect to TSO [{}]", tsoAddress);
+            ChannelFuture channelFuture = bootstrap.connect(tsoAddress);
+            channelFuture.addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture channelFuture) throws Exception {
+                    if (channelFuture.isSuccess()) {
+                        LOG.info("Connection to TSO [{}] established. Channel {}",
+                                tsoAddress, channelFuture.getChannel());
+                    } else {
+                        LOG.error("Failed connection attempt to TSO [{}] failed. Channel {}",
+                                tsoAddress, channelFuture.getChannel());
+                    }
+                }
+            });
+            return new ConnectingState(fsm);
+        }
     }
 
     private class ConnectingState extends BaseState {
 
         ConnectingState(Fsm fsm) {
             super(fsm);
+            LOG.debug("NEW STATE: CONNECTING");
         }
 
         public State handleEvent(UserEvent e) {
@@ -424,8 +444,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         }
 
         public State handleEvent(ErrorEvent e) {
-            LOG.error("Error connecting", e.getParam());
-            return new DisconnectedState(fsm);
+            return new ConnectionFailedState(fsm, e.getParam());
         }
 
     }
@@ -446,6 +465,18 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         Timeout getTimeout() {
             return timeout;
         }
+
+        public String toString() {
+            String info = new String("Request type ");
+            if (event.getRequest().hasTimestampRequest()) {
+                info += "[Timestamp]";
+            } else if (event.getRequest().hasCommitRequest()) {
+                info += "[Commit] Start TS ->" + event.getRequest().getCommitRequest().getStartTimestamp();
+            } else {
+                info += "NONE";
+            }
+            return info;
+        }
     }
 
     private class HandshakingState extends BaseState {
@@ -458,6 +489,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
 
         HandshakingState(Fsm fsm, Channel channel) {
             super(fsm);
+            LOG.debug("NEW STATE: HANDSHAKING");
             this.channel = channel;
             TSOProto.HandshakeRequest.Builder handshake = TSOProto.HandshakeRequest.newBuilder();
             // Add the required handshake capabilities when necessary
@@ -524,11 +556,21 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
 
     class ConnectionFailedState extends BaseState {
 
+        final HashedWheelTimer reconnectionTimeoutExecutor = new HashedWheelTimer(
+                new ThreadFactoryBuilder().setNameFormat("tso-client-backoff-timeout").build());
+
         Throwable exception;
 
-        ConnectionFailedState(Fsm fsm, Throwable exception) {
+        ConnectionFailedState(final Fsm fsm, final Throwable exception) {
             super(fsm);
+            LOG.debug("NEW STATE: CONNECTION FAILED [RE-CONNECTION BACKOFF]");
             this.exception = exception;
+            reconnectionTimeoutExecutor.newTimeout(new TimerTask() {
+                @Override
+                public void run(Timeout timeout) {
+                    fsm.sendEvent(new ReconnectEvent());
+                }
+            }, tsoReconnectionDelaySecs, TimeUnit.SECONDS);
         }
 
         public State handleEvent(UserEvent e) {
@@ -537,10 +579,14 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         }
 
         public State handleEvent(ErrorEvent e) {
-            return new DisconnectedState(fsm);
+            return this;
         }
 
         public State handleEvent(ChannelClosedEvent e) {
+            return new DisconnectedState(fsm);
+        }
+
+        public State handleEvent(ReconnectEvent e) {
             return new DisconnectedState(fsm);
         }
 
@@ -550,6 +596,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
 
         HandshakeFailedState(Fsm fsm, Throwable exception) {
             super(fsm, exception);
+            LOG.debug("STATE: HANDSHAKING FAILED");
         }
 
     }
@@ -563,6 +610,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
 
         ConnectedState(Fsm fsm, Channel channel, HashedWheelTimer timeoutExecutor) {
             super(fsm);
+            LOG.debug("NEW STATE: CONNECTED");
             this.channel = channel;
             this.timeoutExecutor = timeoutExecutor;
             timestampRequests = new ArrayDeque<RequestAndTimeout>();
@@ -673,6 +721,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         }
 
         public State handleEvent(CloseEvent e) {
+            LOG.debug("CONNECTED STATE: CloseEvent");
             timeoutExecutor.stop();
             closeChannelAndErrorRequests();
             fsm.deferEvent(e);
@@ -690,12 +739,14 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         }
 
         public State handleEvent(ErrorEvent e) {
+            LOG.debug("CONNECTED STATE: ErrorEvent");
             timeoutExecutor.stop();
             handleError(fsm);
             return new ClosingState(fsm);
         }
 
         private void handleError(Fsm fsm) {
+            LOG.debug("CONNECTED STATE: Cancelling Timeouts in handleError");
             while (timestampRequests.size() > 0) {
                 RequestAndTimeout r = timestampRequests.remove();
                 if (r.getTimeout() != null) {
@@ -756,6 +807,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
 
         ClosingState(Fsm fsm) {
             super(fsm);
+            LOG.debug("NEW STATE: CLOSING");
         }
 
         public State handleEvent(TimestampRequestTimeoutEvent e) {
@@ -802,18 +854,22 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
 
         @Override
         public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) {
+            currentChannel = e.getChannel();
+            LOG.debug("HANDLER (CHANNEL CONNECTED): Connection {}. Sending connected event to FSM", e);
             fsm.sendEvent(new ConnectedEvent(e.getChannel()));
         }
 
         @Override
         public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e)
                 throws Exception {
+            LOG.debug("HANDLER (CHANNEL DISCONNECTED): Connection {}. Sending error event to FSM", e);
             fsm.sendEvent(new ErrorEvent(new ConnectionException()));
         }
 
         @Override
         public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e)
                 throws Exception {
+            LOG.debug("HANDLER (CHANNEL CLOSED): Connection {}. Sending channel closed event to FSM", e);
             fsm.sendEvent(new ChannelClosedEvent(new ConnectionException()));
         }
 

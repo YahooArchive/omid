@@ -11,6 +11,7 @@ import static org.testng.Assert.fail;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
@@ -32,7 +33,7 @@ public class TestUnconnectedTSOClient {
 
     private static final Logger LOG = getLogger(TestUnconnectedTSOClient.class);
 
-    @Test(timeOut = 20_000) // 20 secs
+    @Test(timeOut = 30_000) // 30 secs
     public void testRequestsDoneOnAnUnconnectedTSOClientAlwaysReturn()
     throws Exception {
 
@@ -48,6 +49,8 @@ public class TestUnconnectedTSOClient {
         // Internal accessor to fsm
         TSOClientImpl clientimpl = (TSOClientImpl)tsoClient;
         FsmImpl fsm = (FsmImpl) clientimpl.fsm;
+
+        assertEquals(fsm.getState().getClass(), DisconnectedState.class);
 
         // Test requests to the 3 relevant methods in TSO client
 
@@ -71,9 +74,11 @@ public class TestUnconnectedTSOClient {
             assertTrue(EXPECTED_EXCEPTIONS.contains(fsm.getState().getClass()));
         }
 
+        TimeUnit.SECONDS.sleep(TSOClient.DEFAULT_TSO_RECONNECTION_DELAY_SECS);
+        assertEquals(fsm.getState().getClass(), DisconnectedState.class);
+
         tsoClient.close().get();
         LOG.info("No exception expected");
-        assertEquals(fsm.getState().getClass(), DisconnectedState.class);
 
     }
 

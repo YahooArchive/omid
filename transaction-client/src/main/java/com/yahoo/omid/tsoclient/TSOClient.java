@@ -25,6 +25,8 @@ public abstract class TSOClient {
     public static final int DEFAULT_TSO_MAX_REQUEST_RETRIES = 5;
     public static final String REQUEST_TIMEOUT_IN_MS_CONFKEY = "tso.request.timeout-ms";
     public static final int DEFAULT_REQUEST_TIMEOUT_MS = 5000; // 5 secs
+    public static final String TSO_RECONNECTION_DELAY_SECS = "tso.reconnection_delay_secs";
+    public static final int DEFAULT_TSO_RECONNECTION_DELAY_SECS = 10;
     public static final String TSO_RETRY_DELAY_MS_CONFKEY = "tso.retry_delay_ms";
     public static final int DEFAULT_TSO_RETRY_DELAY_MS = 1000;
     public static final String TSO_EXECUTOR_THREAD_NUM_CONFKEY = "tso.executor.threads";
