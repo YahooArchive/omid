@@ -73,8 +73,6 @@ YINST set NETWORK_INTERFACE eth1
 YINST set PUBLISH_HOSTPORT_IN_ZK false
 YINST set ZK_CLUSTER localhost:2181
 
-
-
 # Jars
 f - - - lib/jars/$(PRODUCT_NAME).pom pom.xml
 f - - - lib/jars/$(PRODUCT_NAME)/$(PRODUCT_NAME).jar target/$(POM_ARTIFACT_ID).jar
