@@ -44,6 +44,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.base.Charsets.UTF_8;
 import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_FAMILY;
@@ -86,9 +87,11 @@ public class HBaseCommitTable implements CommitTable {
 
     public class HBaseWriter implements Writer {
 
+        private static final long INITIAL_LWM_VALUE = -1L;
         final HTable table;
         // Our own buffer for operations
         final List<Put> writeBuffer = new LinkedList<>();
+        final AtomicLong lowWatermarkToStore = new AtomicLong(INITIAL_LWM_VALUE);
 
         HBaseWriter(Configuration hbaseConfig, String tableName) throws IOException {
             table = new HTable(hbaseConfig, tableName);
@@ -106,14 +109,13 @@ public class HBaseCommitTable implements CommitTable {
 
         @Override
         public void updateLowWatermark(long lowWatermark) throws IOException {
-            Put put = new Put(LOW_WATERMARK_ROW);
-            put.add(LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER, Bytes.toBytes(lowWatermark));
-            writeBuffer.add(put);
+            lowWatermarkToStore.set(lowWatermark);
         }
 
         @Override
         public void flush() throws IOException {
             try {
+                addLowWatermarkToStoreToWriteBuffer();
                 table.put(writeBuffer);
                 writeBuffer.clear();
             } catch (IOException e) {
@@ -133,6 +135,14 @@ public class HBaseCommitTable implements CommitTable {
             table.close();
         }
 
+        private void addLowWatermarkToStoreToWriteBuffer() {
+            long lowWatermark = lowWatermarkToStore.get();
+            if(lowWatermark != INITIAL_LWM_VALUE) {
+                Put put = new Put(LOW_WATERMARK_ROW);
+                put.add(LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER, Bytes.toBytes(lowWatermark));
+                writeBuffer.add(put);
+            }
+        }
     }
 
     public class HBaseClient implements Client, Runnable {

@@ -93,7 +93,7 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
         persistProc.persistLowWatermark(lowWatermark);
         this.epoch = state.getEpoch();
         hashmap.reset();
-        LOG.info("RequestProcessor initialized with LWM {} and Epoch {}", lowWatermark, epoch);
+        LOG.info("RequestProcessor initialized with LWMs {} and Epoch {}", lowWatermark, epoch);
     }
 
     @Override
@@ -185,9 +185,11 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
                         newLowWatermark = Math.max(removed, newLowWatermark);
                     }
 
-                    lowWatermark = newLowWatermark;
-                    LOG.trace("Setting new low Watermark to {}", newLowWatermark);
-                    persistProc.persistLowWatermark(newLowWatermark);
+                    if (newLowWatermark != lowWatermark) {
+                        LOG.trace("Setting new low Watermark to {}", newLowWatermark);
+                        lowWatermark = newLowWatermark;
+                        persistProc.persistLowWatermark(newLowWatermark);
+                    }
                 }
                 persistProc.persistCommit(startTimestamp, commitTimestamp, c, event.getMonCtx());
             } catch (IOException e) {

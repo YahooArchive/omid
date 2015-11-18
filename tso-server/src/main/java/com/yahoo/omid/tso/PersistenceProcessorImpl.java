@@ -148,18 +148,15 @@ class PersistenceProcessorImpl
                 // TODO: What happens when the IOException is thrown?
                 writer.addCommittedTransaction(event.getStartTimestamp(), event.getCommitTimestamp());
                 batch.addCommit(event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel(),
-                        event.getMonCtx());
+                                event.getMonCtx());
                 break;
             case ABORT:
                 sendAbortOrIdentifyFalsePositive(event.getStartTimestamp(), event.isRetry(), event.getChannel(),
-                        event.getMonCtx());
+                                                 event.getMonCtx());
                 break;
             case TIMESTAMP:
                 event.getMonCtx().timerStart("timestampPersistProcessor");
                 batch.addTimestamp(event.getStartTimestamp(), event.getChannel(), event.getMonCtx());
-                break;
-            case LOW_WATERMARK:
-                writer.updateLowWatermark(event.getLowWatermark());
                 break;
         }
 
@@ -262,10 +259,11 @@ class PersistenceProcessorImpl
 
     @Override
     public void persistLowWatermark(long lowWatermark) {
-        long seq = persistRing.next();
-        PersistEvent e = persistRing.get(seq);
-        PersistEvent.makePersistLowWatermark(e, lowWatermark);
-        persistRing.publish(seq);
+        try {
+            writer.updateLowWatermark(lowWatermark);
+        } catch (IOException e) {
+            LOG.error("Should not be thrown");
+        }
     }
 
     public static class Batch {
@@ -364,7 +362,7 @@ class PersistenceProcessorImpl
         private MonitoringContext monCtx;
 
         enum Type {
-            TIMESTAMP, COMMIT, ABORT, LOW_WATERMARK
+            TIMESTAMP, COMMIT, ABORT
         }
 
         private Type type = null;
@@ -373,7 +371,6 @@ class PersistenceProcessorImpl
         private boolean isRetry = false;
         private long startTimestamp = 0;
         private long commitTimestamp = 0;
-        private long lowWatermark;
 
         static void makePersistCommit(PersistEvent e, long startTimestamp, long commitTimestamp, Channel c,
                                       MonitoringContext monCtx) {
@@ -393,19 +390,13 @@ class PersistenceProcessorImpl
             e.monCtx = monCtx;
         }
 
-        static void makePersistTimestamp(PersistEvent e, long startTimestamp, Channel c,
-                                         MonitoringContext monCtx) {
+        static void makePersistTimestamp(PersistEvent e, long startTimestamp, Channel c, MonitoringContext monCtx) {
             e.type = Type.TIMESTAMP;
             e.startTimestamp = startTimestamp;
             e.channel = c;
             e.monCtx = monCtx;
         }
-
-        static void makePersistLowWatermark(PersistEvent e, long lowWatermark) {
-            e.type = Type.LOW_WATERMARK;
-            e.lowWatermark = lowWatermark;
-        }
-
+        
         MonitoringContext getMonCtx() {
             return monCtx;
         }
@@ -430,12 +421,7 @@ class PersistenceProcessorImpl
             return commitTimestamp;
         }
 
-        long getLowWatermark() {
-            return lowWatermark;
-        }
-
-        public final static EventFactory<PersistEvent> EVENT_FACTORY
-                = new EventFactory<PersistEvent>() {
+        public final static EventFactory<PersistEvent> EVENT_FACTORY = new EventFactory<PersistEvent>() {
             @Override
             public PersistEvent newInstance() {
                 return new PersistEvent();

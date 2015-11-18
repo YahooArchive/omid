@@ -207,6 +207,7 @@ public class TestTSOClientConnectionToTSO {
         TestUtils.waitForSocketNotListening(TSO_HOST, tsoPortForTest, 1000);
         LOG.info("Initial TSO Server Stopped");
 
+        Thread.sleep(1500); // ...allow the client to receive disconnection event...
         // ... and check that we get a conn exception when trying to access the client
         try {
             startTS = tsoClient.getNewStartTimestamp().get();
