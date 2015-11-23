@@ -39,7 +39,7 @@
     <yahoo.mon_metrics.version>0.2.11_25</yahoo.mon_metrics.version>
 
     <!-- 3rd-Party Library Versioning -->
-    <hbase.version>0.98.7.3.1410020120_h2</hbase.version>
+    <hbase.version>0.98.7.13.1511172201_h2</hbase.version>
     <guava.version>11.0.2</guava.version>
     <guice.version>3.0</guice.version>
     <testng.version>6.8.8</testng.version>
