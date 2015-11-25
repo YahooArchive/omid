@@ -27,9 +27,7 @@ import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -57,30 +55,14 @@ public class TestTSOClientConnectionToTSO {
 
     private TSOServer tsoServer;
 
-    @BeforeClass
-    public void beforeClass() throws Exception {
+    @BeforeMethod
+    public void beforeMethod() throws Exception {
 
         LOG.info("Starting ZK Server");
         zkServer = provideZookeeperServer();
         LOG.info("ZK Server Started @ {}", zkServer.getConnectString());
 
         zkClient = provideInitializedZookeeperClient();
-
-    }
-
-    @AfterClass
-    public void afterClass() throws Exception {
-
-        zkClient.close();
-
-        CloseableUtils.closeQuietly(zkServer);
-        zkServer = null;
-        LOG.info("ZK Server Stopped");
-
-    }
-
-    @BeforeMethod
-    public void beforeMethod() throws Exception {
 
         Stat stat;
         try {
@@ -95,6 +77,13 @@ public class TestTSOClientConnectionToTSO {
 
     @AfterMethod
     public void afterMethod() {
+
+        zkClient.close();
+
+        CloseableUtils.closeQuietly(zkServer);
+        zkServer = null;
+        LOG.info("ZK Server Stopped");
+
     }
 
     @Test
@@ -154,7 +143,7 @@ public class TestTSOClientConnectionToTSO {
         // Launch a TSO publishing the address in ZK...
         TSOServerCommandLineConfig config = TSOServerCommandLineConfig.configFactory(TSO_PORT, 1000);
         config.shouldHostAndPortBePublishedInZK = true;
-        config.setLeasePeriodInMs(100);
+        config.setLeasePeriodInMs(1000);
         injector = Guice.createInjector(new TSOMockModule(config));
         LOG.info("Starting TSO");
         tsoServer = injector.getInstance(TSOServer.class);
@@ -225,8 +214,8 @@ public class TestTSOClientConnectionToTSO {
             FsmImpl fsm = (FsmImpl) clientimpl.fsm;
             assertEquals(e.getCause().getClass(), ConnectionException.class);
             assertTrue(fsm.getState().getClass().equals(TSOClientImpl.ConnectionFailedState.class)
-                       ||
-                       fsm.getState().getClass().equals(TSOClientImpl.DisconnectedState.class));
+                    ||
+                    fsm.getState().getClass().equals(TSOClientImpl.DisconnectedState.class));
         }
 
         // After that, simulate that a new TSO has been launched...

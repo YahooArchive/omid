@@ -2,7 +2,9 @@ package com.yahoo.omid.tso;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.proto.TSOProto;
+
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFactory;
@@ -25,16 +27,17 @@ import org.jboss.netty.handler.codec.protobuf.ProtobufEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ClosedChannelException;
 import java.util.concurrent.Executors;
 
+import javax.inject.Inject;
+
 /**
  * ChannelHandler for the TSO Server.
- * 
+ *
  * Incoming requests are processed in this class
  */
 public class TSOChannelHandler extends SimpleChannelHandler implements Closeable {
@@ -54,23 +57,26 @@ public class TSOChannelHandler extends SimpleChannelHandler implements Closeable
 
     private TSOServerCommandLineConfig config;
 
+    private MetricsRegistry metrics;
+
     @Inject
-    public TSOChannelHandler(TSOServerCommandLineConfig config, RequestProcessor requestProcessor) {
+    public TSOChannelHandler(TSOServerCommandLineConfig config, RequestProcessor requestProcessor,
+                             MetricsRegistry metrics) {
         this.config = config;
+        this.metrics = metrics;
         this.requestProcessor = requestProcessor;
         // Setup netty listener
         this.factory = new NioServerSocketChannelFactory(
-                Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("boss-%d").build()),
-                Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("worker-%d").build()),
-                (Runtime.getRuntime().availableProcessors() * 2 + 1) * 2);
+            Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("boss-%d").build()),
+            Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("worker-%d").build()),
+            (Runtime.getRuntime().availableProcessors() * 2 + 1) * 2);
 
         this.bootstrap = new ServerBootstrap(factory);
         bootstrap.setPipelineFactory(new TSOPipelineFactory(this));
     }
 
     /**
-     * Allows to create and connect the communication channel
-     * closing the previous one if existed
+     * Allows to create and connect the communication channel closing the previous one if existed
      */
     public void reconnect() {
         if (listeningChannel == null && channelGroup == null) {
@@ -104,7 +110,6 @@ public class TSOChannelHandler extends SimpleChannelHandler implements Closeable
         }
     }
 
-
     // ------------------------------------------------------------------------
     // ------------- Netty SimpleChannelHandler implementation ----------------
     // ------------------------------------------------------------------------
@@ -133,7 +138,7 @@ public class TSOChannelHandler extends SimpleChannelHandler implements Closeable
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
         Object msg = e.getMessage();
         if (msg instanceof TSOProto.Request) {
-            TSOProto.Request request = (TSOProto.Request)msg;
+            TSOProto.Request request = (TSOProto.Request) msg;
             if (request.hasHandshakeRequest()) {
                 checkHandshake(ctx, request.getHandshakeRequest());
                 return;
@@ -144,13 +149,15 @@ public class TSOChannelHandler extends SimpleChannelHandler implements Closeable
             }
 
             if (request.hasTimestampRequest()) {
-                requestProcessor.timestampRequest(ctx.getChannel());
+                requestProcessor.timestampRequest(ctx.getChannel(),
+                                                  new MonitoringContext(metrics));
             } else if (request.hasCommitRequest()) {
                 TSOProto.CommitRequest cr = request.getCommitRequest();
                 requestProcessor.commitRequest(cr.getStartTimestamp(),
                                                cr.getCellIdList(),
                                                cr.getIsRetry(),
-                                               ctx.getChannel());
+                                               ctx.getChannel(),
+                                               new MonitoringContext(metrics));
             } else {
                 LOG.error("Invalid request {}. Closing channel {}", request, ctx.getChannel());
                 ctx.getChannel().close();
@@ -218,7 +225,7 @@ public class TSOChannelHandler extends SimpleChannelHandler implements Closeable
             response.setClientCompatible(false);
         }
         ctx.getChannel().write(TSOProto.Response.newBuilder()
-                               .setHandshakeResponse(response.build()).build());
+                                   .setHandshakeResponse(response.build()).build());
     }
 
     private boolean handshakeCompleted(ChannelHandlerContext ctx) {
@@ -248,11 +255,11 @@ public class TSOChannelHandler extends SimpleChannelHandler implements Closeable
             // that the packet is rejected will receive a ServiceUnavailableException.
             // 10MB is enough for 2 million cells in a transaction though.
             pipeline.addLast("lengthbaseddecoder",
-                    new LengthFieldBasedFrameDecoder(10 * 1024 * 1024, 0, 4, 0, 4));
+                             new LengthFieldBasedFrameDecoder(10 * 1024 * 1024, 0, 4, 0, 4));
             pipeline.addLast("lengthprepender", new LengthFieldPrepender(4));
 
             pipeline.addLast("protobufdecoder",
-                    new ProtobufDecoder(TSOProto.Request.getDefaultInstance()));
+                             new ProtobufDecoder(TSOProto.Request.getDefaultInstance()));
             pipeline.addLast("protobufencoder", new ProtobufEncoder());
 
             pipeline.addLast("handler", handler);

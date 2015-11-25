@@ -1,17 +1,5 @@
 package com.yahoo.omid.tso;
 
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import javax.inject.Inject;
-
-import org.jboss.netty.channel.Channel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.BusySpinWaitStrategy;
@@ -20,13 +8,25 @@ import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
 import com.yahoo.omid.metrics.MetricsRegistry;
-import com.yahoo.omid.tso.TSOStateManager.StateObserver;
 import com.yahoo.omid.tso.TSOStateManager.TSOState;
+
+import org.jboss.netty.channel.Channel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import javax.inject.Inject;
 
 public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestEvent>,
                                              RequestProcessor
 
 {
+
     private static final Logger LOG = LoggerFactory.getLogger(RequestProcessorImpl.class);
 
     static final int DEFAULT_MAX_ITEMS = 1_000_000;
@@ -34,6 +34,7 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
 
     private final TimestampOracle timestampOracle;
     public final CommitHashMap hashmap;
+    private final MetricsRegistry metrics;
     private final PersistenceProcessor persistProc;
     private final RingBuffer<RequestEvent> requestRing;
     private long lowWatermark = -1L;
@@ -44,8 +45,8 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
                          TimestampOracle timestampOracle,
                          PersistenceProcessor persistProc,
                          Panicker panicker,
-                         TSOServerConfig config) throws IOException
-    {
+                         TSOServerConfig config) throws IOException {
+        this.metrics = metrics;
 
         this.persistProc = persistProc;
         this.timestampOracle = timestampOracle;
@@ -53,18 +54,18 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
         this.hashmap = new CommitHashMap(config.getMaxItems());
 
         // Set up the disruptor thread
-        requestRing = RingBuffer.<RequestEvent>createMultiProducer(RequestEvent.EVENT_FACTORY, 1<<12,
+        requestRing = RingBuffer.<RequestEvent>createMultiProducer(RequestEvent.EVENT_FACTORY, 1 << 12,
                                                                    new BusySpinWaitStrategy());
         SequenceBarrier requestSequenceBarrier = requestRing.newBarrier();
         BatchEventProcessor<RequestEvent> requestProcessor =
-                new BatchEventProcessor<RequestEvent>(requestRing,
-                                                      requestSequenceBarrier,
-                                                      this);
+            new BatchEventProcessor<RequestEvent>(requestRing,
+                                                  requestSequenceBarrier,
+                                                  this);
         requestRing.addGatingSequences(requestProcessor.getSequence());
         requestProcessor.setExceptionHandler(new FatalExceptionHandler(panicker));
 
         ExecutorService requestExec = Executors.newSingleThreadExecutor(
-                new ThreadFactoryBuilder().setNameFormat("request-%d").build());
+            new ThreadFactoryBuilder().setNameFormat("request-%d").build());
         // Each processor runs on a separate thread
         requestExec.submit(requestProcessor);
 
@@ -84,33 +85,43 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
     }
 
     @Override
-    public void onEvent(final RequestEvent event, final long sequence, final boolean endOfBatch)
-        throws Exception
-    {
-        if (event.getType() == RequestEvent.Type.TIMESTAMP) {
-            handleTimestamp(event.getChannel());
-        } else if (event.getType() == RequestEvent.Type.COMMIT) {
-            handleCommit(event.getStartTimestamp(), event.writeSet(), event.isRetry(), event.getChannel());
+    public void onEvent(RequestEvent event, long sequence, boolean endOfBatch) throws Exception {
+        String name = null;
+        try {
+            if (event.getType() == RequestEvent.Type.TIMESTAMP) {
+                name = "timestampReqProcessor";
+                event.getMonCtx().timerStart(name);
+                handleTimestamp(event);
+            } else if (event.getType() == RequestEvent.Type.COMMIT) {
+                name = "commitReqProcessor";
+                event.getMonCtx().timerStart(name);
+                handleCommit(event);
+            }
+        } finally {
+            if (name != null) {
+                event.getMonCtx().timerStop(name);
+            }
         }
+
     }
 
     @Override
-    public void timestampRequest(Channel c) {
+    public void timestampRequest(Channel c, MonitoringContext monCtx) {
         long seq = requestRing.next();
         RequestEvent e = requestRing.get(seq);
-        RequestEvent.makeTimestampRequest(e, c);
+        RequestEvent.makeTimestampRequest(e, c, monCtx);
         requestRing.publish(seq);
     }
 
     @Override
-    public void commitRequest(long startTimestamp, Collection<Long> writeSet, boolean isRetry, Channel c) {
+    public void commitRequest(long startTimestamp, Collection<Long> writeSet, boolean isRetry, Channel c, MonitoringContext monCtx) {
         long seq = requestRing.next();
         RequestEvent e = requestRing.get(seq);
-        RequestEvent.makeCommitRequest(e, startTimestamp, writeSet, isRetry, c);
+        RequestEvent.makeCommitRequest(e, startTimestamp, monCtx, writeSet, isRetry, c);
         requestRing.publish(seq);
     }
 
-    public void handleTimestamp(Channel c) {
+    public void handleTimestamp(RequestEvent requestEvent) {
         long timestamp;
 
         try {
@@ -120,10 +131,15 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
             return;
         }
 
-        persistProc.persistTimestamp(timestamp, c);
+        persistProc.persistTimestamp(timestamp, requestEvent.getChannel(), requestEvent.getMonCtx());
     }
 
-    public long handleCommit(long startTimestamp, Iterable<Long> writeSet, boolean isRetry, Channel c) {
+    public long handleCommit(RequestEvent event) {
+        long startTimestamp = event.getStartTimestamp();
+        Iterable<Long> writeSet = event.writeSet();
+        boolean isRetry = event.isRetry();
+        Channel c = event.getChannel();
+
         boolean committed = false;
         long commitTimestamp = 0L;
 
@@ -161,12 +177,12 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
                     LOG.trace("Setting new low Watermark to {}", newLowWatermark);
                     persistProc.persistLowWatermark(newLowWatermark);
                 }
-                persistProc.persistCommit(startTimestamp, commitTimestamp, c);
+                persistProc.persistCommit(startTimestamp, commitTimestamp, c, event.getMonCtx());
             } catch (IOException e) {
                 LOG.error("Error committing", e);
             }
         } else { // add it to the aborted list
-            persistProc.persistAbort(startTimestamp, isRetry, c);
+            persistProc.persistAbort(startTimestamp, isRetry, c, event.getMonCtx());
         }
 
         return commitTimestamp;
@@ -176,26 +192,32 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
 
         enum Type {
             TIMESTAMP, COMMIT
-        };
+        }
+
+        ;
 
         private Type type = null;
         private Channel channel = null;
 
         private boolean isRetry = false;
         private long startTimestamp = 0;
+        private MonitoringContext monCtx;
         private long numCells = 0;
 
         private static final int MAX_INLINE = 40;
         private Long writeSet[] = new Long[MAX_INLINE];
         private Collection<Long> writeSetAsCollection = null; // for the case where there's more than MAX_INLINE
 
-        static void makeTimestampRequest(RequestEvent e, Channel c) {
+        static void makeTimestampRequest(RequestEvent e, Channel c, MonitoringContext monCtx) {
             e.type = Type.TIMESTAMP;
             e.channel = c;
+            e.monCtx = monCtx;
         }
 
         static void makeCommitRequest(RequestEvent e,
-                                      long startTimestamp, Collection<Long> writeSet, boolean isRetry, Channel c) {
+                                      long startTimestamp, MonitoringContext monCtx, Collection<Long> writeSet,
+                                      boolean isRetry, Channel c) {
+            e.monCtx = monCtx;
             e.type = Type.COMMIT;
             e.channel = c;
             e.startTimestamp = startTimestamp;
@@ -212,6 +234,10 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
                     i++;
                 }
             }
+        }
+
+        MonitoringContext getMonCtx() {
+            return monCtx;
         }
 
         Type getType() {
@@ -260,11 +286,9 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
         }
 
         public final static EventFactory<RequestEvent> EVENT_FACTORY
-            = new EventFactory<RequestEvent>()
-        {
+            = new EventFactory<RequestEvent>() {
             @Override
-            public RequestEvent newInstance()
-            {
+            public RequestEvent newInstance() {
                 return new RequestEvent();
             }
         };

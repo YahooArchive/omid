@@ -1,27 +1,28 @@
 package com.yahoo.omid.tso;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ExecutorService;
-
-import javax.inject.Inject;
-
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.lmax.disruptor.BatchEventProcessor;
+import com.lmax.disruptor.BusySpinWaitStrategy;
+import com.lmax.disruptor.EventFactory;
+import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.SequenceBarrier;
+import com.yahoo.omid.metrics.Meter;
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.proto.TSOProto;
 
 import org.jboss.netty.channel.Channel;
-
-import com.yahoo.omid.proto.TSOProto;
-import com.lmax.disruptor.*;
-import com.yahoo.omid.metrics.MetricsRegistry;
-
-import static com.codahale.metrics.MetricRegistry.name;
-
-import com.yahoo.omid.metrics.Meter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>, ReplyProcessor
-{
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import javax.inject.Inject;
+
+import static com.codahale.metrics.MetricRegistry.name;
+
+class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>, ReplyProcessor {
     private static final Logger LOG = LoggerFactory.getLogger(ReplyProcessorImpl.class);
 
     final RingBuffer<ReplyEvent> replyRing;
@@ -49,50 +50,63 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
         timestampMeter = metrics.meter(name("tso", "timestampAllocation"));
     }
 
-    @Override
-    public void onEvent(final ReplyEvent event, final long sequence, final boolean endOfBatch)
-        throws Exception
-    {
-        switch (event.getType()) {
-        case COMMIT:
-            handleCommitResponse(false, event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel());
-            break;
-        case HEURISTIC_COMMIT:
-            handleCommitResponse(true, event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel());
-            break;
-        case ABORT:
-            handleAbortResponse(event.getStartTimestamp(), event.getChannel());
-            break;
-        case TIMESTAMP:
-            handleTimestampResponse(event.getStartTimestamp(), event.getChannel());
-            break;
-        default:
-            LOG.error("Unknown event {}", event.getType());
-            break;
+    public void onEvent(ReplyEvent event, long sequence, boolean endOfBatch) throws Exception {
+        String name = null;
+        try {
+            switch (event.getType()) {
+            case COMMIT:
+                name = "commitReplyProcessor";
+                event.getMonCtx().timerStart(name);
+                handleCommitResponse(false, event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel());
+                break;
+            case HEURISTIC_COMMIT:
+                name = "commitReplyProcessor";
+                event.getMonCtx().timerStart(name);
+                handleCommitResponse(true, event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel());
+                break;
+            case ABORT:
+                name = "abortReplyProcessor";
+                event.getMonCtx().timerStart(name);
+                handleAbortResponse(event.getStartTimestamp(), event.getChannel());
+                break;
+            case TIMESTAMP:
+                name = "timestampReplyProcessor";
+                event.getMonCtx().timerStart(name);
+                handleTimestampResponse(event.getStartTimestamp(), event.getChannel());
+                break;
+            default:
+                LOG.error("Unknown event {}", event.getType());
+                break;
+            }
+        } finally {
+            if (name != null) {
+                event.getMonCtx().timerStop(name);
+            }
         }
+        event.getMonCtx().publish();
     }
 
     @Override
-    public void commitResponse(boolean makeHeuristicDecision, long startTimestamp, long commitTimestamp, Channel c) {
+    public void commitResponse(boolean makeHeuristicDecision, long startTimestamp, long commitTimestamp, Channel c,  MonitoringContext monCtx) {
         long seq = replyRing.next();
         ReplyEvent e = replyRing.get(seq);
-        ReplyEvent.makeCommitResponse(makeHeuristicDecision, e, startTimestamp, commitTimestamp, c);
+        ReplyEvent.makeCommitResponse(makeHeuristicDecision, e, startTimestamp, commitTimestamp, c, monCtx);
         replyRing.publish(seq);
     }
 
     @Override
-    public void abortResponse(long startTimestamp, Channel c) {
+    public void abortResponse(long startTimestamp, Channel c, MonitoringContext monCtx) {
         long seq = replyRing.next();
         ReplyEvent e = replyRing.get(seq);
-        ReplyEvent.makeAbortResponse(e, startTimestamp, c);
+        ReplyEvent.makeAbortResponse(e, startTimestamp, c, monCtx);
         replyRing.publish(seq);
     }
 
     @Override
-    public void timestampResponse(long startTimestamp, Channel c) {
+    public void timestampResponse(long startTimestamp, Channel c, MonitoringContext monCtx) {
         long seq = replyRing.next();
         ReplyEvent e = replyRing.get(seq);
-        ReplyEvent.makeTimestampReponse(e, startTimestamp, c);
+        ReplyEvent.makeTimestampReponse(e, startTimestamp, c, monCtx);
         replyRing.publish(seq);
     }
 
@@ -141,20 +155,26 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
 
         private long startTimestamp = 0;
         private long commitTimestamp = 0;
+        private MonitoringContext monCtx;
 
         Type getType() { return type; }
         Channel getChannel() { return channel; }
         long getStartTimestamp() { return startTimestamp; }
         long getCommitTimestamp() { return commitTimestamp; }
 
-        static void makeTimestampReponse(ReplyEvent e, long startTimestamp, Channel c) {
+        MonitoringContext getMonCtx() {
+            return monCtx;
+        }
+
+        static void makeTimestampReponse(ReplyEvent e, long startTimestamp, Channel c, MonitoringContext monCtx) {
             e.type = Type.TIMESTAMP;
             e.startTimestamp = startTimestamp;
             e.channel = c;
+            e.monCtx = monCtx;
         }
 
         static void makeCommitResponse(boolean makeHeuristicDecision, ReplyEvent e, long startTimestamp,
-                long commitTimestamp, Channel c) {
+                long commitTimestamp, Channel c, MonitoringContext monCtx) {
 
             if (makeHeuristicDecision) {
                 e.type = Type.HEURISTIC_COMMIT;
@@ -164,17 +184,17 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
             e.startTimestamp = startTimestamp;
             e.commitTimestamp = commitTimestamp;
             e.channel = c;
+            e.monCtx = monCtx;
         }
 
-        static void makeAbortResponse(ReplyEvent e, long startTimestamp, Channel c) {
+        static void makeAbortResponse(ReplyEvent e, long startTimestamp, Channel c, MonitoringContext monCtx) {
             e.type = Type.ABORT;
             e.startTimestamp = startTimestamp;
             e.channel = c;
+            e.monCtx = monCtx;
         }
 
-        public final static EventFactory<ReplyEvent> EVENT_FACTORY
-            = new EventFactory<ReplyEvent>()
-        {
+        public final static EventFactory<ReplyEvent> EVENT_FACTORY = new EventFactory<ReplyEvent>() {
             @Override
             public ReplyEvent newInstance()
             {

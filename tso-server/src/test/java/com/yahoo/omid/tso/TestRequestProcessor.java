@@ -26,6 +26,7 @@ import com.yahoo.omid.metrics.NullMetricsProvider;
 public class TestRequestProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestRequestProcessor.class);
+    private MetricsRegistry metrics = new NullMetricsProvider();
 
     private PersistenceProcessor persist;
 
@@ -63,58 +64,55 @@ public class TestRequestProcessor {
 
     @Test(timeOut = 30000)
     public void testTimestamp() throws Exception {
-        requestProc.timestampRequest(null);
+        requestProc.timestampRequest(null, new MonitoringContext(metrics));
         ArgumentCaptor<Long> firstTScapture = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(1)).persistTimestamp(
-                firstTScapture.capture(), any(Channel.class));
+                firstTScapture.capture(), any(Channel.class), any(MonitoringContext.class));
 
         long firstTS = firstTScapture.getValue();
         // verify that timestamps increase monotonically
         for (int i = 0; i < 100; i++) {
-            requestProc.timestampRequest(null);
-            verify(persist, timeout(100).times(1)).persistTimestamp(eq(firstTS++), any(Channel.class));
+            requestProc.timestampRequest(null, new MonitoringContext(metrics));
+            verify(persist, timeout(100).times(1)).persistTimestamp(eq(firstTS++), any(Channel.class), any(MonitoringContext.class));
         }
     }
 
     @Test(timeOut = 30000)
     public void testCommit() throws Exception {
 
-        requestProc.timestampRequest(null);
+        requestProc.timestampRequest(null, new MonitoringContext(metrics));
         ArgumentCaptor<Long> TScapture = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(1)).persistTimestamp(
-                TScapture.capture(), any(Channel.class));
+                TScapture.capture(), any(Channel.class), any(MonitoringContext.class));
         long firstTS = TScapture.getValue();
 
         List<Long> writeSet = Lists.newArrayList(1L, 20L, 203L);
-        requestProc.commitRequest(firstTS - 1, writeSet, false, null);
-        verify(persist, timeout(100).times(1)).persistAbort(eq(firstTS - 1), anyBoolean(), any(Channel.class));
+        requestProc.commitRequest(firstTS - 1, writeSet, false, null, new MonitoringContext(metrics));
+        verify(persist, timeout(100).times(1)).persistAbort(eq(firstTS - 1), anyBoolean(), any(Channel.class), any(MonitoringContext.class));
 
-        requestProc.commitRequest(firstTS, writeSet, false, null);
+        requestProc.commitRequest(firstTS, writeSet, false, null, new MonitoringContext(metrics));
         ArgumentCaptor<Long> commitTScapture = ArgumentCaptor.forClass(Long.class);
 
-        verify(persist, timeout(100).times(1)).persistCommit(eq(firstTS), commitTScapture.capture(),
-                                                             any(Channel.class));
+        verify(persist, timeout(100).times(1)).persistCommit(eq(firstTS), commitTScapture.capture(), any(Channel.class), any(MonitoringContext.class));
         assertTrue("Commit TS must be greater than start TS", commitTScapture.getValue() > firstTS);
 
         // test conflict
-        requestProc.timestampRequest(null);
+        requestProc.timestampRequest(null, new MonitoringContext(metrics));
         TScapture = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(2)).persistTimestamp(
-                TScapture.capture(), any(Channel.class));
+                TScapture.capture(), any(Channel.class), any(MonitoringContext.class));
         long secondTS = TScapture.getValue();
 
-        requestProc.timestampRequest(null);
+        requestProc.timestampRequest(null, new MonitoringContext(metrics));
         TScapture = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(3)).persistTimestamp(
-                TScapture.capture(), any(Channel.class));
+                TScapture.capture(), any(Channel.class), any(MonitoringContext.class));
         long thirdTS = TScapture.getValue();
 
-        requestProc.commitRequest(thirdTS, writeSet, false, null);
-        verify(persist, timeout(100).times(1)).persistCommit(eq(thirdTS), anyLong(),
-                                                             any(Channel.class));
-        requestProc.commitRequest(secondTS, writeSet, false, null);
-        verify(persist, timeout(100).times(1)).persistAbort(eq(secondTS), anyBoolean(),
-                                                            any(Channel.class));
+        requestProc.commitRequest(thirdTS, writeSet, false, null, new MonitoringContext(metrics));
+        verify(persist, timeout(100).times(1)).persistCommit(eq(thirdTS), anyLong(), any(Channel.class), any(MonitoringContext.class));
+        requestProc.commitRequest(secondTS, writeSet, false, null, new MonitoringContext(metrics));
+        verify(persist, timeout(100).times(1)).persistAbort(eq(secondTS), anyBoolean(), any(Channel.class), any(MonitoringContext.class));
     }
 
     @Test(timeOut = 30000)
@@ -123,10 +121,11 @@ public class TestRequestProcessor {
         List<Long> writeSet = Collections.<Long> emptyList();
 
         // Start a transaction...
-        requestProc.timestampRequest(null);
+        requestProc.timestampRequest(null, new MonitoringContext(metrics));
         ArgumentCaptor<Long> capturedTS = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(1)).persistTimestamp(capturedTS.capture(),
-                                                                any(Channel.class));
+                                                                any(Channel.class),
+                                                                any(MonitoringContext.class));
         long startTS = capturedTS.getValue();
 
         // ... simulate the reset of the RequestProcessor state (e.g. due to
@@ -134,9 +133,8 @@ public class TestRequestProcessor {
         stateManager.reset();
 
         // ...check that the transaction is aborted when trying to commit
-        requestProc.commitRequest(startTS, writeSet, false, null);
-        verify(persist, timeout(100).times(1)).persistAbort(eq(startTS), anyBoolean(),
-                                                            any(Channel.class));
+        requestProc.commitRequest(startTS, writeSet, false, null, new MonitoringContext(metrics));
+        verify(persist, timeout(100).times(1)).persistAbort(eq(startTS), anyBoolean(), any(Channel.class), any(MonitoringContext.class));
 
     }
 

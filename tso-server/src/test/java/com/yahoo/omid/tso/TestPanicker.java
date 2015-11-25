@@ -97,7 +97,7 @@ public class TestPanicker {
                                                                  mock(RetryProcessor.class),
                                                                  panicker,
                                                                  new TSOServerConfig());
-        proc.persistCommit(1, 2, null);
+        proc.persistCommit(1, 2, null, new MonitoringContext(metrics));
         verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
     }
 
@@ -136,7 +136,7 @@ public class TestPanicker {
                                                                  mock(RetryProcessor.class),
                                                                  panicker,
                                                                  new TSOServerConfig());
-        proc.persistCommit(1, 2, null);
+        proc.persistCommit(1, 2, null, new MonitoringContext(metrics));
         verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
     }
 }

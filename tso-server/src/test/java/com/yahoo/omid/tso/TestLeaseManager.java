@@ -305,7 +305,7 @@ public class TestLeaseManager {
     }
 
 
-    @Test(timeOut = 30_000)
+    @Test(timeOut = 40_000)
     public void testLeaseManagerPanicsWhenUnexpectedInfoIsFoundInCurrentTSOZnode() throws Exception {
 
         final String TEST_TSO_LEASE_PATH = "/test_wronginfo_tsolease";
@@ -327,7 +327,7 @@ public class TestLeaseManager {
 
         leaseManager.startService();
         // ...and let the test run for some time...
-        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
+        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 3);
 
         leaseManager.pausedInTryToRenewLeasePeriod();
 
@@ -335,10 +335,10 @@ public class TestLeaseManager {
         zkClient.setData().forPath(TEST_CURRENT_TSO_PATH, "CorruptedData!!!".getBytes());
 
         // ...and let the test run for some time...
-        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
+        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 3);
         leaseManager.resume();
         // ...and let the test run for some time...
-        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
+        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 3);
 
         ArgumentCaptor<IllegalArgumentException> trowableIAE = ArgumentCaptor.forClass(IllegalArgumentException.class);
         verify(panicker).panic(anyString(), trowableIAE.capture());
@@ -353,10 +353,10 @@ public class TestLeaseManager {
         leaseManager.pausedInTryToRenewLeasePeriod();
 
         // ...and let the test run for some time...
-        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
+        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 3);
         leaseManager.resume();
         // ...and let the test run for some time...
-        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
+        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 3);
 
         ArgumentCaptor<LeaseManagement.LeaseManagementException> trowableLME =
                 ArgumentCaptor.forClass(LeaseManagement.LeaseManagementException.class);

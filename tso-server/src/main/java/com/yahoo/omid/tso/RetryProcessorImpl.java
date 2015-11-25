@@ -96,7 +96,7 @@ class RetryProcessorImpl
 
     private void handleCommitRetry(RetryEvent event) throws InterruptedException, ExecutionException {
 
-        final long startTimestamp = event.getStartTimestamp();
+        long startTimestamp = event.getStartTimestamp();
 
         try {
             Optional<CommitTimestamp> commitTimestamp = commitTableClient.getCommitTimestamp(startTimestamp).get();
@@ -104,14 +104,14 @@ class RetryProcessorImpl
                 if (commitTimestamp.get().isValid()) {
                     LOG.trace("Valid commit TS found in Commit Table");
                     replyProc.commitResponse(false, startTimestamp, commitTimestamp.get().getValue(),
-                            event.getChannel());
+                            event.getChannel(), event.getMonCtx());
                 } else {
                     LOG.trace("Invalid commit TS found in Commit Table");
-                    replyProc.abortResponse(startTimestamp, event.getChannel());
+                    replyProc.abortResponse(startTimestamp, event.getChannel(), event.getMonCtx());
                 }
             } else {
                 LOG.trace("No commit TS found in Commit Table");
-                replyProc.abortResponse(startTimestamp, event.getChannel());
+                replyProc.abortResponse(startTimestamp, event.getChannel(), event.getMonCtx());
             }
         } catch (InterruptedException e) {
             LOG.error("Interrupted reading from commit table");
@@ -124,10 +124,10 @@ class RetryProcessorImpl
     }
 
     @Override
-    public void disambiguateRetryRequestHeuristically(long startTimestamp, Channel c) {
+    public void disambiguateRetryRequestHeuristically(long startTimestamp, Channel c, MonitoringContext monCtx) {
         long seq = retryRing.next();
         RetryEvent e = retryRing.get(seq);
-        RetryEvent.makeCommitRetry(e, startTimestamp, c);
+        RetryEvent.makeCommitRetry(e, startTimestamp, c, monCtx);
         retryRing.publish(seq);
     }
 
@@ -140,12 +140,16 @@ class RetryProcessorImpl
 
         private long startTimestamp = 0;
         private Channel channel = null;
+        private MonitoringContext monCtx;
 
-        static void makeCommitRetry(RetryEvent e, long startTimestamp, Channel c) {
+        static void makeCommitRetry(RetryEvent e, long startTimestamp, Channel c, MonitoringContext monCtx) {
+            e.monCtx = monCtx;
             e.type = Type.COMMIT;
             e.startTimestamp = startTimestamp;
             e.channel = c;
         }
+
+        MonitoringContext getMonCtx() { return monCtx; }
 
         Type getType() { return type; }
         Channel getChannel() { return channel; }

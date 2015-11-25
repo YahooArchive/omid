@@ -13,6 +13,7 @@ import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TSO_FAMILY;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_ZK_CLUSTER_CONFKEY;
 import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
 
 import java.io.IOException;
@@ -40,9 +41,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -117,8 +116,13 @@ public class TestEndToEndScenariosWithHA {
 
     private String zkConnection;
 
-    @BeforeClass
-    public void beforeClass() throws Exception {
+    @BeforeMethod(alwaysRun = true)
+    public void setup() throws Exception {
+        LOG.info("==========================================================");
+        LOG.info("==========================================================");
+        LOG.info("===================== Init Experiment ====================");
+        LOG.info("==========================================================");
+        LOG.info("==========================================================");
 
         Configuration hbaseConf = HBaseConfiguration.create();
         hbaseConf.setInt("hbase.hregion.memstore.flush.size", 100 * 1024);
@@ -135,24 +139,6 @@ public class TestEndToEndScenariosWithHA {
 
         zkClient = provideInitializedZookeeperClient(zkConnection);
 
-    }
-
-    @AfterClass
-    public void afterClass() throws Exception {
-
-        zkClient.close();
-
-        hBaseUtils.shutdownMiniCluster();
-
-    }
-
-    @BeforeMethod(alwaysRun = true)
-    public void setup() throws Exception {
-        LOG.info("==========================================================");
-        LOG.info("==========================================================");
-        LOG.info("===================== Init Experiment ====================");
-        LOG.info("==========================================================");
-        LOG.info("==========================================================");
 
         Thread.currentThread().setName("Test Thread");
 
@@ -231,7 +217,6 @@ public class TestEndToEndScenariosWithHA {
         clientConf.setProperty(TSO_ZK_CLUSTER_CONFKEY, zkConnection);
         tsoClientForTM = TSOClient.newBuilder().withConfiguration(clientConf).build();
         LOG.info("TSOClient instance in test {}", tsoClientForTM);
-        Configuration hbaseConf = hBaseCluster.getConfiguration();
         hbaseConf.setInt(HBASE_CLIENT_RETRIES_NUMBER, 3);
         tm = HBaseTransactionManager.newBuilder()
                                     .withTSOClient(tsoClientForTM)
@@ -253,6 +238,10 @@ public class TestEndToEndScenariosWithHA {
         TestUtils.waitForSocketNotListening("localhost", 1234, 100);
         tso2.stopAndWait();
         TestUtils.waitForSocketNotListening("localhost", 4321, 100);
+
+        zkClient.close();
+
+        hBaseUtils.shutdownMiniCluster();
     }
 
     //
@@ -446,8 +435,7 @@ public class TestEndToEndScenariosWithHA {
             tm.commit(tx2);
 
             assertEquals(tx2.getStatus(), Transaction.Status.COMMITTED);
-            final long TIMESTAMP_ORACLE_TIMESTAMP_BATCH = 10_000_000;
-            assertEquals(tx2.getEpoch(), TIMESTAMP_ORACLE_TIMESTAMP_BATCH);
+            assertTrue(tx2.getEpoch() > tx0.getCommitTimestamp());
 
             checkRowValues(txTable, data2_q1, data2_q2);
         }

@@ -18,8 +18,8 @@ interface ReplyProcessor
      * @param channel
      *            the communication channed with the client
      */
-    void commitResponse(boolean makeHeuristicDecision, long startTimestamp, long commitTimestamp, Channel channel);
-    void abortResponse(long startTimestamp, Channel c);
-    void timestampResponse(long startTimestamp, Channel c);
+    void commitResponse(boolean makeHeuristicDecision, long startTimestamp, long commitTimestamp, Channel channel, MonitoringContext monCtx);
+    void abortResponse(long startTimestamp, Channel c, MonitoringContext monCtx);
+    void timestampResponse(long startTimestamp, Channel c, MonitoringContext monCtx);
 }
 

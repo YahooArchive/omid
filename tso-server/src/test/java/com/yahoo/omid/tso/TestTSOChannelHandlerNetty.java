@@ -1,6 +1,7 @@
 package com.yahoo.omid.tso;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.yahoo.omid.metrics.NullMetricsProvider;
 import com.yahoo.omid.proto.TSOProto;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.Channel;
@@ -54,7 +55,7 @@ public class TestTSOChannelHandlerNetty {
         MockitoAnnotations.initMocks(this);
         String[] confString = { "-port", "1234" };
         TSOServerCommandLineConfig config = TSOServerCommandLineConfig.parseConfig(confString);
-        channelHandler = new TSOChannelHandler(config, requestProcessor);
+        channelHandler = new TSOChannelHandler(config, requestProcessor, new NullMetricsProvider());
     }
 
     @AfterMethod
@@ -183,6 +184,8 @@ public class TestTSOChannelHandlerNetty {
         assertTrue(channelHandler.listeningChannel.isOpen());
         // Eventually the channel group of the server should contain the listening channel
         assertEquals(channelHandler.channelGroup.size(), 1);
+        // Wait some time and check the channel was closed
+        TimeUnit.SECONDS.sleep(1);
         assertFalse(channelF.getChannel().isOpen());
 
         // ////////////////////////////////////////////////////////////////////
@@ -235,9 +238,9 @@ public class TestTSOChannelHandlerNetty {
         tsBuilder.setTimestampRequest(tsRequestBuilder.build());
         // Write into the channel
         channel.write(tsBuilder.build()).await();
-        verify(requestProcessor, timeout(100).times(1)).timestampRequest(any(Channel.class));
+        verify(requestProcessor, timeout(100).times(1)).timestampRequest(any(Channel.class), any(MonitoringContext.class));
         verify(requestProcessor, timeout(100).never())
-                .commitRequest(anyLong(), anyCollectionOf(Long.class), anyBoolean(), any(Channel.class));
+                .commitRequest(anyLong(), anyCollectionOf(Long.class), anyBoolean(), any(Channel.class), any(MonitoringContext.class));
     }
 
     private void testWritingCommitRequest(Channel channel) throws InterruptedException {
@@ -252,9 +255,9 @@ public class TestTSOChannelHandlerNetty {
         assertTrue(r.hasCommitRequest());
         // Write into the channel
         channel.write(commitBuilder.build()).await();
-        verify(requestProcessor, timeout(100).never()).timestampRequest(any(Channel.class));
+        verify(requestProcessor, timeout(100).never()).timestampRequest(any(Channel.class), any(MonitoringContext.class));
         verify(requestProcessor, timeout(100).times(1))
-                .commitRequest(eq(666L), anyCollectionOf(Long.class), eq(false), any(Channel.class));
+                .commitRequest(eq(666L), anyCollectionOf(Long.class), eq(false), any(Channel.class), any(MonitoringContext.class));
     }
 
     // ////////////////////////////////////////////////////////////////////////
