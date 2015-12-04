@@ -16,6 +16,9 @@ There are currently two implementations of the commit table, a hbase implementat
 
 Build
 ------
+Unit tests coverage is quite extensive and take a while to run on each build, ~40min at the moment of writing. Consider using
+`mvn clean install  -DskipTests` to speed temporal builds. Note that `-Dmaven.test.skip=true` is [NOT an equivalent][1].
+
 [![Build Status](http://jenkins.screwdriver.corp.yahoo.com:9999/jenkins/job/omid2-trunk-component/badge/icon)](http://jenkins.screwdriver.corp.yahoo.com:9999/jenkins/job/omid2-trunk-component/)
 
 Quickstart
@@ -151,3 +154,4 @@ More Info
 ---------
 * Omid 2 paper published on [TechPulse 2014](https://git.corp.yahoo.com/scalable-computing/techpulse2014-omid2/raw/master/omid2-submitted.pdf)
 
+[1]: http://ericlefevre.net/wordpress/2008/02/21/skipping-tests-with-maven/
