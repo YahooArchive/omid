@@ -23,6 +23,11 @@
     </dependency>
     <dependency>
       <groupId>com.yahoo.omid</groupId>
+      <artifactId>statemachine</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.yahoo.omid</groupId>
       <artifactId>commit-table</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -79,11 +84,6 @@
       <artifactId>testng</artifactId>
       <version>${testng.version}</version>
       <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.yahoo.bcn.statemachine</groupId>
-      <artifactId>statemachine</artifactId>
-      <version>${statemachine.version}</version>
     </dependency>
 
   </dependencies>
