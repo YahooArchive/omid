@@ -1,8 +1,13 @@
 package com.yahoo.omid.tso;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.base.Throwables;
 import com.yahoo.omid.metrics.MetricsRegistry;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -13,8 +18,9 @@ import static com.codahale.metrics.MetricRegistry.name;
 
 @NotThreadSafe
 public class MonitoringContext {
-
-    private Map<String, Long> elapsedTimeMsMap = new ConcurrentHashMap<>();
+    private static final Logger LOG = LoggerFactory.getLogger(MonitoringContext.class);
+    private volatile boolean flag;
+    private Map<String, Long> elapsedTimeMsMap = new HashMap<>();
     private Map<String, Stopwatch> timers = new ConcurrentHashMap<>();
     private MetricsRegistry metrics;
 
@@ -29,6 +35,10 @@ public class MonitoringContext {
     }
 
     public void timerStop(String name) {
+        if(flag){
+            LOG.warn("timerStop({}) called after publish. Measurement was ignored. {}", name, Throwables.getStackTraceAsString(new Exception()));
+            return;
+        }
         Stopwatch activeStopwatch = timers.get(name);
         if (activeStopwatch == null) {
             throw new IllegalStateException(
@@ -40,6 +50,7 @@ public class MonitoringContext {
     }
 
     public void publish() {
+        flag = true;
         for (String name : elapsedTimeMsMap.keySet()) {
             Long durationInNs = elapsedTimeMsMap.get(name);
             metrics.timer(name("tso", name)).update(durationInNs);
