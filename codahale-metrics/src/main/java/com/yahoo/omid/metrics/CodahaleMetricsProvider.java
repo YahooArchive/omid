@@ -1,17 +1,5 @@
 package com.yahoo.omid.metrics;
 
-import java.io.File;
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
-
-import javax.inject.Inject;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.CsvReporter;
 import com.codahale.metrics.MetricFilter;
@@ -21,10 +9,19 @@ import com.codahale.metrics.Slf4jReporter;
 import com.codahale.metrics.Timer.Context;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
-import com.google.common.base.Optional;
 import com.google.common.base.Strings;
 import com.google.common.net.HostAndPort;
 import com.yahoo.omid.metrics.CodahaleMetricsConfig.Reporter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.inject.Inject;
+import java.io.File;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry {
 

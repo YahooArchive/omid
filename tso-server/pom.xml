@@ -121,6 +121,16 @@
     </dependency>
     <dependency>
       <groupId>com.yahoo.omid</groupId>
+      <artifactId>codahale-metrics</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.yahoo.omid</groupId>
+      <artifactId>ymon-metrics</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.yahoo.omid</groupId>
       <artifactId>transaction-client</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -137,14 +147,6 @@
       <classifier>tests</classifier>
     </dependency>
     <!-- End of Dependencies on Omid modules -->
-
-    <!-- Dependencies on Yahoo libraries -->
-    <dependency>
-      <groupId>yahoo.yinst.mon_metrics_java</groupId>
-      <artifactId>mon_metrics_java</artifactId>
-      <version>${yahoo.mon_metrics.version}</version>
-    </dependency>
-    <!-- End of Dependencies on Yahoo libraries -->
 
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -173,16 +175,6 @@
       <version>${jcommander.version}</version>
       <type>jar</type>
       <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.codahale.metrics</groupId>
-      <artifactId>metrics-core</artifactId>
-      <version>${metrics.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.codahale.metrics</groupId>
-      <artifactId>metrics-graphite</artifactId>
-      <version>${metrics.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>

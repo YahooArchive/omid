@@ -1,9 +1,9 @@
 package com.yahoo.omid.metrics;
 
+import com.google.inject.Inject;
+
 import javax.inject.Named;
 import javax.inject.Singleton;
-
-import com.google.inject.Inject;
 
 @Singleton
 public class YMonMetricsConfig extends AbstractMetricsConfig {

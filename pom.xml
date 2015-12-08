@@ -73,6 +73,9 @@
   <modules>
     <module>common</module>
     <module>statemachine</module>
+    <module>metrics</module>
+    <module>codahale-metrics</module>
+    <module>ymon-metrics</module>
     <module>hbase-client</module>
     <module>transaction-client</module>
     <module>tso-server</module>

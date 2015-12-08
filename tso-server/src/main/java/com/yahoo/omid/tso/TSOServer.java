@@ -1,17 +1,5 @@
 package com.yahoo.omid.tso;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.inject.Inject;
-import javax.inject.Singleton;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.AbstractIdleService;
 import com.google.inject.AbstractModule;
@@ -21,13 +9,21 @@ import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.yahoo.omid.committable.hbase.HBaseCommitTableStorageModule;
 import com.yahoo.omid.committable.hbase.HBaseLogin;
-import com.yahoo.omid.metrics.CodahaleMetricsConfig;
-import com.yahoo.omid.metrics.MetricsProvider.Provider;
-import com.yahoo.omid.metrics.YMonMetricsConfig;
 import com.yahoo.omid.timestamp.storage.ZKTimestampStorageModule;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig.CommitTableStore;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig.TimestampStore;
 import com.yahoo.omid.tso.hbase.HBaseTimestampStorageModule;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.List;
 
 @Singleton
 public class TSOServer extends AbstractIdleService {
@@ -103,18 +99,11 @@ public class TSOServer extends AbstractIdleService {
         }
 
         private void addMetricsProviderModule() {
-            Provider metricsProvider = config.getMetricsProvider();
-            switch (metricsProvider) {
-            case CODAHALE:
-                guiceModules.add(new CodahaleModule(config, new CodahaleMetricsConfig()));
-                break;
-            case YMON:
-                guiceModules.add(new YMonModule(new YMonMetricsConfig()));
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown metrics provider" + metricsProvider);
-            }
-            LOG.info("\t* Metrics provider set to {}", metricsProvider);
+            // Dynamically instantiate metrics module from class name
+            String metricsProviderModule = config.getMetricsProviderModule();
+            Module metricsModule = instantiateGuiceMetricsModule(metricsProviderModule, config.getMetricsConfigs());
+            guiceModules.add(metricsModule);
+            LOG.info("\t* Metrics provider module set to {}", metricsProviderModule);
         }
 
         private void addTSOModule() {
@@ -159,6 +148,18 @@ public class TSOServer extends AbstractIdleService {
                     || config.getTimestampStore() == TimestampStore.HBASE) {
                 guiceModules.add(new HBaseConfigModule());
                 HBaseLogin.loginIfNeeded(config.getLoginFlags());
+            }
+        }
+
+        public static Module instantiateGuiceMetricsModule(String className, List<String> metricsConfigs){
+            try{
+                return Module.class.cast(Class.forName(className)
+                                   .getConstructor(List.class)
+                                   .newInstance(metricsConfigs));
+            } catch(InstantiationException | IllegalAccessException | ClassNotFoundException
+                    | NoSuchMethodException | IllegalStateException | InvocationTargetException e) {
+                LOG.error("Error instantiating and casting Guice metrics module from class {})", className, e);
+                throw new IllegalStateException(e);
             }
         }
 

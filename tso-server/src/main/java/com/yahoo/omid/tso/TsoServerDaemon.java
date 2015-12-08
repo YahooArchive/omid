@@ -19,8 +19,12 @@ public class TsoServerDaemon implements Daemon {
     public void init(DaemonContext daemonContext) throws Exception {
         final String[] arguments = daemonContext.getArguments();
         LOG.info("Starting TSOServer, args: {}", StringUtils.join(" ", Arrays.asList(arguments)));
-        TSOServerCommandLineConfig config = TSOServerCommandLineConfig.parseConfig(arguments);
-        tsoServer = TSOServer.getInitializedTsoServer(config);
+        try {
+            TSOServerCommandLineConfig config = TSOServerCommandLineConfig.parseConfig(arguments);
+            tsoServer = TSOServer.getInitializedTsoServer(config);
+        } catch (Exception e) {
+            LOG.error("Error creating TSOServer instance", e);
+        }
     }
 
     @Override

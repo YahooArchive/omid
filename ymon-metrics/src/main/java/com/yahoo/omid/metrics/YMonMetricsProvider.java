@@ -1,17 +1,14 @@
 package com.yahoo.omid.metrics;
 
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
-import javax.inject.Inject;
-
+import com.google.common.util.concurrent.AbstractScheduledService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import ymonsb_java.yms.mon_metrics.MonMetrics;
 import ymonsb_java.yms.mon_metrics.MonMetricsException;
 
-import com.google.common.util.concurrent.AbstractScheduledService;
+import javax.inject.Inject;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class YMonMetricsProvider extends AbstractScheduledService implements MetricsProvider, MetricsRegistry {
 

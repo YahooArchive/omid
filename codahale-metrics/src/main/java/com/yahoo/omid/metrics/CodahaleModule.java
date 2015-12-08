@@ -1,32 +1,27 @@
-package com.yahoo.omid.tso;
-
-import static com.yahoo.omid.metrics.CodahaleMetricsProvider.CODAHALE_METRICS_CONFIG_PATTERN;
-
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-
-import javax.inject.Singleton;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+package com.yahoo.omid.metrics;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import com.yahoo.omid.metrics.CodahaleMetricsConfig;
 import com.yahoo.omid.metrics.CodahaleMetricsConfig.Reporter;
-import com.yahoo.omid.metrics.CodahaleMetricsProvider;
-import com.yahoo.omid.metrics.MetricsRegistry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.inject.Singleton;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+
+import static com.yahoo.omid.metrics.CodahaleMetricsProvider.CODAHALE_METRICS_CONFIG_PATTERN;
 
 public class CodahaleModule extends AbstractModule {
 
     private static final Logger LOG = LoggerFactory.getLogger(CodahaleModule.class);
 
-    private final TSOServerCommandLineConfig config;
-    private final CodahaleMetricsConfig codahaleConfig;
+    private final List<String> metricsConfigs;
+    private final CodahaleMetricsConfig codahaleConfig = new CodahaleMetricsConfig();
 
-    public CodahaleModule(TSOServerCommandLineConfig config, CodahaleMetricsConfig codahaleConfig) {
-        this.config = config;
-        this.codahaleConfig = codahaleConfig;
+    public CodahaleModule(List<String> config) {
+        this.metricsConfigs = config;
     }
 
     @Override
@@ -36,7 +31,7 @@ public class CodahaleModule extends AbstractModule {
 
     @Provides @Singleton
     MetricsRegistry provideMetricsRegistry() {
-        for (String metricConfig : config.getMetricsConfigs()) {
+        for (String metricConfig : metricsConfigs) {
             Matcher matcher = CODAHALE_METRICS_CONFIG_PATTERN.matcher(metricConfig);
             if (matcher.matches()) {
 

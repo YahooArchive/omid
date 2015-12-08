@@ -52,7 +52,7 @@ tso() {
     exec java -server $JVM_ARGS -cp $KLASSPATH com.yahoo.omid.tso.TSOServer \
               -timestampStore $(TIMESTAMP_STORE) -hbaseTimestampTable $(HBASE_TIMESTAMP_TABLE) \
               -commitTableStore $(COMMIT_TABLE_STORE) -hbaseCommitTable $(HBASE_COMMIT_TABLE) \
-              -port $(PORT) -maxItems $(MAX_ITEMS) -metricsProvider $(METRICS_PROVIDER) -metricsConfigs $(METRICS_CONFIGS) \
+              -port $(PORT) -maxItems $(MAX_ITEMS) -metricsProviderModule $(METRICS_PROVIDER_MODULE) \
               -hbaseClientPrincipal $(HBASE_CLIENT_PRINCIPAL) -hbaseClientKeytab $(HBASE_CLIENT_KEYTAB) \
               -networkIface $(NETWORK_INTERFACE) ${PUBLISH_HOST_AND_PORT_IN_ZK} -zkCluster $(ZK_CLUSTER)
 }

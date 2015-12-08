@@ -1,22 +1,17 @@
-package com.yahoo.omid.tso;
-
-import javax.inject.Singleton;
-
-import ymonsb_java.yms.mon_metrics.MonMetricsException;
+package com.yahoo.omid.metrics;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import com.yahoo.omid.metrics.MetricsRegistry;
-import com.yahoo.omid.metrics.YMonMetricsConfig;
-import com.yahoo.omid.metrics.YMonMetricsProvider;
+import ymonsb_java.yms.mon_metrics.MonMetricsException;
+
+import javax.inject.Singleton;
+import java.util.List;
 
 public class YMonModule extends AbstractModule {
 
     private final YMonMetricsConfig config;
 
-    public YMonModule(YMonMetricsConfig config) {
-        this.config = config;
-    }
+    public YMonModule(List<String> metricsConfigs) { this.config = new YMonMetricsConfig(); }
 
     @Override
     protected void configure() {
