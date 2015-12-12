@@ -1,0 +1,15 @@
+language: java
+
+before_script:
+  # This is required to avoid failures of HBase minicluster related to Hadoop 1.x releases
+  - umask 022
+
+after_failure:
+  - cat commit-table/target/surefire-reports/*.txt
+  - cat hbase-client/target/surefire-reports/*.txt
+  - cat hbase-commit-table/target/surefire-reports/*.txt
+  - cat hbase-coprocessor/target/surefire-reports/*.txt
+  - cat statemachine/target/surefire-reports/*.txt
+  - cat transaction-client/target/surefire-reports/*.txt
+  - cat tso-server/target/surefire-reports/*.txt
+

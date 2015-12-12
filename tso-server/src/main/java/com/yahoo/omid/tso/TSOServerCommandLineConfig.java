@@ -23,8 +23,11 @@ import static com.yahoo.omid.tso.PersistenceProcessorImpl.DEFAULT_MAX_BATCH_SIZE
 import static com.yahoo.omid.tso.RequestProcessorImpl.DEFAULT_MAX_ITEMS;
 import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
 
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.List;
 
 import com.beust.jcommander.IVariableArity;
@@ -39,6 +42,10 @@ import com.yahoo.omid.tsoclient.TSOClient;
  * Holds the configuration parameters of a TSO server instance.
  */
 public class TSOServerCommandLineConfig extends JCommander implements IVariableArity {
+
+    // Default network interface prefix where this instance can be running
+    static final String LINUX_TSO_NET_IFACE_PREFIX = "eth";
+    static final String MAC_TSO_NET_IFACE_PREFIX = "en";
 
     public enum TimestampStore {
         MEMORY, HBASE, ZK
@@ -113,7 +120,7 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
     public boolean shouldHostAndPortBePublishedInZK = false;
 
     @Parameter(names = "-networkIface", description = "Network Interface where TSO is attached to (e.g. eth0, en0...)")
-    private String networkIfaceName = TSOServer.DEFAULT_TSO_NET_IFACE;
+    private String networkIfaceName = getDefaultNetworkIntf();
 
     @ParametersDelegate
     private HBaseLogin.Config loginFlags = new HBaseLogin.Config();
@@ -183,6 +190,22 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
 
     public String getNetworkIface() {
         return networkIfaceName;
+    }
+
+    private static String getDefaultNetworkIntf() {
+        try {
+            Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+            while (networkInterfaces.hasMoreElements()) {
+                String name = networkInterfaces.nextElement().getDisplayName();
+                if (name.startsWith(MAC_TSO_NET_IFACE_PREFIX) || name.startsWith(LINUX_TSO_NET_IFACE_PREFIX)) {
+                    return name;
+                }
+            }
+        } catch (SocketException e) {
+            throw new IllegalStateException("Can't get network interfaces");
+        }
+        throw new IllegalArgumentException(String.format("No network '%s*'/'%s*' interfaces found",
+                MAC_TSO_NET_IFACE_PREFIX, LINUX_TSO_NET_IFACE_PREFIX));
     }
 
 }

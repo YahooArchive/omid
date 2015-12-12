@@ -64,9 +64,6 @@ public class TSOServer extends AbstractIdleService {
 
     private static final Logger LOG = LoggerFactory.getLogger(TSOServer.class);
 
-    // Default network interface where this instance is running
-    static final String DEFAULT_TSO_NET_IFACE = "eth0";
-
     public static final String TSO_HOST_AND_PORT_KEY = "tso.hostandport";
 
     private final TSOServerCommandLineConfig config;
