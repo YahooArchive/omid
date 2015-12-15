@@ -47,6 +47,9 @@
     
     <!-- Maven Plugin Versioning -->
     <license.maven-plugin.version>2.11</license.maven-plugin.version>
+    <jacoco.version>0.7.5.201505241946</jacoco.version>
+    <coveralls.version>4.1.0</coveralls.version>
+
   </properties>
 
   <modules>
@@ -69,9 +72,11 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.9</version>
         <configuration>
-          <argLine>-Xmx1G</argLine>
           <forkMode>pertest</forkMode>
-          <argLine>-Djava.library.path=${basedir}/lib:/home/y/lib64</argLine>
+          <!-- Jacoco prepare-agent requires ${argLine} inside <argLine> .
+          See http://eclemma.org/jacoco/trunk/doc/prepare-agent-mojo.html -->
+          <argLine>${argLine} -Xmx1G</argLine>
+          <argLine>${argLine} -Djava.library.path=${basedir}/lib:/home/y/lib64</argLine>
           <redirectTestOutputToFile>true</redirectTestOutputToFile>
         </configuration>
       </plugin>
@@ -98,6 +103,36 @@
           <skipAssembly>true</skipAssembly>
         </configuration>
       </plugin>
+
+      <!-- ======================================================================================================== -->
+      <!--                                       Code coverage plugins                                              -->
+      <!-- ======================================================================================================== -->
+
+      <!-- Code coverage -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Show Coverage reports in https://coveralls.io/ -->
+      <plugin>
+        <groupId>org.eluder.coveralls</groupId>
+        <artifactId>coveralls-maven-plugin</artifactId>
+        <version>${coveralls.version}</version>
+      </plugin>
+
+      <!-- ======================================================================================================== -->
+      <!--                                     End code coverage plugins                                            -->
+      <!-- ======================================================================================================== -->
 
     </plugins>
 

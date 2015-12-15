@@ -4,6 +4,9 @@ before_script:
   # This is required to avoid failures of HBase minicluster related to Hadoop 1.x releases
   - umask 022
 
+after_success:
+  - mvn jacoco:merge jacoco:report coveralls:report
+
 after_failure:
   - cat commit-table/target/surefire-reports/*.txt
   - cat hbase-client/target/surefire-reports/*.txt
