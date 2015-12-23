@@ -1,0 +1,9 @@
+<settings>
+    <servers>
+        <server>
+            <id>bintray</id>
+            <username>travisci-omid@yahoo</username>
+            <password>${env.BINTRAY_TOKEN}</password>
+        </server>
+    </servers>
+</settings>

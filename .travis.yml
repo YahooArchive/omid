@@ -1,0 +1,33 @@
+language: java
+
+notifications:
+  email:
+    recepients:
+      - omid-ci@yahoo-inc.com
+  on_success: always
+  on_failure: always
+
+jdk:
+  - oraclejdk8
+
+branches:
+  only:
+    - master
+
+before_script:
+  # This is required to avoid failures of HBase minicluster related to Hadoop 1.x releases
+  - umask 022
+  - git config --global user.email "omid-ci@yahoo-inc.com"
+  - git config --global user.name "Omid CI"
+  - git checkout master
+
+script:
+  - echo "NOOP"
+
+after_success:
+  - mvn cobertura:cobertura coveralls:report
+  - mvn -B release:prepare release:perform -Pdeploy_profile --settings bintray-settings.xml
+
+after_failure:
+  - cat client/target/surefire-reports/*.txt
+  - cat server/target/surefire-reports/*.txt

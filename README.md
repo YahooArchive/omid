@@ -1,9 +1,9 @@
-Omid2
+Omid
 =====
 
-The Omid2 project provides transactional support for key-value stores using Snapshot Isolation. Omid stands for Optimistically transactional Management in Datasources. HBase is the only datastore currently supported, though adaption to any datastore that provides multiple versions per cell should be straightforward.
+The Omid project provides transactional support for key-value stores using Snapshot Isolation. Omid stands for Optimistically transactional Management in Datasources. HBase is the only datastore currently supported, though adaption to any datastore that provides multiple versions per cell should be straightforward.
 
-There are 3 components in OMID2;
+There are 3 components in OMID;
  * The Transaction Status Oracle (TSO), which assigns transaction timestamps and resolves conflicts between transactions.
  * The commit table which stores a mapping from start timestamp to commit timestamp
  * Shadow cells, which are written alongside data cells in the datastore to allow client to resolve reads without consulting the commit table.
@@ -19,13 +19,16 @@ Build
 Unit tests coverage is quite extensive and take a while to run on each build, ~40min at the moment of writing. Consider using
 `mvn clean install  -DskipTests` to speed temporal builds. Note that `-Dmaven.test.skip=true` is [NOT an equivalent][1].
 
-[![Build Status](http://jenkins.screwdriver.corp.yahoo.com:9999/jenkins/job/omid2-trunk-component/badge/icon)](http://jenkins.screwdriver.corp.yahoo.com:9999/jenkins/job/omid2-trunk-component/)
+[![Build Status](https://travis-ci.org/ikatkov/test.svg)](https://travis-ci.org/ikatkov/test)
+[![Download](https://api.bintray.com/packages/ikatkov/maven/test/images/download.svg) ](https://bintray.com/ikatkov/maven/test/_latestVersion)    
 
-Quickstart
+Please see [build history here][2]
+
+Building from sources
 ----------
 Clone the repository and build the TSO package:
 
-      $ git clone git@git.corp.yahoo.com:scalable-computing/omid.git
+      $ git clone git@github.com:yahoo/omid.git
       $ cd omid
       $ mvn clean install assembly:single
 
@@ -53,13 +56,13 @@ HBase Client usage
 Add the following to your pom.xml dependencies:
 ```xml
     <dependency>
-      <groupId>yahoo.yinst.omid_hbase_client</groupId>
+      <groupId>com.yahoo.omid</groupId>
       <artifactId>omid_hbase_client</artifactId>
-      <version>[2.2.0,)</version>
+      <version>[2.4.5,)</version>
     </dependency>
 ```
 
-The client interfaces for OMID2 are _TTable_ and _TransactionManager_. A builder is provided in the
+The client interfaces for OMID are _TTable_ and _TransactionManager_. A builder is provided in the
 _HBaseTransactionManager_ class in order to get the TransactionManager interface, which is used for creating and
 committing transactions. TTable can be used for putting, getting and scanning entries in a HBase table. TTable's
 interface is similar to the standard _HTableInterface_, and only requires passing the transactional context as a
@@ -116,7 +119,7 @@ public class Example {
 
 HBase Co-processor Usage
 ------------------------
-Omid2 includes an HBase co-processor that operates during compactions (minor and major) and performs
+Omid includes an HBase co-processor that operates during compactions (minor and major) and performs
 data cleanup. Specifically, it does the following:
  * Cleans up garbage data from aborted transactions
  * Purges deleted cells. Omid deletes work by placing a special tombstone marker in cells. The compactor
@@ -134,7 +137,7 @@ by HBase region servers. The co-processor may then be enabled on a transactional
 Sample co-processor enabled table:
 ```
 'omid_enabled_table', {TABLE_ATTRIBUTES =>
-   {coprocessor$1 => 'hdfs:///hbase/co_processor/omid/omid2-hbase-coprocessor-2.2.11.jar|
+   {coprocessor$1 => 'hdfs:///hbase/co_processor/omid/omid-hbase-coprocessor-2.2.11.jar|
                       com.yahoo.omid.transaction.OmidCompactor|1001|
                       omid.committable.tablename=ns:OMID_COMMIT_TABLE},
    {NAME => 'n', DATA_BLOCK_ENCODING => 'NONE', BLOOMFILTER => 'ROW', REPLICATION_SCOPE => '0',
@@ -146,12 +149,5 @@ Sample co-processor enabled table:
     METADATA => {'OMID_ENABLED' => 'true'}}
 ```
 
-Module Dependencies
--------------------
-![Module dependencies](https://git.corp.yahoo.com/scalable-computing/omid/raw/master/doc/images/ModuleDependencies.png "Module dependencies")
-
-More Info
----------
-* Omid 2 paper published on [TechPulse 2014](https://git.corp.yahoo.com/scalable-computing/techpulse2014-omid2/raw/master/omid2-submitted.pdf)
-
 [1]: http://ericlefevre.net/wordpress/2008/02/21/skipping-tests-with-maven/
+[2]: https://github.com/yahoo/omid/tags
