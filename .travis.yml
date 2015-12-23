@@ -12,7 +12,7 @@ jdk:
 
 branches:
   only:
-    - master
+    - open-source
 
 before_script:
   # This is required to avoid failures of HBase minicluster related to Hadoop 1.x releases
