@@ -19,7 +19,7 @@ before_script:
   - umask 022
   - git config --global user.email "omid-ci@yahoo-inc.com"
   - git config --global user.name "Omid CI"
-  - git checkout master
+  - git checkout open-source
 
 script:
   - echo "NOOP"
