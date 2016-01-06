@@ -29,5 +29,14 @@ after_success:
   - mvn -B release:prepare release:perform -Pdeploy_profile --settings bintray-settings.xml
 
 after_failure:
-  - cat client/target/surefire-reports/*.txt
-  - cat server/target/surefire-reports/*.txt
+  - cat common/target/surefire-reports/*.txt
+  - cat statemachine/target/surefire-reports/*.txt
+  - cat metrics/target/surefire-reports/*.txt
+  - cat codahale-metrics/target/surefire-reports/*.txt
+  - cat hbase-client/target/surefire-reports/*.txt
+  - cat transaction-client/target/surefire-reports/*.txt
+  - cat tso-server/target/surefire-reports/*.txt
+  - cat commit-table/target/surefire-reports/*.txt
+  - cat hbase-commit-table/target/surefire-reports/*.txt
+  - cat hbase-coprocessor/target/surefire-reports/*.txt
+  - cat benchmarks/target/surefire-reports/*.txt
