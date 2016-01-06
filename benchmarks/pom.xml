@@ -12,7 +12,6 @@
   <dependencies>
 
     <!-- Dependencies on Omid modules -->
-
     <dependency>
       <groupId>com.yahoo.omid</groupId>
       <artifactId>transaction-client</artifactId>
@@ -51,7 +50,7 @@
           <skipAssembly>false</skipAssembly>
           <tarLongFileMode>gnu</tarLongFileMode>
           <descriptors>
-            <descriptor>src/main/assembly/bin.xml</descriptor>
+            <descriptor>maven/assembly/bin.xml</descriptor>
           </descriptors>
         </configuration>
       </plugin>
@@ -78,7 +77,7 @@
             <exclude>**/conf/*</exclude>
 
             <!-- Exclude assembly -->
-            <exclude>**/src/main/assembly/*</exclude>
+            <exclude>**/maven/assembly/*</exclude>
 
             <!-- Exclude tests -->
             <exclude>**/src/test/**/*</exclude>

@@ -128,7 +128,7 @@
             <exclude>**/conf/*</exclude>
 
             <!-- Exclude assembly -->
-            <exclude>**/src/main/assembly/*</exclude>
+            <exclude>**/maven/assembly/*</exclude>
 
             <!-- Exclude tests -->
             <exclude>**/src/test/**/*</exclude>
