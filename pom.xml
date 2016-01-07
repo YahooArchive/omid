@@ -31,7 +31,7 @@
         <license.header>misc/header.txt</license.header>
         <license.owner>Yahoo Inc.</license.owner>
         <license.inceptionYear>${project.inceptionYear}</license.inceptionYear>
-        <license.currentYear>2015</license.currentYear> <!-- Manually assigned -->
+        <license.currentYear>2016</license.currentYear> <!-- Manually assigned -->
 
         <!-- Basic properties -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
