@@ -2,8 +2,8 @@
     <servers>
         <server>
             <id>bintray</id>
-            <username>travisci-omid@yahoo</username>
-            <password>${env.BINTRAY_TOKEN}</password>
+            <username>${env.BINTRAY_USER}</username>
+            <password>${env.BINTRAY_API_KEY}</password>
         </server>
     </servers>
 </settings>
