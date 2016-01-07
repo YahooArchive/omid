@@ -92,7 +92,7 @@ public class TestTxMgrFailover {
         LOG.info("++++++++++++++++++ Starting HBase ++++++++++++++++++++++++");
 
         Configuration hbaseConf = HBaseConfiguration.create();
-        hbaseConf.setInt("hbase.hregion.memstore.flush.size", 100 * 1024);
+        hbaseConf.setInt("hbase.hregion.memstore.flush.size", 10_000 * 1024);
         hbaseConf.setInt("hbase.regionserver.nbreservationblocks", 1);
         hBaseUtils = new HBaseTestingUtility(hbaseConf);
         hBaseCluster = hBaseUtils.startMiniCluster(3);
