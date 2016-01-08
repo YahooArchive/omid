@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
+import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable.KeyGenerator;
 
 public class CreateTable {
@@ -24,7 +25,7 @@ public class CreateTable {
     static class Config {
 
         @Parameter(names = "-tableName", description = "Name of the commit table in HBase", required = false)
-        String table = HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME;
+        String table = CommitTable.COMMIT_TABLE_DEFAULT_NAME;
 
         @Parameter(names = "-numSplits", description = "Number of splits (to pre-split table)", required = false)
         int numSplits = 1;

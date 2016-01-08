@@ -1,13 +1,9 @@
 package com.yahoo.omid.committable.hbase;
 
-import javax.inject.Singleton;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-
 import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
 import com.yahoo.omid.committable.CommitTable;
+
+import javax.inject.Singleton;
 
 public class HBaseCommitTableStorageModule extends AbstractModule {
 

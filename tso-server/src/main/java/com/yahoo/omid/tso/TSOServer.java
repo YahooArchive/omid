@@ -7,23 +7,23 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.Provides;
-import com.yahoo.omid.committable.hbase.HBaseCommitTableStorageModule;
 import com.yahoo.omid.committable.hbase.HBaseLogin;
-import com.yahoo.omid.timestamp.storage.ZKTimestampStorageModule;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig.CommitTableStore;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig.TimestampStore;
-import com.yahoo.omid.tso.hbase.HBaseTimestampStorageModule;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
-import javax.inject.Singleton;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.inject.Inject;
+import javax.inject.Singleton;
 
 @Singleton
 public class TSOServer extends AbstractIdleService {
@@ -65,6 +65,7 @@ public class TSOServer extends AbstractIdleService {
     }
 
     private static class HBaseConfigModule extends AbstractModule {
+
         @Override
         protected void configure() {
         }
@@ -85,17 +86,18 @@ public class TSOServer extends AbstractIdleService {
 
         private final List<Module> guiceModules = new ArrayList<Module>();
 
-        public GuiceConfigBuilder(TSOServerCommandLineConfig config) {
+        GuiceConfigBuilder(TSOServerCommandLineConfig config) {
             this.config = config;
         }
 
-        public List<Module> buildModuleList() throws IOException {
+        List<Module> buildModuleList() throws IOException {
             addMetricsProviderModule();
             addTSOModule();
             addTimestampStorageModule();
             addCommitTableStorageModule();
             addHBaseConfigModuleIfRequired();
             return guiceModules;
+
         }
 
         private void addMetricsProviderModule() {
@@ -111,53 +113,52 @@ public class TSOServer extends AbstractIdleService {
         }
 
         private void addTimestampStorageModule() throws IOException {
-            TimestampStore timestampStore = config.getTimestampStore();
-            switch (timestampStore) {
-            case HBASE:
-                guiceModules.add(new HBaseTimestampStorageModule());
-                break;
-            case MEMORY:
-                guiceModules.add(new InMemoryTimestampStorageModule());
-                break;
-            case ZK:
-                guiceModules.add(new ZKTimestampStorageModule());
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown timestamp store" + timestampStore);
+            String className = null;
+            try {
+                TimestampStore timestampStore = config.getTimestampStore();
+                className = timestampStore.toString();
+                Constructor<?> constructor = Class.forName(className).getConstructor();
+                Module module = (Module) constructor.newInstance();
+                guiceModules.add(module);
+                LOG.info("\t* Timestamp store set to {}", module);
+            } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException e) {
+                throw new IllegalStateException(
+                    String.format("Class named '%s' was not found in classpath", className));
             }
-            LOG.info("\t* Timestamp store set to {}", timestampStore);
         }
 
+
         private void addCommitTableStorageModule() throws IOException {
-            CommitTableStore commitTableStore = config.getCommitTableStore();
-            switch (commitTableStore) {
-            case HBASE:
-                guiceModules.add(new HBaseCommitTableStorageModule());
-                break;
-            case MEMORY:
-                guiceModules.add(new InMemoryCommitTableStorageModule());
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown commit table store" + commitTableStore);
+            String className = null;
+            try {
+
+                CommitTableStore commitTableStore = config.getCommitTableStore();
+                className = commitTableStore.toString();
+                Constructor<?> constructor = Class.forName(className).getConstructor();
+                Module module = (Module) constructor.newInstance();
+                guiceModules.add(module);
+                LOG.info("\t* Commit table store set to {}", module);
+            } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException e) {
+                throw new IllegalStateException(
+                    String.format("Class named '%s' was not found in classpath", className));
             }
-            LOG.info("\t* Commit table store set to {}", commitTableStore);
         }
 
         private void addHBaseConfigModuleIfRequired() throws IOException {
             if (config.getCommitTableStore() == CommitTableStore.HBASE
-                    || config.getTimestampStore() == TimestampStore.HBASE) {
+                || config.getTimestampStore() == TimestampStore.HBASE) {
                 guiceModules.add(new HBaseConfigModule());
                 HBaseLogin.loginIfNeeded(config.getLoginFlags());
             }
         }
 
-        public static Module instantiateGuiceMetricsModule(String className, List<String> metricsConfigs){
-            try{
+        static Module instantiateGuiceMetricsModule(String className, List<String> metricsConfigs) {
+            try {
                 return Module.class.cast(Class.forName(className)
-                                   .getConstructor(List.class)
-                                   .newInstance(metricsConfigs));
-            } catch(InstantiationException | IllegalAccessException | ClassNotFoundException
-                    | NoSuchMethodException | IllegalStateException | InvocationTargetException e) {
+                                             .getConstructor(List.class)
+                                             .newInstance(metricsConfigs));
+            } catch (InstantiationException | IllegalAccessException | ClassNotFoundException
+                | NoSuchMethodException | IllegalStateException | InvocationTargetException e) {
                 LOG.error("Error instantiating and casting Guice metrics module from class {})", className, e);
                 throw new IllegalStateException(e);
             }
@@ -185,7 +186,7 @@ public class TSOServer extends AbstractIdleService {
 
     // ------------------------------------------------------------------------
 
-    public void attachShutDownHook() {
+    void attachShutDownHook() {
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
@@ -220,15 +221,15 @@ public class TSOServer extends AbstractIdleService {
 
     // ************************* Helper methods *******************************
 
-    public static String getDefaultNetworkIntf() {
+    static String getDefaultNetworkIntf() {
         BaseOperatingSystem currentOperatingSystem = BaseOperatingSystem.get();
         switch (currentOperatingSystem) {
-        case Mac:
-            return MAC_TSO_NET_IFACE;
-        case Linux:
-            return LINUX_TSO_NET_IFACE;
-        default:
-            throw new IllegalArgumentException(currentOperatingSystem.name());
+            case Mac:
+                return MAC_TSO_NET_IFACE;
+            case Linux:
+                return LINUX_TSO_NET_IFACE;
+            default:
+                throw new IllegalArgumentException(currentOperatingSystem.name());
         }
     }
 

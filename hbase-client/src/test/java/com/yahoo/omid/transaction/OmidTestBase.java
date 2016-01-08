@@ -11,9 +11,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
-import com.yahoo.omid.transaction.HBaseTransactionManager;
-import com.yahoo.omid.transaction.TransactionManager;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
@@ -31,7 +28,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.hbase.CreateTable;
-import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -149,7 +145,7 @@ public class OmidTestBase {
             LOG.info(t.getNameAsString());
         }
 
-        CreateTable.createTable(hbaseConf, HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME, 1);
+        CreateTable.createTable(hbaseConf, CommitTable.COMMIT_TABLE_DEFAULT_NAME, 1);
     }
 
     @AfterMethod
@@ -160,8 +156,8 @@ public class OmidTestBase {
             admin.disableTable(TEST_TABLE);
             admin.deleteTable(TEST_TABLE);
 
-            admin.disableTable(HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME);
-            admin.deleteTable(HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME);
+            admin.disableTable(CommitTable.COMMIT_TABLE_DEFAULT_NAME);
+            admin.deleteTable(CommitTable.COMMIT_TABLE_DEFAULT_NAME);
 
         } catch (Exception e) {
             LOG.error("Error tearing down", e);

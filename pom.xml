@@ -88,6 +88,8 @@
         <module>hbase-commit-table</module>
         <module>hbase-coprocessor</module>
         <module>benchmarks</module>
+        <module>hbase-common</module>
+        <module>timestamp-storage</module>
     </modules>
 
     <build>

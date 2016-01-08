@@ -1,6 +1,6 @@
 package com.yahoo.omid.committable.hbase;
 
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.committable.CommitTable.COMMIT_TABLE_DEFAULT_NAME;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;

@@ -1,7 +1,7 @@
 package com.yahoo.omid.transaction;
 
 import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.SHADOW_CELL;
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.HBASE_COMMIT_TABLE_NAME_KEY;
+import static com.yahoo.omid.committable.CommitTable.COMMIT_TABLE_NAME_KEY;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -82,7 +82,7 @@ public class OmidCompactor extends BaseRegionObserver {
         LOG.info("Starting compactor coprocessor");
         conf = env.getConfiguration();
         commitTableConf = new HBaseCommitTableConfig();
-        String commitTableName = conf.get(HBASE_COMMIT_TABLE_NAME_KEY);
+        String commitTableName = conf.get(COMMIT_TABLE_NAME_KEY);
         if (commitTableName != null) {
             commitTableConf.setTableName(commitTableName);
         }

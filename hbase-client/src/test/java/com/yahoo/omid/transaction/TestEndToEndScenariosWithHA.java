@@ -3,13 +3,13 @@ package com.yahoo.omid.transaction;
 import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
 import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
 import static com.yahoo.omid.ZKConstants.TSO_LEASE_PATH;
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.committable.CommitTable.COMMIT_TABLE_DEFAULT_NAME;
 import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_FAMILY;
 import static com.yahoo.omid.committable.hbase.HBaseCommitTable.LOW_WATERMARK_FAMILY;
 import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;
 import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
-import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TSO_FAMILY;
+import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TSO_FAMILY;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_ZK_CLUSTER_CONFKEY;
 import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
 import static org.testng.Assert.assertEquals;
@@ -70,7 +70,7 @@ import com.yahoo.omid.tso.TSOStateManager;
 import com.yahoo.omid.tso.TSOStateManagerImpl;
 import com.yahoo.omid.tso.TimestampOracle;
 import com.yahoo.omid.tso.ZKModule;
-import com.yahoo.omid.tso.hbase.HBaseTimestampStorage;
+import com.yahoo.omid.timestamp.storage.HBaseTimestampStorage;
 import com.yahoo.omid.tsoclient.TSOClient;
 
 public class TestEndToEndScenariosWithHA {

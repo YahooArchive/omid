@@ -1,6 +1,6 @@
 package com.yahoo.omid.transaction;
 
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.committable.CommitTable.COMMIT_TABLE_DEFAULT_NAME;
 import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_FAMILY;
 import static com.yahoo.omid.committable.hbase.HBaseCommitTable.LOW_WATERMARK_FAMILY;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;

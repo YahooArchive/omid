@@ -12,9 +12,9 @@
     <packaging>jar</packaging>
     <name>Omid HBase Client</name>
 
-  <build>
+    <build>
 
-    <plugins>
+        <plugins>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -29,66 +29,60 @@
                 </executions>
             </plugin>
 
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <version>2.3</version>
-        <configuration>
-          <createDependencyReducedPom>true</createDependencyReducedPom>
-          <promoteTransitiveDependencies>true</promoteTransitiveDependencies>
-          <artifactSet>
-            <includes>
-              <include>com.yahoo.omid:*</include>
-            </includes>
-          </artifactSet>
-          <!-- put your configurations here -->
-        </configuration>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>2.3</version>
+                <configuration>
+                    <createDependencyReducedPom>true</createDependencyReducedPom>
+                    <promoteTransitiveDependencies>true</promoteTransitiveDependencies>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
 
-      <!-- License Management plugins -->
-      <plugin>
-        <groupId>com.mycila</groupId>
-        <artifactId>license-maven-plugin</artifactId>
-        <version>${license.maven-plugin.version}</version>
-        <inherited>true</inherited> <!-- for multi-module config -->
-        <configuration>
-          <aggregate>false</aggregate> <!-- for multi-module config -->
-          <properties>
-            <owner>${license.owner}</owner>
-            <inceptionYear>${license.inceptionYear}</inceptionYear>
-            <latestYearOfContribution>${license.currentYear}</latestYearOfContribution>
-          </properties>
-          <excludes>
-            <!-- Exclude pom -->
-            <exclude>**/pom.xml</exclude>
+            <!-- License Management plugins -->
+            <plugin>
+                <groupId>com.mycila</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <version>${license.maven-plugin.version}</version>
+                <inherited>true</inherited> <!-- for multi-module config -->
+                <configuration>
+                    <aggregate>false</aggregate> <!-- for multi-module config -->
+                    <properties>
+                        <owner>${license.owner}</owner>
+                        <inceptionYear>${license.inceptionYear}</inceptionYear>
+                        <latestYearOfContribution>${license.currentYear}</latestYearOfContribution>
+                    </properties>
+                    <excludes>
+                        <!-- Exclude pom -->
+                        <exclude>**/pom.xml</exclude>
 
-            <!-- Exclude config and scripts -->
-            <exclude>**/bin/*</exclude>
-            <exclude>**/conf/*</exclude>
+                        <!-- Exclude config and scripts -->
+                        <exclude>**/bin/*</exclude>
+                        <exclude>**/conf/*</exclude>
 
-            <!-- Exclude assembly -->
-            <exclude>**/maven/assembly/*</exclude>
+                        <!-- Exclude assembly -->
+                        <exclude>**/maven/assembly/*</exclude>
 
-            <!-- Exclude tests -->
-            <exclude>**/src/test/**/*</exclude>
+                        <!-- Exclude tests -->
+                        <exclude>**/src/test/**/*</exclude>
 
-            <!-- Project specific exclusions (e.g. they've been copied/modified from other open-source projects -->
+                        <!-- Project specific exclusions (e.g. they've been copied/modified from other open-source projects -->
 
-          </excludes>
-        </configuration>
-      </plugin>
+                    </excludes>
+                </configuration>
+            </plugin>
 
-    </plugins>
+        </plugins>
 
-  </build>
+    </build>
 
     <dependencies>
 
@@ -117,11 +111,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-          <groupId>com.yahoo.omid</groupId>
-          <artifactId>commit-table</artifactId>
-          <version>${project.version}</version>
-          <scope>test</scope>
-          <classifier>tests</classifier>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>commit-table</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+            <classifier>tests</classifier>
         </dependency>
         <!-- End of Dependencies on Omid modules -->
 
@@ -142,10 +136,10 @@
             <artifactId>hbase-client</artifactId>
             <version>${hbase.version}</version>
             <exclusions>
-              <exclusion>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-log4j12</artifactId>
-              </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>

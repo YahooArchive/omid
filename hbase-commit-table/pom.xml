@@ -25,6 +25,11 @@
       <artifactId>common</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.yahoo.omid</groupId>
+      <artifactId>hbase-common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
     <!-- End of Dependencies on Omid modules -->
 
     <dependency>

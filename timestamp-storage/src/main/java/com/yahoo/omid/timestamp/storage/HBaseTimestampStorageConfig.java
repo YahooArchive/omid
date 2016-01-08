@@ -1,7 +1,7 @@
-package com.yahoo.omid.tso.hbase;
+package com.yahoo.omid.timestamp.storage;
 
-import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.HBASE_TIMESTAMPSTORAGE_TABLE_NAME_KEY;
-import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.timestamp.storage.TimestampStorage.TIMESTAMPSTORAGE_TABLE_NAME_KEY;
+import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
 
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -18,7 +18,7 @@ public class HBaseTimestampStorageConfig {
     }
 
     @Inject(optional = true)
-    public void setTableName(@Named(HBASE_TIMESTAMPSTORAGE_TABLE_NAME_KEY) String tableName) {
+    public void setTableName(@Named(TIMESTAMPSTORAGE_TABLE_NAME_KEY) String tableName) {
         this.tableName = tableName;
     }
 

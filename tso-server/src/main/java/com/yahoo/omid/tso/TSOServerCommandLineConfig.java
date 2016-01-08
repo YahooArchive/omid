@@ -5,35 +5,58 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 import com.yahoo.omid.committable.hbase.HBaseLogin;
+import com.yahoo.omid.metrics.MetricsProvider;
 import com.yahoo.omid.tsoclient.TSOClient;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.metrics.CodahaleMetricsProvider.DEFAULT_CODAHALE_METRICS_CONFIG;
+import static com.yahoo.omid.committable.CommitTable.COMMIT_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
 import static com.yahoo.omid.timestamp.storage.ZKTimestampStorage.DEFAULT_ZK_CLUSTER;
 import static com.yahoo.omid.tso.PersistenceProcessorImpl.DEFAULT_BATCH_PERSIST_TIMEOUT_MS;
 import static com.yahoo.omid.tso.PersistenceProcessorImpl.DEFAULT_MAX_BATCH_SIZE;
 import static com.yahoo.omid.tso.RequestProcessorImpl.DEFAULT_MAX_ITEMS;
-import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
 
 /**
  * Holds the configuration parameters of a TSO server instance.
  */
 public class TSOServerCommandLineConfig extends JCommander implements IVariableArity {
 
-    public enum TimestampStore {
-        MEMORY, HBASE, ZK
-    };
+    enum TimestampStore {
+        MEMORY("com.yahoo.omid.tso.InMemoryTimestampStorageModule"),
+        HBASE("com.yahoo.omid.timestamp.storage.HBaseTimestampStorageModule"),
+        ZK("com.yahoo.omid.timestamp.storage.ZKTimestampStorageModule"),;
 
-    public enum CommitTableStore {
-        MEMORY, HBASE
-    };
+        private String clazz;
+        TimestampStore(String className) {
+            clazz = className;
+        }
+
+        @Override
+        public String toString() {
+            return clazz;
+        }
+    }
+
+    enum CommitTableStore {
+        MEMORY("com.yahoo.omid.tso.InMemoryCommitTableStorageModule"),
+        HBASE("com.yahoo.omid.committable.hbase.HBaseCommitTableStorageModule");
+
+        private String clazz;
+        CommitTableStore(String className) {
+            clazz = className;
+        }
+
+        @Override
+        public String toString() {
+            return clazz;
+        }
+    }
 
     TSOServerCommandLineConfig() {
-        this(new String[] {});
+        this(new String[]{});
     }
 
     TSOServerCommandLineConfig(String[] args) {
@@ -55,7 +78,7 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
         return new TSOServerCommandLineConfig(args);
     }
 
-    @Parameter(names="-help", description = "Print command options and exit", help = true)
+    @Parameter(names = "-help", description = "Print command options and exit", help = true)
     private boolean help = false;
 
     @Parameter(names = "-timestampStore", description = "Available stores, MEMORY, HBASE, ZK")
@@ -80,7 +103,7 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
     private String metricsProviderModule = "com.yahoo.omid.metrics.CodahaleModule";
 
     @Parameter(names = "-metricsConfigs", description = "Metrics config", variableArity = true)
-    private List<String> metricsConfigs = new ArrayList<>(Arrays.asList(DEFAULT_CODAHALE_METRICS_CONFIG));
+    private List<String> metricsConfigs = new ArrayList<>(Arrays.asList(MetricsProvider.CODAHALE_METRICS_CONFIG));
 
     @Parameter(names = "-maxItems", description = "Maximum number of items in the TSO (will determine the 'low watermark')")
     private int maxItems = DEFAULT_MAX_ITEMS;
@@ -109,7 +132,7 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
     public int processVariableArity(String optionName,
                                     String[] options) {
         int i = 0;
-        for (String o: options) {
+        for (String o : options) {
             if (o.startsWith("-")) {
                 return i;
             }
@@ -123,6 +146,7 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
     }
 
     public TimestampStore getTimestampStore() {
+
         return timestampStore;
     }
 
@@ -138,11 +162,11 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
         return commitTableStore;
     }
 
-    public String getHBaseTimestampTable() {
+    public String getTimestampTable() {
         return hbaseTimestampTable;
     }
 
-    public String getHBaseCommitTable() {
+    public String getCommitTable() {
         return hbaseCommitTable;
     }
 
@@ -170,7 +194,9 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
         return batchPersistTimeoutMS;
     }
 
-    public HBaseLogin.Config getLoginFlags() { return loginFlags; }
+    public HBaseLogin.Config getLoginFlags() {
+        return loginFlags;
+    }
 
     public String getNetworkIface() {
         return networkIfaceName;

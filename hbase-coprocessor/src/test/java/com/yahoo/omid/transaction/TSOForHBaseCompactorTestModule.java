@@ -33,7 +33,7 @@ import com.yahoo.omid.tso.TSOStateManagerImpl;
 import com.yahoo.omid.tso.TimestampOracle;
 import com.yahoo.omid.tso.TimestampOracleImpl;
 import com.yahoo.omid.tso.ZKModule;
-import com.yahoo.omid.tso.hbase.HBaseTimestampStorage;
+import com.yahoo.omid.timestamp.storage.HBaseTimestampStorage;
 
 public class TSOForHBaseCompactorTestModule extends AbstractModule {
 

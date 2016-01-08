@@ -12,10 +12,10 @@ import com.codahale.metrics.graphite.GraphiteReporter;
 import com.google.common.base.Strings;
 import com.google.common.net.HostAndPort;
 import com.yahoo.omid.metrics.CodahaleMetricsConfig.Reporter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -23,17 +23,18 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import javax.inject.Inject;
+
 public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry {
 
     private static final Logger LOG = LoggerFactory.getLogger(CodahaleMetricsProvider.class);
 
     public static final Pattern CODAHALE_METRICS_CONFIG_PATTERN = Pattern
-            .compile("(csv|slf4j|console|graphite):(.+):(\\d+):(DAYS|HOURS|MICROSECONDS|MILLISECONDS|MINUTES|NANOSECONDS|SECONDS)");
-
-    public static final String DEFAULT_CODAHALE_METRICS_CONFIG = "console:_:60:SECONDS";
+        .compile(
+            "(csv|slf4j|console|graphite):(.+):(\\d+):(DAYS|HOURS|MICROSECONDS|MILLISECONDS|MINUTES|NANOSECONDS|SECONDS)");
 
     private MetricRegistry metrics = new MetricRegistry();
-    private List<ScheduledReporter> reporters = new ArrayList<ScheduledReporter>();
+    private List<ScheduledReporter> reporters = new ArrayList<>();
 
     private final int metricsOutputFrequency;
     private final TimeUnit timeUnit;
@@ -43,30 +44,30 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
         metricsOutputFrequency = conf.getOutputFreq();
         timeUnit = conf.getOutputFreqTimeUnit();
         int reporterCount = 0;
-        for(Reporter reporter : conf.getReporters()) {
+        for (Reporter reporter : conf.getReporters()) {
             ScheduledReporter codahaleReporter = null;
-            switch(reporter) {
-            case CONSOLE:
-                codahaleReporter = createAndGetConfiguredConsoleReporter(conf.getPrefix());
-                break;
-            case GRAPHITE:
-                codahaleReporter = createAndGetConfiguredGraphiteReporter(conf.getPrefix(),
-                                                                          conf.getGraphiteHostConfig());
-                break;
-            case CSV:
-                codahaleReporter = createAndGetConfiguredCSVReporter(conf.getPrefix(),
-                                                                     conf.getCSVDir());
-                break;
-            case SLF4J:
-                codahaleReporter = createAndGetConfiguredSlf4jReporter(conf.getSlf4jLogger());
-                break;
+            switch (reporter) {
+                case CONSOLE:
+                    codahaleReporter = createAndGetConfiguredConsoleReporter();
+                    break;
+                case GRAPHITE:
+                    codahaleReporter = createAndGetConfiguredGraphiteReporter(conf.getPrefix(),
+                                                                              conf.getGraphiteHostConfig());
+                    break;
+                case CSV:
+                    codahaleReporter = createAndGetConfiguredCSVReporter(conf.getPrefix(),
+                                                                         conf.getCSVDir());
+                    break;
+                case SLF4J:
+                    codahaleReporter = createAndGetConfiguredSlf4jReporter(conf.getSlf4jLogger());
+                    break;
             }
-            if(codahaleReporter != null) {
+            if (codahaleReporter != null) {
                 reporters.add(codahaleReporter);
                 reporterCount++;
             }
         }
-        if(reporterCount == 0) {
+        if (reporterCount == 0) {
             LOG.warn("No metric reporters found, so metrics won't be available");
         }
     }
@@ -74,7 +75,8 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
     @Override
     public void startMetrics() {
         for (ScheduledReporter r : reporters) {
-            LOG.info("Starting reporter {} with freq {} {}", new Object[] { r.getClass().getCanonicalName(), metricsOutputFrequency, timeUnit } );
+            LOG.info("Starting reporter {} with freq {} {}",
+                     r.getClass().getCanonicalName(), metricsOutputFrequency, timeUnit);
             r.start(metricsOutputFrequency, timeUnit);
         }
     }
@@ -90,43 +92,39 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
 
     @Override
     public <T extends Number> void gauge(String name, Gauge<T> appGauge) {
-        metrics.register(name, new CodahaleGauge<T>(appGauge));
+        metrics.register(name, new CodahaleGauge<>(appGauge));
     }
 
     @Override
     public Counter counter(String name) {
         com.codahale.metrics.Counter counter = metrics.counter(name);
-        CodahaleCounterWrapper counterWrapper =  new CodahaleCounterWrapper(counter);
-        return counterWrapper;
+        return new CodahaleCounterWrapper(counter);
     }
 
 
     @Override
     public Timer timer(String name) {
         com.codahale.metrics.Timer timer = metrics.timer(name);
-        CodahaleTimerWrapper timerWrapper =  new CodahaleTimerWrapper(timer);
-        return timerWrapper;
+        return new CodahaleTimerWrapper(timer);
     }
 
     @Override
     public Meter meter(String name) {
         com.codahale.metrics.Meter meter = metrics.meter(name);
-        CodahaleMeterWrapper meterWrapper = new CodahaleMeterWrapper(meter);
-        return meterWrapper;
+        return new CodahaleMeterWrapper(meter);
     }
 
     @Override
     public Histogram histogram(String name) {
         com.codahale.metrics.Histogram histogram = metrics.histogram(name);
-        CodahaleHistogramWrapper histogramWrapper = new CodahaleHistogramWrapper(histogram);
-        return histogramWrapper;
+        return new CodahaleHistogramWrapper(histogram);
     }
 
-    private ScheduledReporter createAndGetConfiguredConsoleReporter(String prefix) {
+    private ScheduledReporter createAndGetConfiguredConsoleReporter() {
         return ConsoleReporter.forRegistry(metrics)
-                .convertRatesTo(TimeUnit.SECONDS)
-                .convertDurationsTo(TimeUnit.MILLISECONDS)
-                .build();
+            .convertRatesTo(TimeUnit.SECONDS)
+            .convertDurationsTo(TimeUnit.MILLISECONDS)
+            .build();
     }
 
     private ScheduledReporter createAndGetConfiguredGraphiteReporter(String prefix, String graphiteHost) {
@@ -134,14 +132,14 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
         HostAndPort addr = HostAndPort.fromString(graphiteHost);
 
         final Graphite graphite = new Graphite(
-                new InetSocketAddress(addr.getHostText(), addr.getPort()));
+            new InetSocketAddress(addr.getHostText(), addr.getPort()));
 
         return GraphiteReporter.forRegistry(metrics)
-                .prefixedWith(prefix)
-                .convertRatesTo(TimeUnit.SECONDS)
-                .convertDurationsTo(TimeUnit.MILLISECONDS)
-                .filter(MetricFilter.ALL)
-                .build(graphite);
+            .prefixedWith(prefix)
+            .convertRatesTo(TimeUnit.SECONDS)
+            .convertDurationsTo(TimeUnit.MILLISECONDS)
+            .filter(MetricFilter.ALL)
+            .build(graphite);
     }
 
     private ScheduledReporter createAndGetConfiguredCSVReporter(String prefix, String csvDir) {
@@ -157,19 +155,19 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
         }
         LOG.info("Configuring stats with csv output to directory [{}]", outputDir.getAbsolutePath());
         return CsvReporter.forRegistry(metrics)
-                .convertRatesTo(TimeUnit.SECONDS)
-                .convertDurationsTo(TimeUnit.MILLISECONDS)
-                .build(outputDir);
+            .convertRatesTo(TimeUnit.SECONDS)
+            .convertDurationsTo(TimeUnit.MILLISECONDS)
+            .build(outputDir);
     }
 
 
     private ScheduledReporter createAndGetConfiguredSlf4jReporter(String slf4jLogger) {
         LOG.info("Configuring stats with SLF4J with logger {}", slf4jLogger);
         return Slf4jReporter.forRegistry(metrics)
-                .outputTo(LoggerFactory.getLogger(slf4jLogger))
-                .convertRatesTo(TimeUnit.SECONDS)
-                .convertDurationsTo(TimeUnit.MILLISECONDS)
-                .build();
+            .outputTo(LoggerFactory.getLogger(slf4jLogger))
+            .convertRatesTo(TimeUnit.SECONDS)
+            .convertDurationsTo(TimeUnit.MILLISECONDS)
+            .build();
     }
 
     /**
@@ -180,7 +178,7 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
 
         private final Gauge<T> omidGauge;
 
-        public CodahaleGauge(Gauge<T> omidGauge) {
+        CodahaleGauge(Gauge<T> omidGauge) {
             this.omidGauge = omidGauge;
         }
 
@@ -195,7 +193,7 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
 
         private final com.codahale.metrics.Counter counter;
 
-        public CodahaleCounterWrapper(com.codahale.metrics.Counter counter) {
+        CodahaleCounterWrapper(com.codahale.metrics.Counter counter) {
             this.counter = counter;
         }
 
@@ -227,7 +225,7 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
 
         private Context context;
 
-        public CodahaleTimerWrapper(com.codahale.metrics.Timer timer) {
+        CodahaleTimerWrapper(com.codahale.metrics.Timer timer) {
             this.timer = timer;
         }
 
@@ -248,11 +246,11 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
 
     }
 
-    public class CodahaleMeterWrapper implements Meter {
+    private class CodahaleMeterWrapper implements Meter {
 
         private com.codahale.metrics.Meter meter;
 
-        public CodahaleMeterWrapper(com.codahale.metrics.Meter meter) {
+        CodahaleMeterWrapper(com.codahale.metrics.Meter meter) {
             this.meter = meter;
         }
 
@@ -272,7 +270,7 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
 
         private com.codahale.metrics.Histogram histogram;
 
-        public CodahaleHistogramWrapper(com.codahale.metrics.Histogram histogram) {
+        CodahaleHistogramWrapper(com.codahale.metrics.Histogram histogram) {
             this.histogram = histogram;
         }
 

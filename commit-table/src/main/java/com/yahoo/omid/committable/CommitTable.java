@@ -1,20 +1,25 @@
 package com.yahoo.omid.committable;
 
-import java.io.Closeable;
-import java.io.IOException;
-
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.io.Closeable;
+import java.io.IOException;
+
 public interface CommitTable {
 
-    public static final long INVALID_TRANSACTION_MARKER = -1L;
+    long INVALID_TRANSACTION_MARKER = -1L;
+    String COMMIT_TABLE_NAME_KEY = "omid.committable.tablename";
+    String COMMIT_TABLE_DEFAULT_NAME = "OMID_COMMIT_TABLE";
 
     ListenableFuture<Writer> getWriter();
+
     ListenableFuture<Client> getClient();
 
-    public interface Writer extends Closeable {
+    interface Writer extends Closeable {
+
         void addCommittedTransaction(long startTimestamp, long commitTimestamp) throws IOException;
+
         void updateLowWatermark(long lowWatermark) throws IOException;
 
         /**
@@ -28,23 +33,25 @@ public interface CommitTable {
         void clearWriteBuffer();
     }
 
-    public interface Client extends Closeable {
+    interface Client extends Closeable {
+
         /**
-         * Checks whether a transaction commit data is inside the commit table
-         * The function also checks whether the transaction was invalidated and returns
-         * a commit timestamp type accordingly.
-         * @param startTimestamp
-         *            the transaction start timestamp
+         * Checks whether a transaction commit data is inside the commit table The function also checks whether the
+         * transaction was invalidated and returns a commit timestamp type accordingly.
+         *
+         * @param startTimestamp the transaction start timestamp
          * @return Optional<CommitTimestamp> that represents a valid, invalid, or no timestamp.
          */
         ListenableFuture<Optional<CommitTimestamp>> getCommitTimestamp(long startTimestamp);
+
         ListenableFuture<Long> readLowWatermark();
+
         ListenableFuture<Void> completeTransaction(long startTimestamp);
+
         /**
-         * Atomically tries to invalidate a non-committed transaction launched
-         * by a previous TSO server.
-         * @param startTimeStamp
-         *              the transaction to invalidate
+         * Atomically tries to invalidate a non-committed transaction launched by a previous TSO server.
+         *
+         * @param startTimeStamp the transaction to invalidate
          * @return true on success and false on failure
          */
         ListenableFuture<Boolean> tryInvalidateTransaction(long startTimeStamp);
@@ -53,8 +60,7 @@ public interface CommitTable {
     // ************************************************************************
     // Helper classes
     // ************************************************************************
-
-    public static class CommitTimestamp {
+    class CommitTimestamp {
 
         public enum Location {
             NOT_PRESENT, CACHE, COMMIT_TABLE, SHADOW_CELL

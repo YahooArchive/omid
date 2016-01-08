@@ -1,8 +1,10 @@
 package com.yahoo.omid.tso.hbase;
 
-import static com.yahoo.omid.tso.hbase.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
-
-import java.io.IOException;
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+import com.yahoo.omid.committable.hbase.HBaseLogin;
+import com.yahoo.omid.timestamp.storage.HBaseTimestampStorage;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -13,19 +15,17 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.beust.jcommander.JCommander;
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-import com.yahoo.omid.committable.hbase.HBaseLogin;
+import java.io.IOException;
 
+//TODO: IK: Move to some other java package? tools?
 public class CreateTable {
 
     private static final Logger LOG = LoggerFactory.getLogger(CreateTable.class);
 
-    static class Config {
+    private static class Config {
 
         @Parameter(names = "-tableName", description = "Name of the timestamp storage table in HBase", required = false)
-        String table = TIMESTAMP_TABLE_DEFAULT_NAME;
+        String table = HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
 
         @ParametersDelegate
         HBaseLogin.Config loginFlags = new HBaseLogin.Config();
@@ -40,7 +40,7 @@ public class CreateTable {
         createTable(HBaseConfiguration.create(), config.table);
     }
 
-    public static void createTable(Configuration hbaseConf, String tableName) throws IOException {
+    private static void createTable(Configuration hbaseConf, String tableName) throws IOException {
         HBaseAdmin admin = new HBaseAdmin(hbaseConf);
 
         if (!admin.tableExists(tableName)) {

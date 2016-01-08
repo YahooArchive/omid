@@ -120,7 +120,7 @@
     </dependency>
     <dependency>
       <groupId>com.yahoo.omid</groupId>
-      <artifactId>codahale-metrics</artifactId>
+      <artifactId>metrics</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -130,7 +130,7 @@
     </dependency>
     <dependency>
       <groupId>com.yahoo.omid</groupId>
-      <artifactId>hbase-commit-table</artifactId>
+      <artifactId>commit-table</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -139,6 +139,18 @@
       <version>${project.version}</version>
       <scope>test</scope>
       <classifier>tests</classifier>
+    </dependency>
+
+    <dependency>
+      <groupId>com.yahoo.omid</groupId>
+      <artifactId>timestamp-storage</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+      <dependency>
+      <groupId>com.yahoo.omid</groupId>
+      <artifactId>hbase-common</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <!-- End of Dependencies on Omid modules -->
 
