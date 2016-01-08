@@ -2,14 +2,42 @@
 
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- ========================================================================================================== -->
+    <!-- Project description                                                                                        -->
+    <!-- ========================================================================================================== -->
+    <name>Omid</name>
+    <description>The Omid project provides transactional support for HBase-based applications</description>
+    <inceptionYear>2011</inceptionYear>
+    <url>http://www.github.com/yahoo/omid</url>
     <groupId>com.yahoo.omid</groupId>
     <artifactId>omid</artifactId>
-    <inceptionYear>2011</inceptionYear>
     <packaging>pom</packaging>
-    <!-- WARNING: do not update version manually, use mvn versions:set on a ylinux machine //-->
+    <!-- WARNING: do not update version manually, use mvn versions:set -->
     <version>2.4.7-SNAPSHOT</version>
-    <name>Omid</name>
-    <url>http://www.github.com/yahoo/omid</url>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <modules>
+        <module>common</module>
+        <module>statemachine</module>
+        <module>metrics</module>
+        <module>codahale-metrics</module>
+        <module>hbase-client</module>
+        <module>transaction-client</module>
+        <module>tso-server</module>
+        <module>commit-table</module>
+        <module>hbase-commit-table</module>
+        <module>hbase-coprocessor</module>
+        <module>benchmarks</module>
+        <module>hbase-common</module>
+        <module>timestamp-storage</module>
+    </modules>
 
     <scm>
         <connection>scm:git:git://github.com/yahoo/omid.git</connection>
@@ -26,11 +54,6 @@
     </distributionManagement>
 
     <properties>
-        <!-- Licensing properties (for license-maven-plugins) -->
-        <license.header>misc/header.txt</license.header>
-        <license.owner>Yahoo Inc.</license.owner>
-        <license.inceptionYear>${project.inceptionYear}</license.inceptionYear>
-        <license.currentYear>2016</license.currentYear> <!-- Manually assigned -->
 
         <!-- Basic properties -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -57,44 +80,37 @@
         <zookeeper.version>3.4.3</zookeeper.version>
 
         <!-- Maven Plugin Versioning -->
-        <license.maven-plugin.version>2.11</license.maven-plugin.version>
-
-        <target_jdk_version>1.8</target_jdk_version>
+        <maven-source-plugin.version>2.4</maven-source-plugin.version>
+        <maven-clean-plugin.version>2.5</maven-clean-plugin.version>
+        <maven-compiler-plugin.version>3.3</maven-compiler-plugin.version>
+        <maven-assembly-plugin.version>2.4.1</maven-assembly-plugin.version>
+        <maven-release-plugin.version>2.3.2</maven-release-plugin.version>
+        <maven-javadoc-plugin.version>2.10.3</maven-javadoc-plugin.version>
+        <maven-jar-plugin.version>2.5</maven-jar-plugin.version>
         <maven-surefire-plugin.version>2.19</maven-surefire-plugin.version>
         <maven-surefire-report-plugin.version>2.19</maven-surefire-report-plugin.version>
         <coveralls.version>4.1.0</coveralls.version>
         <cobertura.version>2.7</cobertura.version>
-        <maven-compiler-plugin.version>3.3</maven-compiler-plugin.version>
-        <maven-assembly-plugin.version>2.4.1</maven-assembly-plugin.version>
-        <maven-release-plugin.version>2.3.2</maven-release-plugin.version>
-        <maven-clean-plugin.version>2.5</maven-clean-plugin.version>
-        <maven-javadoc-plugin.version>2.10.3</maven-javadoc-plugin.version>
-        <maven-source-plugin.version>2.4</maven-source-plugin.version>
-        <maven-jar-plugin.version>2.5</maven-jar-plugin.version>
+        <license.maven-plugin.version>2.11</license.maven-plugin.version>
 
-        <buildtype>test</buildtype>
-        <sourceEncoding>UTF-8</sourceEncoding>
+        <!-- Licensing properties (for license-maven-plugins) -->
+        <license.header>misc/header.txt</license.header>
+        <license.owner>Yahoo Inc.</license.owner>
+        <license.inceptionYear>${project.inceptionYear}</license.inceptionYear>
+        <license.currentYear>2016</license.currentYear> <!-- Manually assigned -->
+
     </properties>
 
-    <modules>
-        <module>common</module>
-        <module>statemachine</module>
-        <module>metrics</module>
-        <module>codahale-metrics</module>
-        <module>hbase-client</module>
-        <module>transaction-client</module>
-        <module>tso-server</module>
-        <module>commit-table</module>
-        <module>hbase-commit-table</module>
-        <module>hbase-coprocessor</module>
-        <module>benchmarks</module>
-        <module>hbase-common</module>
-        <module>timestamp-storage</module>
-    </modules>
-
     <build>
+
         <pluginManagement>
+
             <plugins>
+
+                <!-- ============================================================================================== -->
+                <!-- Basic plugins                                                                                  -->
+                <!-- ============================================================================================== -->
+
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-clean-plugin</artifactId>
@@ -106,8 +122,14 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>${maven-compiler-plugin.version}</version>
                     <configuration>
-                        <source>${target_jdk_version}</source>
-                        <target>${target_jdk_version}</target>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
+                        <compilerArgs>
+                            <arg>-Werror</arg>
+                            <arg>-Xlint:deprecation</arg>
+                            <arg>-Xlint:unchecked</arg>
+                        </compilerArgs>
+
                     </configuration>
                 </plugin>
 
@@ -139,15 +161,29 @@
                     <artifactId>maven-release-plugin</artifactId>
                     <version>${maven-release-plugin.version}</version>
                     <configuration>
-                        <scmCommentPrefix>[ci skip]</scmCommentPrefix>
+                        <scmCommentPrefix>[ci skip] </scmCommentPrefix>
                         <useReleaseProfile>false</useReleaseProfile>
-                        <releaseProfiles>deploy_profile</releaseProfiles>
+                        <releaseProfiles>release_profile</releaseProfiles>
                     </configuration>
                 </plugin>
 
-                <!-- ======================================================================================================== -->
-                <!--Code coverage plugins-->
-                <!-- ======================================================================================================== -->
+                <plugin>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>${maven-source-plugin.version}</version>
+                </plugin>
+
+                <plugin>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>${maven-javadoc-plugin.version}</version>
+                    <configuration>
+                        <additionalparam>-Xdoclint:none</additionalparam>
+                    </configuration>
+                </plugin>
+
+
+                <!-- ============================================================================================== -->
+                <!-- Code coverage plugins                                                                          -->
+                <!-- ============================================================================================== -->
 
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
@@ -178,19 +214,9 @@
                     <version>${coveralls.version}</version>
                 </plugin>
 
-                <plugin>
-                    <artifactId>maven-source-plugin</artifactId>
-                    <version>${maven-source-plugin.version}</version>
-                </plugin>
-                <plugin>
-                    <artifactId>maven-javadoc-plugin</artifactId>
-                    <version>${maven-javadoc-plugin.version}</version>
-                    <configuration>
-                        <additionalparam>-Xdoclint:none</additionalparam>
-                    </configuration>
-                </plugin>
-
-                <!-- License Management plugins -->
+                <!-- ============================================================================================== -->
+                <!-- License Management plugins                                                                     -->
+                <!-- ============================================================================================== -->
                 <plugin>
                     <groupId>com.mycila</groupId>
                     <artifactId>license-maven-plugin</artifactId>
@@ -199,7 +225,7 @@
                     <configuration>
                         <header>${license.header}</header>
                         <aggregate>true</aggregate> <!-- for multi-module config -->
-                        <skipExistingHeaders>${license.skipExistingHeaders}</skipExistingHeaders>
+                        <skipExistingHeaders>false</skipExistingHeaders>
                         <properties>
                             <owner>${license.owner}</owner>
                             <inceptionYear>${project.inceptionYear}</inceptionYear>
@@ -225,9 +251,11 @@
                 </plugin>
 
             </plugins>
+
         </pluginManagement>
 
         <plugins>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -237,6 +265,7 @@
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
                 </configuration>
             </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-report-plugin</artifactId>
@@ -259,24 +288,32 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>cobertura-maven-plugin</artifactId>
             </plugin>
+
         </plugins>
 
     </build>
 
 
     <profiles>
+
         <profile>
-            <id>deploy_profile</id>
+
+            <id>release_profile</id>
+
             <activation>
                 <property>
-                    <name>deploy_profile</name>
+                    <name>release_profile</name>
                 </property>
             </activation>
+
             <properties>
                 <buildtype>release</buildtype>
             </properties>
+
             <build>
+
                 <plugins>
+
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-clean-plugin</artifactId>
@@ -325,6 +362,7 @@
                             </execution>
                         </executions>
                     </plugin>
+
                     <plugin>
                         <artifactId>maven-javadoc-plugin</artifactId>
                         <executions>
@@ -338,8 +376,11 @@
                     </plugin>
 
                 </plugins>
+
             </build>
+
         </profile>
+
     </profiles>
 
 </project>
