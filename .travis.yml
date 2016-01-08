@@ -25,7 +25,7 @@ script:
   - echo "NOOP"
 
 after_success:
-  - mvn cobertura:cobertura coveralls:report
+  - travis_wait mvn cobertura:cobertura coveralls:report
   - mvn -B release:prepare release:perform -Pdeploy_profile --settings bintray-settings.xml
 
 after_failure:
