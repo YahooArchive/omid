@@ -26,10 +26,10 @@ before_script:
   - git checkout open-source
 
 script:
-  - echo "NOOP"
+  - mvn cobertura:cobertura
 
 after_success:
-  - mvn cobertura:cobertura coveralls:report
+  - mvn coveralls:report
   - mvn -B release:prepare release:perform -Prelease_profile --settings bintray-settings.xml
 
 after_failure:
