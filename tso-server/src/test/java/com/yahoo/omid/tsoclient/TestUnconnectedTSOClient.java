@@ -1,15 +1,13 @@
 package com.yahoo.omid.tsoclient;
 
 import static com.google.common.collect.Sets.newHashSet;
+import static com.yahoo.omid.tsoclient.TSOClient.TSO_RECONNECTION_DELAY_SECS;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
 import static org.slf4j.LoggerFactory.getLogger;
 import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -20,8 +18,6 @@ import org.testng.annotations.Test;
 
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
 import com.yahoo.omid.tsoclient.TSOClient.ConnectionException;
-import com.yahoo.omid.tsoclient.TSOClientImpl.BaseState;
-import com.yahoo.omid.tsoclient.TSOClientImpl.ConnectionFailedState;
 import com.yahoo.omid.tsoclient.TSOClientImpl.DisconnectedState;
 import com.yahoo.statemachine.StateMachine.FsmImpl;
 
@@ -33,6 +29,7 @@ public class TestUnconnectedTSOClient {
 
     private static final Logger LOG = getLogger(TestUnconnectedTSOClient.class);
 
+    private static final int TSO_RECONNECTION_DELAY_IN_SECS_FOR_TEST = 2;
 
     @Test(timeOut = 30_000) // 30 secs
     public void testRequestsDoneOnAnUnconnectedTSOClientAlwaysReturn()
@@ -41,6 +38,7 @@ public class TestUnconnectedTSOClient {
         Configuration clientConf = new BaseConfiguration();
         clientConf.setProperty(TSO_HOST_CONFKEY, "localhost");
         clientConf.setProperty(TSO_PORT_CONFKEY, 12345);
+        clientConf.setProperty(TSO_RECONNECTION_DELAY_SECS, TSO_RECONNECTION_DELAY_IN_SECS_FOR_TEST);
 
         // Component under test
         TSOClient tsoClient = TSOClient.newBuilder()
@@ -55,15 +53,14 @@ public class TestUnconnectedTSOClient {
 
         // Test requests to the 3 relevant methods in TSO client
 
-        List<Class<? extends BaseState>> EXPECTED_EXCEPTIONS =
-                Arrays.asList(DisconnectedState.class, ConnectionFailedState.class);
         try {
             tsoClient.getNewStartTimestamp().get();
             fail();
         } catch (ExecutionException e) {
             LOG.info("Exception expected");
             assertEquals(e.getCause().getClass(), ConnectionException.class);
-            assertTrue(EXPECTED_EXCEPTIONS.contains(fsm.getState().getClass()));
+            TimeUnit.SECONDS.sleep(TSO_RECONNECTION_DELAY_IN_SECS_FOR_TEST * 2);
+            assertEquals(fsm.getState().getClass(), DisconnectedState.class);
         }
 
         try {
@@ -72,15 +69,12 @@ public class TestUnconnectedTSOClient {
         } catch (ExecutionException e) {
             LOG.info("Exception expected");
             assertEquals(e.getCause().getClass(), ConnectionException.class);
-            assertTrue(EXPECTED_EXCEPTIONS.contains(fsm.getState().getClass()));
+            TimeUnit.SECONDS.sleep(TSO_RECONNECTION_DELAY_IN_SECS_FOR_TEST * 2);
+            assertEquals(fsm.getState().getClass(), DisconnectedState.class);
         }
-
-        TimeUnit.SECONDS.sleep(TSOClient.DEFAULT_TSO_RECONNECTION_DELAY_SECS);
-        assertEquals(fsm.getState().getClass(), DisconnectedState.class);
 
         tsoClient.close().get();
         LOG.info("No exception expected");
-
     }
 
 }
