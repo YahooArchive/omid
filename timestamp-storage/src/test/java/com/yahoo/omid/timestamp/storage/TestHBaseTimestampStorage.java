@@ -1,7 +1,4 @@
-package com.yahoo.omid.tso.hbase;
-
-import com.yahoo.omid.timestamp.storage.HBaseTimestampStorage;
-import com.yahoo.omid.timestamp.storage.HBaseTimestampStorageConfig;
+package com.yahoo.omid.timestamp.storage;
 
 import static org.testng.AssertJUnit.assertEquals;
 import org.testng.annotations.AfterClass;
