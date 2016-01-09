@@ -262,7 +262,7 @@
                 <configuration>
                     <argLine>-Xmx1G</argLine>
                     <forkCount>1</forkCount>
-                    <reuseForks>true</reuseForks>
+                    <reuseForks>false</reuseForks>
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
                 </configuration>
             </plugin>
