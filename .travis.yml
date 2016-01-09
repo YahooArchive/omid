@@ -26,7 +26,7 @@ before_script:
   - git checkout open-source
 
 script:
-  - mvn -X cobertura:cobertura
+  - mvn cobertura:cobertura
 
 after_success:
   - mvn coveralls:report
