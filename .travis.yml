@@ -26,7 +26,7 @@ before_script:
   - git checkout open-source
 
 script:
-  - mvn cobertura:cobertura && mkdir failedTests && find -name testng-failed.xml -exec cp -vf "{}" failedTests/ \; && [ -f failedTests/testng-failed.xml ] && echo "Unit test(s) FAILED" || echo "Unit test(s) PASSED"
+  - mvn cobertura:cobertura && mkdir failedTests && find -name testng-failed.xml -exec cp -vf "{}" failedTests/ \; && [ -f failedTests/testng-failed.xml ]
 
 after_success:
   - mvn coveralls:report
