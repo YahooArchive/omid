@@ -1,29 +1,33 @@
 package com.yahoo.omid.transaction;
 
-import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
-import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
-import static com.yahoo.omid.ZKConstants.TSO_LEASE_PATH;
-import static com.yahoo.omid.committable.CommitTable.COMMIT_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_FAMILY;
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.LOW_WATERMARK_FAMILY;
-import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;
-import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
-import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TSO_FAMILY;
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_ZK_CLUSTER_CONFKEY;
-import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
-import static org.testng.Assert.fail;
-
-import java.io.IOException;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
-import javax.inject.Named;
-import javax.inject.Singleton;
-
+import com.google.common.base.Charsets;
+import com.google.inject.AbstractModule;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.google.inject.Provides;
+import com.google.inject.name.Names;
+import com.yahoo.omid.TestUtils;
+import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.hbase.HBaseCommitTable;
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.metrics.NullMetricsProvider;
+import com.yahoo.omid.timestamp.storage.HBaseTimestampStorage;
+import com.yahoo.omid.timestamp.storage.TimestampStorage;
+import com.yahoo.omid.tso.DisruptorModule;
+import com.yahoo.omid.tso.LeaseManagement;
+import com.yahoo.omid.tso.LeaseManagement.LeaseManagementException;
+import com.yahoo.omid.tso.MockPanicker;
+import com.yahoo.omid.tso.Panicker;
+import com.yahoo.omid.tso.PausableLeaseManager;
+import com.yahoo.omid.tso.PausableTimestampOracle;
 import com.yahoo.omid.tso.TSOChannelHandler;
+import com.yahoo.omid.tso.TSOServer;
+import com.yahoo.omid.tso.TSOServerCommandLineConfig;
+import com.yahoo.omid.tso.TSOStateManager;
+import com.yahoo.omid.tso.TSOStateManagerImpl;
+import com.yahoo.omid.tso.TimestampOracle;
+import com.yahoo.omid.tso.ZKModule;
+import com.yahoo.omid.tsoclient.TSOClient;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
@@ -45,39 +49,29 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import com.google.common.base.Charsets;
-import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.Provides;
-import com.google.inject.name.Names;
-import com.yahoo.omid.TestUtils;
-import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.committable.hbase.HBaseCommitTable;
-import com.yahoo.omid.metrics.MetricsRegistry;
-import com.yahoo.omid.metrics.NullMetricsProvider;
-import com.yahoo.omid.timestamp.storage.TimestampStorage;
-import com.yahoo.omid.tso.DisruptorModule;
-import com.yahoo.omid.tso.LeaseManagement;
-import com.yahoo.omid.tso.LeaseManagement.LeaseManagementException;
-import com.yahoo.omid.tso.MockPanicker;
-import com.yahoo.omid.tso.Panicker;
-import com.yahoo.omid.tso.PausableLeaseManager;
-import com.yahoo.omid.tso.PausableTimestampOracle;
-import com.yahoo.omid.tso.TSOServer;
-import com.yahoo.omid.tso.TSOServerCommandLineConfig;
-import com.yahoo.omid.tso.TSOStateManager;
-import com.yahoo.omid.tso.TSOStateManagerImpl;
-import com.yahoo.omid.tso.TimestampOracle;
-import com.yahoo.omid.tso.ZKModule;
-import com.yahoo.omid.timestamp.storage.HBaseTimestampStorage;
-import com.yahoo.omid.tsoclient.TSOClient;
+import javax.inject.Named;
+import javax.inject.Singleton;
+import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
-public class TestEndToEndScenariosWithHA {
+import static com.yahoo.omid.ZKConstants.*;
+import static com.yahoo.omid.committable.CommitTable.COMMIT_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_FAMILY;
+import static com.yahoo.omid.committable.hbase.HBaseCommitTable.LOW_WATERMARK_FAMILY;
+import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TSO_FAMILY;
+import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;
+import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
+import static com.yahoo.omid.tsoclient.TSOClient.TSO_ZK_CLUSTER_CONFKEY;
+import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
+import static org.testng.Assert.*;
+
+public class TestEndToEndScenario2WithHA {
 
     private static final int TEST_LEASE_PERIOD_MS = 1000;
 
-    private static final Logger LOG = LoggerFactory.getLogger(TestEndToEndScenariosWithHA.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TestEndToEndScenario2WithHA.class);
 
     static final byte[] table = Bytes.toBytes("test-table");
     static final byte[] family = Bytes.toBytes("test-family");
@@ -242,111 +236,6 @@ public class TestEndToEndScenariosWithHA {
         zkClient.close();
 
         hBaseUtils.shutdownMiniCluster();
-    }
-
-    //
-    // TSO 1 is MASTER & TSO 2 is BACKUP
-    // Setup: TX 0 -> Add initial data to cells R1C1 (v0) & R2C2 (v0)
-    // TX 1 starts (TSO1)
-    // TX 1 modifies cells R1C1 & R2C2 (v1)
-    // Interleaved Read TX -IR TX- starts (TSO1)
-    // TSO 1 PAUSES -> TSO 2 becomes MASTER
-    // IR TX reads R1C1 -> should get v0
-    // TX 1 tries to commit -> should abort because was started in TSO 1
-    // IR TX reads R2C2 -> should get v0
-    // IR TX tries to commit -> should abort because was started in TSO 1
-    // End of Test state: R1C1 & R2C2 (v0)
-    @Test(timeOut = 60_000)
-    public void testScenario1() throws Exception {
-
-        try (TTable txTable = new TTable(hBaseCluster.getConfiguration(), table)) {
-
-            // Write initial values for the test
-            HBaseTransaction tx0 = (HBaseTransaction) tm.begin();
-            LOG.info("Starting Tx {} writing initial values for cells ({}) ", tx0, Bytes.toString(initialData));
-            Put putInitialDataRow1 = new Put(row1);
-            putInitialDataRow1.add(family, qualifier1, initialData);
-            txTable.put(tx0, putInitialDataRow1);
-            Put putInitialDataRow2 = new Put(row2);
-            putInitialDataRow2.add(family, qualifier2, initialData);
-            txTable.put(tx0, putInitialDataRow2);
-            tm.commit(tx0);
-
-            // Initial checks
-            checkRowValues(txTable, initialData, initialData);
-
-            HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
-            LOG.info("Starting Tx {} writing values for cells ({}, {}) ", tx1, Bytes.toString(data1_q1),
-                    Bytes.toString(data1_q2));
-            Put putData1R1Q1 = new Put(row1);
-            putData1R1Q1.add(family, qualifier1, data1_q1);
-            txTable.put(tx1, putData1R1Q1);
-            Put putData1R2Q2 = new Put(row2);
-            putData1R2Q2.add(family, qualifier2, data1_q2);
-            txTable.put(tx1, putData1R2Q2);
-
-            Transaction interleavedReadTx = tm.begin();
-
-            LOG.info("Starting Interleaving Read Tx {} for checking cell values", interleavedReadTx.getTransactionId());
-
-            // Simulate a GC pause to change mastership (should throw a ServiceUnavailable exception)
-            LOG.info("++++++++++++++++++++++++++++++++++++++++++++++++++++++");
-            LOG.info("++++++++++++++++++++++++++++++++++++++++++++++++++++++");
-            LOG.info("++++++++++++++++++++ PAUSING TSO 1 +++++++++++++++++++");
-            LOG.info("++++++++++++++++++++++++++++++++++++++++++++++++++++++");
-            LOG.info("++++++++++++++++++++++++++++++++++++++++++++++++++++++");
-            leaseManager1.pausedInStillInLeasePeriod();
-
-            // Read interleaved and check the values writen by tx 1
-            Get getRow1 = new Get(row1).setMaxVersions(1);
-            getRow1.addColumn(family, qualifier1);
-            Result r = txTable.get(interleavedReadTx, getRow1);
-            assertEquals(r.getValue(family, qualifier1), initialData,
-                    "Unexpected value for SI read R1Q1" + interleavedReadTx + ": "
-                            + Bytes.toString(r.getValue(family, qualifier1)));
-
-            // Try to commit, but it should abort due to the change in mastership
-            try {
-                tm.commit(tx1);
-                fail();
-            } catch (RollbackException e) {
-                // Expected
-                LOG.info("Rollback cause for Tx {}: ", tx1, e.getCause());
-                assertEquals(tx1.getStatus(), Transaction.Status.ROLLEDBACK);
-                assertEquals(tx1.getEpoch(), 0);
-            }
-
-            // Read interleaved and check the values writen by tx 1
-            Get getRow2 = new Get(row2).setMaxVersions(1);
-            r = txTable.get(interleavedReadTx, getRow2);
-            assertEquals(r.getValue(family, qualifier2), initialData,
-                    "Unexpected value for SI read R2Q2" + interleavedReadTx + ": "
-                            + Bytes.toString(r.getValue(family, qualifier2)));
-
-            try {
-                tm.commit(interleavedReadTx);
-                fail();
-            } catch (RollbackException e) {
-                // Expected
-                // NOTE: This is a read only transaction (It's writeset is empty)
-                // and probably it should not be aborted despite the change in
-                // TSO mastership. We should take this into consideration for future improvements
-                LOG.info("Rollback cause for Tx {}: ", interleavedReadTx, e.getCause());
-                assertEquals(interleavedReadTx.getEpoch(), 0);
-                assertEquals(interleavedReadTx.getStatus(), Transaction.Status.ROLLEDBACK);
-            }
-
-            LOG.info("Sleep the Lease period till the client is informed about"
-                    + "the new TSO connection parameters and how can connect");
-            Thread.sleep(3000);
-
-            checkRowValues(txTable, initialData, initialData);
-
-            // Need to resume to let other test progress
-            leaseManager1.resume();
-
-        }
-
     }
 
     //
