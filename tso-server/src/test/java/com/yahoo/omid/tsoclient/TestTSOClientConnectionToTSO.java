@@ -59,7 +59,7 @@ public class TestTSOClientConnectionToTSO {
     public void beforeMethod() throws Exception {
 
         LOG.info("Starting ZK Server");
-        zkServer = provideZookeeperServer();
+        zkServer = TestUtils.provideZookeeperServer();
         LOG.info("ZK Server Started @ {}", zkServer.getConnectString());
 
         zkClient = provideInitializedZookeeperClient();
@@ -263,11 +263,6 @@ public class TestTSOClientConnectionToTSO {
         LOG.info("Connection to ZK cluster {}", zkClient.getState());
 
         return zkClient;
-    }
-
-    private static TestingServer provideZookeeperServer() throws Exception {
-        LOG.info("Creating ZK server instance...");
-        return new TestingServer(Integer.parseInt(ZK_CLUSTER.split(":")[1]));
     }
 
 }

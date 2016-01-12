@@ -12,6 +12,8 @@ import com.yahoo.omid.tso.TSOServerCommandLineConfig;
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
+import org.apache.curator.test.TestingServer;
+import org.apache.curator.utils.CloseableUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -38,6 +40,9 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
     final static public CellId c1 = new DummyCellIdImpl(0xdeadbeefL);
     final static public CellId c2 = new DummyCellIdImpl(0xfeedcafeL);
 
+    // The ZK server instance is only needed to avoid waiting for timeout connections from the client
+    private static TestingServer zkServer;
+
     // Required infrastructure for TSO client-server integration testing
     private TSOServer tso;
     private TSOClient client;
@@ -46,7 +51,17 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
     @BeforeClass
     public void setup() throws Exception {
 
-        Module tsoServerMockModule = new TSOMockModule(TSOServerCommandLineConfig.configFactory(TSO_SERVER_PORT, 1000));
+        LOG.info("==================================================================================================");
+        LOG.info("===================================== Starting ZK Server =========================================");
+        LOG.info("==================================================================================================");
+        zkServer = TestUtils.provideZookeeperServer();
+        LOG.info("==================================================================================================");
+        LOG.info("============================== ZK Server Started @ {} ================================",
+                zkServer.getConnectString());
+        LOG.info("==================================================================================================");
+
+        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.configFactory(TSO_SERVER_PORT, 1000);
+        Module tsoServerMockModule = new TSOMockModule(tsoConfig);
         Injector injector = Guice.createInjector(tsoServerMockModule);
 
         CommitTable commitTable = injector.getInstance(CommitTable.class);
@@ -69,6 +84,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         LOG.info("==================================================================================================");
 
         Configuration clientConf = new BaseConfiguration();
+        // Configure direct connection to the server
         clientConf.setProperty("tso.host", "localhost");
         clientConf.setProperty("tso.port", TSO_SERVER_PORT);
         client = TSOClient.newBuilder().withConfiguration(clientConf).build();
@@ -89,6 +105,10 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         tso.stopAndWait();
         tso = null;
         TestUtils.waitForSocketNotListening("localhost", TSO_SERVER_PORT, 1000);
+
+        CloseableUtils.closeQuietly(zkServer);
+        zkServer = null;
+        LOG.info("ZK Server Stopped");
 
     }
 

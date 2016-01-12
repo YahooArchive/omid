@@ -1,25 +1,32 @@
 package com.yahoo.omid;
 
+import org.apache.curator.test.TestingServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static com.yahoo.omid.tsoclient.TSOClient.DEFAULT_ZK_CLUSTER;
 
 /**
- * 
  * This class contains functionality that is useful for the Omid tests.
- * 
  */
 public class TestUtils {
+
     private static final Logger LOG = LoggerFactory.getLogger(TestUtils.class);
 
-    public static void waitForSocketListening(String host, int port,
-            int sleepTimeMillis) throws UnknownHostException, IOException,
-            InterruptedException {
+    public static TestingServer provideZookeeperServer() throws Exception {
+
+        return new TestingServer(Integer.parseInt(DEFAULT_ZK_CLUSTER.split(":")[1]));
+
+    }
+
+    public static void waitForSocketListening(String host, int port, int sleepTimeMillis)
+            throws IOException, InterruptedException {
         while (true) {
             Socket sock = null;
             try {
@@ -38,9 +45,8 @@ public class TestUtils {
         }
     }
 
-    public static void waitForSocketNotListening(String host, int port,
-            int sleepTimeMillis) throws UnknownHostException, IOException,
-            InterruptedException {
+    public static void waitForSocketNotListening(String host, int port, int sleepTimeMillis)
+            throws IOException, InterruptedException {
         while (true) {
             Socket sock = null;
             try {
