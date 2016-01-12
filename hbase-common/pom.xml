@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.yahoo.omid</groupId>
         <artifactId>omid</artifactId>
-        <version>2.4.10-SNAPSHOT</version>
+        <version>2.4.10</version>
     </parent>
 
     <artifactId>hbase-common</artifactId>
