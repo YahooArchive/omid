@@ -92,7 +92,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
 
     }
 
-    @Test(timeOut = 3_000)
+    @Test(timeOut = 10_000)
     public void testTimestampsOrderingGrowMonotonically() throws Exception {
         long referenceTimestamp;
         long startTsTx1 = client.getNewStartTimestamp().get();
@@ -112,14 +112,14 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         assertEquals(startTsTx3, ++referenceTimestamp, "Should grow monotonically");
     }
 
-    @Test(timeOut = 3_000)
+    @Test(timeOut = 10_000)
     public void testSimpleTransactionWithNoWriteSetCanCommit() throws Exception {
         long startTsTx1 = client.getNewStartTimestamp().get();
         long commitTsTx1 = client.commit(startTsTx1, Sets.<CellId>newHashSet()).get();
         assertTrue(commitTsTx1 > startTsTx1);
     }
 
-    @Test(timeOut = 3_000)
+    @Test(timeOut = 10_000)
     public void testTransactionWithMassiveWriteSetCanCommit() throws Exception {
         long startTs = client.getNewStartTimestamp().get();
 
@@ -132,7 +132,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         assertTrue(commitTs > startTs, "Commit TS should be higher than Start TS");
     }
 
-    @Test(timeOut = 3_000)
+    @Test(timeOut = 10_000)
     public void testMultipleSerialCommitsDoNotConflict() throws Exception {
         long startTsTx1 = client.getNewStartTimestamp().get();
         long commitTsTx1 = client.commit(startTsTx1, Sets.newHashSet(c1)).get();
@@ -149,7 +149,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         assertTrue(commitTsTx3 > startTsTx3, "Commit TS must be greater than Start TS");
     }
 
-    @Test(timeOut = 3_000)
+    @Test(timeOut = 10_000)
     public void testCommitWritesToCommitTable() throws Exception {
         long startTsForTx1 = client.getNewStartTimestamp().get();
         long startTsForTx2 = client.getNewStartTimestamp().get();
@@ -168,7 +168,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         assertTrue(commitTs1InCommitTable > startTsForTx2, "Commit TS should be higher than tx's Start TS");
     }
 
-    @Test(timeOut = 3_000)
+    @Test(timeOut = 10_000)
     public void testTwoConcurrentTxWithOverlappingWritesetsHaveConflicts() throws Exception {
         long startTsTx1 = client.getNewStartTimestamp().get();
         long startTsTx2 = client.getNewStartTimestamp().get();
