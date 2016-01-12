@@ -1,8 +1,8 @@
 package com.yahoo.omid.transaction;
 
-import static com.yahoo.omid.committable.CommitTable.COMMIT_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_FAMILY;
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.LOW_WATERMARK_FAMILY;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_FAMILY;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.LOW_WATERMARK_FAMILY;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
 import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;

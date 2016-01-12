@@ -1,5 +1,6 @@
 package com.yahoo.omid.transaction;
 
+import com.yahoo.omid.committable.hbase.CommitTableConstants;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -145,7 +146,7 @@ public class OmidTestBase {
             LOG.info(t.getNameAsString());
         }
 
-        CreateTable.createTable(hbaseConf, CommitTable.COMMIT_TABLE_DEFAULT_NAME, 1);
+        CreateTable.createTable(hbaseConf, CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME, 1);
     }
 
     @AfterMethod
@@ -156,8 +157,8 @@ public class OmidTestBase {
             admin.disableTable(TEST_TABLE);
             admin.deleteTable(TEST_TABLE);
 
-            admin.disableTable(CommitTable.COMMIT_TABLE_DEFAULT_NAME);
-            admin.deleteTable(CommitTable.COMMIT_TABLE_DEFAULT_NAME);
+            admin.disableTable(CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME);
+            admin.deleteTable(CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME);
 
         } catch (Exception e) {
             LOG.error("Error tearing down", e);

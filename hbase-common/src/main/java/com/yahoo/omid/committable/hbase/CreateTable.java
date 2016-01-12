@@ -15,9 +15,14 @@ import org.slf4j.LoggerFactory;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
-import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.committable.hbase.HBaseCommitTable.KeyGenerator;
 
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_FAMILY;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.LOW_WATERMARK_FAMILY;
+
+/**
+ * TODO: Francisco: Create a single helper to create HBase tables and move to some other java package (e.g. tools)
+ *   This is because there is another class in the tso.hbase package that does the same for the timestamp table
+ */
 public class CreateTable {
 
     private static final Logger LOG = LoggerFactory.getLogger(CreateTable.class);
@@ -25,7 +30,7 @@ public class CreateTable {
     static class Config {
 
         @Parameter(names = "-tableName", description = "Name of the commit table in HBase", required = false)
-        String table = CommitTable.COMMIT_TABLE_DEFAULT_NAME;
+        String table = CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
 
         @Parameter(names = "-numSplits", description = "Number of splits (to pre-split table)", required = false)
         int numSplits = 1;
@@ -45,14 +50,13 @@ public class CreateTable {
         HBaseAdmin admin = new HBaseAdmin(hbaseConf);
 
         if (!admin.tableExists(tableName)) {
-            KeyGenerator keyGen = HBaseCommitTable.defaultKeyGenerator();
+            KeyGenerator keyGen = KeyGeneratorImplementations.defaultKeyGenerator();
 
             HTableDescriptor desc = new HTableDescriptor(TableName.valueOf(tableName));
-            HColumnDescriptor datafam = new HColumnDescriptor(HBaseCommitTable.COMMIT_TABLE_FAMILY);
+            HColumnDescriptor datafam = new HColumnDescriptor(COMMIT_TABLE_FAMILY);
             datafam.setMaxVersions(1);
             desc.addFamily(datafam);
-            HColumnDescriptor lowWatermarkFam = new HColumnDescriptor(
-                    HBaseCommitTable.LOW_WATERMARK_FAMILY);
+            HColumnDescriptor lowWatermarkFam = new HColumnDescriptor(LOW_WATERMARK_FAMILY);
             lowWatermarkFam.setMaxVersions(1);
             desc.addFamily(lowWatermarkFam);
             if (numSplits > 1) {

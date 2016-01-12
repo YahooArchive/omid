@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>hbase-common</artifactId>
-    <name>hbase-coomon</name>
+    <name>HBase common stuff</name>
     <packaging>jar</packaging>
 
     <dependencies>
@@ -35,6 +35,20 @@
             <artifactId>jcommander</artifactId>
             <version>${jcommander.version}</version>
             <type>jar</type>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-testing-util</artifactId>
+            <version>${hbase.version}</version>
+            <scope>test</scope>
         </dependency>
 
         <!-- Logging -->
@@ -78,6 +92,9 @@
                         <exclude>**/src/test/**/*</exclude>
 
                         <!-- Project specific exclusions (e.g. they've been copied/modified from other open-source projects -->
+
+                        <!-- Taken from https://github.com/apache/hbase -->
+                        <exclude>**/src/main/java/com/yahoo/omid/committable/hbase/RegionSplitter.java</exclude>
 
                     </excludes>
                 </configuration>

@@ -7,7 +7,7 @@ import com.yahoo.omid.timestamp.storage.TimestampStorage;
 
 import javax.inject.Singleton;
 
-import static com.yahoo.omid.committable.CommitTable.COMMIT_TABLE_NAME_KEY;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_NAME_KEY;
 import static com.yahoo.omid.tso.PersistenceProcessorImpl.TSO_BATCH_PERSIST_TIMEOUT_MS_KEY;
 import static com.yahoo.omid.tso.PersistenceProcessorImpl.TSO_MAX_BATCH_SIZE_KEY;
 import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;

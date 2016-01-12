@@ -9,8 +9,6 @@ import java.io.IOException;
 public interface CommitTable {
 
     long INVALID_TRANSACTION_MARKER = -1L;
-    String COMMIT_TABLE_NAME_KEY = "omid.committable.tablename";
-    String COMMIT_TABLE_DEFAULT_NAME = "OMID_COMMIT_TABLE";
 
     ListenableFuture<Writer> getWriter();
 

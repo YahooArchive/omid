@@ -138,9 +138,7 @@
             <exclude>**/src/test/**/*</exclude>
 
             <!-- Project specific exclusions (e.g. they've been copied/modified from other open-source projects -->
-
-            <!-- Taken from https://github.com/apache/hbase -->
-            <exclude>**/src/main/java/com/yahoo/omid/committable/hbase/RegionSplitter.java</exclude>
+            
           </excludes>
         </configuration>
       </plugin>

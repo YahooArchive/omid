@@ -11,6 +11,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 
+import com.yahoo.omid.committable.hbase.CommitTableConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +24,6 @@ import com.google.common.net.HostAndPort;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.benchmarks.utils.GeneratorUtils;
 import com.yahoo.omid.benchmarks.utils.GeneratorUtils.RowDistribution;
-import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.hbase.HBaseLogin;
 import com.yahoo.omid.metrics.CodahaleMetricsConfig;
 import com.yahoo.omid.metrics.CodahaleMetricsConfig.Reporter;
@@ -227,7 +227,7 @@ public class TSOBenchmark implements Closeable {
         private boolean hbase = false;
 
         @Parameter(names = "-commitTableNameHBase", description = "HBase commit table name")
-        private String hbaseCommitTable = CommitTable.COMMIT_TABLE_DEFAULT_NAME;
+        private String hbaseCommitTable = CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
 
         @Parameter(names = "-metricsConfig",
                    converter = MetricsConfigConverter.class,

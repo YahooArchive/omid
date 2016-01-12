@@ -1,8 +1,8 @@
 package com.yahoo.omid.transaction;
 
-import static com.yahoo.omid.committable.CommitTable.COMMIT_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_FAMILY;
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.LOW_WATERMARK_FAMILY;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_FAMILY;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.LOW_WATERMARK_FAMILY;
 import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
 import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TSO_FAMILY;
 import static org.mockito.Matchers.any;

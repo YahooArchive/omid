@@ -1,7 +1,7 @@
 package com.yahoo.omid.committable.hbase;
 
-import static com.yahoo.omid.committable.CommitTable.COMMIT_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.committable.CommitTable.COMMIT_TABLE_NAME_KEY;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_NAME_KEY;
 
 import javax.inject.Named;
 import javax.inject.Singleton;

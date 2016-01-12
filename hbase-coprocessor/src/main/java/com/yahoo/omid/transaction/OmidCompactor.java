@@ -1,7 +1,7 @@
 package com.yahoo.omid.transaction;
 
 import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.SHADOW_CELL;
-import static com.yahoo.omid.committable.CommitTable.COMMIT_TABLE_NAME_KEY;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_NAME_KEY;
 
 import java.io.IOException;
 import java.util.ArrayList;

@@ -56,9 +56,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static com.yahoo.omid.ZKConstants.*;
-import static com.yahoo.omid.committable.CommitTable.COMMIT_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_FAMILY;
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.LOW_WATERMARK_FAMILY;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_FAMILY;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.LOW_WATERMARK_FAMILY;
 import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
 import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TSO_FAMILY;
 import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;
@@ -298,7 +298,7 @@ public class TestEndToEndScenario2WithHA {
 
             LOG.info("Sleep some time till the client is informed about"
                     + "the new TSO connection parameters and how can connect");
-            TimeUnit.SECONDS.sleep(TSOClient.DEFAULT_TSO_RECONNECTION_DELAY_SECS);
+            TimeUnit.SECONDS.sleep(TSOClient.DEFAULT_TSO_RECONNECTION_DELAY_SECS + 2);
 
             HBaseTransaction tx2 = (HBaseTransaction) tm.begin();
             LOG.info("Starting Tx {} writing values for cells ({}, {}) ", tx2, Bytes.toString(data1_q1),

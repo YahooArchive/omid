@@ -1,13 +1,5 @@
 package com.yahoo.omid.committable.hbase;
 
-import static com.yahoo.omid.committable.CommitTable.COMMIT_TABLE_DEFAULT_NAME;
-
-import java.net.InetSocketAddress;
-import java.util.concurrent.TimeUnit;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
@@ -19,11 +11,17 @@ import com.codahale.metrics.Timer;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
 import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.committable.hbase.HBaseCommitTable.BadRandomKeyGenerator;
-import com.yahoo.omid.committable.hbase.HBaseCommitTable.BucketKeyGenerator;
-import com.yahoo.omid.committable.hbase.HBaseCommitTable.FullRandomKeyGenerator;
-import com.yahoo.omid.committable.hbase.HBaseCommitTable.KeyGenerator;
-import com.yahoo.omid.committable.hbase.HBaseCommitTable.SeqKeyGenerator;
+import com.yahoo.omid.committable.hbase.KeyGeneratorImplementations.BadRandomKeyGenerator;
+import com.yahoo.omid.committable.hbase.KeyGeneratorImplementations.BucketKeyGenerator;
+import com.yahoo.omid.committable.hbase.KeyGeneratorImplementations.FullRandomKeyGenerator;
+import com.yahoo.omid.committable.hbase.KeyGeneratorImplementations.SeqKeyGenerator;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+
+import java.net.InetSocketAddress;
+import java.util.concurrent.TimeUnit;
+
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
 
 public class HBaseCommitTableTester {
 

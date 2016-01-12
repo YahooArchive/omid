@@ -1,6 +1,8 @@
 package com.yahoo.omid.committable.hbase;
 
 import static com.google.common.base.Charsets.UTF_8;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_FAMILY;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.LOW_WATERMARK_FAMILY;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -38,11 +40,9 @@ public class HBaseCommitTable implements CommitTable {
 
     private static final Logger LOG = LoggerFactory.getLogger(HBaseCommitTable.class);
 
-    public static final byte[] COMMIT_TABLE_FAMILY = "F".getBytes(UTF_8);
     static final byte[] COMMIT_TABLE_QUALIFIER = "C".getBytes(UTF_8);
     private static final byte[] INVALID_TX_QUALIFIER = "IT".getBytes(UTF_8);
     static final byte[] LOW_WATERMARK_ROW = "LOW_WATERMARK".getBytes(UTF_8);
-    public static final byte[] LOW_WATERMARK_FAMILY = "LWF".getBytes(UTF_8);
     static final byte[] LOW_WATERMARK_QUALIFIER = "LWC".getBytes(UTF_8);
 
     private final String tableName;
@@ -56,7 +56,7 @@ public class HBaseCommitTable implements CommitTable {
      */
     @Inject
     public HBaseCommitTable(Configuration hbaseConfig, HBaseCommitTableConfig config) {
-        this(hbaseConfig, config.getTableName(), defaultKeyGenerator());
+        this(hbaseConfig, config.getTableName(), KeyGeneratorImplementations.defaultKeyGenerator());
     }
 
     protected HBaseCommitTable(Configuration hbaseConfig, String tableName, KeyGenerator keygen) {
@@ -85,16 +85,14 @@ public class HBaseCommitTable implements CommitTable {
         public void addCommittedTransaction(long startTimestamp, long commitTimestamp) throws IOException {
             assert(startTimestamp < commitTimestamp);
             Put put = new Put(startTimestampToKey(startTimestamp), startTimestamp);
-            put.add(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER,
-                    encodeCommitTimestamp(startTimestamp, commitTimestamp));
+            put.add(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER, encodeCommitTimestamp(startTimestamp, commitTimestamp));
             writeBuffer.add(put);
         }
 
         @Override
         public void updateLowWatermark(long lowWatermark) throws IOException {
             Put put = new Put(LOW_WATERMARK_ROW);
-            put.add(LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER,
-                    Bytes.toBytes(lowWatermark));
+            put.add(LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER, Bytes.toBytes(lowWatermark));
             writeBuffer.add(put);
         }
 
@@ -134,7 +132,7 @@ public class HBaseCommitTable implements CommitTable {
             table = new HTable(hbaseConfig, tableName);
             table.setAutoFlush(false, true);
             deleteTable = new HTable(hbaseConfig, tableName);
-            deleteQueue = new ArrayBlockingQueue<DeleteRequest>(DELETE_BATCH_SIZE);
+            deleteQueue = new ArrayBlockingQueue<>(DELETE_BATCH_SIZE);
 
             deleteBatchExecutor = Executors.newSingleThreadExecutor(
                 new ThreadFactoryBuilder().setNameFormat("omid-completor-%d").build());
@@ -184,9 +182,7 @@ public class HBaseCommitTable implements CommitTable {
                 get.addColumn(LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER);
                 Result result = table.get(get);
                 if (containsLowWatermark(result)) {
-                    long lowWatermark = Bytes.toLong(
-                            result.getValue(LOW_WATERMARK_FAMILY,
-                                            LOW_WATERMARK_QUALIFIER));
+                    long lowWatermark = Bytes.toLong(result.getValue(LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER));
                     f.set(lowWatermark);
                 } else {
                     f.set(0L);
@@ -334,8 +330,7 @@ public class HBaseCommitTable implements CommitTable {
         }
 
         private boolean containsLowWatermark(Result result) {
-            return (result != null && result.containsColumn(
-                    LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER));
+            return (result != null && result.containsColumn(LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER));
         }
 
         private class DeleteRequest extends AbstractFuture<Void> {
@@ -404,142 +399,6 @@ public class HBaseCommitTable implements CommitTable {
         CodedInputStream cis = CodedInputStream.newInstance(encodedCommitTimestamp);
         long diff = cis.readInt64();
         return startTimestamp + diff;
-    }
-
-    // *************************** Key Generator ******************************
-
-    /**
-     * Implementations of this interface determine how keys are spread in HBase
-     */
-    interface KeyGenerator {
-        byte[] startTimestampToKey(long startTimestamp) throws IOException;
-        long keyToStartTimestamp(byte[] key) throws IOException;
-    }
-
-    static KeyGenerator defaultKeyGenerator() {
-        return new BucketKeyGenerator();
-    }
-
-    /**
-     * This is the used implementation
-     */
-    static class BucketKeyGenerator implements KeyGenerator {
-        @Override
-        public byte[] startTimestampToKey(long startTimestamp) throws IOException {
-            byte[] bytes = new byte[9];
-            bytes[0] = (byte) (startTimestamp & 0x0F);
-            bytes[1] = (byte) ((startTimestamp >> 56) & 0xFF);
-            bytes[2] = (byte) ((startTimestamp >> 48) & 0xFF);
-            bytes[3] = (byte) ((startTimestamp >> 40) & 0xFF);
-            bytes[4] = (byte) ((startTimestamp >> 32) & 0xFF);
-            bytes[5] = (byte) ((startTimestamp >> 24) & 0xFF);
-            bytes[6] = (byte) ((startTimestamp >> 16) & 0xFF);
-            bytes[7] = (byte) ((startTimestamp >> 8) & 0xFF);
-            bytes[8] = (byte) ((startTimestamp) & 0xFF);
-            return bytes;
-        }
-
-        @Override
-        public long keyToStartTimestamp(byte[] key) {
-            assert (key.length == 9);
-            return ((long) key[1] & 0xFF) << 56
-                    | ((long) key[2] & 0xFF) << 48
-                    | ((long) key[3] & 0xFF) << 40
-                    | ((long) key[4] & 0xFF) << 32
-                    | ((long) key[5] & 0xFF) << 24
-                    | ((long) key[6] & 0xFF) << 16
-                    | ((long) key[7] & 0xFF) << 8
-                    | ((long) key[8] & 0xFF);
-        }
-
-    }
-
-    static class FullRandomKeyGenerator implements KeyGenerator {
-        @Override
-        public byte[] startTimestampToKey(long startTimestamp) {
-            assert (startTimestamp >= 0 && startTimestamp <= Long.MAX_VALUE);
-            // 1) Reverse the timestamp to better spread
-            long reversedStartTimestamp = Long.reverse(startTimestamp | Long.MIN_VALUE);
-            // 2) Convert to a byte array with big endian format
-            byte[] bytes = new byte[8];
-            bytes[0] = (byte) ((reversedStartTimestamp >> 56) & 0xFF);
-            bytes[1] = (byte) ((reversedStartTimestamp >> 48) & 0xFF);
-            bytes[2] = (byte) ((reversedStartTimestamp >> 40) & 0xFF);
-            bytes[3] = (byte) ((reversedStartTimestamp >> 32) & 0xFF);
-            bytes[4] = (byte) ((reversedStartTimestamp >> 24) & 0xFF);
-            bytes[5] = (byte) ((reversedStartTimestamp >> 16) & 0xFF);
-            bytes[6] = (byte) ((reversedStartTimestamp >> 8) & 0xFF);
-            bytes[7] = (byte) ((reversedStartTimestamp) & 0xFE);
-            return bytes;
-        }
-
-        @Override
-        public long keyToStartTimestamp(byte[] key) {
-            assert (key.length == 8);
-            // 1) Convert from big endian each byte
-            long startTimestamp = ((long) key[0] & 0xFF) << 56
-                    | ((long) key[1] & 0xFF) << 48
-                    | ((long) key[2] & 0xFF) << 40
-                    | ((long) key[3] & 0xFF) << 32
-                    | ((long) key[4] & 0xFF) << 24
-                    | ((long) key[5] & 0xFF) << 16
-                    | ((long) key[6] & 0xFF) << 8
-                    | ((long) key[7] & 0xFF);
-            // 2) Reverse to obtain the original value
-            return Long.reverse(startTimestamp);
-        }
-    }
-
-    static class BadRandomKeyGenerator implements KeyGenerator {
-        @Override
-        public byte[] startTimestampToKey(long startTimestamp) throws IOException {
-            long reversedStartTimestamp = Long.reverse(startTimestamp);
-            byte[] bytes = new byte[CodedOutputStream.computeSFixed64SizeNoTag(reversedStartTimestamp)];
-            CodedOutputStream cos = CodedOutputStream.newInstance(bytes);
-            cos.writeSFixed64NoTag(reversedStartTimestamp);
-            cos.flush();
-            return bytes;
-        }
-
-        @Override
-        public long keyToStartTimestamp(byte[] key) throws IOException {
-            CodedInputStream cis = CodedInputStream.newInstance(key);
-            return Long.reverse(cis.readSFixed64());
-        }
-
-    }
-
-    static class SeqKeyGenerator implements KeyGenerator {
-        @Override
-        public byte[] startTimestampToKey(long startTimestamp) throws IOException {
-            // Convert to a byte array with big endian format
-            byte[] bytes = new byte[8];
-
-            bytes[0] = (byte) ((startTimestamp >> 56) & 0xFF);
-            bytes[1] = (byte) ((startTimestamp >> 48) & 0xFF);
-            bytes[2] = (byte) ((startTimestamp >> 40) & 0xFF);
-            bytes[3] = (byte) ((startTimestamp >> 32) & 0xFF);
-            bytes[4] = (byte) ((startTimestamp >> 24) & 0xFF);
-            bytes[5] = (byte) ((startTimestamp >> 16) & 0xFF);
-            bytes[6] = (byte) ((startTimestamp >> 8) & 0xFF);
-            bytes[7] = (byte) ((startTimestamp) & 0xFF);
-            return bytes;
-        }
-
-        @Override
-        public long keyToStartTimestamp(byte[] key) {
-            assert (key.length == 8);
-            // Convert from big endian each byte
-            return ((long) key[0] & 0xFF) << 56
-                    | ((long) key[1] & 0xFF) << 48
-                    | ((long) key[2] & 0xFF) << 40
-                    | ((long) key[3] & 0xFF) << 32
-                    | ((long) key[4] & 0xFF) << 24
-                    | ((long) key[5] & 0xFF) << 16
-                    | ((long) key[6] & 0xFF) << 8
-                    | ((long) key[7] & 0xFF);
-        }
-
     }
 
 }

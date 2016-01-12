@@ -3,9 +3,9 @@ package com.yahoo.omid.transaction;
 import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
 import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
 import static com.yahoo.omid.ZKConstants.TSO_LEASE_PATH;
-import static com.yahoo.omid.committable.CommitTable.COMMIT_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_FAMILY;
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.LOW_WATERMARK_FAMILY;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_FAMILY;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.LOW_WATERMARK_FAMILY;
 import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;
 import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
 import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
@@ -18,7 +18,6 @@ import static org.testng.Assert.fail;
 
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import javax.inject.Named;
 import javax.inject.Singleton;

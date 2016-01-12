@@ -11,8 +11,8 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.Assert;
 
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.COMMIT_TABLE_FAMILY;
-import static com.yahoo.omid.committable.hbase.HBaseCommitTable.LOW_WATERMARK_FAMILY;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_FAMILY;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.LOW_WATERMARK_FAMILY;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -28,7 +28,6 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.coprocessor.AggregationClient;
 import org.apache.hadoop.hbase.client.coprocessor.LongColumnInterpreter;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,9 +39,9 @@ import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
 import com.yahoo.omid.committable.CommitTable.Writer;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable.HBaseClient;
 
-public class HBaseCommitTableTest {
+public class TestHBaseCommitTable {
 
-    private static final Logger LOG = LoggerFactory.getLogger(HBaseCommitTableTest.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TestHBaseCommitTable.class);
 
     private static final String TEST_TABLE = "TEST";
 
@@ -79,12 +78,12 @@ public class HBaseCommitTableTest {
         if (!admin.tableExists(TEST_TABLE)) {
             HTableDescriptor desc = new HTableDescriptor(TABLE_NAME);
 
-            HColumnDescriptor datafam = new HColumnDescriptor(HBaseCommitTable.COMMIT_TABLE_FAMILY);
+            HColumnDescriptor datafam = new HColumnDescriptor(COMMIT_TABLE_FAMILY);
             datafam.setMaxVersions(Integer.MAX_VALUE);
             desc.addFamily(datafam);
 
             HColumnDescriptor lowWatermarkFam =
-                    new HColumnDescriptor(HBaseCommitTable.LOW_WATERMARK_FAMILY);
+                    new HColumnDescriptor(LOW_WATERMARK_FAMILY);
             lowWatermarkFam.setMaxVersions(Integer.MAX_VALUE);
             desc.addFamily(lowWatermarkFam);
 
@@ -112,21 +111,6 @@ public class HBaseCommitTableTest {
         } catch (Exception e) {
             LOG.error("Error tearing down", e);
         }
-    }
-
-    @Test
-    public void testCreateTable() throws Throwable {
-        HBaseAdmin admin = testutil.getHBaseAdmin();
-
-        String tableName = "Table_with_single_region";
-        CreateTable.createTable(hbaseConf, tableName, 1);
-        int numRegions = admin.getTableRegions(Bytes.toBytes(tableName)).size();
-        assertEquals("Should have only 1 region", 1, numRegions);
-
-        tableName = "Table_with_multiple_region";
-        CreateTable.createTable(hbaseConf, tableName, 60);
-        numRegions = admin.getTableRegions(Bytes.toBytes(tableName)).size();
-        assertEquals("Should have 60 regions", 60, numRegions);
     }
 
     @Test
