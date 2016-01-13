@@ -1,20 +1,17 @@
 package com.yahoo.omid.tsoclient;
 
-import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
-import static com.yahoo.omid.zk.ZKUtils.provideZookeeperClient;
-
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.ArrayDeque;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import com.codahale.metrics.MetricRegistry;
+import com.google.common.base.Charsets;
+import com.google.common.net.HostAndPort;
+import com.google.common.util.concurrent.AbstractFuture;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.yahoo.omid.proto.TSOProto;
+import com.yahoo.omid.zk.ZKUtils.ZKException;
+import com.yahoo.statemachine.StateMachine.DeferrableEvent;
+import com.yahoo.statemachine.StateMachine.Event;
+import com.yahoo.statemachine.StateMachine.Fsm;
+import com.yahoo.statemachine.StateMachine.FsmImpl;
+import com.yahoo.statemachine.StateMachine.State;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.curator.framework.CuratorFramework;
@@ -43,18 +40,21 @@ import org.jboss.netty.util.TimerTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.codahale.metrics.MetricRegistry;
-import com.google.common.base.Charsets;
-import com.google.common.net.HostAndPort;
-import com.google.common.util.concurrent.AbstractFuture;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.proto.TSOProto;
-import com.yahoo.omid.zk.ZKUtils.ZKException;
-import com.yahoo.statemachine.StateMachine.DeferrableEvent;
-import com.yahoo.statemachine.StateMachine.Event;
-import com.yahoo.statemachine.StateMachine.Fsm;
-import com.yahoo.statemachine.StateMachine.FsmImpl;
-import com.yahoo.statemachine.StateMachine.State;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.ArrayDeque;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
+import static com.yahoo.omid.zk.ZKUtils.provideZookeeperClient;
 
 /**
  * This client allows to communicate with a TSO server instance.
@@ -87,10 +87,10 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         int tsoExecutorThreads = conf.getInt(TSO_EXECUTOR_THREAD_NUM_CONFKEY, DEFAULT_TSO_EXECUTOR_THREAD_NUM);
 
         factory = new NioClientSocketChannelFactory(
-                Executors.newCachedThreadPool(
-                        new ThreadFactoryBuilder().setNameFormat("tsoclient-boss-%d").build()),
-                Executors.newCachedThreadPool(
-                        new ThreadFactoryBuilder().setNameFormat("tsoclient-worker-%d").build()), tsoExecutorThreads);
+            Executors.newCachedThreadPool(
+                new ThreadFactoryBuilder().setNameFormat("tsoclient-boss-%d").build()),
+            Executors.newCachedThreadPool(
+                new ThreadFactoryBuilder().setNameFormat("tsoclient-worker-%d").build()), tsoExecutorThreads);
         // Create the bootstrap
         bootstrap = new ClientBootstrap(factory);
 
@@ -114,7 +114,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
             LOG.info("\t* Current TSO host:port found in ZK: {} Epoch {}", hp, getEpoch());
         } catch (ZKException e) {
             LOG.warn("A problem connecting to TSO was found ({}). Trying to connect directly with host:port",
-                    e.getMessage());
+                     e.getMessage());
             String host = conf.getString(TSO_HOST_CONFKEY);
             int port = conf.getInt(TSO_PORT_CONFKEY, DEFAULT_TSO_PORT);
             if (host == null) {
@@ -124,16 +124,16 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         }
 
         fsmExecutor = Executors.newSingleThreadScheduledExecutor(
-                new ThreadFactoryBuilder().setNameFormat("tsofsm-%d").build());
+            new ThreadFactoryBuilder().setNameFormat("tsofsm-%d").build());
         fsm = new FsmImpl(fsmExecutor);
         fsm.setInitState(new DisconnectedState(fsm));
 
         ChannelPipeline pipeline = bootstrap.getPipeline();
         pipeline.addLast("lengthbaseddecoder",
-                new LengthFieldBasedFrameDecoder(8 * 1024, 0, 4, 0, 4));
+                         new LengthFieldBasedFrameDecoder(8 * 1024, 0, 4, 0, 4));
         pipeline.addLast("lengthprepender", new LengthFieldPrepender(4));
         pipeline.addLast("protobufdecoder",
-                new ProtobufDecoder(TSOProto.Response.getDefaultInstance()));
+                         new ProtobufDecoder(TSOProto.Response.getDefaultInstance()));
         pipeline.addLast("protobufencoder", new ProtobufEncoder());
         pipeline.addLast("handler", new Handler(fsm));
 
@@ -156,11 +156,12 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     private void connectToZK(Configuration conf) throws ZKException {
 
         String zkCluster = conf.getString(TSO_ZK_CLUSTER_CONFKEY, DEFAULT_ZK_CLUSTER);
+        int zkConnectTimeOut = conf.getInt(ZK_CONNECT_TIMEOUT_CONFKEY, ZK_CONNECT_TIMEOUT);
         try {
             zkClient = provideZookeeperClient(zkCluster);
             LOG.info("\t* Connecting to ZK cluster {}", zkClient.getState());
             zkClient.start();
-            if (!zkClient.blockUntilConnected(10, TimeUnit.SECONDS)) {
+            if (!zkClient.blockUntilConnected(zkConnectTimeOut, TimeUnit.SECONDS)) {
                 throw new ZKException("Cannot connect to ZK Cluster " + zkCluster + " after 10 seconds");
             }
             LOG.info("\t* Connection to ZK cluster {}", zkClient.getState());
@@ -188,7 +189,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         byte[] currentTSOAndEpochAsBytes = currentTSOData.getData();
         if (currentTSOAndEpochAsBytes == null) {
             throw new ZKException(
-                    "No data found for current TSO in ZKNode " + CURRENT_TSO_PATH);
+                "No data found for current TSO in ZKNode " + CURRENT_TSO_PATH);
         }
         return new String(currentTSOAndEpochAsBytes, Charsets.UTF_8);
     }
@@ -276,6 +277,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     // ***************************** Events ***********************************
 
     private static class ParamEvent<T> implements Event {
+
         final T param;
 
         ParamEvent(T param) {
@@ -288,12 +290,14 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     }
 
     private static class ErrorEvent extends ParamEvent<Throwable> {
+
         ErrorEvent(Throwable t) {
             super(t);
         }
     }
 
     private static class ConnectedEvent extends ParamEvent<Channel> {
+
         ConnectedEvent(Channel c) {
             super(c);
         }
@@ -301,6 +305,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
 
     private static class UserEvent<T> extends AbstractFuture<T>
         implements DeferrableEvent {
+
         public void success(T value) {
             set(value);
         }
@@ -312,23 +317,30 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     }
 
     private static class CloseEvent extends UserEvent<Void> {
+
     }
 
     private static class ChannelClosedEvent extends ParamEvent<Throwable> {
+
         ChannelClosedEvent(Throwable t) {
             super(t);
         }
     }
 
-    private static class ReconnectEvent implements Event {}
+    private static class ReconnectEvent implements Event {
+
+    }
 
     private static class HandshakeTimeoutEvent implements Event {
+
     }
 
     private static class TimestampRequestTimeoutEvent implements Event {
+
     }
 
     private static class CommitRequestTimeoutEvent implements Event {
+
         final long startTimestamp;
 
         public CommitRequestTimeoutEvent(long startTimestamp) {
@@ -341,6 +353,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     }
 
     private static class RequestEvent extends UserEvent<Long> {
+
         TSOProto.Request req;
         int retriesLeft;
 
@@ -368,6 +381,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     }
 
     private static class ResponseEvent extends ParamEvent<TSOProto.Response> {
+
         ResponseEvent(TSOProto.Response r) {
             super(r);
         }
@@ -376,6 +390,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     // ***************************** States ***********************************
 
     class BaseState extends State {
+
         BaseState(Fsm fsm) {
             super(fsm);
         }
@@ -387,6 +402,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     }
 
     class DisconnectedState extends BaseState {
+
         DisconnectedState(Fsm fsm) {
             super(fsm);
             LOG.debug("NEW STATE: DISCONNECTED");
@@ -412,10 +428,10 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
                 public void operationComplete(ChannelFuture channelFuture) throws Exception {
                     if (channelFuture.isSuccess()) {
                         LOG.info("Connection to TSO [{}] established. Channel {}",
-                                tsoAddress, channelFuture.getChannel());
+                                 tsoAddress, channelFuture.getChannel());
                     } else {
                         LOG.error("Failed connection attempt to TSO [{}] failed. Channel {}",
-                                tsoAddress, channelFuture.getChannel());
+                                  tsoAddress, channelFuture.getChannel());
                     }
                 }
             });
@@ -450,6 +466,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     }
 
     static class RequestAndTimeout {
+
         final RequestEvent event;
         final Timeout timeout;
 
@@ -484,7 +501,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         final Channel channel;
 
         final HashedWheelTimer timeoutExecutor = new HashedWheelTimer(
-                new ThreadFactoryBuilder().setNameFormat("tso-client-timeout").build());
+            new ThreadFactoryBuilder().setNameFormat("tso-client-timeout").build());
         final Timeout timeout;
 
         HandshakingState(Fsm fsm, Channel channel) {
@@ -495,7 +512,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
             // Add the required handshake capabilities when necessary
             handshake.setClientCapabilities(TSOProto.Capabilities.newBuilder().build());
             channel.write(TSOProto.Request.newBuilder()
-                          .setHandshakeRequest(handshake.build()).build());
+                              .setHandshakeRequest(handshake.build()).build());
             timeout = newTimeout();
         }
 
@@ -519,7 +536,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
 
         public State handleEvent(ResponseEvent e) {
             if (e.getParam().hasHandshakeResponse()
-                    && e.getParam().getHandshakeResponse().getClientCompatible()) {
+                && e.getParam().getHandshakeResponse().getClientCompatible()) {
                 if (timeout != null) {
                     timeout.cancel();
                 }
@@ -528,7 +545,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
                 cleanupState();
                 LOG.error("Client incompatible with server");
                 return new HandshakeFailedState(fsm,
-                        new HandshakeFailedException());
+                                                new HandshakeFailedException());
             }
         }
 
@@ -557,7 +574,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     class ConnectionFailedState extends BaseState {
 
         final HashedWheelTimer reconnectionTimeoutExecutor = new HashedWheelTimer(
-                new ThreadFactoryBuilder().setNameFormat("tso-client-backoff-timeout").build());
+            new ThreadFactoryBuilder().setNameFormat("tso-client-backoff-timeout").build());
 
         Throwable exception;
 
@@ -602,6 +619,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     }
 
     class ConnectedState extends BaseState {
+
         final Queue<RequestAndTimeout> timestampRequests;
         final Map<Long, RequestAndTimeout> commitRequests;
         final Channel channel;
@@ -620,11 +638,11 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         private Timeout newTimeout(final Event timeoutEvent) {
             if (requestTimeoutMs > 0) {
                 return timeoutExecutor.newTimeout(new TimerTask() {
-                        @Override
-                        public void run(Timeout timeout) {
-                            fsm.sendEvent(timeoutEvent);
-                        }
-                    }, requestTimeoutMs, TimeUnit.MILLISECONDS);
+                    @Override
+                    public void run(Timeout timeout) {
+                        fsm.sendEvent(timeoutEvent);
+                    }
+                }, requestTimeoutMs, TimeUnit.MILLISECONDS);
             } else {
                 return null;
             }
@@ -635,14 +653,14 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
 
             if (req.hasTimestampRequest()) {
                 timestampRequests.add(
-                        new RequestAndTimeout(request,
-                                newTimeout(new TimestampRequestTimeoutEvent())));
+                    new RequestAndTimeout(request,
+                                          newTimeout(new TimestampRequestTimeoutEvent())));
             } else if (req.hasCommitRequest()) {
                 TSOProto.CommitRequest commitReq = req.getCommitRequest();
                 commitRequests.put(commitReq.getStartTimestamp(),
-                        new RequestAndTimeout(request,
-                                newTimeout(new CommitRequestTimeoutEvent(
-                                                   commitReq.getStartTimestamp()))));
+                                   new RequestAndTimeout(request,
+                                                         newTimeout(new CommitRequestTimeoutEvent(
+                                                             commitReq.getStartTimestamp()))));
             } else {
                 request.error(new IllegalArgumentException("Unknown request type"));
                 return;
@@ -676,7 +694,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
                 RequestAndTimeout e = commitRequests.remove(startTimestamp);
                 if (e == null) {
                     LOG.debug("Received commit response for request that doesn't exist."
-                            + " Start timestamp: {}", startTimestamp);
+                              + " Start timestamp: {}", startTimestamp);
                     return;
                 }
                 if (e.getTimeout() != null) {
@@ -782,7 +800,8 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
                 }
                 fsm.sendEvent(e);
             } else {
-                e.error(new ServiceUnavailableException("Number of retries exceeded. This API request failed permanently"));
+                e.error(
+                    new ServiceUnavailableException("Number of retries exceeded. This API request failed permanently"));
             }
         }
 
@@ -846,6 +865,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     }
 
     private class Handler extends SimpleChannelHandler {
+
         private Fsm fsm;
 
         Handler(Fsm fsm) {
@@ -861,14 +881,14 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
 
         @Override
         public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e)
-                throws Exception {
+            throws Exception {
             LOG.debug("HANDLER (CHANNEL DISCONNECTED): Connection {}. Sending error event to FSM", e);
             fsm.sendEvent(new ErrorEvent(new ConnectionException()));
         }
 
         @Override
         public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e)
-                throws Exception {
+            throws Exception {
             LOG.debug("HANDLER (CHANNEL CLOSED): Connection {}. Sending channel closed event to FSM", e);
             fsm.sendEvent(new ChannelClosedEvent(new ConnectionException()));
         }

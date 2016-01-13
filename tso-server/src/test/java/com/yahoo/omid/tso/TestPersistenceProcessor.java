@@ -15,9 +15,11 @@ import static org.mockito.Mockito.verify;
 import java.io.IOException;
 
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -75,6 +77,11 @@ public class TestPersistenceProcessor {
                 return f;
             }
         };
+    }
+
+    @AfterMethod
+    void afterMethod(){
+        Mockito.reset(mockWriter);
     }
 
     @Test
@@ -168,7 +175,7 @@ public class TestPersistenceProcessor {
         doReturn(true).when(leaseManager).stillInLeasePeriod();
 
         // Configure commit table writer to explode when flushing changes to DB
-        doThrow(new IOException("Unable to write")).when(mockWriter).flush();
+        doThrow(new IOException("Unable to write@TestPersistenceProcessor2")).when(mockWriter).flush();
 
         // Check the panic is extended!
         proc.persistCommit(1, 2, null, monCtx);

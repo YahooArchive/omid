@@ -12,8 +12,11 @@ import static org.mockito.Mockito.verify;
 
 import java.io.IOException;
 
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -26,8 +29,13 @@ import com.yahoo.omid.timestamp.storage.TimestampStorage;
 public class TestPanicker {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestPanicker.class);
+    private final CommitTable.Writer mockWriter = mock(CommitTable.Writer.class);
+    private MetricsRegistry metrics = new NullMetricsProvider();
 
-    MetricsRegistry metrics = new NullMetricsProvider();
+    @AfterMethod
+    void afterMethod(){
+        Mockito.reset(mockWriter);
+    }
 
     // Note this test has been moved and refactored to TestTimestampOracle because
     // it tests the behaviour of the TimestampOracle.
@@ -67,8 +75,7 @@ public class TestPanicker {
     public void testCommitTablePanic() throws Exception {
         Panicker panicker = spy(new MockPanicker());
 
-        final CommitTable.Writer mockWriter = mock(CommitTable.Writer.class);
-        doThrow(new IOException("Unable to write")).when(mockWriter).flush();
+        doThrow(new IOException("Unable to write@TestPanicker")).when(mockWriter).flush();
 
         final CommitTable.Client mockClient = mock(CommitTable.Client.class);
         CommitTable commitTable = new CommitTable() {
