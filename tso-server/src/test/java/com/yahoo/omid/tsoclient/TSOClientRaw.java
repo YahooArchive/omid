@@ -1,4 +1,4 @@
-package com.yahoo.omid.tso;
+package com.yahoo.omid.tsoclient;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.Future;
@@ -29,13 +29,13 @@ import com.google.common.util.concurrent.SettableFuture;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.proto.TSOProto;
 import com.yahoo.omid.proto.TSOProto.Response;
-import com.yahoo.omid.tsoclient.TSOClient;
 
 /**
  * Raw client for communicating with tso server directly with protobuf messages
  */
 public class TSOClientRaw {
-    private static final Logger LOG = LoggerFactory.getLogger(TSOClientOneShot.class);
+
+    private static final Logger LOG = LoggerFactory.getLogger(TSOClientRaw.class);
 
     private final BlockingQueue<SettableFuture<Response>> responseQueue
         = new ArrayBlockingQueue<SettableFuture<Response>>(5);

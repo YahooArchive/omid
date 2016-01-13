@@ -33,7 +33,6 @@ import com.yahoo.omid.committable.hbase.CreateTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.yahoo.omid.tso.TSOTestBase;
 import com.yahoo.omid.tsoclient.TSOClient;
 
 public class OmidTestBase {

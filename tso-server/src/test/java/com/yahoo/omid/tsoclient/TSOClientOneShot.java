@@ -1,4 +1,4 @@
-package com.yahoo.omid.tso;
+package com.yahoo.omid.tsoclient;
 
 import java.util.concurrent.ExecutionException;
 

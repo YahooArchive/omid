@@ -8,8 +8,6 @@ import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.proto.TSOProto;
 import com.yahoo.omid.tso.PausableTimestampOracle;
-import com.yahoo.omid.tso.TSOClientOneShot;
-import com.yahoo.omid.tso.TSOClientRaw;
 import com.yahoo.omid.tso.TSOMockModule;
 import com.yahoo.omid.tso.TSOServer;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig;
