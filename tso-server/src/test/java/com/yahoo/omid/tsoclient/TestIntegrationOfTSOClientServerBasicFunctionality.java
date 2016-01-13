@@ -40,12 +40,13 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
     final static public CellId c1 = new DummyCellIdImpl(0xdeadbeefL);
     final static public CellId c2 = new DummyCellIdImpl(0xfeedcafeL);
 
-    // The ZK server instance is only needed to avoid waiting for timeout connections from the client
+    // The ZK server instance is only needed to avoid waiting for timeout connections from the tsoClient
     private static TestingServer zkServer;
 
-    // Required infrastructure for TSO client-server integration testing
-    private TSOServer tso;
-    private TSOClient client;
+    // Required infrastructure for TSO tsoClient-server integration testing
+    private TSOServer tsoServer;
+    private TSOClient tsoClient;
+    private TSOClient justAnotherTSOClient;
     private CommitTable.Client commitTableClient;
 
     @BeforeClass
@@ -71,8 +72,8 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         LOG.info("======================================= Init TSO Server ==========================================");
         LOG.info("==================================================================================================");
 
-        tso = injector.getInstance(TSOServer.class);
-        tso.startAndWait();
+        tsoServer = injector.getInstance(TSOServer.class);
+        tsoServer.startAndWait();
         TestUtils.waitForSocketListening("localhost", TSO_SERVER_PORT, 100);
 
         LOG.info("==================================================================================================");
@@ -85,9 +86,10 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
 
         Configuration clientConf = new BaseConfiguration();
         // Configure direct connection to the server
-        clientConf.setProperty("tso.host", "localhost");
-        clientConf.setProperty("tso.port", TSO_SERVER_PORT);
-        client = TSOClient.newBuilder().withConfiguration(clientConf).build();
+        clientConf.setProperty("tsoServer.host", "localhost");
+        clientConf.setProperty("tsoServer.port", TSO_SERVER_PORT);
+        tsoClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
+        justAnotherTSOClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
 
         LOG.info("==================================================================================================");
         LOG.info("===================================== TSO Clients Initialized ====================================");
@@ -100,10 +102,10 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
     @AfterClass
     public void tearDown() throws Exception {
 
-        client.close().get();
+        tsoClient.close().get();
 
-        tso.stopAndWait();
-        tso = null;
+        tsoServer.stopAndWait();
+        tsoServer = null;
         TestUtils.waitForSocketNotListening("localhost", TSO_SERVER_PORT, 1000);
 
         CloseableUtils.closeQuietly(zkServer);
@@ -115,70 +117,70 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
     @Test(timeOut = 10_000)
     public void testTimestampsOrderingGrowMonotonically() throws Exception {
         long referenceTimestamp;
-        long startTsTx1 = client.getNewStartTimestamp().get();
+        long startTsTx1 = tsoClient.getNewStartTimestamp().get();
         referenceTimestamp = startTsTx1;
 
-        long startTsTx2 = client.getNewStartTimestamp().get();
+        long startTsTx2 = tsoClient.getNewStartTimestamp().get();
         assertEquals(startTsTx2, ++referenceTimestamp, "Should grow monotonically");
         assertTrue(startTsTx2 > startTsTx1, "Two timestamps obtained consecutively should grow");
 
-        long commitTsTx2 = client.commit(startTsTx2, Sets.newHashSet(c1)).get();
+        long commitTsTx2 = tsoClient.commit(startTsTx2, Sets.newHashSet(c1)).get();
         assertEquals(commitTsTx2, ++referenceTimestamp, "Should grow monotonically");
 
-        long commitTsTx1 = client.commit(startTsTx1, Sets.newHashSet(c2)).get();
+        long commitTsTx1 = tsoClient.commit(startTsTx1, Sets.newHashSet(c2)).get();
         assertEquals(commitTsTx1, ++referenceTimestamp, "Should grow monotonically");
 
-        long startTsTx3 = client.getNewStartTimestamp().get();
+        long startTsTx3 = tsoClient.getNewStartTimestamp().get();
         assertEquals(startTsTx3, ++referenceTimestamp, "Should grow monotonically");
     }
 
     @Test(timeOut = 10_000)
     public void testSimpleTransactionWithNoWriteSetCanCommit() throws Exception {
-        long startTsTx1 = client.getNewStartTimestamp().get();
-        long commitTsTx1 = client.commit(startTsTx1, Sets.<CellId>newHashSet()).get();
+        long startTsTx1 = tsoClient.getNewStartTimestamp().get();
+        long commitTsTx1 = tsoClient.commit(startTsTx1, Sets.<CellId>newHashSet()).get();
         assertTrue(commitTsTx1 > startTsTx1);
     }
 
     @Test(timeOut = 10_000)
     public void testTransactionWithMassiveWriteSetCanCommit() throws Exception {
-        long startTs = client.getNewStartTimestamp().get();
+        long startTs = tsoClient.getNewStartTimestamp().get();
 
         Set<CellId> cells = new HashSet<>();
         for (int i = 0; i < 1_000_000; i++) {
             cells.add(new DummyCellIdImpl(i));
         }
 
-        long commitTs = client.commit(startTs, cells).get();
+        long commitTs = tsoClient.commit(startTs, cells).get();
         assertTrue(commitTs > startTs, "Commit TS should be higher than Start TS");
     }
 
     @Test(timeOut = 10_000)
     public void testMultipleSerialCommitsDoNotConflict() throws Exception {
-        long startTsTx1 = client.getNewStartTimestamp().get();
-        long commitTsTx1 = client.commit(startTsTx1, Sets.newHashSet(c1)).get();
+        long startTsTx1 = tsoClient.getNewStartTimestamp().get();
+        long commitTsTx1 = tsoClient.commit(startTsTx1, Sets.newHashSet(c1)).get();
         assertTrue(commitTsTx1 > startTsTx1, "Commit TS must be greater than Start TS");
 
-        long startTsTx2 = client.getNewStartTimestamp().get();
+        long startTsTx2 = tsoClient.getNewStartTimestamp().get();
         assertTrue(startTsTx2 > commitTsTx1, "TS should grow monotonically");
 
-        long commitTsTx2 = client.commit(startTsTx2, Sets.newHashSet(c1, c2)).get();
+        long commitTsTx2 = tsoClient.commit(startTsTx2, Sets.newHashSet(c1, c2)).get();
         assertTrue(commitTsTx2 > startTsTx2, "Commit TS must be greater than Start TS");
 
-        long startTsTx3 = client.getNewStartTimestamp().get();
-        long commitTsTx3 = client.commit(startTsTx3, Sets.newHashSet(c2)).get();
+        long startTsTx3 = tsoClient.getNewStartTimestamp().get();
+        long commitTsTx3 = tsoClient.commit(startTsTx3, Sets.newHashSet(c2)).get();
         assertTrue(commitTsTx3 > startTsTx3, "Commit TS must be greater than Start TS");
     }
 
     @Test(timeOut = 10_000)
     public void testCommitWritesToCommitTable() throws Exception {
-        long startTsForTx1 = client.getNewStartTimestamp().get();
-        long startTsForTx2 = client.getNewStartTimestamp().get();
+        long startTsForTx1 = tsoClient.getNewStartTimestamp().get();
+        long startTsForTx2 = tsoClient.getNewStartTimestamp().get();
         assertTrue(startTsForTx2 > startTsForTx1, "Start TS should grow");
 
         assertFalse(commitTableClient.getCommitTimestamp(startTsForTx1).get().isPresent(),
                 "Commit TS for Tx1 shouldn't appear in Commit Table");
 
-        long commitTsForTx1 = client.commit(startTsForTx1, Sets.newHashSet(c1)).get();
+        long commitTsForTx1 = tsoClient.commit(startTsForTx1, Sets.newHashSet(c1)).get();
         assertTrue(commitTsForTx1 > startTsForTx1, "Commit TS should be higher than Start TS for the same tx");
 
         Long commitTs1InCommitTable = commitTableClient.getCommitTimestamp(startTsForTx1).get().get().getValue();
@@ -190,19 +192,40 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
 
     @Test(timeOut = 10_000)
     public void testTwoConcurrentTxWithOverlappingWritesetsHaveConflicts() throws Exception {
-        long startTsTx1 = client.getNewStartTimestamp().get();
-        long startTsTx2 = client.getNewStartTimestamp().get();
+        long startTsTx1 = tsoClient.getNewStartTimestamp().get();
+        long startTsTx2 = tsoClient.getNewStartTimestamp().get();
         assertTrue(startTsTx2 > startTsTx1, "Second TX should have higher TS");
 
-        long commitTsTx1 = client.commit(startTsTx1, Sets.newHashSet(c1)).get();
+        long commitTsTx1 = tsoClient.commit(startTsTx1, Sets.newHashSet(c1)).get();
         assertTrue(commitTsTx1 > startTsTx1, "Commit TS must be higher than Start TS for the same tx");
 
         try {
-            client.commit(startTsTx2, Sets.newHashSet(c1, c2)).get();
+            tsoClient.commit(startTsTx2, Sets.newHashSet(c1, c2)).get();
             Assert.fail("Second TX should fail on commit");
         } catch (ExecutionException ee) {
             assertEquals(TSOClient.AbortException.class, ee.getCause().getClass(), "Should have aborted");
         }
+    }
+
+    @Test(timeOut = 10_000)
+    public void testConflictsAndMonotonicallyTimestampGrowthWithTwoDifferentTSOClients() throws Exception {
+        long startTsTx1Client1 = tsoClient.getNewStartTimestamp().get();
+        long startTsTx2Client1 = tsoClient.getNewStartTimestamp().get();
+        long startTsTx3Client1 = tsoClient.getNewStartTimestamp().get();
+
+        tsoClient.commit(startTsTx1Client1, Sets.newHashSet(c1)).get();
+        try {
+            tsoClient.commit(startTsTx3Client1, Sets.newHashSet(c1, c2)).get();
+            Assert.fail("Second commit should fail as conflicts with the previous concurrent one");
+        } catch (ExecutionException ee) {
+            assertEquals(TSOClient.AbortException.class, ee.getCause().getClass(), "Should have aborted");
+        }
+        long startTsTx4Client2 = justAnotherTSOClient.getNewStartTimestamp().get();
+
+        assertFalse(commitTableClient.getCommitTimestamp(startTsTx3Client1).get().isPresent(), "Tx3 didn't commit");
+        long commitTSTx1 = commitTableClient.getCommitTimestamp(startTsTx1Client1).get().get().getValue();
+        assertTrue(commitTSTx1 > startTsTx2Client1, "Tx1 committed after Tx2 started");
+        assertTrue(commitTSTx1 < startTsTx4Client2, "Tx1 committed before Tx4 started on the other TSO Client");
     }
 
 }
