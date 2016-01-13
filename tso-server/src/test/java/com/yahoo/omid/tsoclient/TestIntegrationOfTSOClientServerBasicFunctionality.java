@@ -86,8 +86,8 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
 
         Configuration clientConf = new BaseConfiguration();
         // Configure direct connection to the server
-        clientConf.setProperty("tsoServer.host", "localhost");
-        clientConf.setProperty("tsoServer.port", TSO_SERVER_PORT);
+        clientConf.setProperty("tso.host", "localhost");
+        clientConf.setProperty("tso.port", TSO_SERVER_PORT);
         tsoClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
         justAnotherTSOClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
 
