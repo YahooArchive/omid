@@ -153,6 +153,9 @@
                     <version>${maven-assembly-plugin.version}</version>
                     <configuration>
                         <skipAssembly>true</skipAssembly>
+                        <descriptors>
+                            <descriptor>tso-server/maven/assembly/bin.xml</descriptor>
+                        </descriptors>
                     </configuration>
                 </plugin>
 
