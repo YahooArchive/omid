@@ -19,8 +19,8 @@ import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;
 
 public class TestBasicTransaction extends OmidTestBase {
-    private static final Logger LOG = LoggerFactory.getLogger(TestBasicTransaction.class);
 
+    private static final Logger LOG = LoggerFactory.getLogger(TestBasicTransaction.class);
 
     @Test
     public void testTimestampsOfTwoRowsInstertedAfterCommitOfSingleTransactionAreEquals()
@@ -351,83 +351,6 @@ public class TestBasicTransaction extends OmidTestBase {
             LOG.error("Exception occurred", e);
             throw e;
         }
-    }
-   
-    @Test
-    public void testUserOperationsDontAllowTimestampSpecification() throws Exception {
-
-        TTable tt = new TTable(hbaseConf, TEST_TABLE);
-
-        TransactionManager tm = newTransactionManager();
-
-        long randomTimestampValue = Bytes.toLong("deadbeef".getBytes());
-
-        byte[] row = Bytes.toBytes("row1");
-        byte[] famName = Bytes.toBytes(TEST_FAMILY);
-        byte[] colName = Bytes.toBytes("col1");
-        byte[] dataValue = Bytes.toBytes("testWrite-1");
-
-        Transaction tx = tm.begin();
-
-        // Test put fails when a timestamp is specified in the put
-        Put put = new Put(row, randomTimestampValue);
-        put.add(famName, colName, dataValue);
-        try {
-            tt.put(tx, put);
-            AssertJUnit.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
-        } catch (IllegalArgumentException e) {
-            // Continue
-        }
-
-        // Test put fails when a timestamp is specified in a qualifier
-        put = new Put(row);
-        put.add(famName, colName, randomTimestampValue, dataValue);
-        try {
-            tt.put(tx, put);
-            AssertJUnit.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
-        } catch (IllegalArgumentException e) {
-            // Continue
-        }
-
-        // Test that get fails when a timestamp is specified
-        Get get = new Get(row);
-        get.setTimeStamp(randomTimestampValue);
-        try {
-            tt.get(tx, get);
-            AssertJUnit.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
-        } catch (IllegalArgumentException e) {
-            // Continue
-        }
-
-        // Test scan fails when a timerange is specified
-        Scan scan = new Scan(get);
-        try {
-            tt.getScanner(tx, scan);
-            AssertJUnit.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
-        } catch (IllegalArgumentException e) {
-            // Continue
-        }
-
-        // Test delete fails when a timestamp is specified
-        Delete delete = new Delete(row);
-        delete.setTimestamp(randomTimestampValue);
-        try {
-            tt.delete(tx, delete);
-            AssertJUnit.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
-        } catch (IllegalArgumentException e) {
-            // Continue
-        }
-
-        // Test delete fails when a timestamp is specified in a qualifier
-        delete = new Delete(row);
-        delete.deleteColumn(famName, colName, randomTimestampValue);
-        try {
-            tt.delete(tx, delete);
-            AssertJUnit.fail("Should have thrown an IllegalArgumentException due to timestamp specification");
-        } catch (IllegalArgumentException e) {
-            // Continue
-        }
-
     }
 
 }

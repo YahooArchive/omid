@@ -141,53 +141,6 @@ public class TestShadowCellsUpgrade extends OmidTestBase {
         assertTrue("Should have column family", result2.containsColumn(family, qualifier));
     }
 
-    /**
-     * Test that we cannot use reserved names
-     */
-    @Test
-    public void testReservedNames() throws Exception {
-        byte[] nonValidQualifier1 = "blahblah\u0080".getBytes(Charsets.UTF_8);
-        byte[] validQualifierIncludingOldShadowCellSuffix = "blahblah:OMID_CTS".getBytes(Charsets.UTF_8);
-        TransactionManager tm = newTransactionManager();
-
-        TTable table = new TTable(hbaseConf, TEST_TABLE);
-
-        HBaseTransaction t1 = (HBaseTransaction) tm.begin();
-        Put put = new Put(row1);
-        put.add(family, nonValidQualifier1, data1);
-        try {
-            table.put(t1, put);
-            fail("Shouldn't be able to put this");
-        } catch (IllegalArgumentException iae) {
-            // correct
-        }
-        Delete del = new Delete(row1);
-        del.deleteColumn(family, nonValidQualifier1);
-        try {
-            table.delete(t1, del);
-            fail("Shouldn't be able to delete this");
-        } catch (IllegalArgumentException iae) {
-            // correct
-        }
-
-        // TODO: Probably we should remove the following test assertions in
-        // other commit and move this test into TestShadowCells class
-        put = new Put(row1);
-        put.add(family, validQualifierIncludingOldShadowCellSuffix, data1);
-        try {
-            table.put(t1, put);
-        } catch (IllegalArgumentException iae) {
-            fail("Qualifier shouldn't be rejected anymore");
-        }
-        del = new Delete(row1);
-        del.deleteColumn(family, validQualifierIncludingOldShadowCellSuffix);
-        try {
-            table.delete(t1, del);
-        } catch (IllegalArgumentException iae) {
-            fail("Qualifier shouldn't be rejected anymore");
-        }
-    }
-
     // ////////////////////////////////////////////////////////////////////////
     // Helper methods
     // ////////////////////////////////////////////////////////////////////////
