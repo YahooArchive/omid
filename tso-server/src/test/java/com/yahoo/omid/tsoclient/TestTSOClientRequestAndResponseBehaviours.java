@@ -13,10 +13,11 @@ import com.yahoo.omid.tso.TSOServer;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig;
 import com.yahoo.omid.tso.TimestampOracle;
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
+import com.yahoo.omid.tsoclient.TSOClient.ConnectionException;
+import com.yahoo.omid.tsoclient.TSOClient.ServiceUnavailableException;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
 import org.apache.curator.test.TestingServer;
-import org.apache.curator.utils.CloseableUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterClass;
@@ -32,10 +33,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import static com.yahoo.omid.tsoclient.TSOClient.DEFAULT_REQUEST_TIMEOUT_MS;
 import static com.yahoo.omid.tsoclient.TSOClient.DEFAULT_TSO_MAX_REQUEST_RETRIES;
 import static com.yahoo.omid.tsoclient.TSOClient.REQUEST_MAX_RETRIES_CONFKEY;
 import static com.yahoo.omid.tsoclient.TSOClient.REQUEST_TIMEOUT_IN_MS_CONFKEY;
+import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
+import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
+import static com.yahoo.omid.tsoclient.TSOClient.ZK_CONNECTION_TIMEOUT_IN_MS_CONFKEY;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
@@ -66,15 +69,6 @@ public class TestTSOClientRequestAndResponseBehaviours {
     @BeforeClass
     public void setup() throws Exception {
 
-        LOG.info("==================================================================================================");
-        LOG.info("===================================== Starting ZK Server =========================================");
-        LOG.info("==================================================================================================");
-        zkServer = TestUtils.provideZookeeperServer();
-        LOG.info("==================================================================================================");
-        LOG.info("============================== ZK Server Started @ {} ================================",
-                zkServer.getConnectString());
-        LOG.info("==================================================================================================");
-
         TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.configFactory(TSO_SERVER_PORT, 1000);
         Module tsoServerMockModule = new TSOMockModule(tsoConfig);
         Injector injector = Guice.createInjector(tsoServerMockModule);
@@ -103,18 +97,15 @@ public class TestTSOClientRequestAndResponseBehaviours {
         tsoServer = null;
         TestUtils.waitForSocketNotListening(TSO_SERVER_HOST, TSO_SERVER_PORT, 1000);
 
-        CloseableUtils.closeQuietly(zkServer);
-        zkServer = null;
-        LOG.info("ZK Server Stopped");
-
     }
 
     @BeforeMethod
     public void beforeMethod() {
 
         tsoClientConf = new BaseConfiguration();
-        tsoClientConf.setProperty("tso.host", TSO_SERVER_HOST);
-        tsoClientConf.setProperty("tso.port", TSO_SERVER_PORT);
+        tsoClientConf.setProperty(TSO_HOST_CONFKEY, TSO_SERVER_HOST);
+        tsoClientConf.setProperty(TSO_PORT_CONFKEY, TSO_SERVER_PORT);
+        tsoClientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_MS_CONFKEY, 0); // Don't wait for ZK, it's not there
 
     }
 
@@ -138,7 +129,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(tsoClientConf).build();
 
-        int requestTimeoutMs = tsoClientConf.getInt(REQUEST_TIMEOUT_IN_MS_CONFKEY, DEFAULT_REQUEST_TIMEOUT_MS);
+        int requestTimeoutMs = tsoClientConf.getInt(REQUEST_TIMEOUT_IN_MS_CONFKEY, 500);
         int requestMaxRetries = tsoClientConf.getInt(REQUEST_MAX_RETRIES_CONFKEY, DEFAULT_TSO_MAX_REQUEST_RETRIES);
         LOG.info("Request timeout {} ms; Max retries {}", requestTimeoutMs, requestMaxRetries);
         Future<Long> f = null;
@@ -165,7 +156,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
     @Test(timeOut = 30_000)
     public void testCommitGetsServiceUnavailableExceptionWhenCommunicationFails() throws Exception {
 
-        tsoClientConf.setProperty(TSOClient.REQUEST_MAX_RETRIES_CONFKEY, 0);
+        tsoClientConf.setProperty(REQUEST_MAX_RETRIES_CONFKEY, 0);
         TSOClient client = TSOClient.newBuilder().withConfiguration(tsoClientConf).build();
 
         List<Long> startTimestamps = new ArrayList<>();
@@ -186,7 +177,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
                 f.get();
                 fail("Shouldn't be able to complete");
             } catch (ExecutionException ee) {
-                assertTrue(ee.getCause() instanceof TSOClient.ServiceUnavailableException,
+                assertTrue(ee.getCause() instanceof ServiceUnavailableException,
                         "Should be a service unavailable exception");
             }
         }
@@ -208,7 +199,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
             raw.getResponse().get();
             fail("Channel should be closed");
         } catch (ExecutionException ee) {
-            assertEquals(ee.getCause().getClass(), TSOClient.ConnectionException.class, "Should be channel closed exception");
+            assertEquals(ee.getCause().getClass(), ConnectionException.class, "Should be channel closed exception");
         }
         raw.close();
 
@@ -294,8 +285,8 @@ public class TestTSOClientRequestAndResponseBehaviours {
     @Test(timeOut = 30_000)
     public void testCommitCanSucceedWithMultipleTimeouts() throws Exception {
 
-        tsoClientConf.setProperty(TSOClient.REQUEST_TIMEOUT_IN_MS_CONFKEY, 100);
-        tsoClientConf.setProperty(TSOClient.REQUEST_MAX_RETRIES_CONFKEY, 10000);
+        tsoClientConf.setProperty(REQUEST_TIMEOUT_IN_MS_CONFKEY, 100);
+        tsoClientConf.setProperty(REQUEST_MAX_RETRIES_CONFKEY, 10000);
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(tsoClientConf).build();
 
@@ -310,8 +301,8 @@ public class TestTSOClientRequestAndResponseBehaviours {
     @Test(timeOut = 30_000)
     public void testCommitFailWhenTSOIsDown() throws Exception {
 
-        tsoClientConf.setProperty(TSOClient.REQUEST_TIMEOUT_IN_MS_CONFKEY, 100);
-        tsoClientConf.setProperty(TSOClient.REQUEST_MAX_RETRIES_CONFKEY, 10);
+        tsoClientConf.setProperty(REQUEST_TIMEOUT_IN_MS_CONFKEY, 100);
+        tsoClientConf.setProperty(REQUEST_MAX_RETRIES_CONFKEY, 10);
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(tsoClientConf).build();
 
@@ -321,7 +312,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
         try {
             future.get();
         } catch(ExecutionException e) {
-            assertEquals(e.getCause().getClass(), TSOClient.ServiceUnavailableException.class,
+            assertEquals(e.getCause().getClass(), ServiceUnavailableException.class,
                     "Should be a ServiceUnavailableExeption");
         }
 
@@ -330,8 +321,8 @@ public class TestTSOClientRequestAndResponseBehaviours {
     @Test(timeOut = 30_000)
     public void testTimestampRequestSucceedWithMultipleTimeouts() throws Exception {
 
-        tsoClientConf.setProperty(TSOClient.REQUEST_TIMEOUT_IN_MS_CONFKEY, 100);
-        tsoClientConf.setProperty(TSOClient.REQUEST_MAX_RETRIES_CONFKEY, 10000);
+        tsoClientConf.setProperty(REQUEST_TIMEOUT_IN_MS_CONFKEY, 100);
+        tsoClientConf.setProperty(REQUEST_MAX_RETRIES_CONFKEY, 10000);
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(tsoClientConf).build();
 

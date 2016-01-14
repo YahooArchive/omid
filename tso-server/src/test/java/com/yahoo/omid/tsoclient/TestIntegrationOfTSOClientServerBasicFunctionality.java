@@ -13,7 +13,6 @@ import com.yahoo.omid.tso.util.DummyCellIdImpl;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
 import org.apache.curator.test.TestingServer;
-import org.apache.curator.utils.CloseableUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -25,6 +24,9 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
+import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
+import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
+import static com.yahoo.omid.tsoclient.TSOClient.ZK_CONNECTION_TIMEOUT_IN_MS_CONFKEY;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
@@ -34,7 +36,8 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestIntegrationOfTSOClientServerBasicFunctionality.class);
 
-    private final int TSO_SERVER_PORT = 1234;
+    private static final String TSO_SERVER_HOST = "localhost";
+    private static final int TSO_SERVER_PORT = 1234;
 
     // Cells for tests
     final static public CellId c1 = new DummyCellIdImpl(0xdeadbeefL);
@@ -52,15 +55,6 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
     @BeforeClass
     public void setup() throws Exception {
 
-        LOG.info("==================================================================================================");
-        LOG.info("===================================== Starting ZK Server =========================================");
-        LOG.info("==================================================================================================");
-        zkServer = TestUtils.provideZookeeperServer();
-        LOG.info("==================================================================================================");
-        LOG.info("============================== ZK Server Started @ {} ================================",
-                zkServer.getConnectString());
-        LOG.info("==================================================================================================");
-
         TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.configFactory(TSO_SERVER_PORT, 1000);
         Module tsoServerMockModule = new TSOMockModule(tsoConfig);
         Injector injector = Guice.createInjector(tsoServerMockModule);
@@ -74,7 +68,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
 
         tsoServer = injector.getInstance(TSOServer.class);
         tsoServer.startAndWait();
-        TestUtils.waitForSocketListening("localhost", TSO_SERVER_PORT, 100);
+        TestUtils.waitForSocketListening(TSO_SERVER_HOST, TSO_SERVER_PORT, 100);
 
         LOG.info("==================================================================================================");
         LOG.info("===================================== TSO Server Initialized =====================================");
@@ -86,8 +80,9 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
 
         Configuration clientConf = new BaseConfiguration();
         // Configure direct connection to the server
-        clientConf.setProperty("tso.host", "localhost");
-        clientConf.setProperty("tso.port", TSO_SERVER_PORT);
+        clientConf.setProperty(TSO_HOST_CONFKEY, TSO_SERVER_HOST);
+        clientConf.setProperty(TSO_PORT_CONFKEY, TSO_SERVER_PORT);
+        clientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_MS_CONFKEY, 0); // Don't for ZK, it's not there
         tsoClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
         justAnotherTSOClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
 
@@ -106,11 +101,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
 
         tsoServer.stopAndWait();
         tsoServer = null;
-        TestUtils.waitForSocketNotListening("localhost", TSO_SERVER_PORT, 1000);
-
-        CloseableUtils.closeQuietly(zkServer);
-        zkServer = null;
-        LOG.info("ZK Server Stopped");
+        TestUtils.waitForSocketNotListening(TSO_SERVER_HOST, TSO_SERVER_PORT, 1000);
 
     }
 

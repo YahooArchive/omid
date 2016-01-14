@@ -156,13 +156,14 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     private void connectToZK(Configuration conf) throws ZKException {
 
         String zkCluster = conf.getString(TSO_ZK_CLUSTER_CONFKEY, DEFAULT_ZK_CLUSTER);
-        int zkConnectTimeOut = conf.getInt(ZK_CONNECT_TIMEOUT_CONFKEY, ZK_CONNECT_TIMEOUT);
+        int zkConnTimeOut = conf.getInt(ZK_CONNECTION_TIMEOUT_IN_MS_CONFKEY, DEFAULT_ZK_CONNECTION_TIMEOUT_IN_MS);
         try {
             zkClient = provideZookeeperClient(zkCluster);
             LOG.info("\t* Connecting to ZK cluster {}", zkClient.getState());
             zkClient.start();
-            if (!zkClient.blockUntilConnected(zkConnectTimeOut, TimeUnit.SECONDS)) {
-                throw new ZKException("Cannot connect to ZK Cluster " + zkCluster + " after 10 seconds");
+            if (!zkClient.blockUntilConnected(zkConnTimeOut, TimeUnit.SECONDS)) {
+                String msg = "Cannot connect to ZK Cluster " + zkCluster + " after " + zkConnTimeOut + " seconds";
+                throw new ZKException(msg);
             }
             LOG.info("\t* Connection to ZK cluster {}", zkClient.getState());
         } catch (InterruptedException e) {
