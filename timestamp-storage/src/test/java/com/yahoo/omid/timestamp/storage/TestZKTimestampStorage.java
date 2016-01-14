@@ -61,22 +61,22 @@ public class TestZKTimestampStorage {
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
 
         LOG.info("Creating Zookeeper Client connected to {}", ZK_CLUSTER);
-        zkClient
-            = CuratorFrameworkFactory.builder()
-                                     .namespace("omid")
-                                     .connectString(ZK_CLUSTER)
-                                     .retryPolicy(retryPolicy)
-                                     .build();
+        zkClient = CuratorFrameworkFactory.builder()
+                                          .namespace("omid")
+                                          .connectString(ZK_CLUSTER)
+                                          .retryPolicy(retryPolicy)
+                                          .connectionTimeoutMs(10) // Low timeout for tests
+                                          .build();
         zkClient.start();
         zkClient.blockUntilConnected();
 
         LOG.info("Creating Internal Zookeeper Client connected to {}", ZK_CLUSTER);
-        storageInternalZKClient
-            = Mockito.spy(CuratorFrameworkFactory.builder()
-                                     .namespace("omid")
-                                     .connectString(ZK_CLUSTER)
-                                     .retryPolicy(retryPolicy)
-                                     .build());
+        storageInternalZKClient = Mockito.spy(CuratorFrameworkFactory.builder()
+                                                                     .namespace("omid")
+                                                                     .connectString(ZK_CLUSTER)
+                                                                     .retryPolicy(retryPolicy)
+                                                                     .connectionTimeoutMs(10) // Low timeout for tests
+                                                                     .build());
         storageInternalZKClient.start();
         storageInternalZKClient.blockUntilConnected();
 
@@ -117,7 +117,7 @@ public class TestZKTimestampStorage {
             storage.updateMaxTimestamp(INITIAL_MAX_TS_VALUE, NEGATIVE_TS);
             fail();
         } catch (IllegalArgumentException e) {
-            LOG.info("Expected exception", e);
+            // Expected exception
         }
 
         // ...nor is less than previous timestamp
@@ -125,7 +125,7 @@ public class TestZKTimestampStorage {
             storage.updateMaxTimestamp(1, 0);
             fail();
         } catch (IllegalArgumentException e) {
-            LOG.info("Expected exception", e);
+            // Expected exception
         }
 
         // Check that the original version is still there
@@ -150,7 +150,7 @@ public class TestZKTimestampStorage {
             storage.getMaxTimestamp();
             fail();
         } catch (IOException e) {
-            LOG.info("Expected exception", e);
+            // Expected exception
         }
 
         doThrow(new RuntimeException()).when(storageInternalZKClient).setData();
@@ -158,7 +158,7 @@ public class TestZKTimestampStorage {
             storage.updateMaxTimestamp(INITIAL_MAX_TS_VALUE, INITIAL_MAX_TS_VALUE + 1_000_000);
             fail();
         } catch (IOException e) {
-            LOG.info("Expected exception", e);
+            // Expected exception
         }
 
         // Reset the mock and double-check last result
@@ -191,7 +191,7 @@ public class TestZKTimestampStorage {
             storage.getMaxTimestamp();
             fail();
         } catch (IOException ioe) {
-            LOG.info("Expected exception", ioe);
+            // Expected exception
         }
 
         LOG.info("Restarting ZK again");
