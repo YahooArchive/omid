@@ -26,7 +26,7 @@ import java.util.concurrent.ExecutionException;
 
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
-import static com.yahoo.omid.tsoclient.TSOClient.ZK_CONNECTION_TIMEOUT_IN_MS_CONFKEY;
+import static com.yahoo.omid.tsoclient.TSOClient.ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
@@ -82,7 +82,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         // Configure direct connection to the server
         clientConf.setProperty(TSO_HOST_CONFKEY, TSO_SERVER_HOST);
         clientConf.setProperty(TSO_PORT_CONFKEY, TSO_SERVER_PORT);
-        clientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_MS_CONFKEY, 0); // Don't for ZK, it's not there
+        clientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, 0); // Don't for ZK, it's not there
         tsoClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
         justAnotherTSOClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
 

@@ -17,7 +17,7 @@ import static com.google.common.collect.Sets.newHashSet;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_RECONNECTION_DELAY_SECS;
-import static com.yahoo.omid.tsoclient.TSOClient.ZK_CONNECTION_TIMEOUT_IN_MS_CONFKEY;
+import static com.yahoo.omid.tsoclient.TSOClient.ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY;
 import static org.slf4j.LoggerFactory.getLogger;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.fail;
@@ -38,7 +38,7 @@ public class TestUnconnectedTSOClient {
         clientConf.setProperty(TSO_HOST_CONFKEY, "localhost");
         clientConf.setProperty(TSO_PORT_CONFKEY, 12345);
         clientConf.setProperty(TSO_RECONNECTION_DELAY_SECS, TSO_RECONNECTION_DELAY_IN_SECS_FOR_TEST);
-        clientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_MS_CONFKEY, 0); // Don't wait for ZK, it's not there
+        clientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, 0); // Don't wait for ZK, it's not there
 
         // Component under test
         TSOClient tsoClient = TSOClient.newBuilder()

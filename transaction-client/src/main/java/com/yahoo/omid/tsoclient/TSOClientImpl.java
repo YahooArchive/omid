@@ -121,6 +121,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
                 throw new IllegalArgumentException("tso.host missing from configuration");
             }
             setTSOAddress(host, port);
+            LOG.info("\t* TSO host:port {}:{} will be connected directly", host, port);
         }
 
         fsmExecutor = Executors.newSingleThreadScheduledExecutor(
@@ -156,13 +157,14 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     private void connectToZK(Configuration conf) throws ZKException {
 
         String zkCluster = conf.getString(TSO_ZK_CLUSTER_CONFKEY, DEFAULT_ZK_CLUSTER);
-        int zkConnTimeOut = conf.getInt(ZK_CONNECTION_TIMEOUT_IN_MS_CONFKEY, DEFAULT_ZK_CONNECTION_TIMEOUT_IN_MS);
+        int zkConnTimeOut = conf.getInt(ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, DEFAULT_ZK_CONNECTION_TIMEOUT_IN_SECS);
         try {
             zkClient = provideZookeeperClient(zkCluster);
             LOG.info("\t* Connecting to ZK cluster {}", zkClient.getState());
             zkClient.start();
             if (!zkClient.blockUntilConnected(zkConnTimeOut, TimeUnit.SECONDS)) {
                 String msg = "Cannot connect to ZK Cluster " + zkCluster + " after " + zkConnTimeOut + " seconds";
+                zkClient.close();
                 throw new ZKException(msg);
             }
             LOG.info("\t* Connection to ZK cluster {}", zkClient.getState());

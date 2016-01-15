@@ -38,7 +38,7 @@ import static com.yahoo.omid.tsoclient.TSOClient.REQUEST_MAX_RETRIES_CONFKEY;
 import static com.yahoo.omid.tsoclient.TSOClient.REQUEST_TIMEOUT_IN_MS_CONFKEY;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
-import static com.yahoo.omid.tsoclient.TSOClient.ZK_CONNECTION_TIMEOUT_IN_MS_CONFKEY;
+import static com.yahoo.omid.tsoclient.TSOClient.ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
@@ -105,7 +105,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
         tsoClientConf = new BaseConfiguration();
         tsoClientConf.setProperty(TSO_HOST_CONFKEY, TSO_SERVER_HOST);
         tsoClientConf.setProperty(TSO_PORT_CONFKEY, TSO_SERVER_PORT);
-        tsoClientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_MS_CONFKEY, 0); // Don't wait for ZK, it's not there
+        tsoClientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, 0); // Don't wait for ZK, it's not there
 
     }
 

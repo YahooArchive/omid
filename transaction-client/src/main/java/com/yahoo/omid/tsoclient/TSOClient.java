@@ -19,8 +19,8 @@ public abstract class TSOClient {
 
     // Basic configuration constants & defaults
     public static final String TSO_HOST_CONFKEY = "tso.host";
-    public static final String ZK_CONNECTION_TIMEOUT_IN_MS_CONFKEY = "tso.zk.connection.timeout-secs";
-    public static final int DEFAULT_ZK_CONNECTION_TIMEOUT_IN_MS = 10;
+    public static final String ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY = "tso.zk.connection.timeout-secs";
+    public static final int DEFAULT_ZK_CONNECTION_TIMEOUT_IN_SECS = 10;
     public static final String TSO_PORT_CONFKEY = "tso.port";
     public static final int DEFAULT_TSO_PORT = 54758;
     public static final String REQUEST_MAX_RETRIES_CONFKEY = "tso.request.max-retries";
