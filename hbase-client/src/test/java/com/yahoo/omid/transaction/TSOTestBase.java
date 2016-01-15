@@ -20,6 +20,8 @@ import com.yahoo.omid.tso.util.DummyCellIdImpl;
 import com.yahoo.omid.tsoclient.CellId;
 import com.yahoo.omid.tsoclient.TSOClient;
 
+import static com.yahoo.omid.tsoclient.TSOClient.ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY;
+
 public class TSOTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TSOTestBase.class);
@@ -58,6 +60,7 @@ public class TSOTestBase {
 
         clientConf.setProperty("tso.host", "localhost");
         clientConf.setProperty("tso.port", 1234);
+        clientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, 0);;
 
         commitTable = injector.getInstance(CommitTable.class);
         commitTableClient = commitTable.getClient().get();

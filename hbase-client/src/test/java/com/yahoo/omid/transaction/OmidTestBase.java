@@ -1,24 +1,17 @@
 package com.yahoo.omid.transaction;
 
+import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.hbase.CommitTableConstants;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.BeforeClass;
-
-import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import com.yahoo.omid.committable.hbase.CreateTable;
+import com.yahoo.omid.tsoclient.TSOClient;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Get;
@@ -26,32 +19,37 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
-
-import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.committable.hbase.CreateTable;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
 
-import com.yahoo.omid.tsoclient.TSOClient;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+
+import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
 
 public class OmidTestBase {
+
     private static final Logger LOG = LoggerFactory.getLogger(OmidTestBase.class);
 
 
     static TSOTestBase tso = null;
 
-    protected static HBaseTestingUtility testutil;
+    static HBaseTestingUtility testutil;
     private static MiniHBaseCluster hbasecluster;
     protected static Configuration hbaseConf;
 
     protected static final String TEST_TABLE = "test";
     protected static final String TEST_FAMILY = "data";
-    protected static final String TEST_FAMILY2 = "data2";
+    static final String TEST_FAMILY2 = "data2";
 
-    protected static final TableName TABLE_NAME = TableName.valueOf(TEST_TABLE);
+    static final TableName TABLE_NAME = TableName.valueOf(TEST_TABLE);
 
-    protected TSOTestBase getTSO() {
+    TSOTestBase getTSO() {
         return tso;
     }
 
@@ -79,18 +77,20 @@ public class OmidTestBase {
 
         LOG.info("Create hbase");
         testutil = new HBaseTestingUtility(hbaseConf);
-        hbasecluster = testutil.startMiniCluster(5);
+        hbasecluster = testutil.startMiniCluster(1);
 
         LOG.info("Setup done");
     }
 
     private static void delete(File f) throws IOException {
         if (f.isDirectory()) {
-            for (File c : f.listFiles())
+            for (File c : f.listFiles()) {
                 delete(c);
+            }
         }
-        if (!f.delete())
+        if (!f.delete()) {
             throw new FileNotFoundException("Failed to delete file: " + f);
+        }
     }
 
     protected TransactionManager newTransactionManager() throws Exception {
@@ -99,16 +99,16 @@ public class OmidTestBase {
 
     protected TransactionManager newTransactionManager(TSOClient tsoClient) throws Exception {
         return HBaseTransactionManager.newBuilder()
-                .withConfiguration(hbaseConf)
-                .withCommitTableClient(tso.getCommitTable().getClient().get())
-                .withTSOClient(tsoClient).build();
+            .withConfiguration(hbaseConf)
+            .withCommitTableClient(tso.getCommitTable().getClient().get())
+            .withTSOClient(tsoClient).build();
     }
 
     protected TransactionManager newTransactionManager(CommitTable.Client commitTableClient) throws Exception {
         return HBaseTransactionManager.newBuilder()
-                .withConfiguration(hbaseConf)
-                .withCommitTableClient(commitTableClient)
-                .withTSOClient(tso.getClient()).build();
+            .withConfiguration(hbaseConf)
+            .withCommitTableClient(commitTableClient)
+            .withTSOClient(tso.getClient()).build();
     }
 
     @AfterClass
@@ -137,15 +137,9 @@ public class OmidTestBase {
             admin.createTable(desc);
         }
 
-        if (admin.isTableDisabled(TEST_TABLE)) {
-            admin.enableTable(TEST_TABLE);
+        if (!admin.tableExists(CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME)) {
+            CreateTable.createTable(hbaseConf, CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME, 1);
         }
-        HTableDescriptor[] tables = admin.listTables();
-        for (HTableDescriptor t : tables) {
-            LOG.info(t.getNameAsString());
-        }
-
-        CreateTable.createTable(hbaseConf, CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME, 1);
     }
 
     @AfterMethod
@@ -153,18 +147,16 @@ public class OmidTestBase {
         try {
             LOG.info("tearing Down");
             HBaseAdmin admin = testutil.getHBaseAdmin();
-            admin.disableTable(TEST_TABLE);
-            admin.deleteTable(TEST_TABLE);
+            admin.truncateTable(TableName.valueOf(TEST_TABLE), true);
 
-            admin.disableTable(CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME);
-            admin.deleteTable(CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME);
+            admin.truncateTable(TableName.valueOf(CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME), true);
 
         } catch (Exception e) {
             LOG.error("Error tearing down", e);
         }
     }
 
-    protected static boolean verifyValue(byte[] tableName, byte[] row,
+    static boolean verifyValue(byte[] tableName, byte[] row,
                                          byte[] fam, byte[] col, byte[] value) {
 
         try (HTable table = new HTable(hbaseConf, tableName)) {
