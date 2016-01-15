@@ -26,13 +26,11 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
 
-public class OmidTestBase {
-
+public abstract class OmidTestBase {
     private static final Logger LOG = LoggerFactory.getLogger(OmidTestBase.class);
 
 
@@ -53,7 +51,7 @@ public class OmidTestBase {
     }
 
     @BeforeClass
-    public static void setupOmid() throws Exception {
+    public void beforeClass() throws Exception {
         LOG.info("Setting up OmidTestBase...");
 
         // TSO Setup
@@ -65,16 +63,17 @@ public class OmidTestBase {
         hbaseConf.setInt("hbase.hregion.memstore.flush.size", 10_000 * 1024);
         hbaseConf.setInt("hbase.regionserver.nbreservationblocks", 1);
         hbaseConf.setInt(HBASE_CLIENT_RETRIES_NUMBER, 3);
-        hbaseConf.set("tso.host", "localhost");
-        hbaseConf.setInt("tso.port", 1234);
-        final String rootdir = "/tmp/hbase.test.dir/";
-        File rootdirFile = new File(rootdir);
-        if (rootdirFile.exists()) {
-            delete(rootdirFile);
-        }
-        hbaseConf.set("hbase.rootdir", rootdir);
+
+        File tempFile = File.createTempFile("OmidTest", "");
+        tempFile.deleteOnExit();
+        hbaseConf.set("hbase.rootdir", tempFile.getAbsolutePath());
 
         LOG.info("Create hbase");
+
+        // ------------------------------------------------------------------------------------------------------------
+        // HBase setup
+        // ------------------------------------------------------------------------------------------------------------
+        LOG.info("Creating HBase minicluster");
         testutil = new HBaseTestingUtility(hbaseConf);
         hbasecluster = testutil.startMiniCluster(1);
 
@@ -82,6 +81,7 @@ public class OmidTestBase {
 
         LOG.info("Setup done");
     }
+
 
     private static void createTables() throws IOException {
         HBaseAdmin admin = testutil.getHBaseAdmin();
@@ -97,17 +97,6 @@ public class OmidTestBase {
         admin.createTable(desc);
 
         CreateTable.createTable(hbaseConf, CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME, 1);
-    }
-
-    private static void delete(File f) throws IOException {
-        if (f.isDirectory()) {
-            for (File c : f.listFiles()) {
-                delete(c);
-            }
-        }
-        if (!f.delete()) {
-            throw new FileNotFoundException("Failed to delete file: " + f);
-        }
     }
 
     protected TransactionManager newTransactionManager() throws Exception {
@@ -129,7 +118,7 @@ public class OmidTestBase {
     }
 
     @AfterClass
-    public static void teardownOmid() throws Exception {
+    public void afterClass() throws Exception {
         LOG.info("Tearing down OmidTestBase...");
         if (hbasecluster != null) {
             testutil.shutdownMiniCluster();
@@ -140,17 +129,22 @@ public class OmidTestBase {
 
 
     @AfterMethod
-    public void tearDown() {
+    public void afterMethod() {
         try {
             LOG.info("tearing Down");
             HBaseAdmin admin = testutil.getHBaseAdmin();
-            admin.truncateTable(TableName.valueOf(TEST_TABLE), true);
-
-            admin.truncateTable(TableName.valueOf(CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME), true);
+            truncateTable(admin, TableName.valueOf(TEST_TABLE));
+            truncateTable(admin, TableName.valueOf(CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME));
 
         } catch (Exception e) {
             LOG.error("Error tearing down", e);
         }
+    }
+
+    private void truncateTable(HBaseAdmin admin, TableName tableName) throws IOException {
+        admin.disableTable(TEST_TABLE);
+        admin.truncateTable(tableName, true);
+        admin.enableTable(TEST_TABLE);
     }
 
     static boolean verifyValue(byte[] tableName, byte[] row,
