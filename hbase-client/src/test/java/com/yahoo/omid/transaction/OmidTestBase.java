@@ -24,7 +24,6 @@ import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -47,7 +46,7 @@ public class OmidTestBase {
     protected static final String TEST_FAMILY = "data";
     static final String TEST_FAMILY2 = "data2";
 
-    static final TableName TABLE_NAME = TableName.valueOf(TEST_TABLE);
+    private static final TableName TABLE_NAME = TableName.valueOf(TEST_TABLE);
 
     TSOTestBase getTSO() {
         return tso;
@@ -79,7 +78,25 @@ public class OmidTestBase {
         testutil = new HBaseTestingUtility(hbaseConf);
         hbasecluster = testutil.startMiniCluster(1);
 
+        createTables();
+
         LOG.info("Setup done");
+    }
+
+    private static void createTables() throws IOException {
+        HBaseAdmin admin = testutil.getHBaseAdmin();
+
+        HTableDescriptor desc = new HTableDescriptor(TABLE_NAME);
+        HColumnDescriptor datafam = new HColumnDescriptor(TEST_FAMILY);
+        HColumnDescriptor datafam2 = new HColumnDescriptor(TEST_FAMILY2);
+        datafam.setMaxVersions(Integer.MAX_VALUE);
+        datafam2.setMaxVersions(Integer.MAX_VALUE);
+        desc.addFamily(datafam);
+        desc.addFamily(datafam2);
+
+        admin.createTable(desc);
+
+        CreateTable.createTable(hbaseConf, CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME, 1);
     }
 
     private static void delete(File f) throws IOException {
@@ -121,26 +138,6 @@ public class OmidTestBase {
         tso.teardownTSO();
     }
 
-    @BeforeMethod
-    public void setUp() throws Exception {
-        HBaseAdmin admin = testutil.getHBaseAdmin();
-
-        if (!admin.tableExists(TEST_TABLE)) {
-            HTableDescriptor desc = new HTableDescriptor(TABLE_NAME);
-            HColumnDescriptor datafam = new HColumnDescriptor(TEST_FAMILY);
-            HColumnDescriptor datafam2 = new HColumnDescriptor(TEST_FAMILY2);
-            datafam.setMaxVersions(Integer.MAX_VALUE);
-            datafam2.setMaxVersions(Integer.MAX_VALUE);
-            desc.addFamily(datafam);
-            desc.addFamily(datafam2);
-
-            admin.createTable(desc);
-        }
-
-        if (!admin.tableExists(CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME)) {
-            CreateTable.createTable(hbaseConf, CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME, 1);
-        }
-    }
 
     @AfterMethod
     public void tearDown() {
@@ -157,7 +154,7 @@ public class OmidTestBase {
     }
 
     static boolean verifyValue(byte[] tableName, byte[] row,
-                                         byte[] fam, byte[] col, byte[] value) {
+                               byte[] fam, byte[] col, byte[] value) {
 
         try (HTable table = new HTable(hbaseConf, tableName)) {
             Get g = new Get(row).setMaxVersions(1);

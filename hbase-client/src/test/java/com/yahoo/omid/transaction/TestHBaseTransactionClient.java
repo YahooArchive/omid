@@ -30,11 +30,11 @@ import com.yahoo.omid.transaction.HBaseTransactionManager.CommitTimestampLocator
 
 public class TestHBaseTransactionClient extends OmidTestBase {
 
-    static final byte[] row1 = Bytes.toBytes("test-is-committed1");
-    static final byte[] row2 = Bytes.toBytes("test-is-committed2");
-    static final byte[] family = Bytes.toBytes(TEST_FAMILY);
-    static final byte[] qualifier = Bytes.toBytes("testdata");
-    static final byte[] data1 = Bytes.toBytes("testWrite-1");
+    private static final byte[] row1 = Bytes.toBytes("test-is-committed1");
+    private static final byte[] row2 = Bytes.toBytes("test-is-committed2");
+    private static final byte[] family = Bytes.toBytes(TEST_FAMILY);
+    private static final byte[] qualifier = Bytes.toBytes("testdata");
+    private static final byte[] data1 = Bytes.toBytes("testWrite-1");
 
     @Test
     public void testIsCommitted() throws Exception {
