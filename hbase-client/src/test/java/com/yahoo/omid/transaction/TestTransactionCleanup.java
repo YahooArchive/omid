@@ -14,12 +14,14 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.ITestContext;
 import org.testng.annotations.Test;
 
 import com.google.common.util.concurrent.SettableFuture;
 import com.yahoo.omid.tsoclient.ForwardingTSOFuture;
 import com.yahoo.omid.tsoclient.TSOClient;
 
+@Test(groups = "sharedHBase")
 public class TestTransactionCleanup extends OmidTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestTransactionCleanup.class);
@@ -38,7 +40,7 @@ public class TestTransactionCleanup extends OmidTestBase {
     // try to review and improve the tests in these two classes in a further
     // commit.
     @Test
-    public void testTransactionIsCleanedUpAfterBeingAborted() throws Exception {
+    public void testTransactionIsCleanedUpAfterBeingAborted(ITestContext context) throws Exception {
 
         final int ROWS_MODIFIED = 1;
 
@@ -60,7 +62,7 @@ public class TestTransactionCleanup extends OmidTestBase {
         doReturn(abortingFF)
                 .when(mockedTSOClient).commit(eq(START_TS), anySetOf(HBaseCellId.class));
 
-        try (TransactionManager tm = newTransactionManager(mockedTSOClient);
+        try (TransactionManager tm = newTransactionManager(context, mockedTSOClient);
              TTable txTable = new TTable(hbaseConf, TEST_TABLE)) {
 
             // Start a transaction and put some data in a column

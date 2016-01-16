@@ -1,6 +1,8 @@
 package com.yahoo.omid.transaction;
 
 import static org.testng.AssertJUnit.assertTrue;
+
+import org.testng.ITestContext;
 import org.testng.annotations.Test;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -14,13 +16,14 @@ import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;
 
+@Test(groups = "sharedHBase")
 public class TestSingleColumnFamily extends OmidTestBase {
    private static final Logger LOG = LoggerFactory.getLogger(TestSingleColumnFamily.class);
 
 
     @Test
-    public void testSingleColumnFamily() throws Exception {
-        TransactionManager tm = newTransactionManager();
+    public void testSingleColumnFamily(ITestContext context) throws Exception {
+        TransactionManager tm = newTransactionManager(context);
         TTable table1 = new TTable(hbaseConf, TEST_TABLE);
         int num=10;
         Transaction t=tm.begin();

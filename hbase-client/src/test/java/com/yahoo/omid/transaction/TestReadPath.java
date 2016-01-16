@@ -3,6 +3,8 @@ package com.yahoo.omid.transaction;
 import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertNotNull;
 import static org.testng.AssertJUnit.assertTrue;
+
+import org.testng.ITestContext;
 import org.testng.annotations.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,6 +20,7 @@ import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;
 
+@Test(groups = "sharedHBase")
 public class TestReadPath extends OmidTestBase {
 
     final byte[] family = Bytes.toBytes(TEST_FAMILY);
@@ -27,8 +30,8 @@ public class TestReadPath extends OmidTestBase {
     final byte[] uncommitted = Bytes.toBytes("uncommitted");
 
     @Test
-    public void testReadInterleaved() throws Exception {
-        TransactionManager tm = newTransactionManager();
+    public void testReadInterleaved(ITestContext context) throws Exception {
+        TransactionManager tm = newTransactionManager(context);
         TTable table = new TTable(hbaseConf, TEST_TABLE);
 
         // Put some data on the DB
@@ -46,8 +49,8 @@ public class TestReadPath extends OmidTestBase {
     }
 
     @Test
-    public void testReadWithSeveralUncommitted() throws Exception {
-        TransactionManager tm = newTransactionManager();
+    public void testReadWithSeveralUncommitted(ITestContext context) throws Exception {
+        TransactionManager tm = newTransactionManager(context);
         TTable table = new TTable(hbaseConf, TEST_TABLE);
         
         // Put some data on the DB

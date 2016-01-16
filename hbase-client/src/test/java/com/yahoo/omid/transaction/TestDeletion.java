@@ -1,18 +1,26 @@
 package com.yahoo.omid.transaction;
 
-import org.apache.hadoop.hbase.client.*;
-import org.testng.annotations.Test;
+import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.AssertJUnit;
+import org.testng.ITestContext;
+import org.testng.annotations.Test;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.hadoop.hbase.util.Bytes;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import static org.testng.Assert.assertTrue;
 
+@Test(groups = "sharedHBase")
 public class TestDeletion extends OmidTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestDeletion.class);
@@ -26,6 +34,7 @@ public class TestDeletion extends OmidTestBase {
     byte[] modrow = Bytes.toBytes("test-del" + 3);
 
     static class FamCol {
+
         final byte[] fam;
         final byte[] col;
 
@@ -37,9 +46,9 @@ public class TestDeletion extends OmidTestBase {
     }
 
     @Test
-    public void runTestDeleteFamily() throws Exception {
+    public void runTestDeleteFamily(ITestContext context) throws Exception {
 
-        TransactionManager tm = newTransactionManager();
+        TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
         Transaction t1 = tm.begin();
@@ -68,14 +77,15 @@ public class TestDeletion extends OmidTestBase {
         rs = tt.getScanner(tscan, new Scan());
 
         count = countColsInRows(rs, famColA, famColB);
-        AssertJUnit.assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
+        AssertJUnit
+            .assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
         AssertJUnit.assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
     }
 
     @Test
-    public void runTestDeleteColumn() throws Exception {
+    public void runTestDeleteColumn(ITestContext context) throws Exception {
 
-        TransactionManager tm = newTransactionManager();
+        TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
         Transaction t1 = tm.begin();
@@ -105,7 +115,8 @@ public class TestDeletion extends OmidTestBase {
         rs = tt.getScanner(tscan, new Scan());
 
         count = countColsInRows(rs, famColA, famColB);
-        AssertJUnit.assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
+        AssertJUnit
+            .assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
         AssertJUnit.assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
     }
 
@@ -113,9 +124,9 @@ public class TestDeletion extends OmidTestBase {
      * This test is very similar to #runTestDeleteColumn() but exercises Delete#deleteColumns()
      */
     @Test
-    public void runTestDeleteColumns() throws Exception {
+    public void runTestDeleteColumns(ITestContext context) throws Exception {
 
-        TransactionManager tm = newTransactionManager();
+        TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
         Transaction t1 = tm.begin();
@@ -146,13 +157,14 @@ public class TestDeletion extends OmidTestBase {
 
         count = countColsInRows(rs, famColA, famColB);
 
-        AssertJUnit.assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
+        AssertJUnit
+            .assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
         AssertJUnit.assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
     }
 
     @Test
-    public void runTestDeleteRow() throws Exception {
-        TransactionManager tm = newTransactionManager();
+    public void runTestDeleteRow(ITestContext context) throws Exception {
+        TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
         Transaction t1 = tm.begin();
@@ -174,7 +186,7 @@ public class TestDeletion extends OmidTestBase {
 
         int rowsRead = countRows(rs);
         AssertJUnit.assertTrue("Expected " + rowsWritten + " rows but " + rowsRead + " found",
-                rowsRead == rowsWritten);
+                               rowsRead == rowsWritten);
 
         tm.commit(t2);
 
@@ -183,17 +195,17 @@ public class TestDeletion extends OmidTestBase {
 
         rowsRead = countRows(rs);
         AssertJUnit.assertTrue("Expected " + (rowsWritten - 1) + " rows but " + rowsRead + " found",
-                rowsRead == (rowsWritten - 1));
+                               rowsRead == (rowsWritten - 1));
 
     }
 
     @Test
-    public void testDeletionOfNonExistingColumnFamilyDoesNotWriteToHBase() throws Exception {
+    public void testDeletionOfNonExistingColumnFamilyDoesNotWriteToHBase(ITestContext context) throws Exception {
 
         // --------------------------------------------------------------------
         // Setup initial environment for the test
         // --------------------------------------------------------------------
-        TransactionManager tm = newTransactionManager();
+        TransactionManager tm = newTransactionManager(context);
         TTable txTable = new TTable(hbaseConf, TEST_TABLE);
 
         Transaction tx1 = tm.begin();

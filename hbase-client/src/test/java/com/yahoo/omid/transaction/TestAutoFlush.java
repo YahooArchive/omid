@@ -1,24 +1,24 @@
 package com.yahoo.omid.transaction;
 
-import static org.testng.AssertJUnit.assertEquals;
-import org.testng.annotations.Test;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
-import com.yahoo.omid.transaction.TTable;
-import com.yahoo.omid.transaction.Transaction;
-import com.yahoo.omid.transaction.TransactionManager;
+import org.testng.ITestContext;
+import org.testng.annotations.Test;
 
+import static org.testng.AssertJUnit.assertEquals;
+
+@Test(groups = "sharedHBase")
 public class TestAutoFlush extends OmidTestBase {
 
     @Test
-    public void testReadWithSeveralUncommitted() throws Exception {
+    public void testReadWithSeveralUncommitted(ITestContext context) throws Exception {
         byte[] family = Bytes.toBytes(TEST_FAMILY);
         byte[] row = Bytes.toBytes("row");
         byte[] col = Bytes.toBytes("col1");
         byte[] data = Bytes.toBytes("data");
-        TransactionManager tm = newTransactionManager();
+        TransactionManager tm = newTransactionManager(context);
         TTable table = new TTable(hbaseConf, TEST_TABLE);
 
         // Turn off autoflush

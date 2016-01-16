@@ -8,20 +8,22 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.ITestContext;
 import org.testng.annotations.Test;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
+@Test(groups = "sharedHBase")
 public class TestBasicTransaction extends OmidTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestBasicTransaction.class);
 
 
     @Test(timeOut = 30_000)
-    public void testTimestampsOfTwoRowsInstertedAfterCommitOfSingleTransactionAreEquals() throws Exception {
+    public void testTimestampsOfTwoRowsInstertedAfterCommitOfSingleTransactionAreEquals(ITestContext context) throws Exception {
 
-        TransactionManager tm = newTransactionManager();
+        TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
         byte[] rowName1 = Bytes.toBytes("row1");
@@ -64,10 +66,10 @@ public class TestBasicTransaction extends OmidTestBase {
     }
 
     @Test(timeOut = 30_000)
-    public void testTimestampsOfTwoRowsModifiedByTwoSequentialTransactionsAreEqualAndHaveBeenIncreasedMonotonically()
+    public void testTimestampsOfTwoRowsModifiedByTwoSequentialTransactionsAreEqualAndHaveBeenIncreasedMonotonically(ITestContext context)
         throws Exception {
 
-        TransactionManager tm = newTransactionManager();
+        TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
         byte[] rowName1 = Bytes.toBytes("row1");
@@ -131,9 +133,9 @@ public class TestBasicTransaction extends OmidTestBase {
     }
 
     @Test(timeOut = 30_000)
-    public void runTestSimple() throws Exception {
+    public void runTestSimple(ITestContext context) throws Exception {
 
-        TransactionManager tm = newTransactionManager();
+        TransactionManager tm = newTransactionManager(context);
 
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
@@ -169,9 +171,9 @@ public class TestBasicTransaction extends OmidTestBase {
     }
 
     @Test(timeOut = 30_000)
-    public void runTestManyVersions() throws Exception {
+    public void runTestManyVersions(ITestContext context) throws Exception {
 
-        TransactionManager tm = newTransactionManager();
+        TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
         Transaction t1 = tm.begin();
@@ -208,9 +210,9 @@ public class TestBasicTransaction extends OmidTestBase {
     }
 
     @Test(timeOut = 30_000)
-    public void runTestInterleave() throws Exception {
+    public void runTestInterleave(ITestContext context) throws Exception {
 
-        TransactionManager tm = newTransactionManager();
+        TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
         Transaction t1 = tm.begin();
@@ -246,8 +248,8 @@ public class TestBasicTransaction extends OmidTestBase {
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class, timeOut = 30_000)
-    public void testSameCommitRaisesException() throws Exception {
-        TransactionManager tm = newTransactionManager();
+    public void testSameCommitRaisesException(ITestContext context) throws Exception {
+        TransactionManager tm = newTransactionManager(context);
 
         Transaction t1 = tm.begin();
         tm.commit(t1);
@@ -255,9 +257,9 @@ public class TestBasicTransaction extends OmidTestBase {
     }
 
     @Test(timeOut = 30_000)
-    public void runTestInterleaveScan() throws Exception {
+    public void runTestInterleaveScan(ITestContext context) throws Exception {
 
-        TransactionManager tm = newTransactionManager();
+        TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
         Transaction t1 = tm.begin();
@@ -321,9 +323,9 @@ public class TestBasicTransaction extends OmidTestBase {
     }
 
     @Test(timeOut = 30_000)
-    public void runTestInterleaveScanWhenATransactionAborts() throws Exception {
+    public void runTestInterleaveScanWhenATransactionAborts(ITestContext context) throws Exception {
 
-        TransactionManager tm = newTransactionManager();
+        TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
         Transaction t1 = tm.begin();

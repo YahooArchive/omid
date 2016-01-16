@@ -6,9 +6,11 @@ import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.hbase.CommitTableConstants;
 import com.yahoo.omid.committable.hbase.CreateTable;
+import com.yahoo.omid.timestamp.storage.TimestampStorage;
 import com.yahoo.omid.tso.TSOMockModule;
 import com.yahoo.omid.tso.TSOServer;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig;
+import com.yahoo.omid.tso.TimestampOracleImpl;
 import com.yahoo.omid.tsoclient.TSOClient;
 
 import org.apache.commons.configuration.BaseConfiguration;
@@ -29,9 +31,11 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.annotations.AfterClass;
+import org.testng.ITestContext;
+import org.testng.annotations.AfterGroups;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeGroups;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,7 +47,7 @@ public abstract class OmidTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(OmidTestBase.class);
 
-    static HBaseTestingUtility testutil;
+    private static HBaseTestingUtility testutil;
     private static MiniHBaseCluster hbasecluster;
     protected static Configuration hbaseConf;
 
@@ -51,70 +55,42 @@ public abstract class OmidTestBase {
     protected static final String TEST_FAMILY = "data";
     static final String TEST_FAMILY2 = "data2";
 
-    private static final TableName TABLE_NAME = TableName.valueOf(TEST_TABLE);
+    @BeforeClass(alwaysRun = true)
+    public void beforeClass() throws Exception {
+        Thread.currentThread().setName("UnitTest(s) thread");
+    }
 
 
-    private org.apache.commons.configuration.Configuration clientConf = new BaseConfiguration();
-    protected TSOClient client;
-
-    private TSOServer tso;
-
-    private CommitTable commitTable;
-
-
-    private void setupTSO() throws Exception {
-        Injector injector = Guice.createInjector(new TSOMockModule(TSOServerCommandLineConfig.configFactory(1234, 1000)));
+    @BeforeGroups(groups = "sharedHBase")
+    public void beforeGroups(ITestContext context) throws Exception {
+        // TSO Setup
+        Injector
+            injector =
+            Guice.createInjector(new TSOMockModule(TSOServerCommandLineConfig.configFactory(1234, 1000)));
         LOG.info("Starting TSO");
-        tso = injector.getInstance(TSOServer.class);
+        TSOServer tso = injector.getInstance(TSOServer.class);
         tso.startAndWait();
         TestUtils.waitForSocketListening("localhost", 1234, 100);
         LOG.info("Finished loading TSO");
+        context.setAttribute("tso", tso);
 
-        Thread.currentThread().setName("JUnit Thread");
-
+        org.apache.commons.configuration.Configuration clientConf = new BaseConfiguration();
         clientConf.setProperty("tso.host", "localhost");
         clientConf.setProperty("tso.port", 1234);
-        clientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, 0);;
+        clientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, 0);
+        context.setAttribute("clientConf", clientConf);
 
-        commitTable = injector.getInstance(CommitTable.class);
+        CommitTable commitTable = injector.getInstance(CommitTable.class);
+        context.setAttribute("commitTable", commitTable);
 
         // Create the associated Handler
-        client = TSOClient.newBuilder().withConfiguration(clientConf)
-            .build();
-    }
+        TSOClient client = TSOClient.newBuilder().withConfiguration(clientConf).build();
+        context.setAttribute("client", client);
 
-    private void teardownTSO() throws Exception {
-
-        client.close().get();
-
-        tso.stopAndWait();
-
-        tso = null;
-
-        TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
-
-    }
-
-    public TSOClient getClient() {
-        return client;
-    }
-
-    org.apache.commons.configuration.Configuration getClientConfiguration() {
-        return clientConf;
-    }
-
-    CommitTable getCommitTable() {
-        return commitTable;
-    }
-
-    @BeforeClass
-    public void beforeClass() throws Exception {
-        LOG.info("Setting up OmidTestBase...");
-
-        // TSO Setup
-        setupTSO();
-
+        // ------------------------------------------------------------------------------------------------------------
         // HBase setup
+        // ------------------------------------------------------------------------------------------------------------
+        LOG.info("Creating HBase minicluster");
         hbaseConf = HBaseConfiguration.create();
         hbaseConf.setInt("hbase.hregion.memstore.flush.size", 10_000 * 1024);
         hbaseConf.setInt("hbase.regionserver.nbreservationblocks", 1);
@@ -124,24 +100,11 @@ public abstract class OmidTestBase {
         tempFile.deleteOnExit();
         hbaseConf.set("hbase.rootdir", tempFile.getAbsolutePath());
 
-        LOG.info("Create hbase");
-
-        // ------------------------------------------------------------------------------------------------------------
-        // HBase setup
-        // ------------------------------------------------------------------------------------------------------------
-        LOG.info("Creating HBase minicluster");
         testutil = new HBaseTestingUtility(hbaseConf);
         hbasecluster = testutil.startMiniCluster(1);
 
-        createTables();
-
-        LOG.info("Setup done");
-    }
-
-    private static void createTables() throws IOException {
         HBaseAdmin admin = testutil.getHBaseAdmin();
-
-        HTableDescriptor desc = new HTableDescriptor(TABLE_NAME);
+        HTableDescriptor desc = new HTableDescriptor(TableName.valueOf(TEST_TABLE));
         HColumnDescriptor datafam = new HColumnDescriptor(TEST_FAMILY);
         HColumnDescriptor datafam2 = new HColumnDescriptor(TEST_FAMILY2);
         datafam.setMaxVersions(Integer.MAX_VALUE);
@@ -152,45 +115,66 @@ public abstract class OmidTestBase {
         admin.createTable(desc);
 
         CreateTable.createTable(hbaseConf, CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME, 1);
+
+        LOG.info("HBase minicluster is up");
     }
 
-    protected TransactionManager newTransactionManager() throws Exception {
-        return newTransactionManager(getClient());
+
+    private TSOServer getTSO(ITestContext context) {
+        return (TSOServer) context.getAttribute("tso");
     }
 
-    protected TransactionManager newTransactionManager(TSOClient tsoClient) throws Exception {
+
+    TSOClient getClient(ITestContext context) {
+        return (TSOClient) context.getAttribute("client");
+    }
+
+    org.apache.commons.configuration.Configuration getClientConfiguration(ITestContext context) {
+        return (org.apache.commons.configuration.Configuration) context.getAttribute("clientConf");
+    }
+
+    CommitTable getCommitTable(ITestContext context) {
+        return (CommitTable) context.getAttribute("commitTable");
+    }
+
+    protected TransactionManager newTransactionManager(ITestContext context) throws Exception {
+        return newTransactionManager(context, getClient(context));
+    }
+
+    protected TransactionManager newTransactionManager(ITestContext context, TSOClient tsoClient) throws Exception {
         return HBaseTransactionManager.newBuilder()
             .withConfiguration(hbaseConf)
-            .withCommitTableClient(getCommitTable().getClient().get())
+            .withCommitTableClient(getCommitTable(context).getClient().get())
             .withTSOClient(tsoClient).build();
     }
 
-    protected TransactionManager newTransactionManager(CommitTable.Client commitTableClient) throws Exception {
+    protected TransactionManager newTransactionManager(ITestContext context, CommitTable.Client commitTableClient)
+        throws Exception {
         return HBaseTransactionManager.newBuilder()
             .withConfiguration(hbaseConf)
             .withCommitTableClient(commitTableClient)
-            .withTSOClient(getClient()).build();
+            .withTSOClient(getClient(context)).build();
     }
 
-    @AfterClass
-    public void afterClass() throws Exception {
+    @AfterGroups(groups = "sharedHBase")
+    public void afterGroups(ITestContext context) throws Exception {
         LOG.info("Tearing down OmidTestBase...");
         if (hbasecluster != null) {
             testutil.shutdownMiniCluster();
         }
 
-        teardownTSO();
+        getClient(context).close().get();
+        getTSO(context).stopAndWait();
+        TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
     }
 
-
-    @AfterMethod
+    @AfterMethod(alwaysRun = true)
     public void afterMethod() {
         try {
             LOG.info("tearing Down");
             HBaseAdmin admin = testutil.getHBaseAdmin();
             truncateTable(admin, TableName.valueOf(TEST_TABLE));
             truncateTable(admin, TableName.valueOf(CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME));
-
         } catch (Exception e) {
             LOG.error("Error tearing down", e);
         }

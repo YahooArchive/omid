@@ -2,6 +2,8 @@ package com.yahoo.omid.transaction;
 
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertTrue;
+
+import org.testng.ITestContext;
 import org.testng.annotations.Test;
 import org.testng.Assert;
 import org.apache.hadoop.hbase.client.Get;
@@ -22,6 +24,7 @@ import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;
 
+@Test(groups = "sharedHBase")
 public class TestUpdateScan extends OmidTestBase {
     private static final Logger LOG = LoggerFactory.getLogger(TestUpdateScan.class);
 
@@ -29,9 +32,9 @@ public class TestUpdateScan extends OmidTestBase {
     private static final String TEST_COL_2 = "col_2";
 
     @Test
-    public void testGet() throws Exception {
+    public void testGet(ITestContext context) throws Exception {
         try{
-            TransactionManager tm = newTransactionManager();
+            TransactionManager tm = newTransactionManager(context);
             TTable table = new TTable(hbaseConf, TEST_TABLE);
             Transaction t=tm.begin();
             int[] lInts=new int[]{100,243,2342,22,1,5,43,56};
@@ -92,10 +95,10 @@ public class TestUpdateScan extends OmidTestBase {
     }
 
     @Test
-    public void testScan() throws Exception {
+    public void testScan(ITestContext context) throws Exception {
 
         try (TTable table = new TTable(hbaseConf, TEST_TABLE)) {
-            TransactionManager tm = newTransactionManager();
+            TransactionManager tm = newTransactionManager(context);
             Transaction t = tm.begin();
             int[] lInts = new int[] { 100, 243, 2342, 22, 1, 5, 43, 56 };
             for (int i = 0; i < lInts.length; i++) {
@@ -145,9 +148,9 @@ public class TestUpdateScan extends OmidTestBase {
    
 
     @Test 
-    public void testScanUncommitted() throws Exception {
+    public void testScanUncommitted(ITestContext context) throws Exception {
         try{
-            TransactionManager tm = newTransactionManager();
+            TransactionManager tm = newTransactionManager(context);
             TTable table = new TTable(hbaseConf, TEST_TABLE);
             Transaction t=tm.begin();
             int[] lIntsA=new int[]{100,243,2342,22,1,5,43,56};

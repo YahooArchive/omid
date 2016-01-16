@@ -15,6 +15,7 @@ import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.ValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.testng.ITestContext;
 import org.testng.annotations.Test;
 
 import static org.mockito.Matchers.any;
@@ -26,6 +27,7 @@ import static org.testng.AssertJUnit.assertNull;
 /**
  * Tests to verify that Get and Scan filters still work with transactions tables
  */
+@Test(groups = "sharedHBase")
 public class TestFilters extends OmidTestBase {
 
     byte[] family = Bytes.toBytes(TEST_FAMILY);
@@ -37,19 +39,19 @@ public class TestFilters extends OmidTestBase {
     private byte[] col2 = Bytes.toBytes("boofar");
 
     @Test(timeOut = 60000)
-    public void testGetWithColumnPrefixFilter() throws Exception {
-        testGet(new ColumnPrefixFilter(prefix));
+    public void testGetWithColumnPrefixFilter(ITestContext context) throws Exception {
+        testGet(context, new ColumnPrefixFilter(prefix));
     }
 
     @Test(timeOut = 60000)
-    public void testGetWithValueFilter() throws Exception {
-        testGet(new ValueFilter(CompareFilter.CompareOp.EQUAL, new BinaryComparator(col1)));
+    public void testGetWithValueFilter(ITestContext context) throws Exception {
+        testGet(context, new ValueFilter(CompareFilter.CompareOp.EQUAL, new BinaryComparator(col1)));
     }
 
-    private void testGet(Filter f) throws Exception {
-        CommitTable.Client commitTableClient = spy(getCommitTable().getClient().get());
+    private void testGet(ITestContext context, Filter f) throws Exception {
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
 
-        TSOClient client = TSOClient.newBuilder().withConfiguration(getClientConfiguration())
+        TSOClient client = TSOClient.newBuilder().withConfiguration(getClientConfiguration(context))
             .build();
 
         TTable table = new TTable(hbaseConf, TEST_TABLE);
@@ -81,18 +83,18 @@ public class TestFilters extends OmidTestBase {
     }
 
     @Test(timeOut = 60000)
-    public void testScanWithColumnPrefixFilter() throws Exception {
-        testScan(new ColumnPrefixFilter(prefix));
+    public void testScanWithColumnPrefixFilter(ITestContext context) throws Exception {
+        testScan(context, new ColumnPrefixFilter(prefix));
     }
 
     @Test(timeOut = 60000)
-    public void testScanWithValueFilter() throws Exception {
-        testScan(new ValueFilter(CompareFilter.CompareOp.EQUAL, new BinaryComparator(col1)));
+    public void testScanWithValueFilter(ITestContext context) throws Exception {
+        testScan(context, new ValueFilter(CompareFilter.CompareOp.EQUAL, new BinaryComparator(col1)));
     }
 
-    private void testScan(Filter f) throws Exception {
-        CommitTable.Client commitTableClient = spy(getCommitTable().getClient().get());
-        TSOClient client = TSOClient.newBuilder().withConfiguration(getClientConfiguration())
+    private void testScan(ITestContext context, Filter f) throws Exception {
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
+        TSOClient client = TSOClient.newBuilder().withConfiguration(getClientConfiguration(context))
             .build();
         TTable table = new TTable(hbaseConf, TEST_TABLE);
         AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.newBuilder()

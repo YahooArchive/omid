@@ -1,6 +1,8 @@
 package com.yahoo.omid.transaction;
 
 import static org.testng.AssertJUnit.assertTrue;
+
+import org.testng.ITestContext;
 import org.testng.annotations.Test;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -11,17 +13,18 @@ import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;
 
+@Test(groups = "sharedHBase")
 public class TestMultiplePut extends OmidTestBase {
     private static final Logger LOG = LoggerFactory.getLogger(TestMultiplePut.class);
 
     
     @Test 
-    public void testMultiPutSameRow() throws Exception {
+    public void testMultiPutSameRow(ITestContext context) throws Exception {
         try{
             byte[] family = Bytes.toBytes(TEST_FAMILY);
             byte[] col1 = Bytes.toBytes("value1");
             byte[] col2 = Bytes.toBytes("value2");
-            TransactionManager tm = newTransactionManager();
+            TransactionManager tm = newTransactionManager(context);
             TTable table1 = new TTable(hbaseConf, TEST_TABLE);
             Transaction t=tm.begin();
             int val=1000;
@@ -46,12 +49,12 @@ public class TestMultiplePut extends OmidTestBase {
     }
 
     @Test 
-    public void testManyManyPut() throws Exception {
+    public void testManyManyPut(ITestContext context) throws Exception {
         try{
             byte[] family = Bytes.toBytes(TEST_FAMILY);
             byte[] col = Bytes.toBytes("value");
 
-            TransactionManager tm = newTransactionManager();
+            TransactionManager tm = newTransactionManager(context);
             TTable table1 = new TTable(hbaseConf, TEST_TABLE);
             Transaction t=tm.begin();
             int num=50;

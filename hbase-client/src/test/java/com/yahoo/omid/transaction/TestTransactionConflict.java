@@ -1,9 +1,5 @@
 package com.yahoo.omid.transaction;
 
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
-import org.testng.annotations.Test;
-import org.testng.Assert;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
@@ -17,19 +13,22 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.Assert;
+import org.testng.ITestContext;
+import org.testng.annotations.Test;
 
-import com.yahoo.omid.transaction.RollbackException;
-import com.yahoo.omid.transaction.TTable;
-import com.yahoo.omid.transaction.Transaction;
-import com.yahoo.omid.transaction.TransactionManager;
+import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertTrue;
 
+@Test(groups = "sharedHBase")
 public class TestTransactionConflict extends OmidTestBase {
+
     private static final Logger LOG = LoggerFactory.getLogger(TestTransactionConflict.class);
 
 
     @Test
-    public void runTestWriteWriteConflict() throws Exception {
-        TransactionManager tm = newTransactionManager();
+    public void runTestWriteWriteConflict(ITestContext context) throws Exception {
+        TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
         Transaction t1 = tm.begin();
@@ -62,8 +61,8 @@ public class TestTransactionConflict extends OmidTestBase {
     }
 
     @Test
-    public void runTestMultiTableConflict() throws Exception {
-        TransactionManager tm = newTransactionManager();
+    public void runTestMultiTableConflict(ITestContext context) throws Exception {
+        TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
         String table2 = TEST_TABLE + 2;
         TableName table2Name = TableName.valueOf(table2);
@@ -133,8 +132,8 @@ public class TestTransactionConflict extends OmidTestBase {
     }
 
     @Test
-    public void runTestCleanupAfterConflict() throws Exception {
-        TransactionManager tm = newTransactionManager();
+    public void runTestCleanupAfterConflict(ITestContext context) throws Exception {
+        TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
         Transaction t1 = tm.begin();
@@ -189,9 +188,9 @@ public class TestTransactionConflict extends OmidTestBase {
     }
 
     @Test
-    public void testCleanupWithDeleteRow() throws Exception {
+    public void testCleanupWithDeleteRow(ITestContext context) throws Exception {
         try {
-            TransactionManager tm = newTransactionManager();
+            TransactionManager tm = newTransactionManager(context);
             TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
             Transaction t1 = tm.begin();
@@ -264,8 +263,8 @@ public class TestTransactionConflict extends OmidTestBase {
     }
 
     @Test
-    public void testMultipleCellChangesOnSameRow() throws Exception {
-        TransactionManager tm = newTransactionManager();
+    public void testMultipleCellChangesOnSameRow(ITestContext context) throws Exception {
+        TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
         Transaction t1 = tm.begin();
