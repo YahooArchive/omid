@@ -296,7 +296,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
 
         final long CURRENT_EPOCH_FAKE = 1000L;
 
-        CommitTable.Client commitTableClient = spy(tso.getCommitTable().getClient().get());
+        CommitTable.Client commitTableClient = spy(getCommitTable().getClient().get());
         AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(commitTableClient));
         // The following lines allow to reach step 4)
         // in AbstractTransactionManager.locateCellCommitTimestamp()
@@ -333,7 +333,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
     @Test(timeOut = 30000)
     public void testCellCommitTimestampIsLocatedInCommitTableAfterNotBeingInvalidated() throws Exception {
 
-        CommitTable.Client commitTableClient = spy(tso.getCommitTable().getClient().get());
+        CommitTable.Client commitTableClient = spy(getCommitTable().getClient().get());
         AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(commitTableClient));
         // The following line emulates a crash after commit that is observed in (*) below
         doThrow(new RuntimeException()).when(tm).updateShadowCells(any(HBaseTransaction.class));
@@ -377,7 +377,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
     @Test(timeOut = 30000)
     public void testCellCommitTimestampIsLocatedInShadowCellsAfterNotBeingInvalidated() throws Exception {
 
-        CommitTable.Client commitTableClient = spy(tso.getCommitTable().getClient().get());
+        CommitTable.Client commitTableClient = spy(getCommitTable().getClient().get());
         AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(commitTableClient));
         // The next two lines avoid steps 2), 3) and 5) and go directly to step 6)
         // in AbstractTransactionManager.locateCellCommitTimestamp()
@@ -417,7 +417,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
 
         final long CELL_TS = 1L;
 
-        CommitTable.Client commitTableClient = spy(tso.getCommitTable().getClient().get());
+        CommitTable.Client commitTableClient = spy(getCommitTable().getClient().get());
         AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(commitTableClient));
         // The following lines allow to reach the last return statement
         SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>> create();

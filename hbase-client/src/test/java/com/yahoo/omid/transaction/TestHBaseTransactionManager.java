@@ -17,7 +17,7 @@ public class TestHBaseTransactionManager extends OmidTestBase {
     @Test
     public void testTxManagerGetsTimestampsInTheRightEpoch() throws Exception {
 
-        TSOClient tsoClient = spy(tso.getClient());
+        TSOClient tsoClient = spy(getClient());
 
         // Modify the epoch before testing the begin method
         doReturn(FAKE_EPOCH).when(tsoClient).getEpoch();

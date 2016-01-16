@@ -47,9 +47,9 @@ public class TestFilters extends OmidTestBase {
     }
 
     private void testGet(Filter f) throws Exception {
-        CommitTable.Client commitTableClient = spy(getTSO().getCommitTable().getClient().get());
+        CommitTable.Client commitTableClient = spy(getCommitTable().getClient().get());
 
-        TSOClient client = TSOClient.newBuilder().withConfiguration(getTSO().getClientConfiguration())
+        TSOClient client = TSOClient.newBuilder().withConfiguration(getClientConfiguration())
             .build();
 
         TTable table = new TTable(hbaseConf, TEST_TABLE);
@@ -91,8 +91,8 @@ public class TestFilters extends OmidTestBase {
     }
 
     private void testScan(Filter f) throws Exception {
-        CommitTable.Client commitTableClient = spy(getTSO().getCommitTable().getClient().get());
-        TSOClient client = TSOClient.newBuilder().withConfiguration(getTSO().getClientConfiguration())
+        CommitTable.Client commitTableClient = spy(getCommitTable().getClient().get());
+        TSOClient client = TSOClient.newBuilder().withConfiguration(getClientConfiguration())
             .build();
         TTable table = new TTable(hbaseConf, TEST_TABLE);
         AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.newBuilder()
