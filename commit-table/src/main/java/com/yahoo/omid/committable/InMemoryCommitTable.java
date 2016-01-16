@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class InMemoryCommitTable implements CommitTable {
+
     final ConcurrentHashMap<Long, Long> table = new ConcurrentHashMap<Long, Long>();
 
     long lowWatermark;
@@ -120,4 +121,9 @@ public class InMemoryCommitTable implements CommitTable {
         @Override
         public void close() {}
     }
+
+    public int countElements() {
+        return table.size();
+    }
+
 }
