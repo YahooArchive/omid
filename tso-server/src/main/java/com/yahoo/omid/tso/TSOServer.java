@@ -7,7 +7,7 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.Provides;
-import com.yahoo.omid.committable.hbase.HBaseLogin;
+import com.yahoo.omid.tools.hbase.HBaseLogin;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig.CommitTableStore;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig.TimestampStore;
 

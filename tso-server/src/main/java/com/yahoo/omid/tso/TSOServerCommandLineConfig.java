@@ -4,7 +4,7 @@ import com.beust.jcommander.IVariableArity;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
-import com.yahoo.omid.committable.hbase.HBaseLogin;
+import com.yahoo.omid.tools.hbase.HBaseLogin;
 import com.yahoo.omid.metrics.MetricsProvider;
 import com.yahoo.omid.tsoclient.TSOClient;
 

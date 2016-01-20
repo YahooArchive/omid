@@ -24,7 +24,7 @@ import com.google.common.net.HostAndPort;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.benchmarks.utils.GeneratorUtils;
 import com.yahoo.omid.benchmarks.utils.GeneratorUtils.RowDistribution;
-import com.yahoo.omid.committable.hbase.HBaseLogin;
+import com.yahoo.omid.tools.hbase.HBaseLogin;
 import com.yahoo.omid.metrics.CodahaleMetricsConfig;
 import com.yahoo.omid.metrics.CodahaleMetricsConfig.Reporter;
 import com.yahoo.omid.metrics.CodahaleMetricsProvider;

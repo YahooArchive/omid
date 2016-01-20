@@ -1,4 +1,4 @@
-package com.yahoo.omid.committable.hbase;
+package com.yahoo.omid.tools.hbase;
 
 import com.beust.jcommander.Parameter;
 

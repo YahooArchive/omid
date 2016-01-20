@@ -5,12 +5,10 @@ import com.google.inject.Injector;
 import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.hbase.CommitTableConstants;
-import com.yahoo.omid.committable.hbase.CreateTable;
-import com.yahoo.omid.timestamp.storage.TimestampStorage;
+import com.yahoo.omid.tools.hbase.OmidTableManager;
 import com.yahoo.omid.tso.TSOMockModule;
 import com.yahoo.omid.tso.TSOServer;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig;
-import com.yahoo.omid.tso.TimestampOracleImpl;
 import com.yahoo.omid.tsoclient.TSOClient;
 
 import org.apache.commons.configuration.BaseConfiguration;
@@ -40,6 +38,7 @@ import org.testng.annotations.BeforeGroups;
 import java.io.File;
 import java.io.IOException;
 
+import static com.yahoo.omid.tools.hbase.OmidTableManager.COMMIT_TABLE_COMMAND_NAME;
 import static com.yahoo.omid.tsoclient.TSOClient.ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY;
 import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
 
@@ -114,7 +113,10 @@ public abstract class OmidTestBase {
 
         admin.createTable(desc);
 
-        CreateTable.createTable(hbaseConf, CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME, 1);
+        // Create commit table
+        String[] args = new String[] {COMMIT_TABLE_COMMAND_NAME, "-numRegions", "1"};
+        OmidTableManager omidTableManager = new OmidTableManager(args);
+        omidTableManager.executeActionsOnHBase(hbaseConf);
 
         LOG.info("HBase minicluster is up");
     }

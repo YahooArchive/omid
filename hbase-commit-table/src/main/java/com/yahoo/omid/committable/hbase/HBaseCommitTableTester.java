@@ -15,6 +15,7 @@ import com.yahoo.omid.committable.hbase.KeyGeneratorImplementations.BadRandomKey
 import com.yahoo.omid.committable.hbase.KeyGeneratorImplementations.BucketKeyGenerator;
 import com.yahoo.omid.committable.hbase.KeyGeneratorImplementations.FullRandomKeyGenerator;
 import com.yahoo.omid.committable.hbase.KeyGeneratorImplementations.SeqKeyGenerator;
+import com.yahoo.omid.tools.hbase.HBaseLogin;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 

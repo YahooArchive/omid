@@ -64,13 +64,15 @@ tsobench() {
 }
 
 createHBaseCommitTable() {
-    exec java -server -cp $KLASSPATH com.yahoo.omid.committable.hbase.CreateTable -tableName $(HBASE_COMMIT_TABLE) \
+    exec java -server -cp $KLASSPATH com.yahoo.omid.tools.hbase.OmidTableManager commit-table \
+       -tableName $(HBASE_COMMIT_TABLE) \
        -hbaseClientPrincipal $(HBASE_CLIENT_PRINCIPAL) -hbaseClientKeytab $(HBASE_CLIENT_KEYTAB) $@
 }
 
 createHBaseTimestampTable() {
-    exec java -server -cp $KLASSPATH com.yahoo.omid.tso.hbase.CreateTable -tableName $(HBASE_TIMESTAMP_TABLE) \
-      -hbaseClientPrincipal $(HBASE_CLIENT_PRINCIPAL) -hbaseClientKeytab $(HBASE_CLIENT_KEYTAB)
+    exec java -server -cp $KLASSPATH com.yahoo.omid.tools.hbase.OmidTableManager timestamp-table \
+       -tableName $(HBASE_TIMESTAMP_TABLE) \
+       -hbaseClientPrincipal $(HBASE_CLIENT_PRINCIPAL) -hbaseClientKeytab $(HBASE_CLIENT_KEYTAB) $@
 }
 
 usage() {

@@ -29,7 +29,7 @@ import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.NullCommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
-import com.yahoo.omid.committable.hbase.HBaseLogin;
+import com.yahoo.omid.tools.hbase.HBaseLogin;
 import com.yahoo.omid.metrics.Counter;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.metrics.Timer;

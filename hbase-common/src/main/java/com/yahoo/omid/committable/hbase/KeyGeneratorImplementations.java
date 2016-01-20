@@ -10,7 +10,7 @@ import java.io.IOException;
  */
 public class KeyGeneratorImplementations {
 
-    static KeyGenerator defaultKeyGenerator() {
+    public static KeyGenerator defaultKeyGenerator() {
         return new BucketKeyGenerator();
     }
 

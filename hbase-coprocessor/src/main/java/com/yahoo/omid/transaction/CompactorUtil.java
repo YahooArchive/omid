@@ -9,7 +9,7 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
-import com.yahoo.omid.committable.hbase.HBaseLogin;
+import com.yahoo.omid.tools.hbase.HBaseLogin;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;

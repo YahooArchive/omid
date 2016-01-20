@@ -31,11 +31,11 @@ tsoRelauncher() {
 }
 
 createHBaseCommitTable() {
-    exec java -cp $CLASSPATH com.yahoo.omid.committable.hbase.CreateTable $@
+    exec java -cp $CLASSPATH com.yahoo.omid.tools.hbase.OmidTableManager commit-table $@
 }
 
 createHBaseTimestampTable() {
-    exec java -cp $CLASSPATH com.yahoo.omid.tso.hbase.CreateTable $@
+    exec java -cp $CLASSPATH com.yahoo.omid.tools.hbase.OmidTableManager timestamp-table $@
 }
 
 usage() {
