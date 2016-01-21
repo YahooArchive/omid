@@ -14,22 +14,24 @@ import com.yahoo.omid.tsoclient.TSOClient;
 @Test(groups = "sharedHBase")
 public class TestHBaseTransactionManager extends OmidTestBase {
 
-    private static final long FAKE_EPOCH = 3L;
+    private static final int FAKE_EPOCH_INCREMENT = 100;
 
-    @Test
+    @Test(timeOut = 20_000)
     public void testTxManagerGetsTimestampsInTheRightEpoch(ITestContext context) throws Exception {
 
         TSOClient tsoClient = spy(getClient(context));
 
+        long fakeEpoch = tsoClient.getNewStartTimestamp().get() + FAKE_EPOCH_INCREMENT;
+
         // Modify the epoch before testing the begin method
-        doReturn(FAKE_EPOCH).when(tsoClient).getEpoch();
+        doReturn(fakeEpoch).when(tsoClient).getEpoch();
 
         AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context, tsoClient));
 
-        // Create a transaction with the initial setup and check that
+        // Create a transaction with the initial setup and check that the TX id matches the fake epoch created
         Transaction tx1 = tm.begin();
-        assertEquals(3, tx1.getTransactionId());
-        verify(tsoClient, timeout(100).times(3)).getEpoch();
+        assertEquals(fakeEpoch, tx1.getTransactionId());
+        verify(tsoClient, timeout(100).times(FAKE_EPOCH_INCREMENT)).getEpoch();
 
     }
 

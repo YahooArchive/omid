@@ -230,8 +230,6 @@ public class TestHBaseTransactionClient extends OmidTestBase {
     @Test(timeOut = 30000)
     public void testCellCommitTimestampIsLocatedInCommitTable(ITestContext context) throws Exception {
 
-        final long EXPECTED_TX_CT = 2L;
-
         AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context));
         // The following line emulates a crash after commit that is observed in (*) below
         doThrow(new RuntimeException()).when(tm).updateShadowCells(any(HBaseTransaction.class));
@@ -257,7 +255,8 @@ public class TestHBaseTransactionClient extends OmidTestBase {
             CommitTimestamp ct = tm.locateCellCommitTimestamp(tx1.getStartTimestamp(), tm.tsoClient.getEpoch(),
                     ctLocator);
             assertTrue(ct.isValid());
-            assertEquals(EXPECTED_TX_CT, ct.getValue());
+            long expectedCommitTS = tx1.getStartTimestamp() + 1;
+            assertEquals(expectedCommitTS, ct.getValue());
             assertTrue(ct.getLocation().compareTo(COMMIT_TABLE) == 0);
         }
 
