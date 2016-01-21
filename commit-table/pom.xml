@@ -10,7 +10,7 @@
 
   <artifactId>commit-table</artifactId>
   <packaging>jar</packaging>
-  <name>Omid Commit Table</name>
+  <name>Commit Table</name>
 
   <dependencies>
 

@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>hbase-common</artifactId>
-    <name>HBase common classes and utilities</name>
+    <name>HBase Common</name>
     <packaging>jar</packaging>
 
     <dependencies>

@@ -7,7 +7,7 @@
   </parent>
   
   <artifactId>benchmarks</artifactId>
-  <name>Omid Benchmarks</name>
+  <name>Benchmarks</name>
   
   <dependencies>
 

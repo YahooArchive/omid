@@ -10,7 +10,7 @@
 
   <artifactId>hbase-coprocessor</artifactId>
   <packaging>jar</packaging>
-  <name>Omid HBase Coprocessors</name>
+  <name>HBase Coprocessors</name>
 
   <dependencies>
 

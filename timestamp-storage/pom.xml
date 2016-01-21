@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>timestamp-storage</artifactId>
-    <name>timestamp-storage</name>
+    <name>Timestamp Storage</name>
     <packaging>jar</packaging>
 
     <dependencies>

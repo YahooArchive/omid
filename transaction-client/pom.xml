@@ -10,7 +10,7 @@
 
   <artifactId>transaction-client</artifactId>
   <packaging>jar</packaging>
-  <name>Omid Transaction Client</name>
+  <name>Transaction Client</name>
 
   <dependencies>
 

@@ -10,7 +10,7 @@
 
   <artifactId>hbase-commit-table</artifactId>
   <packaging>jar</packaging>
-  <name>Omid HBase Commit Table Implementation</name>
+  <name>HBase Commit Table</name>
 
   <dependencies>
 

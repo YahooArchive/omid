@@ -9,7 +9,7 @@
   </parent>
 
   <artifactId>common</artifactId>
-  <name>common</name>
+  <name>Common</name>
   <packaging>jar</packaging>
 
   <dependencies>

@@ -10,8 +10,8 @@
 
   <artifactId>tso-server</artifactId>
   <packaging>jar</packaging>
-  <name>Omid TSO Server</name>
-  <description>Omid Transaction Status Oracle server</description>
+  <name>TSO and TO Servers</name>
+  <description>Omid Transaction Status Oracle server and Timestamp Oracle</description>
   <build>
 
     <plugins>

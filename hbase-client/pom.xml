@@ -10,7 +10,7 @@
 
     <artifactId>hbase-client</artifactId>
     <packaging>jar</packaging>
-    <name>Omid HBase Client</name>
+    <name>HBase Client</name>
 
     <build>
 
