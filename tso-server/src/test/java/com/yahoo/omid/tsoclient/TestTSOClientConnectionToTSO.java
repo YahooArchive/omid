@@ -1,26 +1,16 @@
 package com.yahoo.omid.tsoclient;
 
-import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
-import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
-import static com.yahoo.omid.tsoclient.TSOClient.DEFAULT_ZK_CLUSTER;
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_ZK_CLUSTER_CONFKEY;
-
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertNotNull;
-import static org.testng.Assert.assertNull;
-import static org.testng.Assert.assertTrue;
-import static org.testng.Assert.fail;
-
-import java.util.concurrent.ExecutionException;
-
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.yahoo.omid.TestUtils;
+import com.yahoo.omid.tso.TSOMockModule;
+import com.yahoo.omid.tso.TSOServer;
+import com.yahoo.omid.tso.TSOServerCommandLineConfig;
+import com.yahoo.omid.tsoclient.TSOClient.ConnectionException;
+import com.yahoo.statemachine.StateMachine.FsmImpl;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
-import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.test.TestingServer;
 import org.apache.curator.utils.CloseableUtils;
 import org.apache.zookeeper.KeeperException.NoNodeException;
@@ -31,38 +21,47 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.yahoo.omid.TestUtils;
-import com.yahoo.omid.tso.TSOMockModule;
-import com.yahoo.omid.tso.TSOServer;
-import com.yahoo.omid.tso.TSOServerCommandLineConfig;
-import com.yahoo.omid.tsoclient.TSOClient.ConnectionException;
-import com.yahoo.statemachine.StateMachine.FsmImpl;
+import java.util.concurrent.ExecutionException;
+
+import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
+import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
+import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
+import static com.yahoo.omid.tsoclient.TSOClient.TSO_ZK_CLUSTER_CONFKEY;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
 
 public class TestTSOClientConnectionToTSO {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestTSOClientConnectionToTSO.class);
 
+    // Constants and variables for component connectivity
     private static final String TSO_HOST = "localhost";
-    private static final int TSO_PORT = 12345;
+    private int tsoPortForTest;
+    private int zkPortForTest;
+    private String zkClusterForTest;
 
     private Injector injector = null;
 
     private static TestingServer zkServer;
 
     private static CuratorFramework zkClient;
-
     private TSOServer tsoServer;
 
     @BeforeMethod
     public void beforeMethod() throws Exception {
 
-        LOG.info("Starting ZK Server");
-        zkServer = TestUtils.provideZookeeperServer();
+        tsoPortForTest = TestUtils.getFreeLocalPort();
+
+        zkPortForTest = TestUtils.getFreeLocalPort();
+        zkClusterForTest = TSO_HOST + ":" + zkPortForTest;
+        LOG.info("Starting ZK Server in port {}", zkPortForTest);
+        zkServer = TestUtils.provideTestingZKServer(zkPortForTest);
         LOG.info("ZK Server Started @ {}", zkServer.getConnectString());
 
-        zkClient = provideInitializedZookeeperClient();
+        zkClient = TestUtils.provideConnectedZKClient(zkClusterForTest);
 
         Stat stat;
         try {
@@ -86,7 +85,7 @@ public class TestTSOClientConnectionToTSO {
 
     }
 
-    @Test
+    @Test(timeOut = 30_000)
     public void testUnsuccessfulConnectionToTSO() throws Exception {
 
         Configuration clientConf = new BaseConfiguration();
@@ -101,19 +100,19 @@ public class TestTSOClientConnectionToTSO {
 
     }
 
-    @Test
+    @Test(timeOut = 30_000)
     public void testSuccessfulConnectionToTSOWithHostAndPort() throws Exception {
 
         Configuration clientConf = new BaseConfiguration();
-        clientConf.setProperty(TSO_HOST_CONFKEY, "localhost");
-        clientConf.setProperty(TSO_PORT_CONFKEY, TSO_PORT);
+        clientConf.setProperty(TSO_HOST_CONFKEY, TSO_HOST);
+        clientConf.setProperty(TSO_PORT_CONFKEY, tsoPortForTest);
 
         // Launch a TSO WITHOUT publishing the address in ZK...
-        injector = Guice.createInjector(new TSOMockModule(TSOServerCommandLineConfig.configFactory(TSO_PORT, 1000)));
+        injector = Guice.createInjector(new TSOMockModule(TSOServerCommandLineConfig.configFactory(tsoPortForTest, 1000)));
         LOG.info("Starting TSO");
         tsoServer = injector.getInstance(TSOServer.class);
         tsoServer.startAndWait();
-        TestUtils.waitForSocketListening(TSO_HOST, TSO_PORT, 100);
+        TestUtils.waitForSocketListening(TSO_HOST, tsoPortForTest, 100);
         LOG.info("Finished loading TSO");
 
         // When no ZK node for TSOServer is found we should get a connection
@@ -129,26 +128,27 @@ public class TestTSOClientConnectionToTSO {
         tsoClient.close().get();
         tsoServer.stopAndWait();
         tsoServer = null;
-        TestUtils.waitForSocketNotListening(TSO_HOST, TSO_PORT, 1000);
+        TestUtils.waitForSocketNotListening(TSO_HOST, tsoPortForTest, 1000);
         LOG.info("TSO Server Stopped");
 
     }
 
-    @Test
+    @Test(timeOut = 30_000)
     public void testSuccessfulConnectionToTSOThroughZK() throws Exception {
 
         Configuration clientConf = new BaseConfiguration();
-        clientConf.setProperty(TSO_ZK_CLUSTER_CONFKEY, DEFAULT_ZK_CLUSTER);
+        clientConf.setProperty(TSO_ZK_CLUSTER_CONFKEY, zkClusterForTest);
 
         // Launch a TSO publishing the address in ZK...
-        TSOServerCommandLineConfig config = TSOServerCommandLineConfig.configFactory(TSO_PORT, 1000);
+        TSOServerCommandLineConfig config = TSOServerCommandLineConfig.configFactory(tsoPortForTest, 1000);
         config.shouldHostAndPortBePublishedInZK = true;
         config.setLeasePeriodInMs(1000);
+        config.setZKCluster(zkClusterForTest);
         injector = Guice.createInjector(new TSOMockModule(config));
         LOG.info("Starting TSO");
         tsoServer = injector.getInstance(TSOServer.class);
         tsoServer.startAndWait();
-        TestUtils.waitForSocketListening(TSO_HOST, TSO_PORT, 100);
+        TestUtils.waitForSocketListening(TSO_HOST, tsoPortForTest, 100);
         LOG.info("Finished loading TSO");
 
         Thread.sleep(1500); // Allow the TSO to register
@@ -165,30 +165,31 @@ public class TestTSOClientConnectionToTSO {
         tsoClient.close().get();
         tsoServer.stopAndWait();
         tsoServer = null;
-        TestUtils.waitForSocketNotListening(TSO_HOST, TSO_PORT, 1000);
+        TestUtils.waitForSocketNotListening(TSO_HOST, tsoPortForTest, 1000);
         LOG.info("TSO Server Stopped");
 
     }
 
-    @Test
+    @Test(timeOut = 30_000)
     public void testSuccessOfTSOClientReconnectionsToARestartedTSOWithZKPublishing() throws Exception {
 
         // Start a TSO with ZK...
-        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.configFactory(TSO_PORT, 1000);
+        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.configFactory(tsoPortForTest, 1000);
         tsoConfig.shouldHostAndPortBePublishedInZK = true;
         tsoConfig.setLeasePeriodInMs(1000);
+        tsoConfig.setZKCluster(zkClusterForTest);
         injector = Guice.createInjector(new TSOMockModule(tsoConfig));
         LOG.info("Starting Initial TSO");
         tsoServer = injector.getInstance(TSOServer.class);
         tsoServer.startAndWait();
-        TestUtils.waitForSocketListening(TSO_HOST, TSO_PORT, 100);
+        TestUtils.waitForSocketListening(TSO_HOST, tsoPortForTest, 100);
         LOG.info("Finished loading TSO");
 
         Thread.sleep(1500); // Allow the TSO to register
 
         // Then create the TSO Client under test...
         Configuration clientConf = new BaseConfiguration();
-        clientConf.setProperty(TSO_ZK_CLUSTER_CONFKEY, DEFAULT_ZK_CLUSTER);
+        clientConf.setProperty(TSO_ZK_CLUSTER_CONFKEY, zkClusterForTest);
 
         TSOClient tsoClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
 
@@ -200,7 +201,7 @@ public class TestTSOClientConnectionToTSO {
         // Then stop the server...
         tsoServer.stopAndWait();
         tsoServer = null;
-        TestUtils.waitForSocketNotListening(TSO_HOST, TSO_PORT, 1000);
+        TestUtils.waitForSocketNotListening(TSO_HOST, tsoPortForTest, 1000);
         LOG.info("Initial TSO Server Stopped");
 
         // ... and check that we get a conn exception when trying to access the client
@@ -223,7 +224,7 @@ public class TestTSOClientConnectionToTSO {
         LOG.info("Re-Starting again the TSO");
         tsoServer = newInjector.getInstance(TSOServer.class);
         tsoServer.startAndWait();
-        TestUtils.waitForSocketListening(TSO_HOST, TSO_PORT, 100);
+        TestUtils.waitForSocketListening(TSO_HOST, tsoPortForTest, 100);
         LOG.info("Finished loading restarted TSO");
 
         // Finally re-check that, eventually, we can get a new value from the new TSO...
@@ -241,29 +242,8 @@ public class TestTSOClientConnectionToTSO {
         // ...and stop the server
         tsoServer.stopAndWait();
         tsoServer = null;
-        TestUtils.waitForSocketNotListening(TSO_HOST, TSO_PORT, 1000);
+        TestUtils.waitForSocketNotListening(TSO_HOST, tsoPortForTest, 1000);
         LOG.info("Restarted TSO Server Stopped");
     }
 
-    // **************************** Helpers ***********************************
-
-    private static String ZK_CLUSTER = DEFAULT_ZK_CLUSTER;
-
-    private static CuratorFramework provideInitializedZookeeperClient() throws Exception {
-
-        LOG.info("Creating Zookeeper Client connecting to {}", ZK_CLUSTER);
-
-        RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
-        CuratorFramework zkClient = CuratorFrameworkFactory.builder().namespace(OMID_NAMESPACE)
-                .connectString(ZK_CLUSTER).retryPolicy(retryPolicy).build();
-
-        LOG.info("Connecting to ZK cluster {}", zkClient.getState());
-        zkClient.start();
-        zkClient.blockUntilConnected();
-        LOG.info("Connection to ZK cluster {}", zkClient.getState());
-
-        return zkClient;
-    }
-
 }
-

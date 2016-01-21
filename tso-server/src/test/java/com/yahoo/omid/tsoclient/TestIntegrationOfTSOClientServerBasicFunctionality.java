@@ -12,7 +12,6 @@ import com.yahoo.omid.tso.TSOServerCommandLineConfig;
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
-import org.apache.curator.test.TestingServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -37,14 +36,11 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
     private static final Logger LOG = LoggerFactory.getLogger(TestIntegrationOfTSOClientServerBasicFunctionality.class);
 
     private static final String TSO_SERVER_HOST = "localhost";
-    private static final int TSO_SERVER_PORT = 1234;
+    private int tsoServerPortForTest;
 
     // Cells for tests
     final static public CellId c1 = new DummyCellIdImpl(0xdeadbeefL);
     final static public CellId c2 = new DummyCellIdImpl(0xfeedcafeL);
-
-    // The ZK server instance is only needed to avoid waiting for timeout connections from the tsoClient
-    private static TestingServer zkServer;
 
     // Required infrastructure for TSO tsoClient-server integration testing
     private TSOServer tsoServer;
@@ -55,7 +51,9 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
     @BeforeClass
     public void setup() throws Exception {
 
-        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.configFactory(TSO_SERVER_PORT, 1000);
+        tsoServerPortForTest = TestUtils.getFreeLocalPort();
+
+        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.configFactory(tsoServerPortForTest, 1000);
         Module tsoServerMockModule = new TSOMockModule(tsoConfig);
         Injector injector = Guice.createInjector(tsoServerMockModule);
 
@@ -68,7 +66,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
 
         tsoServer = injector.getInstance(TSOServer.class);
         tsoServer.startAndWait();
-        TestUtils.waitForSocketListening(TSO_SERVER_HOST, TSO_SERVER_PORT, 100);
+        TestUtils.waitForSocketListening(TSO_SERVER_HOST, tsoServerPortForTest, 100);
 
         LOG.info("==================================================================================================");
         LOG.info("===================================== TSO Server Initialized =====================================");
@@ -81,7 +79,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         Configuration clientConf = new BaseConfiguration();
         // Configure direct connection to the server
         clientConf.setProperty(TSO_HOST_CONFKEY, TSO_SERVER_HOST);
-        clientConf.setProperty(TSO_PORT_CONFKEY, TSO_SERVER_PORT);
+        clientConf.setProperty(TSO_PORT_CONFKEY, tsoServerPortForTest);
         clientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, 0); // Don't for ZK, it's not there
         tsoClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
         justAnotherTSOClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
@@ -101,7 +99,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
 
         tsoServer.stopAndWait();
         tsoServer = null;
-        TestUtils.waitForSocketNotListening(TSO_SERVER_HOST, TSO_SERVER_PORT, 1000);
+        TestUtils.waitForSocketNotListening(TSO_SERVER_HOST, tsoServerPortForTest, 1000);
 
     }
 
