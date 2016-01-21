@@ -1,16 +1,9 @@
 package com.yahoo.omid.tso;
 
-import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
-import static com.yahoo.omid.tsoclient.TSOClient.DEFAULT_ZK_CLUSTER;
-import static org.mockito.Mockito.*;
-import static org.testng.Assert.assertEquals;
-import static org.testng.AssertJUnit.assertFalse;
-import static org.testng.AssertJUnit.assertTrue;
-
-import org.apache.curator.RetryPolicy;
+import com.google.common.base.Charsets;
+import com.yahoo.omid.TestUtils;
+import com.yahoo.omid.tso.TSOStateManager.TSOState;
 import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.test.TestingServer;
 import org.apache.curator.utils.CloseableUtils;
 import org.mockito.ArgumentCaptor;
@@ -21,10 +14,20 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import com.google.common.base.Charsets;
-import com.yahoo.omid.tso.TSOStateManager.TSOState;
-
 import java.io.IOException;
+
+import static com.yahoo.omid.tsoclient.TSOClient.DEFAULT_ZK_CLUSTER;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.testng.Assert.assertEquals;
+import static org.testng.AssertJUnit.assertFalse;
+import static org.testng.AssertJUnit.assertTrue;
 
 public class TestLeaseManager {
 
@@ -42,7 +45,7 @@ public class TestLeaseManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestLeaseManager.class);
 
-    private static final long TEST_LEASE_PERIOD_IN_MS = 2 * 1000;
+    private static final long TEST_LEASE_PERIOD_IN_MS = 1000; // 1 second
 
     private CuratorFramework zkClient;
     private TestingServer zkServer;
@@ -57,10 +60,10 @@ public class TestLeaseManager {
     public void beforeClass() throws Exception {
 
         LOG.info("Starting ZK Server");
-        zkServer = provideZookeeperServer();
+        zkServer = TestUtils.provideTestingZKServer();
         LOG.info("ZK Server Started @ {}", zkServer.getConnectString());
 
-        zkClient = provideInitializedZookeeperClient();
+        zkClient = TestUtils.provideConnectedZKClient(DEFAULT_ZK_CLUSTER);
 
     }
 
@@ -327,7 +330,7 @@ public class TestLeaseManager {
 
         leaseManager.startService();
         // ...and let the test run for some time...
-        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 3);
+        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
 
         leaseManager.pausedInTryToRenewLeasePeriod();
 
@@ -335,10 +338,10 @@ public class TestLeaseManager {
         zkClient.setData().forPath(TEST_CURRENT_TSO_PATH, "CorruptedData!!!".getBytes());
 
         // ...and let the test run for some time...
-        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 3);
+        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
         leaseManager.resume();
         // ...and let the test run for some time...
-        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 3);
+        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
 
         ArgumentCaptor<IllegalArgumentException> trowableIAE = ArgumentCaptor.forClass(IllegalArgumentException.class);
         verify(panicker).panic(anyString(), trowableIAE.capture());
@@ -353,10 +356,10 @@ public class TestLeaseManager {
         leaseManager.pausedInTryToRenewLeasePeriod();
 
         // ...and let the test run for some time...
-        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 3);
+        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
         leaseManager.resume();
         // ...and let the test run for some time...
-        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 3);
+        Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
 
         ArgumentCaptor<LeaseManagement.LeaseManagementException> trowableLME =
                 ArgumentCaptor.forClass(LeaseManagement.LeaseManagementException.class);
@@ -392,34 +395,6 @@ public class TestLeaseManager {
         String instanceId = new String(expectedInstanceIdInBytes, Charsets.UTF_8);
 
         assertEquals(instanceId, expectedInstanceId);
-    }
-
-    // **************************** Helpers ***********************************
-
-    private static String ZK_CLUSTER = DEFAULT_ZK_CLUSTER;
-
-    private static CuratorFramework provideInitializedZookeeperClient() throws Exception {
-
-        LOG.info("Creating Zookeeper Client connecting to {}", ZK_CLUSTER);
-
-        RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
-        CuratorFramework zkClient = CuratorFrameworkFactory
-                .builder()
-                .namespace(OMID_NAMESPACE)
-                .connectString(ZK_CLUSTER)
-                .retryPolicy(retryPolicy).build();
-
-        LOG.info("Connecting to ZK cluster {}", zkClient.getState());
-        zkClient.start();
-        zkClient.blockUntilConnected();
-        LOG.info("Connection to ZK cluster {}", zkClient.getState());
-
-        return zkClient;
-    }
-
-    private static TestingServer provideZookeeperServer() throws Exception {
-        LOG.info("Creating ZK server instance...");
-        return new TestingServer(Integer.parseInt(ZK_CLUSTER.split(":")[1]));
     }
 
 }
