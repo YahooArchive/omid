@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
 
@@ -13,6 +14,8 @@
     <name>Metrics</name>
 
     <dependencies>
+
+        <!-- logging -->
 
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -29,13 +32,11 @@
             <artifactId>log4j</artifactId>
             <version>${log4j.version}</version>
         </dependency>
-        <dependency>
-            <groupId>com.beust</groupId>
-            <artifactId>jcommander</artifactId>
-            <version>${jcommander.version}</version>
-            <type>jar</type>
-            <scope>compile</scope>
-        </dependency>
+
+        <!-- end logging -->
+
+        <!-- utils -->
+
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
@@ -46,6 +47,15 @@
             <artifactId>guice</artifactId>
             <version>${guice.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.beust</groupId>
+            <artifactId>jcommander</artifactId>
+            <version>${jcommander.version}</version>
+            <type>jar</type>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- end utils -->
 
     </dependencies>
 
@@ -57,9 +67,11 @@
                 <groupId>com.mycila</groupId>
                 <artifactId>license-maven-plugin</artifactId>
                 <version>${license.maven-plugin.version}</version>
-                <inherited>true</inherited> <!-- for multi-module config -->
+                <inherited>true</inherited>
+                <!-- for multi-module config -->
                 <configuration>
-                    <aggregate>false</aggregate> <!-- for multi-module config -->
+                    <aggregate>false</aggregate>
+                    <!-- for multi-module config -->
                     <properties>
                         <owner>${license.owner}</owner>
                         <inceptionYear>${license.inceptionYear}</inceptionYear>

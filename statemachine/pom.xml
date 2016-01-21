@@ -1,72 +1,83 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
-  <modelVersion>4.0.0</modelVersion>
+    <modelVersion>4.0.0</modelVersion>
 
-  <parent>
-    <groupId>com.yahoo.omid</groupId>
-    <artifactId>omid</artifactId>
-    <version>2.4.20-SNAPSHOT</version>
-  </parent>
+    <parent>
+        <groupId>com.yahoo.omid</groupId>
+        <artifactId>omid</artifactId>
+        <version>2.4.20-SNAPSHOT</version>
+    </parent>
 
-  <name>State Machine</name>
-  <artifactId>statemachine</artifactId>
-  <packaging>jar</packaging>
+    <name>State Machine</name>
+    <artifactId>statemachine</artifactId>
+    <packaging>jar</packaging>
 
-  <dependencies>
+    <dependencies>
 
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>${slf4j.version}</version>
-    </dependency>
+        <!-- logging -->
 
-    <dependency>
-      <groupId>org.testng</groupId>
-      <artifactId>testng</artifactId>
-      <version>${testng.version}</version>
-      <scope>test</scope>
-    </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
 
-  </dependencies>
+        <!-- end logging -->
 
-  <build>
+        <!-- testing -->
 
-    <plugins>
-      <!-- License Management plugins -->
-      <plugin>
-        <groupId>com.mycila</groupId>
-        <artifactId>license-maven-plugin</artifactId>
-        <version>${license.maven-plugin.version}</version>
-        <inherited>true</inherited> <!-- for multi-module config -->
-        <configuration>
-          <aggregate>false</aggregate> <!-- for multi-module config -->
-          <properties>
-            <owner>${license.owner}</owner>
-            <inceptionYear>${license.inceptionYear}</inceptionYear>
-            <latestYearOfContribution>${license.currentYear}</latestYearOfContribution>
-          </properties>
-          <excludes>
-            <!-- Exclude pom -->
-            <exclude>**/pom.xml</exclude>
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+            <scope>test</scope>
+        </dependency>
 
-            <!-- Exclude config and scripts -->
-            <exclude>**/bin/*</exclude>
-            <exclude>**/conf/*</exclude>
+        <!-- end testing -->
 
-            <!-- Exclude assembly -->
-            <exclude>**/maven/assembly/*</exclude>
+    </dependencies>
 
-            <!-- Exclude tests -->
-            <exclude>**/src/test/**/*</exclude>
+    <build>
 
-            <!-- Project specific exclusions (e.g. they've been copied/modified from other open-source projects -->
+        <plugins>
+            <!-- License Management plugins -->
+            <plugin>
+                <groupId>com.mycila</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <version>${license.maven-plugin.version}</version>
+                <inherited>true</inherited>
+                <!-- for multi-module config -->
+                <configuration>
+                    <aggregate>false</aggregate>
+                    <!-- for multi-module config -->
+                    <properties>
+                        <owner>${license.owner}</owner>
+                        <inceptionYear>${license.inceptionYear}</inceptionYear>
+                        <latestYearOfContribution>${license.currentYear}</latestYearOfContribution>
+                    </properties>
+                    <excludes>
+                        <!-- Exclude pom -->
+                        <exclude>**/pom.xml</exclude>
 
-          </excludes>
-        </configuration>
-      </plugin>
+                        <!-- Exclude config and scripts -->
+                        <exclude>**/bin/*</exclude>
+                        <exclude>**/conf/*</exclude>
 
-    </plugins>
+                        <!-- Exclude assembly -->
+                        <exclude>**/maven/assembly/*</exclude>
 
-  </build>
+                        <!-- Exclude tests -->
+                        <exclude>**/src/test/**/*</exclude>
+
+                        <!-- Project specific exclusions (e.g. they've been copied/modified from other open-source projects -->
+
+                    </excludes>
+                </configuration>
+            </plugin>
+
+        </plugins>
+
+    </build>
 
 </project>

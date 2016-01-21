@@ -14,6 +14,8 @@
 
     <dependencies>
 
+        <!-- distributed comm -->
+
         <dependency>
             <groupId>org.apache.curator</groupId>
             <artifactId>curator-framework</artifactId>
@@ -25,11 +27,9 @@
             <version>${curator.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>com.google.inject</groupId>
-            <artifactId>guice</artifactId>
-            <version>${guice.version}</version>
-        </dependency>
+        <!-- end distributed comm -->
+
+        <!-- storage related -->
 
         <dependency>
             <groupId>org.apache.hbase</groupId>
@@ -37,18 +37,28 @@
             <version>${hbase.version}</version>
         </dependency>
 
+        <!-- end storage related -->
+
+        <!-- utils -->
+
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>${guava.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>com.google.inject</groupId>
+            <artifactId>guice</artifactId>
+            <version>${guice.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.beust</groupId>
             <artifactId>jcommander</artifactId>
             <version>${jcommander.version}</version>
             <type>jar</type>
         </dependency>
+
+        <!-- end utils -->
 
         <!-- Logging -->
         <dependency>
@@ -57,7 +67,10 @@
             <version>${slf4j.version}</version>
         </dependency>
 
+        <!-- end logging -->
+
         <!-- testing -->
+
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
@@ -82,6 +95,8 @@
             <version>${curator.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- end testing -->
 
     </dependencies>
 
@@ -125,4 +140,5 @@
         </plugins>
 
     </build>
+
 </project>

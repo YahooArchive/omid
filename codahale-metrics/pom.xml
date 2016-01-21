@@ -15,12 +15,16 @@
     <dependencies>
 
         <!-- Dependencies on Omid modules -->
+
         <dependency>
             <groupId>com.yahoo.omid</groupId>
             <artifactId>metrics</artifactId>
             <version>${project.version}</version>
         </dependency>
+
         <!-- End of Dependencies on Omid modules -->
+
+        <!-- core -->
 
         <dependency>
             <groupId>com.codahale.metrics</groupId>
@@ -32,6 +36,8 @@
             <artifactId>metrics-graphite</artifactId>
             <version>${metrics.version}</version>
         </dependency>
+
+        <!-- end core -->
 
     </dependencies>
 

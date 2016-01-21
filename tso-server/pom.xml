@@ -112,7 +112,7 @@
             <version>${hbase.version}</version>
         </dependency>
 
-        <!-- storage related -->
+        <!-- end storage related -->
 
         <!-- utils -->
 

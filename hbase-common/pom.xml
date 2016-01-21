@@ -24,11 +24,17 @@
 
         <!-- End of Dependencies on Omid modules -->
 
+        <!-- storage related -->
+
         <dependency>
             <groupId>org.apache.hbase</groupId>
             <artifactId>hbase-client</artifactId>
             <version>${hbase.version}</version>
         </dependency>
+
+        <!-- end storage related -->
+
+        <!-- utils -->
 
         <dependency>
             <groupId>com.beust</groupId>
@@ -37,7 +43,21 @@
             <type>jar</type>
         </dependency>
 
-        <!-- Testing -->
+        <!-- end utils -->
+
+
+        <!-- logging -->
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+
+        <!-- end logging -->
+
+        <!-- testing -->
+
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
@@ -51,12 +71,7 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Logging -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>${slf4j.version}</version>
-        </dependency>
+        <!-- end testing -->
 
     </dependencies>
 
@@ -103,4 +118,5 @@
         </plugins>
 
     </build>
+
 </project>

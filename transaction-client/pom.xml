@@ -1,189 +1,211 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
-  <modelVersion>4.0.0</modelVersion>
+    <modelVersion>4.0.0</modelVersion>
 
-  <parent>
-    <groupId>com.yahoo.omid</groupId>
-    <artifactId>omid</artifactId>
-    <version>2.4.20-SNAPSHOT</version>
-  </parent>
+    <parent>
+        <groupId>com.yahoo.omid</groupId>
+        <artifactId>omid</artifactId>
+        <version>2.4.20-SNAPSHOT</version>
+    </parent>
 
-  <artifactId>transaction-client</artifactId>
-  <packaging>jar</packaging>
-  <name>Transaction Client</name>
+    <artifactId>transaction-client</artifactId>
+    <packaging>jar</packaging>
+    <name>Transaction Client</name>
 
-  <dependencies>
+    <dependencies>
 
-    <!-- Dependencies on Omid modules -->
-    <dependency>
-      <groupId>com.yahoo.omid</groupId>
-      <artifactId>common</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.yahoo.omid</groupId>
-      <artifactId>statemachine</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.yahoo.omid</groupId>
-      <artifactId>commit-table</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.yahoo.omid</groupId>
-      <artifactId>commit-table</artifactId>
-      <version>${project.version}</version>
-      <scope>test</scope>
-      <classifier>tests</classifier>
-    </dependency>
-    <!-- End of Dependencies on Omid modules -->
+        <!-- Dependencies on Omid modules -->
 
-    <!-- distributed comm -->
-    <dependency>
-      <groupId>org.apache.curator</groupId>
-      <artifactId>curator-recipes</artifactId>
-      <version>${curator.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.jboss.netty</groupId>
-      <artifactId>netty</artifactId>
-      <version>${netty.version}</version>
-      <scope>compile</scope>
-    </dependency>
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>statemachine</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>commit-table</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>commit-table</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+            <classifier>tests</classifier>
+        </dependency>
 
-    <dependency>
-      <groupId>commons-configuration</groupId>
-      <artifactId>commons-configuration</artifactId>
-      <version>${commons.conf.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.codahale.metrics</groupId>
-      <artifactId>metrics-core</artifactId>
-      <version>${metrics.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>${guava.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-java</artifactId>
-      <version>${protobuf.version}</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>${slf4j.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.testng</groupId>
-      <artifactId>testng</artifactId>
-      <version>${testng.version}</version>
-      <scope>test</scope>
-    </dependency>
+        <!-- End of Dependencies on Omid modules -->
 
-  </dependencies>
+        <!-- distributed comm -->
 
-  <build>
+        <dependency>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-recipes</artifactId>
+            <version>${curator.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.netty</groupId>
+            <artifactId>netty</artifactId>
+            <version>${netty.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>${protobuf.version}</version>
+            <scope>compile</scope>
+        </dependency>
 
-    <plugins>
+        <!-- end distributed comm -->
 
-      <!-- License Management plugins -->
-      <plugin>
-        <groupId>com.mycila</groupId>
-        <artifactId>license-maven-plugin</artifactId>
-        <version>${license.maven-plugin.version}</version>
-        <inherited>true</inherited> <!-- for multi-module config -->
-        <configuration>
-          <aggregate>false</aggregate> <!-- for multi-module config -->
-          <properties>
-            <owner>${license.owner}</owner>
-            <inceptionYear>${license.inceptionYear}</inceptionYear>
-            <latestYearOfContribution>${license.currentYear}</latestYearOfContribution>
-          </properties>
-          <excludes>
-            <!-- Exclude pom -->
-            <exclude>**/pom.xml</exclude>
+        <!-- utils -->
 
-            <!-- Exclude config and scripts -->
-            <exclude>**/bin/*</exclude>
-            <exclude>**/conf/*</exclude>
+        <dependency>
+            <groupId>commons-configuration</groupId>
+            <artifactId>commons-configuration</artifactId>
+            <version>${commons.conf.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.codahale.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+            <version>${metrics.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
+        </dependency>
 
-            <!-- Exclude assembly -->
-            <exclude>**/maven/assembly/*</exclude>
+        <!-- end utils -->
 
-            <!-- Exclude tests -->
-            <exclude>**/src/test/**/*</exclude>
+        <!-- logging -->
 
-            <!-- Project specific exclusions (e.g. they've been copied/modified from other open-source projects -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
 
-            <!-- Protocol buffers generated classes -->
-            <exclude>**/src/main/java/com/yahoo/omid/proto/TSOProto.java</exclude>
+        <!-- end logging -->
 
-          </excludes>
-          <!-- Add comment style for protocol buffers -->
-          <mapping>
-            <proto>DOUBLESLASH_STYLE</proto>
-          </mapping>          
-        </configuration>
-      </plugin>
+        <!-- testing -->
 
-    </plugins>
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+            <scope>test</scope>
+        </dependency>
 
-  </build>
+        <!-- end testing -->
 
-  <profiles>
+    </dependencies>
 
-    <profile>
-      <id>protobuf</id>
-      <build>
+    <build>
+
         <plugins>
-          <plugin>
-            <artifactId>maven-antrun-plugin</artifactId>
-            <version>1.7</version>
-            <executions>
-              <execution>
-                <phase>generate-sources</phase>
-                <id>default-cli</id>
+
+            <!-- License Management plugins -->
+            <plugin>
+                <groupId>com.mycila</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <version>${license.maven-plugin.version}</version>
+                <inherited>true</inherited>
+                <!-- for multi-module config -->
                 <configuration>
-                  <target>
-                    <exec executable="protoc" failonerror="true">
-                      <arg value="--java_out=src/main/java" />
-                      <arg value="src/main/proto/TSOProto.proto" />
-                    </exec>
-                  </target>
+                    <aggregate>false</aggregate>
+                    <!-- for multi-module config -->
+                    <properties>
+                        <owner>${license.owner}</owner>
+                        <inceptionYear>${license.inceptionYear}</inceptionYear>
+                        <latestYearOfContribution>${license.currentYear}</latestYearOfContribution>
+                    </properties>
+                    <excludes>
+                        <!-- Exclude pom -->
+                        <exclude>**/pom.xml</exclude>
+
+                        <!-- Exclude config and scripts -->
+                        <exclude>**/bin/*</exclude>
+                        <exclude>**/conf/*</exclude>
+
+                        <!-- Exclude assembly -->
+                        <exclude>**/maven/assembly/*</exclude>
+
+                        <!-- Exclude tests -->
+                        <exclude>**/src/test/**/*</exclude>
+
+                        <!-- Project specific exclusions (e.g. they've been copied/modified from other open-source projects -->
+
+                        <!-- Protocol buffers generated classes -->
+                        <exclude>**/src/main/java/com/yahoo/omid/proto/TSOProto.java</exclude>
+
+                    </excludes>
+                    <!-- Add comment style for protocol buffers -->
+                    <mapping>
+                        <proto>DOUBLESLASH_STYLE</proto>
+                    </mapping>
                 </configuration>
-                <goals>
-                  <goal>run</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
+            </plugin>
 
-    <profile>
-      <id>clover</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>com.atlassian.maven.plugins</groupId>
-            <artifactId>maven-clover2-plugin</artifactId>
-            <version>${clover.version}</version>
-            <configuration>
-              <excludes>
-                <exclude>**/TSOProto.java</exclude>
-              </excludes>
-            </configuration>
-          </plugin>
         </plugins>
-      </build>
-    </profile>
 
-  </profiles>
+    </build>
+
+    <profiles>
+
+        <profile>
+            <id>protobuf</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>1.7</version>
+                        <executions>
+                            <execution>
+                                <phase>generate-sources</phase>
+                                <id>default-cli</id>
+                                <configuration>
+                                    <target>
+                                        <exec executable="protoc" failonerror="true">
+                                            <arg value="--java_out=src/main/java"/>
+                                            <arg value="src/main/proto/TSOProto.proto"/>
+                                        </exec>
+                                    </target>
+                                </configuration>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>clover</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.atlassian.maven.plugins</groupId>
+                        <artifactId>maven-clover2-plugin</artifactId>
+                        <version>${clover.version}</version>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/TSOProto.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+    </profiles>
 
 </project>

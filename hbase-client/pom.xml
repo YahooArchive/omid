@@ -12,6 +12,98 @@
     <packaging>jar</packaging>
     <name>HBase Client</name>
 
+    <dependencies>
+
+        <!-- Dependencies on Omid modules -->
+
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>transaction-client</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>hbase-commit-table</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>tso-server</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>tso-server</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>commit-table</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+            <classifier>tests</classifier>
+        </dependency>
+
+        <!-- End of Dependencies on Omid modules -->
+
+        <!-- storage related -->
+
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-client</artifactId>
+            <version>${hbase.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- end storage related -->
+
+        <!--logging-->
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+
+        <!-- testing -->
+
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-all</artifactId>
+            <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-testing-util</artifactId>
+            <version>${hbase.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-test</artifactId>
+            <version>${curator.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- end testing -->
+
+    </dependencies>
+
     <build>
 
         <plugins>
@@ -75,83 +167,5 @@
         </plugins>
 
     </build>
-
-    <dependencies>
-
-        <!-- Dependencies on Omid modules -->
-        <dependency>
-            <groupId>com.yahoo.omid</groupId>
-            <artifactId>transaction-client</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.yahoo.omid</groupId>
-            <artifactId>hbase-commit-table</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.yahoo.omid</groupId>
-            <artifactId>tso-server</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.yahoo.omid</groupId>
-            <artifactId>tso-server</artifactId>
-            <version>${project.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.yahoo.omid</groupId>
-            <artifactId>commit-table</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-            <classifier>tests</classifier>
-        </dependency>
-        <!-- End of Dependencies on Omid modules -->
-
-        <!--logging-->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>${slf4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-all</artifactId>
-            <version>${mockito.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hbase</groupId>
-            <artifactId>hbase-client</artifactId>
-            <version>${hbase.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-log4j12</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hbase</groupId>
-            <artifactId>hbase-testing-util</artifactId>
-            <version>${hbase.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testng</groupId>
-            <artifactId>testng</artifactId>
-            <version>${testng.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.curator</groupId>
-            <artifactId>curator-test</artifactId>
-            <version>${curator.version}</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
 
 </project>
