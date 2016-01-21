@@ -67,7 +67,9 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven-surefire-plugin.version}</version>
                 <configuration>
-                    <groups>sharedHBase</groups>
+                    <reuseForks>true</reuseForks>
+                    <groups>sharedHBase,all</groups>
+                    <forkCount>1</forkCount>
                 </configuration>
             </plugin>
         </plugins>
