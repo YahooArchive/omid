@@ -15,16 +15,17 @@ import org.mortbay.log.Log;
 
 import com.google.common.collect.ImmutableList;
 
+@Test(groups = "noHBase")
 public class TestColumnIterator {
 
     final byte[] row = Bytes.toBytes("row");
-    final byte[] family1 = Bytes.toBytes("f1");
-    final byte[] family2 = Bytes.toBytes("f2");
-    final byte[] qualifier1 = Bytes.toBytes("c1");
-    final byte[] qualifier2 = Bytes.toBytes("c2");
+    private final byte[] family1 = Bytes.toBytes("f1");
+    private final byte[] family2 = Bytes.toBytes("f2");
+    private final byte[] qualifier1 = Bytes.toBytes("c1");
+    private final byte[] qualifier2 = Bytes.toBytes("c2");
     final byte[] data = Bytes.toBytes("data");
 
-    final List<Cell> cells = new ArrayList<Cell>(
+    private final List<Cell> cells = new ArrayList<Cell>(
             Arrays.asList(
                     // Group 1 (3 elems but grouping should filter shadow cell, so check for 2)
                     new KeyValue(row, family1, qualifier1, 0, data),

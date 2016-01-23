@@ -12,6 +12,7 @@ import org.testng.annotations.Test;
 
 import static org.testng.Assert.fail;
 
+@Test(groups = "noHBase")
 public class TestTTableBehaviour {
 
     private byte[] row = Bytes.toBytes("1row");

@@ -25,20 +25,19 @@ public class TestDeletion extends OmidTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestDeletion.class);
 
-    byte[] famA = Bytes.toBytes(TEST_FAMILY);
-    byte[] famB = Bytes.toBytes(TEST_FAMILY2);
-    byte[] colA = Bytes.toBytes("testdataA");
-    byte[] colB = Bytes.toBytes("testdataB");
-    byte[] data1 = Bytes.toBytes("testWrite-1");
-    byte[] data2 = Bytes.toBytes("testWrite-2");
-    byte[] modrow = Bytes.toBytes("test-del" + 3);
+    private byte[] famA = Bytes.toBytes(TEST_FAMILY);
+    private byte[] famB = Bytes.toBytes(TEST_FAMILY2);
+    private byte[] colA = Bytes.toBytes("testdataA");
+    private byte[] colB = Bytes.toBytes("testdataB");
+    private byte[] data1 = Bytes.toBytes("testWrite-1");
+    private byte[] modrow = Bytes.toBytes("test-del" + 3);
 
-    static class FamCol {
+    private static class FamCol {
 
         final byte[] fam;
         final byte[] col;
 
-        public FamCol(byte[] fam, byte[] col) {
+        FamCol(byte[] fam, byte[] col) {
             this.fam = fam;
             this.col = col;
         }
@@ -261,7 +260,7 @@ public class TestDeletion extends OmidTestBase {
     }
 
     private Map<FamCol, Integer> countColsInRows(ResultScanner rs, FamCol... famCols) throws IOException {
-        Map<FamCol, Integer> colCount = new HashMap<FamCol, Integer>();
+        Map<FamCol, Integer> colCount = new HashMap<>();
         Result r = rs.next();
         while (r != null) {
             for (FamCol col : famCols) {

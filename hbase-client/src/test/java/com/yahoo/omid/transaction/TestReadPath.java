@@ -25,9 +25,9 @@ public class TestReadPath extends OmidTestBase {
 
     final byte[] family = Bytes.toBytes(TEST_FAMILY);
     final byte[] row = Bytes.toBytes("row");
-    final byte[] col = Bytes.toBytes("col1");
+    private final byte[] col = Bytes.toBytes("col1");
     final byte[] data = Bytes.toBytes("data");
-    final byte[] uncommitted = Bytes.toBytes("uncommitted");
+    private final byte[] uncommitted = Bytes.toBytes("uncommitted");
 
     @Test
     public void testReadInterleaved(ITestContext context) throws Exception {
@@ -59,7 +59,7 @@ public class TestReadPath extends OmidTestBase {
         put.add(family, col, data);
         table.put(t, put);
         tm.commit(t);
-        List<Transaction> running = new ArrayList<Transaction>();
+        List<Transaction> running = new ArrayList<>();
 
         // Shade the data with uncommitted data
         for (int i = 0; i < 10; ++i) {

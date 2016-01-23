@@ -101,8 +101,8 @@ public class TestUpdateScan extends OmidTestBase {
             TransactionManager tm = newTransactionManager(context);
             Transaction t = tm.begin();
             int[] lInts = new int[] { 100, 243, 2342, 22, 1, 5, 43, 56 };
-            for (int i = 0; i < lInts.length; i++) {
-                byte[] data = Bytes.toBytes(lInts[i]);
+            for (int lInt : lInts) {
+                byte[] data = Bytes.toBytes(lInt);
                 Put put = new Put(data);
                 put.add(Bytes.toBytes(TEST_FAMILY), Bytes.toBytes(TEST_COL), data);
                 put.add(Bytes.toBytes(TEST_FAMILY), Bytes.toBytes(TEST_COL_2), data);
@@ -154,30 +154,30 @@ public class TestUpdateScan extends OmidTestBase {
             TTable table = new TTable(hbaseConf, TEST_TABLE);
             Transaction t=tm.begin();
             int[] lIntsA=new int[]{100,243,2342,22,1,5,43,56};
-            for (int i=0;i<lIntsA.length;i++) {
-                byte[]data=Bytes.toBytes(lIntsA[i]);
-                Put put=new Put(data);
+            for (int aLIntsA : lIntsA) {
+                byte[] data = Bytes.toBytes(aLIntsA);
+                Put put = new Put(data);
                 put.add(Bytes.toBytes(TEST_FAMILY), Bytes.toBytes(TEST_COL), data);
-                table.put(t,put);
+                table.put(t, put);
             }
             tm.commit(t);
    
             Transaction tu=tm.begin();
             int[] lIntsB=new int[]{105,24,4342,32,7,3,30,40};
-            for (int i=0;i<lIntsB.length;i++) {
-                byte[]data=Bytes.toBytes(lIntsB[i]);
-                Put put=new Put(data);
+            for (int aLIntsB : lIntsB) {
+                byte[] data = Bytes.toBytes(aLIntsB);
+                Put put = new Put(data);
                 put.add(Bytes.toBytes(TEST_FAMILY), Bytes.toBytes(TEST_COL), data);
-                table.put(tu,put);
+                table.put(tu, put);
             }
    
             t=tm.begin();
             int[] lIntsC=new int[]{109,224,242,2,16,59,23,26};
-            for (int i=0;i<lIntsC.length;i++) {
-                byte[]data=Bytes.toBytes(lIntsC[i]);
-                Put put=new Put(data);
+            for (int aLIntsC : lIntsC) {
+                byte[] data = Bytes.toBytes(aLIntsC);
+                Put put = new Put(data);
                 put.add(Bytes.toBytes(TEST_FAMILY), Bytes.toBytes(TEST_COL), data);
-                table.put(t,put);
+                table.put(t, put);
             }
             tm.commit(t);
          

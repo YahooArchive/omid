@@ -20,6 +20,7 @@ import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertTrue;
 import static org.testng.AssertJUnit.fail;
 
+@Test(groups = "noHBase")
 public class TestCellUtils {
 
     private final byte[] row = Bytes.toBytes("test-row");
@@ -37,13 +38,12 @@ public class TestCellUtils {
     @Test(dataProvider = "shadow-cell-suffixes")
     public void testShadowCellQualifiers(byte[] shadowCellSuffixToTest) throws IOException {
 
-        final byte[] isolatedNonValidShadowCellQualifier = shadowCellSuffixToTest;
         final byte[] validShadowCellQualifier =
-            com.google.common.primitives.Bytes.concat(qualifier, isolatedNonValidShadowCellQualifier);
+            com.google.common.primitives.Bytes.concat(qualifier, shadowCellSuffixToTest);
         final byte[] sandwichValidShadowCellQualifier =
             com.google.common.primitives.Bytes.concat(shadowCellSuffixToTest, validShadowCellQualifier);
         final byte[] doubleEndedValidShadowCellQualifier =
-            com.google.common.primitives.Bytes.concat(validShadowCellQualifier, isolatedNonValidShadowCellQualifier);
+            com.google.common.primitives.Bytes.concat(validShadowCellQualifier, shadowCellSuffixToTest);
         final byte[] interleavedValidShadowCellQualifier =
             com.google.common.primitives.Bytes.concat(validShadowCellQualifier,
                                                       com.google.common.primitives.Bytes
@@ -74,7 +74,7 @@ public class TestCellUtils {
 
         // Test the qualifier passed is not a shadow cell
         // qualifier if there's nothing else apart from the suffix
-        kv = new KeyValue(row, family, isolatedNonValidShadowCellQualifier, value);
+        kv = new KeyValue(row, family, shadowCellSuffixToTest, value);
         assertFalse("Should not include a valid shadowCell identifier", CellUtils.isShadowCell(kv));
 
     }

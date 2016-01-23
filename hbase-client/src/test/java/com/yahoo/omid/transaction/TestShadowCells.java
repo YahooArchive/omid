@@ -2,26 +2,13 @@ package com.yahoo.omid.transaction;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Optional;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.Module;
-import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.tso.TSOMockModule;
-import com.yahoo.omid.tso.TSOServer;
-import com.yahoo.omid.tso.TSOServerCommandLineConfig;
 import com.yahoo.omid.tsoclient.TSOClient;
+
 import org.apache.commons.configuration.BaseConfiguration;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.MiniHBaseCluster;
-import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
@@ -36,21 +23,16 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
+import org.testng.ITestContext;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.yahoo.omid.transaction.CellUtils.hasCell;
 import static com.yahoo.omid.transaction.CellUtils.hasShadowCell;
-import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
@@ -64,7 +46,8 @@ import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 
-public class TestShadowCells {
+@Test(groups = "sharedHBase")
+public class TestShadowCells extends OmidTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestShadowCells.class);
 
@@ -75,102 +58,18 @@ public class TestShadowCells {
     private static final String TEST_FAMILY = "data";
 
     static final byte[] row = Bytes.toBytes("test-sc");
-    static final byte[] row1 = Bytes.toBytes("test-sc1");
-    static final byte[] row2 = Bytes.toBytes("test-sc2");
-    static final byte[] row3 = Bytes.toBytes("test-sc3");
+    private static final byte[] row1 = Bytes.toBytes("test-sc1");
+    private static final byte[] row2 = Bytes.toBytes("test-sc2");
+    private static final byte[] row3 = Bytes.toBytes("test-sc3");
     static final byte[] family = Bytes.toBytes(TEST_FAMILY);
-    static final byte[] qualifier = Bytes.toBytes("testdata");
-    static final byte[] data1 = Bytes.toBytes("testWrite-1");
+    private static final byte[] qualifier = Bytes.toBytes("testdata");
+    private static final byte[] data1 = Bytes.toBytes("testWrite-1");
 
-    private Configuration hbaseConf;
-    private HBaseTestingUtility hbaeTestUtil;
-    private MiniHBaseCluster hbaseCluster;
-
-    private TSOServer tsoServer;
-    private CommitTable commitTable;
-
-    @BeforeClass
-    public void setUpClass() throws Exception {
-
-        // ------------------------------------------------------------------------------------------------------------
-        // HBase setup
-        // ------------------------------------------------------------------------------------------------------------
-        hbaseConf = HBaseConfiguration.create();
-        hbaseConf.setInt(HBASE_CLIENT_RETRIES_NUMBER, 3);
-        LOG.info("Creating HBase minicluster");
-        hbaeTestUtil = new HBaseTestingUtility(hbaseConf);
-        hbaseCluster = hbaeTestUtil.startMiniCluster(1);
-
-        // ------------------------------------------------------------------------------------------------------------
-        // TSO setup
-        // ------------------------------------------------------------------------------------------------------------
-        Module tsoMockModule = new TSOMockModule(TSOServerCommandLineConfig.configFactory(TSO_SERVER_PORT, 1000));
-        Injector injector = Guice.createInjector(tsoMockModule);
-        LOG.info("Starting TSO");
-        tsoServer = injector.getInstance(TSOServer.class);
-        tsoServer.startAndWait();
-        TestUtils.waitForSocketListening(TSO_SERVER_HOST, TSO_SERVER_PORT, 1000);
-        LOG.info("Finished loading TSO");
-
-        // ------------------------------------------------------------------------------------------------------------
-        // Access to commit table
-        // ------------------------------------------------------------------------------------------------------------
-        commitTable = injector.getInstance(CommitTable.class);
-
-    }
-
-    @AfterClass
-    public void tearDownClass() throws Exception {
-
-        tsoServer.stopAndWait();
-        tsoServer = null;
-        TestUtils.waitForSocketNotListening(TSO_SERVER_HOST, TSO_SERVER_PORT, 1000);
-
-        if (hbaseCluster != null) {
-            hbaeTestUtil.shutdownMiniCluster();
-        }
-
-    }
-
-    @BeforeMethod
-    public void setUp() throws Exception {
-
-        HBaseAdmin admin = hbaeTestUtil.getHBaseAdmin();
-
-        // ------------------------------------------------------------------------------------------------------------
-        // Test table creation
-        // ------------------------------------------------------------------------------------------------------------
-        if (!admin.tableExists(TEST_TABLE)) {
-            HTableDescriptor desc = new HTableDescriptor(TableName.valueOf(TEST_TABLE));
-            HColumnDescriptor datafam = new HColumnDescriptor(TEST_FAMILY);
-            datafam.setMaxVersions(Integer.MAX_VALUE);
-            desc.addFamily(datafam);
-            admin.createTable(desc);
-        }
-
-        if (admin.isTableDisabled(TEST_TABLE)) {
-            admin.enableTable(TEST_TABLE);
-        }
-        HTableDescriptor[] tables = admin.listTables();
-        for (HTableDescriptor t : tables) {
-            LOG.info(t.getNameAsString());
-        }
-
-    }
-
-    @AfterMethod
-    public void tearDown() throws Exception {
-
-        HBaseAdmin admin = hbaeTestUtil.getHBaseAdmin();
-        admin.disableTable(TEST_TABLE);
-        admin.deleteTable(TEST_TABLE);
-
-    }
 
     @Test(timeOut = 60_000)
-    public void testShadowCellsBasics() throws Exception {
+    public void testShadowCellsBasics(ITestContext context) throws Exception {
 
-        TransactionManager tm = newTransactionManager();
+        TransactionManager tm = newTransactionManager(context);
 
         TTable table = new TTable(hbaseConf, TEST_TABLE);
 
@@ -183,25 +82,25 @@ public class TestShadowCells {
 
         // Before commit test that only the cell is there
         assertTrue(hasCell(row, family, qualifier, t1.getStartTimestamp(), new TTableCellGetterAdapter(table)),
-                "Cell should be there");
+                   "Cell should be there");
         assertFalse(hasShadowCell(row, family, qualifier, t1.getStartTimestamp(), new TTableCellGetterAdapter(table)),
-                "Shadow cell shouldn't be there");
+                    "Shadow cell shouldn't be there");
 
         tm.commit(t1);
 
         // After commit test that both cell and shadow cell are there
         assertTrue(hasCell(row, family, qualifier, t1.getStartTimestamp(), new TTableCellGetterAdapter(table)),
-                "Cell should be there");
+                   "Cell should be there");
         assertTrue(hasShadowCell(row, family, qualifier, t1.getStartTimestamp(), new TTableCellGetterAdapter(table)),
-                "Shadow cell should be there");
+                   "Shadow cell should be there");
 
         // Test that we can make a valid read after adding a shadow cell without hitting the commit table
-        CommitTable.Client commitTableClient = spy(commitTable.getClient().get());
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(getTSOClientDefaultConfiguration()).build();
         TransactionManager tm2 = HBaseTransactionManager.newBuilder()
-                .withConfiguration(hbaseConf).withTSOClient(client)
-                .withCommitTableClient(commitTableClient).build();
+            .withConfiguration(hbaseConf).withTSOClient(client)
+            .withCommitTableClient(commitTableClient).build();
 
         Transaction t2 = tm2.begin();
         Get get = new Get(row);
@@ -213,14 +112,14 @@ public class TestShadowCells {
     }
 
     @Test(timeOut = 60_000)
-    public void testCrashingAfterCommitDoesNotWriteShadowCells() throws Exception {
-        CommitTable.Client commitTableClient = spy(commitTable.getClient().get());
+    public void testCrashingAfterCommitDoesNotWriteShadowCells(ITestContext context) throws Exception {
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(getTSOClientDefaultConfiguration()).build();
         AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.newBuilder()
-                .withConfiguration(hbaseConf)
-                .withCommitTableClient(commitTableClient)
-                .withTSOClient(client).build());
+            .withConfiguration(hbaseConf)
+            .withCommitTableClient(commitTableClient)
+            .withTSOClient(client).build());
         // The following line emulates a crash after commit that is observed in (*) below
         doThrow(new RuntimeException()).when(tm).updateShadowCells(any(HBaseTransaction.class));
 
@@ -240,9 +139,9 @@ public class TestShadowCells {
 
         // After commit with the emulated crash, test that only the cell is there
         assertTrue(hasCell(row, family, qualifier, t1.getStartTimestamp(), new TTableCellGetterAdapter(table)),
-                "Cell should be there");
+                   "Cell should be there");
         assertFalse(hasShadowCell(row, family, qualifier, t1.getStartTimestamp(), new TTableCellGetterAdapter(table)),
-                "Shadow cell should not be there");
+                    "Shadow cell should not be there");
 
         Transaction t2 = tm.begin();
         Get get = new Get(row);
@@ -254,14 +153,14 @@ public class TestShadowCells {
     }
 
     @Test(timeOut = 60_000)
-    public void testShadowCellIsHealedAfterCommitCrash() throws Exception {
-        CommitTable.Client commitTableClient = spy(commitTable.getClient().get());
+    public void testShadowCellIsHealedAfterCommitCrash(ITestContext context) throws Exception {
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(getTSOClientDefaultConfiguration()).build();
         AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.newBuilder()
-                .withConfiguration(hbaseConf)
-                .withCommitTableClient(commitTableClient)
-                .withTSOClient(client).build());
+            .withConfiguration(hbaseConf)
+            .withCommitTableClient(commitTableClient)
+            .withTSOClient(client).build());
         // The following line emulates a crash after commit that is observed in (*) below
         doThrow(new RuntimeException()).when(tm).updateShadowCells(any(HBaseTransaction.class));
 
@@ -280,9 +179,9 @@ public class TestShadowCells {
         }
 
         assertTrue(hasCell(row, family, qualifier, t1.getStartTimestamp(), new TTableCellGetterAdapter(table)),
-                "Cell should be there");
+                   "Cell should be there");
         assertFalse(hasShadowCell(row, family, qualifier, t1.getStartTimestamp(), new TTableCellGetterAdapter(table)),
-                "Shadow cell should not be there");
+                    "Shadow cell should not be there");
 
         Transaction t2 = tm.begin();
         Get get = new Get(row);
@@ -294,9 +193,9 @@ public class TestShadowCells {
         verify(commitTableClient, times(1)).getCommitTimestamp(anyLong());
 
         assertTrue(hasCell(row, family, qualifier, t1.getStartTimestamp(), new TTableCellGetterAdapter(table)),
-                "Cell should be there");
+                   "Cell should be there");
         assertTrue(hasShadowCell(row, family, qualifier, t1.getStartTimestamp(), new TTableCellGetterAdapter(table)),
-                "Shadow cell should be there after being healed");
+                   "Shadow cell should be there after being healed");
 
         // As the shadow cell is healed, this get shouldn't have to hit the storage,
         // so the number of invocations to commitTableClient.getCommitTimestamp()
@@ -307,15 +206,16 @@ public class TestShadowCells {
     }
 
     @Test(timeOut = 60_000)
-    public void testTransactionNeverCompletesWhenCommitThrowsAnInternalTransactionManagerExceptionUpdatingShadowCells()
-            throws Exception {
-        CommitTable.Client commitTableClient = spy(commitTable.getClient().get());
+    public void testTransactionNeverCompletesWhenCommitThrowsAnInternalTransactionManagerExceptionUpdatingShadowCells(
+        ITestContext context)
+        throws Exception {
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(getTSOClientDefaultConfiguration()).build();
         AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.newBuilder()
-                .withConfiguration(hbaseConf)
-                .withCommitTableClient(commitTableClient)
-                .withTSOClient(client).build());
+            .withConfiguration(hbaseConf)
+            .withCommitTableClient(commitTableClient)
+            .withTSOClient(client).build());
 
         final TTable table = new TTable(hbaseConf, TEST_TABLE);
 
@@ -330,7 +230,7 @@ public class TestShadowCells {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
                 table.flushCommits();
-                HBaseAdmin admin = hbaeTestUtil.getHBaseAdmin();
+                HBaseAdmin admin = hBaseUtils.getHBaseAdmin();
                 admin.disableTable(table.getTableName());
                 invocation.callRealMethod();
                 return null;
@@ -344,14 +244,14 @@ public class TestShadowCells {
         tm.commit(tx);
 
         // Re-enable table to allow the required checks below
-        HBaseAdmin admin = hbaeTestUtil.getHBaseAdmin();
+        HBaseAdmin admin = hBaseUtils.getHBaseAdmin();
         admin.enableTable(table.getTableName());
 
         // 1) check that shadow cell is not created...
         assertTrue(hasCell(row, family, qualifier, tx.getStartTimestamp(), new TTableCellGetterAdapter(table)),
-                "Cell should be there");
+                   "Cell should be there");
         assertFalse(hasShadowCell(row, family, qualifier, tx.getStartTimestamp(), new TTableCellGetterAdapter(table)),
-                "Shadow cell should not be there");
+                    "Shadow cell should not be there");
         // 2) and thus, completeTransaction() was never called on the commit table...
         verify(commitTableClient, times(0)).completeTransaction(anyLong());
         // 3) ...and commit value still in commit table
@@ -360,13 +260,13 @@ public class TestShadowCells {
     }
 
     @Test(timeOut = 60_000)
-    public void testRaceConditionBetweenReaderAndWriterThreads() throws Exception {
+    public void testRaceConditionBetweenReaderAndWriterThreads(final ITestContext context) throws Exception {
         final CountDownLatch readAfterCommit = new CountDownLatch(1);
         final CountDownLatch postCommitBegin = new CountDownLatch(1);
         final CountDownLatch postCommitEnd = new CountDownLatch(1);
 
         final AtomicBoolean readFailed = new AtomicBoolean(false);
-        AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager());
+        AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context));
 
         doAnswer(new Answer<Void>() {
             @Override
@@ -405,15 +305,15 @@ public class TestShadowCells {
                             postCommitEnd.await();
                             return (List<KeyValue>) invocation.callRealMethod();
                         }
-                    }).when(table).filterCellsForSnapshot(Matchers.<List<Cell>> any(),
-                            any(HBaseTransaction.class), anyInt());
+                    }).when(table).filterCellsForSnapshot(Matchers.<List<Cell>>any(),
+                                                          any(HBaseTransaction.class), anyInt());
 
-                    TransactionManager tm = newTransactionManager();
+                    TransactionManager tm = newTransactionManager(context);
                     if (hasShadowCell(row,
-                            family,
-                            qualifier,
-                            t1.getStartTimestamp(),
-                            new TTableCellGetterAdapter(table))) {
+                                      family,
+                                      qualifier,
+                                      t1.getStartTimestamp(),
+                                      new TTableCellGetterAdapter(table))) {
                         readFailed.set(true);
                     }
 
@@ -424,11 +324,11 @@ public class TestShadowCells {
                     Result getResult = table.get(t, get);
                     Cell cell = getResult.getColumnLatestCell(family, qualifier);
                     if (!Arrays.equals(data1, CellUtil.cloneValue(cell))
-                            || !hasShadowCell(row,
-                            family,
-                            qualifier,
-                            cell.getTimestamp(),
-                            new TTableCellGetterAdapter(table))) {
+                        || !hasShadowCell(row,
+                                          family,
+                                          qualifier,
+                                          cell.getTimestamp(),
+                                          new TTableCellGetterAdapter(table))) {
                         readFailed.set(true);
                     } else {
                         LOG.info("Read succeeded");
@@ -455,13 +355,14 @@ public class TestShadowCells {
 
     // TODO: After removing the legacy shadow cell suffix, maybe we should mix the assertions in this test with
     // the ones in the previous tests in a further commit
+
     /**
      * Test that the new client can read shadow cells written by the old client.
      */
     @Test
-    public void testGetOldShadowCells() throws Exception {
+    public void testGetOldShadowCells(ITestContext context) throws Exception {
 
-        TransactionManager tm = newTransactionManager();
+        TransactionManager tm = newTransactionManager(context);
 
         TTable table = new TTable(hbaseConf, TEST_TABLE);
         HTableInterface htable = table.getHTable();
@@ -487,7 +388,7 @@ public class TestShadowCells {
 
         // ensure that transaction is no longer in commit table
         // the only place that should have the mapping is the shadow cells
-        CommitTable.Client commitTableClient = commitTable.getClient().get();
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
         Optional<CommitTable.CommitTimestamp> ct1 = commitTableClient.getCommitTimestamp(t1.getStartTimestamp()).get();
         Optional<CommitTable.CommitTimestamp> ct2 = commitTableClient.getCommitTimestamp(t2.getStartTimestamp()).get();
         Optional<CommitTable.CommitTimestamp> ct3 = commitTableClient.getCommitTimestamp(t3.getStartTimestamp()).get();
@@ -567,18 +468,6 @@ public class TestShadowCells {
         tsoClientConf.setProperty(TSOClient.ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, 0);
 
         return tsoClientConf;
-
-    }
-
-    private TransactionManager newTransactionManager() throws OmidInstantiationException, ExecutionException, InterruptedException {
-
-        TSOClient client = TSOClient.newBuilder().withConfiguration(getTSOClientDefaultConfiguration()).build();
-
-        return  HBaseTransactionManager.newBuilder()
-                .withTSOClient(client)
-                .withCommitTableClient(commitTable.getClient().get())
-                .withConfiguration(hbaseConf)
-                .build();
 
     }
 

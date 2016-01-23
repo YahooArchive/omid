@@ -9,14 +9,12 @@ import com.yahoo.omid.committable.InMemoryCommitTable;
 import com.yahoo.omid.transaction.Transaction.Status;
 import com.yahoo.omid.tso.ProgrammableTSOServer;
 import com.yahoo.omid.tsoclient.TSOClient;
+
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
@@ -24,20 +22,19 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
+
+import javax.annotation.Nullable;
 
 import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.COMMIT_TABLE;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
 import static com.yahoo.omid.tsoclient.TSOClient.ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY;
-import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 import static org.testng.Assert.assertEquals;
@@ -46,35 +43,24 @@ import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
 
-public class TestTxMgrFailover {
+@Test(groups = "sharedHBase")
+public class TestTxMgrFailover extends OmidTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestTxMgrFailover.class);
 
-    private static final int TSO_SERVER_PORT = 1234;
+    private static final int TSO_SERVER_PORT = 3333;
     private static final String TSO_SERVER_HOST = "localhost";
 
     private static final long TX1_ST = 1L;
     private static final long TX1_CT = 2L;
 
-    private static final byte[] table = Bytes.toBytes("test-table");
-    private static final byte[] family = Bytes.toBytes("test-family");
     private static final byte[] qualifier = Bytes.toBytes("test-qual");
     private static final byte[] row1 = Bytes.toBytes("row1");
     private static final byte[] data1 = Bytes.toBytes("testWrite-1");
 
-    // Tables involved
-    private HTable testTable;
-
-    // HBase cluster-related data
-    protected static HBaseTestingUtility hBaseUtils;
-    private static MiniHBaseCluster hBaseCluster;
-    private Configuration hbaseClusterConfig;
-
     // Used in test assertions
     private InMemoryCommitTable commitTable;
 
-    // Spyable components
-    private TSOClient tsoClientForTM;
     private CommitTable.Client commitTableClient;
     private CommitTable.Writer commitTableWriter;
 
@@ -84,102 +70,52 @@ public class TestTxMgrFailover {
     // The transaction manager under test
     private HBaseTransactionManager tm;
 
-    @BeforeClass
+    @BeforeClass(alwaysRun = true)
     public void beforeClass() throws Exception {
-
         // ------------------------------------------------------------------------------------------------------------
-        // HBase setup
+        // ProgrammableTSOServer  setup
         // ------------------------------------------------------------------------------------------------------------
-        Configuration hbaseConf = HBaseConfiguration.create();
-        hbaseConf.setInt("hbase.hregion.memstore.flush.size", 10_000 * 1024);
-        hbaseConf.setInt("hbase.regionserver.nbreservationblocks", 1);
-        hBaseUtils = new HBaseTestingUtility(hbaseConf);
-        hBaseCluster = hBaseUtils.startMiniCluster(1);
-        hBaseCluster.waitForActiveAndReadyMaster();
-        hbaseClusterConfig = hBaseCluster.getConfiguration();
-        LOG.info("--------------------------------------------------------------------------------------------------");
-        LOG.info("HBase started");
-        LOG.info("--------------------------------------------------------------------------------------------------");
-
-        // ------------------------------------------------------------------------------------------------------------
-        // TSO setup
-        // ------------------------------------------------------------------------------------------------------------
-        LOG.info("===================== Starting TSO  ======================");
         tso = new ProgrammableTSOServer(TSO_SERVER_PORT);
         TestUtils.waitForSocketListening(TSO_SERVER_HOST, TSO_SERVER_PORT, 100);
-        LOG.info("--------------------------------------------------------------------------------------------------");
-        LOG.info("TSO started");
-        LOG.info("--------------------------------------------------------------------------------------------------");
-
     }
 
-    @AfterClass
-    public void afterClass() throws Exception {
+    @BeforeMethod(alwaysRun = true)
+    public void beforeMethod()
+        throws ExecutionException, InterruptedException, OmidInstantiationException {
 
-        hBaseUtils.shutdownMiniCluster();
-
-    }
-
-    @BeforeMethod
-    public void setup() throws Exception {
-
-        Thread.currentThread().setName("Test Thread");
-
-        // Clear the status of the programmable tso server
-        tso.cleanResponses();
-
-        // Create tables for test
-        testTable = hBaseUtils.createTable(table, new byte[][]{family}, Integer.MAX_VALUE);
-
-        // Create commit table
         commitTable = new InMemoryCommitTable(); // Use an in-memory commit table to speed up tests
         commitTableClient = spy(commitTable.getClient().get());
         commitTableWriter = spy(commitTable.getWriter().get());
-        LOG.info("--------------------------------------------------------------------------------------------------");
-        LOG.info("Commit Table accessors");
-        LOG.info("--------------------------------------------------------------------------------------------------");
 
-        Configuration hbaseConf = hBaseCluster.getConfiguration();
-        hbaseConf.setInt(HBASE_CLIENT_RETRIES_NUMBER, 3);
+        Configuration hbaseConf = hbaseCluster.getConfiguration();
         BaseConfiguration clientConf = new BaseConfiguration();
         clientConf.setProperty(TSO_HOST_CONFKEY, TSO_SERVER_HOST);
         clientConf.setProperty(TSO_PORT_CONFKEY, TSO_SERVER_PORT);
         clientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, 0);
-        tsoClientForTM = spy(TSOClient.newBuilder().withConfiguration(clientConf).build());
+        TSOClient tsoClientForTM = spy(TSOClient.newBuilder().withConfiguration(clientConf).build());
 
         tm = spy(HBaseTransactionManager.newBuilder()
-                                        .withTSOClient(tsoClientForTM)
-                                        .withCommitTableClient(commitTableClient)
-                                        .withConfiguration(hbaseConf)
-                                        .build());
-        LOG.info("--------------------------------------------------------------------------------------------------");
-        LOG.info("Tx Mgr created");
-        LOG.info("--------------------------------------------------------------------------------------------------");
-
-        LOG.info("=============================== Starting Experiment... ===========================================");
-    }
-
-    @AfterMethod
-    public void cleanup() throws Exception {
-        hBaseUtils.deleteTable(table);
+                     .withTSOClient(tsoClientForTM)
+                     .withCommitTableClient(commitTableClient)
+                     .withConfiguration(hbaseConf)
+                     .build());
     }
 
     @Test
     public void testAbortResponseFromTSOThrowsRollbackExceptionInClient() throws Exception {
-
         // Program the TSO to return an ad-hoc Timestamp and an abort response for tx 1
         tso.queueResponse(new ProgrammableTSOServer.TimestampResponse(TX1_ST));
         tso.queueResponse(new ProgrammableTSOServer.AbortResponse(TX1_ST));
 
-        try (TTable txTable = new TTable(hBaseCluster.getConfiguration(), table)) {
-
+        try (TTable txTable = new TTable(hbaseConf, TEST_TABLE)) {
             HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
             assertEquals(tx1.getStartTimestamp(), TX1_ST);
             Put put = new Put(row1);
-            put.add(family, qualifier, data1);
+            put.add(TEST_FAMILY.getBytes(), qualifier, data1);
             txTable.put(tx1, put);
-            assertEquals(hBaseUtils.countRows(testTable), 1, "Rows should be 1!");
-            checkOperationSuccessOnCell(KeyValue.Type.Put, data1, table, row1, family, qualifier);
+            assertEquals(hBaseUtils.countRows(new HTable(hbaseConf, TEST_TABLE)), 1, "Rows should be 1!");
+            checkOperationSuccessOnCell(KeyValue.Type.Put, data1, TEST_TABLE.getBytes(), row1, TEST_FAMILY.getBytes(),
+                                        qualifier);
 
             try {
                 tm.commit(tx1);
@@ -193,13 +129,15 @@ public class TestTxMgrFailover {
             assertEquals(tx1.getStatus(), Status.ROLLEDBACK);
             assertEquals(tx1.getCommitTimestamp(), 0);
             // Check the cleanup process did its job and the committed data is NOT there
-            checkOperationSuccessOnCell(KeyValue.Type.Delete, null, table, row1, family, qualifier);
+            checkOperationSuccessOnCell(KeyValue.Type.Delete, null, TEST_TABLE.getBytes(), row1, TEST_FAMILY.getBytes(),
+                                        qualifier);
         }
 
     }
 
     @Test
-    public void testClientReceivesSuccessfulCommitForNonInvalidatedTxCommittedByPreviousTSO() throws Exception {
+    public void testClientReceivesSuccessfulCommitForNonInvalidatedTxCommittedByPreviousTSO()
+        throws Exception {
 
         // Program the TSO to return an ad-hoc Timestamp and an commit response with heuristic actions
         tso.queueResponse(new ProgrammableTSOServer.TimestampResponse(TX1_ST));
@@ -209,12 +147,11 @@ public class TestTxMgrFailover {
         commitTableWriter.flush();
         assertEquals(commitTable.countElements(), 1, "Rows should be 1!");
 
-        try (TTable txTable = new TTable(hBaseCluster.getConfiguration(), table)) {
-
+        try (TTable txTable = new TTable(hbaseConf, TEST_TABLE)) {
             HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
             assertEquals(tx1.getStartTimestamp(), TX1_ST);
             Put put = new Put(row1);
-            put.add(family, qualifier, data1);
+            put.add(TEST_FAMILY.getBytes(), qualifier, data1);
             txTable.put(tx1, put);
             // Should succeed
             tm.commit(tx1);
@@ -224,16 +161,21 @@ public class TestTxMgrFailover {
             assertEquals(tx1.getCommitTimestamp(), TX1_CT);
             // Check the cleanup process did its job and the committed data is there
             // Note that now we do not clean up the commit table when exercising the heuristic actions
-            assertEquals(commitTable.countElements(), 1, "Rows should be 1! We don't have to clean CT in this case");
-            Optional<CommitTimestamp> optionalCT = tm.commitTableClient.getCommitTimestamp(TX1_ST).get();
+            assertEquals(commitTable.countElements(), 1,
+                         "Rows should be 1! We don't have to clean CT in this case");
+            Optional<CommitTimestamp>
+                optionalCT =
+                tm.commitTableClient.getCommitTimestamp(TX1_ST).get();
             assertTrue(optionalCT.isPresent());
-            checkOperationSuccessOnCell(KeyValue.Type.Put, data1, table, row1, family, qualifier);
+            checkOperationSuccessOnCell(KeyValue.Type.Put, data1, TEST_TABLE.getBytes(), row1, TEST_FAMILY.getBytes(),
+                                        qualifier);
         }
 
     }
 
     @Test
-    public void testClientReceivesRollbackExceptionForInvalidatedTxCommittedByPreviousTSO() throws Exception {
+    public void testClientReceivesRollbackExceptionForInvalidatedTxCommittedByPreviousTSO()
+        throws Exception {
 
         // Program the TSO to return an ad-hoc Timestamp and a commit response with heuristic actions
         tso.queueResponse(new ProgrammableTSOServer.TimestampResponse(TX1_ST));
@@ -242,12 +184,11 @@ public class TestTxMgrFailover {
         commitTableClient.tryInvalidateTransaction(TX1_ST);
         assertEquals(commitTable.countElements(), 1, "Rows should be 1!");
 
-        try (TTable txTable = new TTable(hBaseCluster.getConfiguration(), table)) {
-
+        try (TTable txTable = new TTable(hbaseConf, TEST_TABLE)) {
             HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
             assertEquals(tx1.getStartTimestamp(), TX1_ST);
             Put put = new Put(row1);
-            put.add(family, qualifier, data1);
+            put.add(TEST_FAMILY.getBytes(), qualifier, data1);
             txTable.put(tx1, put);
             try {
                 tm.commit(tx1);
@@ -261,10 +202,13 @@ public class TestTxMgrFailover {
             assertEquals(tx1.getCommitTimestamp(), 0);
             // Check the cleanup process did its job and the uncommitted data is NOT there
             assertEquals(commitTable.countElements(), 1, "Rows should be 1! Dirty data should be there");
-            Optional<CommitTimestamp> optionalCT = tm.commitTableClient.getCommitTimestamp(TX1_ST).get();
+            Optional<CommitTimestamp>
+                optionalCT =
+                tm.commitTableClient.getCommitTimestamp(TX1_ST).get();
             assertTrue(optionalCT.isPresent());
             assertFalse(optionalCT.get().isValid());
-            checkOperationSuccessOnCell(KeyValue.Type.Delete, null, table, row1, family, qualifier);
+            checkOperationSuccessOnCell(KeyValue.Type.Delete, null, TEST_TABLE.getBytes(), row1, TEST_FAMILY.getBytes(),
+                                        qualifier);
         }
 
     }
@@ -278,12 +222,11 @@ public class TestTxMgrFailover {
 
         assertEquals(commitTable.countElements(), 0, "Rows should be 0!");
 
-        try (TTable txTable = new TTable(hBaseCluster.getConfiguration(), table)) {
-
+        try (TTable txTable = new TTable(hbaseConf, TEST_TABLE)) {
             HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
             assertEquals(tx1.getStartTimestamp(), TX1_ST);
             Put put = new Put(row1);
-            put.add(family, qualifier, data1);
+            put.add(TEST_FAMILY.getBytes(), qualifier, data1);
             txTable.put(tx1, put);
             try {
                 tm.commit(tx1);
@@ -298,17 +241,20 @@ public class TestTxMgrFailover {
             // Check the cleanup process did its job and the transaction was invalidated
             // Uncommitted data should NOT be there
             assertEquals(commitTable.countElements(), 1, "Rows should be 1! Dirty data should be there");
-            Optional<CommitTimestamp> optionalCT = tm.commitTableClient.getCommitTimestamp(TX1_ST).get();
+            Optional<CommitTimestamp>
+                optionalCT =
+                tm.commitTableClient.getCommitTimestamp(TX1_ST).get();
             assertTrue(optionalCT.isPresent());
             assertFalse(optionalCT.get().isValid());
-            checkOperationSuccessOnCell(KeyValue.Type.Delete, null, table, row1, family, qualifier);
+            checkOperationSuccessOnCell(KeyValue.Type.Delete, null, TEST_TABLE.getBytes(), row1, TEST_FAMILY.getBytes(),
+                                        qualifier);
         }
 
     }
 
     @Test
     public void testClientSuccessfullyCommitsWhenReceivingNotificationOfANewTSOAandCANTInvalidateTransaction()
-            throws Exception {
+        throws Exception {
 
         // Program the TSO to return an ad-hoc Timestamp and a commit response with heuristic actions
         tso.queueResponse(new ProgrammableTSOServer.TimestampResponse(TX1_ST));
@@ -318,18 +264,17 @@ public class TestTxMgrFailover {
         commitTableWriter.addCommittedTransaction(TX1_ST, TX1_CT);
         commitTableWriter.flush();
         assertEquals(commitTable.countElements(), 1, "Rows should be 1!");
-        SettableFuture<Optional<CommitTimestamp>> f1 = SettableFuture.<Optional<CommitTimestamp>> create();
-        f1.set(Optional.<CommitTimestamp> absent());
-        SettableFuture<Optional<CommitTimestamp>> f2 = SettableFuture.<Optional<CommitTimestamp>> create();
+        SettableFuture<Optional<CommitTimestamp>> f1 = SettableFuture.<Optional<CommitTimestamp>>create();
+        f1.set(Optional.<CommitTimestamp>absent());
+        SettableFuture<Optional<CommitTimestamp>> f2 = SettableFuture.<Optional<CommitTimestamp>>create();
         f2.set(Optional.of(new CommitTimestamp(COMMIT_TABLE, TX1_CT, true)));
         doReturn(f1).doReturn(f2).when(commitTableClient).getCommitTimestamp(TX1_ST);
 
-        try (TTable txTable = new TTable(hBaseCluster.getConfiguration(), table)) {
-
+        try (TTable txTable = new TTable(hbaseConf, TEST_TABLE)) {
             HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
             assertEquals(tx1.getStartTimestamp(), TX1_ST);
             Put put = new Put(row1);
-            put.add(family, qualifier, data1);
+            put.add(TEST_FAMILY.getBytes(), qualifier, data1);
             txTable.put(tx1, put);
 
             tm.commit(tx1);
@@ -339,33 +284,34 @@ public class TestTxMgrFailover {
             assertEquals(tx1.getCommitTimestamp(), TX1_CT);
             // Check the cleanup process did its job and the committed data is there
             // Note that now we do not clean up the commit table when exercising the heuristic actions
-            assertEquals(commitTable.countElements(), 1, "Rows should be 1! We don't have to clean CT in this case");
-            checkOperationSuccessOnCell(KeyValue.Type.Put, data1, table, row1, family, qualifier);
+            assertEquals(commitTable.countElements(), 1,
+                         "Rows should be 1! We don't have to clean CT in this case");
+            checkOperationSuccessOnCell(KeyValue.Type.Put, data1, TEST_TABLE.getBytes(), row1, TEST_FAMILY.getBytes(),
+                                        qualifier);
         }
 
     }
 
     @Test
     public void testClientReceivesATransactionExceptionWhenReceivingNotificationOfANewTSOAndCANTInvalidateTransactionAndCTCheckIsUnsuccessful()
-            throws Exception {
+        throws Exception {
 
         // Program the TSO to return an ad-hoc Timestamp and a commit response with heuristic actions
         tso.queueResponse(new ProgrammableTSOServer.TimestampResponse(TX1_ST));
         tso.queueResponse(new ProgrammableTSOServer.CommitResponse(true, TX1_ST, TX1_CT));
 
         // Simulate that the original TSO was able to add the tx to commit table in the meantime
-        SettableFuture<Boolean> f = SettableFuture.<Boolean> create();
+        SettableFuture<Boolean> f = SettableFuture.create();
         f.set(false);
         doReturn(f).when(commitTableClient).tryInvalidateTransaction(TX1_ST);
 
         assertEquals(commitTable.countElements(), 0, "Rows should be 0!");
 
-        try (TTable txTable = new TTable(hBaseCluster.getConfiguration(), table)) {
-
+        try (TTable txTable = new TTable(hbaseConf, TEST_TABLE)) {
             HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
             assertEquals(tx1.getStartTimestamp(), TX1_ST);
             Put put = new Put(row1);
-            put.add(family, qualifier, data1);
+            put.add(TEST_FAMILY.getBytes(), qualifier, data1);
             txTable.put(tx1, put);
             try {
                 tm.commit(tx1);
@@ -386,38 +332,38 @@ public class TestTxMgrFailover {
     // ----------------------------------------------------------------------------------------------------------------
 
     protected void checkOperationSuccessOnCell(KeyValue.Type targetOp, @Nullable byte[] expectedValue,
-            byte[] tableName,
-            byte[] row,
-            byte[] fam,
-            byte[] col) {
+                                               byte[] tableName,
+                                               byte[] row,
+                                               byte[] fam,
+                                               byte[] col) {
 
-        try (HTable table = new HTable(hbaseClusterConfig, tableName)) {
+        try (HTable table = new HTable(hbaseConf, tableName)) {
             Get get = new Get(row).setMaxVersions(1);
             Result result = table.get(get);
             Cell latestCell = result.getColumnLatestCell(fam, col);
 
             switch (targetOp) {
-            case Put:
-                assertEquals(latestCell.getTypeByte(), targetOp.getCode());
-                assertEquals(CellUtil.cloneValue(latestCell), expectedValue);
-                LOG.trace("Value for " + Bytes.toString(tableName) + ":"
-                        + Bytes.toString(row) + ":" + Bytes.toString(fam) + ":"
-                        + Bytes.toString(col) + "=>" + Bytes.toString(CellUtil.cloneValue(latestCell))
-                        + " (" + Bytes.toString(expectedValue) + " expected)");
-                break;
-            case Delete:
-                LOG.trace("Value for " + Bytes.toString(tableName) + ":"
-                        + Bytes.toString(row) + ":" + Bytes.toString(fam)
-                        + Bytes.toString(col) + " deleted");
-                assertNull(latestCell);
-                break;
-            default:
-                fail();
+                case Put:
+                    assertEquals(latestCell.getTypeByte(), targetOp.getCode());
+                    assertEquals(CellUtil.cloneValue(latestCell), expectedValue);
+                    LOG.trace("Value for " + Bytes.toString(tableName) + ":"
+                              + Bytes.toString(row) + ":" + Bytes.toString(fam) + ":"
+                              + Bytes.toString(col) + "=>" + Bytes.toString(CellUtil.cloneValue(latestCell))
+                              + " (" + Bytes.toString(expectedValue) + " expected)");
+                    break;
+                case Delete:
+                    LOG.trace("Value for " + Bytes.toString(tableName) + ":"
+                              + Bytes.toString(row) + ":" + Bytes.toString(fam)
+                              + Bytes.toString(col) + " deleted");
+                    assertNull(latestCell);
+                    break;
+                default:
+                    fail();
             }
         } catch (IOException e) {
             LOG.error("Error reading row " + Bytes.toString(tableName) + ":"
-                    + Bytes.toString(row) + ":" + Bytes.toString(fam)
-                    + Bytes.toString(col), e);
+                      + Bytes.toString(row) + ":" + Bytes.toString(fam)
+                      + Bytes.toString(col), e);
             fail();
         }
     }

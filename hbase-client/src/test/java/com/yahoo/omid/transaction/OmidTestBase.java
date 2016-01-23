@@ -4,6 +4,7 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.InMemoryCommitTable;
 import com.yahoo.omid.committable.hbase.CommitTableConstants;
 import com.yahoo.omid.tools.hbase.OmidTableManager;
 import com.yahoo.omid.tso.TSOMockModule;
@@ -38,6 +39,8 @@ import org.testng.annotations.BeforeGroups;
 import java.io.File;
 import java.io.IOException;
 
+import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TSO_FAMILY;
 import static com.yahoo.omid.tools.hbase.OmidTableManager.COMMIT_TABLE_COMMAND_NAME;
 import static com.yahoo.omid.tsoclient.TSOClient.ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY;
 import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
@@ -46,9 +49,9 @@ public abstract class OmidTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(OmidTestBase.class);
 
-    private static HBaseTestingUtility testutil;
-    private static MiniHBaseCluster hbasecluster;
-    protected static Configuration hbaseConf;
+    static HBaseTestingUtility hBaseUtils;
+    static MiniHBaseCluster hbaseCluster;
+    static Configuration hbaseConf;
 
     protected static final String TEST_TABLE = "test";
     protected static final String TEST_FAMILY = "data";
@@ -79,7 +82,7 @@ public abstract class OmidTestBase {
         clientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, 0);
         context.setAttribute("clientConf", clientConf);
 
-        CommitTable commitTable = injector.getInstance(CommitTable.class);
+        InMemoryCommitTable commitTable = (InMemoryCommitTable) injector.getInstance(CommitTable.class);
         context.setAttribute("commitTable", commitTable);
 
         // Create the associated Handler
@@ -99,10 +102,10 @@ public abstract class OmidTestBase {
         tempFile.deleteOnExit();
         hbaseConf.set("hbase.rootdir", tempFile.getAbsolutePath());
 
-        testutil = new HBaseTestingUtility(hbaseConf);
-        hbasecluster = testutil.startMiniCluster(1);
+        hBaseUtils = new HBaseTestingUtility(hbaseConf);
+        hbaseCluster = hBaseUtils.startMiniCluster(1);
 
-        HBaseAdmin admin = testutil.getHBaseAdmin();
+        HBaseAdmin admin = hBaseUtils.getHBaseAdmin();
         HTableDescriptor desc = new HTableDescriptor(TableName.valueOf(TEST_TABLE));
         HColumnDescriptor datafam = new HColumnDescriptor(TEST_FAMILY);
         HColumnDescriptor datafam2 = new HColumnDescriptor(TEST_FAMILY2);
@@ -113,6 +116,10 @@ public abstract class OmidTestBase {
 
         admin.createTable(desc);
 
+
+        hBaseUtils
+            .createTable(Bytes.toBytes(TIMESTAMP_TABLE_DEFAULT_NAME), new byte[][]{TSO_FAMILY}, Integer.MAX_VALUE);
+
         // Create commit table
         String[] args = new String[] {COMMIT_TABLE_COMMAND_NAME, "-numRegions", "1"};
         OmidTableManager omidTableManager = new OmidTableManager(args);
@@ -122,7 +129,7 @@ public abstract class OmidTestBase {
     }
 
 
-    private TSOServer getTSO(ITestContext context) {
+    TSOServer getTSO(ITestContext context) {
         return (TSOServer) context.getAttribute("tso");
     }
 
@@ -135,8 +142,8 @@ public abstract class OmidTestBase {
         return (org.apache.commons.configuration.Configuration) context.getAttribute("clientConf");
     }
 
-    CommitTable getCommitTable(ITestContext context) {
-        return (CommitTable) context.getAttribute("commitTable");
+    InMemoryCommitTable getCommitTable(ITestContext context) {
+        return (InMemoryCommitTable) context.getAttribute("commitTable");
     }
 
     protected TransactionManager newTransactionManager(ITestContext context) throws Exception {
@@ -161,8 +168,8 @@ public abstract class OmidTestBase {
     @AfterGroups(groups = "sharedHBase")
     public void afterGroups(ITestContext context) throws Exception {
         LOG.info("Tearing down OmidTestBase...");
-        if (hbasecluster != null) {
-            testutil.shutdownMiniCluster();
+        if (hbaseCluster != null) {
+            hBaseUtils.shutdownMiniCluster();
         }
 
         getClient(context).close().get();
@@ -170,11 +177,11 @@ public abstract class OmidTestBase {
         TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
     }
 
-    @AfterMethod(alwaysRun = true)
+    @AfterMethod(groups = "sharedHBase")
     public void afterMethod() {
         try {
             LOG.info("tearing Down");
-            HBaseAdmin admin = testutil.getHBaseAdmin();
+            HBaseAdmin admin = hBaseUtils.getHBaseAdmin();
             truncateTable(admin, TableName.valueOf(TEST_TABLE));
             truncateTable(admin, TableName.valueOf(CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME));
         } catch (Exception e) {
@@ -182,7 +189,7 @@ public abstract class OmidTestBase {
         }
     }
 
-    private void truncateTable(HBaseAdmin admin, TableName tableName) throws IOException {
+    void truncateTable(HBaseAdmin admin, TableName tableName) throws IOException {
         try {
             admin.truncateTable(tableName, true);
         } catch (TableNotDisabledException e) {

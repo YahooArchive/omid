@@ -45,11 +45,11 @@ public class TestTransactionCleanup extends OmidTestBase {
         final int ROWS_MODIFIED = 1;
 
         // Prepare the mocking results
-        SettableFuture<Long> startTSF = SettableFuture.<Long> create();
+        SettableFuture<Long> startTSF = SettableFuture.create();
         startTSF.set(START_TS);
         ForwardingTSOFuture<Long> stFF = new ForwardingTSOFuture<>(startTSF);
 
-        SettableFuture<Long> abortingF = SettableFuture.<Long> create();
+        SettableFuture<Long> abortingF = SettableFuture.create();
         abortingF.setException(new TSOClient.AbortException());
         ForwardingTSOFuture<Long> abortingFF = new ForwardingTSOFuture<>(abortingF);
 
