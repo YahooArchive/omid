@@ -3,6 +3,7 @@ package com.yahoo.omid.transaction;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.yahoo.omid.HBaseShims;
 import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.tso.TSOServer;
@@ -27,10 +28,10 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.RetriesExhaustedWithDetailsException;
+import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.coprocessor.AggregationClient;
 import org.apache.hadoop.hbase.client.coprocessor.LongColumnInterpreter;
-import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -520,10 +521,8 @@ public class TestCompaction {
     // directly after the flush, which we want to avoid.
     private void manualFlush(String tableName) throws Throwable {
         LOG.info("Manually flushing all regions");
-        for (HRegion r : hbaseTestUtil.getHBaseCluster().getRegionServer(0)
-            .getOnlineRegions(TableName.valueOf(tableName))) {
-            r.flushcache();
-        }
+        HBaseShims.flushAllOnlineRegions(hbaseTestUtil.getHBaseCluster().getRegionServer(0),
+                TableName.valueOf(tableName));
     }
 
     @Test
@@ -690,7 +689,7 @@ public class TestCompaction {
                     throws Throwable {
                     if (flushFailing.get()) {
                         throw new RetriesExhaustedWithDetailsException(new ArrayList<Throwable>(),
-                                                                       new ArrayList<Put>(), new ArrayList<String>());
+                                                                       new ArrayList<Row>(), new ArrayList<String>());
                     } else {
                         invocation.callRealMethod();
                     }

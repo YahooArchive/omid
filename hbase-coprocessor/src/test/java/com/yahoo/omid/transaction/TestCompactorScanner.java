@@ -5,7 +5,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertFalse;
-import static org.testng.AssertJUnit.assertTrue;
 
 import java.util.Queue;
 
@@ -14,6 +13,7 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.coprocessor.ObserverContext;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
+import org.apache.hadoop.hbase.regionserver.CompactorScanner;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -25,7 +25,6 @@ import org.testng.annotations.Test;
 import com.google.common.util.concurrent.SettableFuture;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.Client;
-import com.yahoo.omid.transaction.OmidCompactor.CompactorScanner;
 
 public class TestCompactorScanner {
 

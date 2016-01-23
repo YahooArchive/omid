@@ -406,13 +406,13 @@ public class CellUtils {
         }
     }
 
-    static class CellInfo {
+    public static class CellInfo {
 
         private final Cell cell;
         private final Cell shadowCell;
         private final long timestamp;
 
-        CellInfo(Cell cell, Cell shadowCell) {
+        public CellInfo(Cell cell, Cell shadowCell) {
             assert (cell != null && shadowCell != null);
             assert(cell.getTimestamp() == shadowCell.getTimestamp());
             this.cell = cell;
@@ -420,15 +420,15 @@ public class CellUtils {
             this.timestamp = cell.getTimestamp();
         }
 
-        Cell getCell() {
+        public Cell getCell() {
             return cell;
         }
 
-        Cell getShadowCell() {
+        public Cell getShadowCell() {
             return shadowCell;
         }
 
-        long getTimestamp() {
+        public long getTimestamp() {
             return timestamp;
         }
 

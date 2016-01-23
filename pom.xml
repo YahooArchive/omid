@@ -37,6 +37,7 @@
         <module>benchmarks</module>
         <module>hbase-common</module>
         <module>timestamp-storage</module>
+        <module>hbase-shims</module>
     </modules>
 
     <scm>
@@ -62,7 +63,8 @@
         <java.version>1.7</java.version>
 
         <!-- 3rd-Party Library Versioning -->
-        <hbase.version>0.98.10.1-hadoop1</hbase.version>
+        <hbase0.version>0.98.10.1-hadoop1</hbase0.version>
+        <hbase1.version>1.1.1</hbase1.version>
         <guava.version>11.0.2</guava.version>
         <guice.version>3.0</guice.version>
         <testng.version>6.8.8</testng.version>
@@ -125,7 +127,10 @@
                         <source>${java.version}</source>
                         <target>${java.version}</target>
                         <compilerArgs>
-                            <arg>-Werror</arg>
+                            <!-- We had to comment this due to the use of some deprecated APIs in HBase 1.x -->
+                            <!-- As example, we extensively use HTable along the code and is not used anymore in 1.x-->
+                            <!-- TODO Try to restore the parameter when possible -->
+                            <!--arg>-Werror</arg-->
                             <arg>-Xlint:deprecation</arg>
                             <arg>-Xlint:unchecked</arg>
                         </compilerArgs>
@@ -383,6 +388,55 @@
 
         </profile>
 
+        <profile>
+            <id>hbase-0</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <hbase.version>${hbase0.version}</hbase.version>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>hbase-1</id>
+            <properties>
+                <hbase.version>${hbase1.version}</hbase.version>
+            </properties>
+        </profile>
+
     </profiles>
+
+    <dependencyManagement>
+
+        <dependencies>
+
+            <dependency>
+                <groupId>org.apache.hbase</groupId>
+                <artifactId>hbase-common</artifactId>
+                <version>${hbase.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.hbase</groupId>
+                <artifactId>hbase-client</artifactId>
+                <version>${hbase.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.hbase</groupId>
+                <artifactId>hbase-testing-util</artifactId>
+                <version>${hbase.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.hbase</groupId>
+                <artifactId>hbase-server</artifactId>
+                <version>${hbase.version}</version>
+            </dependency>
+
+        </dependencies>
+
+    </dependencyManagement>
 
 </project>

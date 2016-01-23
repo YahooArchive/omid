@@ -1,7 +1,7 @@
 package com.yahoo.omid.transaction;
 
 import com.google.common.base.Optional;
-
+import com.yahoo.omid.HBaseShims;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
@@ -119,7 +119,7 @@ public class TestCellUtils {
             cell1.getValueArray(), cell1.getValueOffset(), cell1.getValueLength()));
 
         // Modify dup shadow cell to have a greater MVCC and check that is replaced
-        ((KeyValue) dupCell1WithAnotherValue).setMvccVersion(1);
+        HBaseShims.setKeyValueSequenceId((KeyValue) dupCell1WithAnotherValue, 1);
         cellsToShadowCells = CellUtils.mapCellsToShadowCells(badListWithDups);
         assertEquals("There should be only 1 key-value maps", 1, cellsToShadowCells.size());
         assertTrue(cellsToShadowCells.containsKey(dupCell1WithAnotherValue));

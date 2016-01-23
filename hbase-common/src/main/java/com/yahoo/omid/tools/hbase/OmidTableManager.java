@@ -6,6 +6,7 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
 import com.beust.jcommander.Parameters;
 import com.beust.jcommander.ParametersDelegate;
+import com.yahoo.omid.HBaseShims;
 import com.yahoo.omid.committable.hbase.KeyGenerator;
 import com.yahoo.omid.committable.hbase.KeyGeneratorImplementations;
 import com.yahoo.omid.committable.hbase.RegionSplitter;
@@ -127,17 +128,17 @@ public class OmidTableManager {
             return;
         }
 
-        HTableDescriptor desc = new HTableDescriptor(TableName.valueOf(tableName));
+        HTableDescriptor tableDescriptor = new HTableDescriptor(TableName.valueOf(tableName));
 
         for(int familyIdx = 0; familyIdx < families.length; ++familyIdx) {
             byte[] family = families[familyIdx];
             HColumnDescriptor colDescriptor = new HColumnDescriptor(family);
             colDescriptor.setMaxVersions(maxVersions);
-            desc.addFamily(colDescriptor);
+            HBaseShims.addFamilyToHTableDescriptor(tableDescriptor, colDescriptor);
             LOG.info("\tAdding Family {}", colDescriptor);
         }
 
-        admin.createTable(desc, splitKeys);
+        admin.createTable(tableDescriptor, splitKeys);
 
         LOG.info("Table {} created. Regions: {}", tableName, admin.getTableRegions(Bytes.toBytes(tableName)).size());
 

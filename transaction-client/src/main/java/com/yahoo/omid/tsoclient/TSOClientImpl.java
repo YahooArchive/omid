@@ -115,11 +115,8 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         } catch (ZKException e) {
             LOG.warn("A problem connecting to TSO was found ({}). Trying to connect directly with host:port",
                      e.getMessage());
-            String host = conf.getString(TSO_HOST_CONFKEY);
+            String host = conf.getString(TSO_HOST_CONFKEY, DEFAULT_TSO_HOST);
             int port = conf.getInt(TSO_PORT_CONFKEY, DEFAULT_TSO_PORT);
-            if (host == null) {
-                throw new IllegalArgumentException("tso.host missing from configuration");
-            }
             setTSOAddress(host, port);
             LOG.info("\t* TSO host:port {}:{} will be connected directly", host, port);
         }
