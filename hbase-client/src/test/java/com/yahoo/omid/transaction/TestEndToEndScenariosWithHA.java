@@ -50,7 +50,6 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestEndToEndScenariosWithHA.class);
 
-    static final byte[] family = Bytes.toBytes("test-family");
     private static final byte[] qualifier1 = Bytes.toBytes("test-q1");
     private static final byte[] qualifier2 = Bytes.toBytes("test-q2l");
     private static final byte[] row1 = Bytes.toBytes("row1");
@@ -60,7 +59,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
     private static final byte[] data1_q2 = Bytes.toBytes("testWrite-1-q2");
     private static final byte[] data2_q1 = Bytes.toBytes("testWrite-2-q1");
     private static final byte[] data2_q2 = Bytes.toBytes("testWrite-2-q2");
-    private static final int TSO1_PORT = 2222;
+    private static final int TSO1_PORT = 2223;
     private static final int TSO2_PORT = 4321;
 
     private CountDownLatch barrierTillTSOAddressPublication;
@@ -118,7 +117,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         config1.shouldHostAndPortBePublishedInZK = true;
         config1.setZKCluster(zkConnection);
         config1.setLeasePeriodInMs(TEST_LEASE_PERIOD_MS);
-        Injector injector1 = Guice.createInjector(new TestTSOModule(hbaseCluster.getConfiguration(), config1));
+        Injector injector1 = Guice.createInjector(new TestTSOModule(hbaseConf, config1));
         LOG.info("===================== Starting TSO 1 =====================");
         tso1 = injector1.getInstance(TSOServer.class);
         leaseManager1 = (PausableLeaseManager) injector1.getInstance(LeaseManagement.class);
@@ -131,7 +130,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         config2.shouldHostAndPortBePublishedInZK = true;
         config2.setZKCluster(zkConnection);
         config2.setLeasePeriodInMs(TEST_LEASE_PERIOD_MS);
-        Injector injector2 = Guice.createInjector(new TestTSOModule(hbaseCluster.getConfiguration(), config2));
+        Injector injector2 = Guice.createInjector(new TestTSOModule(hbaseConf, config2));
         LOG.info("===================== Starting TSO 2 =====================");
         tso2 = injector2.getInstance(TSOServer.class);
         PausableLeaseManager leaseManager2 = (PausableLeaseManager) injector2.getInstance(LeaseManagement.class);
@@ -190,10 +189,10 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
             HBaseTransaction tx0 = (HBaseTransaction) tm.begin();
             LOG.info("Starting Tx {} writing initial values for cells ({}) ", tx0, Bytes.toString(initialData));
             Put putInitialDataRow1 = new Put(row1);
-            putInitialDataRow1.add(family, qualifier1, initialData);
+            putInitialDataRow1.add(TEST_FAMILY.getBytes(), qualifier1, initialData);
             txTable.put(tx0, putInitialDataRow1);
             Put putInitialDataRow2 = new Put(row2);
-            putInitialDataRow2.add(family, qualifier2, initialData);
+            putInitialDataRow2.add(TEST_FAMILY.getBytes(), qualifier2, initialData);
             txTable.put(tx0, putInitialDataRow2);
             tm.commit(tx0);
 
@@ -204,10 +203,10 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
             LOG.info("Starting Tx {} writing values for cells ({}, {}) ", tx1, Bytes.toString(data1_q1),
                      Bytes.toString(data1_q2));
             Put putData1R1Q1 = new Put(row1);
-            putData1R1Q1.add(family, qualifier1, data1_q1);
+            putData1R1Q1.add(TEST_FAMILY.getBytes(), qualifier1, data1_q1);
             txTable.put(tx1, putData1R1Q1);
             Put putData1R2Q2 = new Put(row2);
-            putData1R2Q2.add(family, qualifier2, data1_q2);
+            putData1R2Q2.add(TEST_FAMILY.getBytes(), qualifier2, data1_q2);
             txTable.put(tx1, putData1R2Q2);
 
             Transaction interleavedReadTx = tm.begin();
@@ -224,11 +223,11 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
 
             // Read interleaved and check the values writen by tx 1
             Get getRow1 = new Get(row1).setMaxVersions(1);
-            getRow1.addColumn(family, qualifier1);
+            getRow1.addColumn(TEST_FAMILY.getBytes(), qualifier1);
             Result r = txTable.get(interleavedReadTx, getRow1);
-            assertEquals(r.getValue(family, qualifier1), initialData,
+            assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier1), initialData,
                          "Unexpected value for SI read R1Q1" + interleavedReadTx + ": "
-                         + Bytes.toString(r.getValue(family, qualifier1)));
+                         + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier1)));
 
             // Try to commit, but it should abort due to the change in mastership
             try {
@@ -244,9 +243,9 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
             // Read interleaved and check the values writen by tx 1
             Get getRow2 = new Get(row2).setMaxVersions(1);
             r = txTable.get(interleavedReadTx, getRow2);
-            assertEquals(r.getValue(family, qualifier2), initialData,
+            assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier2), initialData,
                          "Unexpected value for SI read R2Q2" + interleavedReadTx + ": "
-                         + Bytes.toString(r.getValue(family, qualifier2)));
+                         + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier2)));
 
             try {
                 tm.commit(interleavedReadTx);
@@ -295,10 +294,10 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
             HBaseTransaction tx0 = (HBaseTransaction) tm.begin();
             LOG.info("Starting Tx {} writing initial values for cells ({}) ", Bytes.toString(initialData));
             Put putInitialDataRow1 = new Put(row1);
-            putInitialDataRow1.add(family, qualifier1, initialData);
+            putInitialDataRow1.add(TEST_FAMILY.getBytes(), qualifier1, initialData);
             txTable.put(tx0, putInitialDataRow1);
             Put putInitialDataRow2 = new Put(row2);
-            putInitialDataRow2.add(family, qualifier2, initialData);
+            putInitialDataRow2.add(TEST_FAMILY.getBytes(), qualifier2, initialData);
             txTable.put(tx0, putInitialDataRow2);
             tm.commit(tx0);
 
@@ -306,10 +305,10 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
             LOG.info("Starting Tx {} writing values for cells ({}, {}) ", tx1, Bytes.toString(data1_q1),
                      Bytes.toString(data1_q2));
             Put putData1R1Q1 = new Put(row1);
-            putData1R1Q1.add(family, qualifier1, data1_q1);
+            putData1R1Q1.add(TEST_FAMILY.getBytes(), qualifier1, data1_q1);
             txTable.put(tx1, putData1R1Q1);
             Put putData1R2Q2 = new Put(row2);
-            putData1R2Q2.add(family, qualifier2, data1_q2);
+            putData1R2Q2.add(TEST_FAMILY.getBytes(), qualifier2, data1_q2);
             txTable.put(tx1, putData1R2Q2);
 
             // Provoke change in mastership (should throw a Connection exception)
@@ -340,20 +339,20 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
                      Bytes.toString(data1_q2));
             Get getData1R1Q1 = new Get(row1).setMaxVersions(1);
             Result r = txTable.get(tx2, getData1R1Q1);
-            assertEquals(r.getValue(family, qualifier1), initialData,
+            assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier1), initialData,
                          "Unexpected value for SI read R1Q1" + tx2 + ": "
-                         + Bytes.toString(r.getValue(family, qualifier1)));
+                         + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier1)));
             Get getData1R2Q2 = new Get(row2).setMaxVersions(1);
             r = txTable.get(tx2, getData1R2Q2);
-            assertEquals(r.getValue(family, qualifier2), initialData,
+            assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier2), initialData,
                          "Unexpected value for SI read R1Q1" + tx2 + ": "
-                         + Bytes.toString(r.getValue(family, qualifier2)));
+                         + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier2)));
 
             Put putData2R1Q1 = new Put(row1);
-            putData2R1Q1.add(family, qualifier1, data2_q1);
+            putData2R1Q1.add(TEST_FAMILY.getBytes(), qualifier1, data2_q1);
             txTable.put(tx2, putData2R1Q1);
             Put putData2R2Q2 = new Put(row2);
-            putData2R2Q2.add(family, qualifier2, data2_q2);
+            putData2R2Q2.add(TEST_FAMILY.getBytes(), qualifier2, data2_q2);
             txTable.put(tx2, putData2R2Q2);
             // This one should commit in the new TSO
             tm.commit(tx2);
@@ -371,16 +370,16 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         Transaction readTx = tm.begin();
         LOG.info("Starting Read Tx {} for checking cell values", readTx.getTransactionId());
         Get getRow1 = new Get(row1).setMaxVersions(1);
-        getRow1.addColumn(family, qualifier1);
+        getRow1.addColumn(TEST_FAMILY.getBytes(), qualifier1);
         Result r = txTable.get(readTx, getRow1);
-        assertEquals(r.getValue(family, qualifier1), expectedDataR1Q1,
+        assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier1), expectedDataR1Q1,
                      "Unexpected value for SI read R1Q1" + readTx + ": " + Bytes
-                         .toString(r.getValue(family, qualifier1)));
+                         .toString(r.getValue(TEST_FAMILY.getBytes(), qualifier1)));
         Get getRow2 = new Get(row2).setMaxVersions(1);
         r = txTable.get(readTx, getRow2);
-        assertEquals(r.getValue(family, qualifier2), expectedDataR2Q2,
+        assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier2), expectedDataR2Q2,
                      "Unexpected value for SI read R2Q2" + readTx + ": " + Bytes
-                         .toString(r.getValue(family, qualifier2)));
+                         .toString(r.getValue(TEST_FAMILY.getBytes(), qualifier2)));
         tm.commit(readTx);
     }
 

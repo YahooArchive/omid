@@ -77,7 +77,7 @@ public class TestUtils {
                     sock.close();
                 }
             }
-            LOG.info("Host " + host + ":" + port + " is up");
+            LOG.info("Host " + host + ":" + port + " is up...");
             break;
         }
     }
@@ -97,7 +97,7 @@ public class TestUtils {
                 }
             }
             Thread.sleep(sleepTimeMillis);
-            LOG.info("Host " + host + ":" + port + " is up");
+            LOG.info("Host " + host + ":" + port + " is still up...");
         }
     }
     

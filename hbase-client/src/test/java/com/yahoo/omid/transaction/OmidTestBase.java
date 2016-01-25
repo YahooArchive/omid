@@ -33,11 +33,12 @@ import org.slf4j.LoggerFactory;
 import org.testng.ITestContext;
 import org.testng.annotations.AfterGroups;
 import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeGroups;
+import org.testng.annotations.BeforeMethod;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 
 import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
 import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TSO_FAMILY;
@@ -57,9 +58,9 @@ public abstract class OmidTestBase {
     protected static final String TEST_FAMILY = "data";
     static final String TEST_FAMILY2 = "data2";
 
-    @BeforeClass(alwaysRun = true)
-    public void beforeClass() throws Exception {
-        Thread.currentThread().setName("UnitTest(s) thread");
+    @BeforeMethod(alwaysRun = true)
+    public void beforeClass(Method method) throws Exception {
+        Thread.currentThread().setName("UnitTest-" + method.getName());
     }
 
 
@@ -116,12 +117,11 @@ public abstract class OmidTestBase {
 
         admin.createTable(desc);
 
-
         hBaseUtils
             .createTable(Bytes.toBytes(TIMESTAMP_TABLE_DEFAULT_NAME), new byte[][]{TSO_FAMILY}, Integer.MAX_VALUE);
 
         // Create commit table
-        String[] args = new String[] {COMMIT_TABLE_COMMAND_NAME, "-numRegions", "1"};
+        String[] args = new String[]{COMMIT_TABLE_COMMAND_NAME, "-numRegions", "1"};
         OmidTableManager omidTableManager = new OmidTableManager(args);
         omidTableManager.executeActionsOnHBase(hbaseConf);
 

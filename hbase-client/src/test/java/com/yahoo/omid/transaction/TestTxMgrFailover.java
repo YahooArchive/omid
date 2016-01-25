@@ -87,7 +87,6 @@ public class TestTxMgrFailover extends OmidTestBase {
         commitTableClient = spy(commitTable.getClient().get());
         commitTableWriter = spy(commitTable.getWriter().get());
 
-        Configuration hbaseConf = hbaseCluster.getConfiguration();
         BaseConfiguration clientConf = new BaseConfiguration();
         clientConf.setProperty(TSO_HOST_CONFKEY, TSO_SERVER_HOST);
         clientConf.setProperty(TSO_PORT_CONFKEY, TSO_SERVER_PORT);
