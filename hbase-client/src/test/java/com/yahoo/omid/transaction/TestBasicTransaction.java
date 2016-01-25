@@ -11,6 +11,9 @@ import org.slf4j.LoggerFactory;
 import org.testng.ITestContext;
 import org.testng.annotations.Test;
 
+import java.util.Iterator;
+
+import static org.junit.Assert.fail;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
@@ -257,133 +260,166 @@ public class TestBasicTransaction extends OmidTestBase {
     }
 
     @Test(timeOut = 30_000)
-    public void runTestInterleaveScan(ITestContext context) throws Exception {
+    public void testInterleavedScanReturnsTheRightSnapshotResults(ITestContext context) throws Exception {
 
         TransactionManager tm = newTransactionManager(context);
-        TTable tt = new TTable(hbaseConf, TEST_TABLE);
+        TTable txTable = new TTable(hbaseConf, TEST_TABLE);
 
-        Transaction t1 = tm.begin();
-        LOG.info("Transaction created " + t1);
-
+        // Basic data-scaffolding for test
         byte[] fam = Bytes.toBytes(TEST_FAMILY);
-        byte[] col = Bytes.toBytes("testdata");
+        byte[] col = Bytes.toBytes("TEST_COL");
         byte[] data1 = Bytes.toBytes("testWrite-1");
         byte[] data2 = Bytes.toBytes("testWrite-2");
 
-        byte[] startrow = Bytes.toBytes("test-scan" + 0);
-        byte[] stoprow = Bytes.toBytes("test-scan" + 9);
-        byte[] modrow = Bytes.toBytes("test-scan" + 3);
+        byte[] startRow = Bytes.toBytes("row-to-scan" + 0);
+        byte[] stopRow = Bytes.toBytes("row-to-scan" + 9);
+        byte[] randomRow = Bytes.toBytes("row-to-scan" + 3);
+
+        // Add some data transactionally to have an initial state for the test
+        Transaction tx1 = tm.begin();
         for (int i = 0; i < 10; i++) {
-            byte[] row = Bytes.toBytes("test-scan" + i);
+            byte[] row = Bytes.toBytes("row-to-scan" + i);
 
             Put p = new Put(row);
             p.add(fam, col, data1);
-            tt.put(t1, p);
+            txTable.put(tx1, p);
         }
-        tm.commit(t1);
+        tm.commit(tx1);
 
-        Transaction t2 = tm.begin();
-        Put p = new Put(modrow);
+        // Start a second transaction -Tx2- modifying a random row and check that a concurrent transactional context
+        // that scans the table, gets the proper snapshot with the stuff written by Tx1
+        Transaction tx2 = tm.begin();
+        Put p = new Put(randomRow);
         p.add(fam, col, data2);
-        tt.put(t2, p);
+        txTable.put(tx2, p);
 
-        Transaction tscan = tm.begin();
-        ResultScanner rs = tt.getScanner(tscan, new Scan().setStartRow(startrow).setStopRow(stoprow));
-        Result r = rs.next();
+        Transaction scanTx = tm.begin(); // This is the concurrent transactional scanner
+        ResultScanner rs = txTable.getScanner(scanTx, new Scan().setStartRow(startRow).setStopRow(stopRow));
+        Result r = rs.next(); // Exercise the next() method
         int i = 0;
         while (r != null) {
-            if (LOG.isTraceEnabled()) {
-                LOG.trace("Scan1 :" + Bytes.toString(r.getRow()) + " => " + Bytes.toString(r.getValue(fam, col)));
-            }
-            LOG.debug("" + ++i);
-
+            LOG.trace("Scan (" + ++i + ")" + Bytes.toString(r.getRow()) + " => " + Bytes.toString(r.getValue(fam, col)));
             assertTrue(Bytes.equals(data1, r.getValue(fam, col)),
-                       "Unexpected value for SI scan " + tscan + ": " + Bytes.toString(r.getValue(fam, col)));
+                    "Unexpected value for SI scan " + scanTx + ": " + Bytes.toString(r.getValue(fam, col)));
             r = rs.next();
         }
-        tm.commit(t2);
 
-        int modifiedrows = 0;
-        tscan = tm.begin();
-        rs = tt.getScanner(tscan, new Scan().setStartRow(startrow).setStopRow(stoprow));
-        r = rs.next();
-        while (r != null) {
-            if (Bytes.equals(data2, r.getValue(fam, col))) {
-                if (LOG.isTraceEnabled()) {
-                    LOG.trace("Modified :" + Bytes.toString(r.getRow()));
-                }
-                modifiedrows++;
+        // Commit the Tx2 and then check that under a new transactional context, the scanner gets the right snapshot,
+        // which must include the row modified by Tx2
+        tm.commit(tx2);
+
+        int modifiedRows = 0;
+        Transaction newScanTx = tm.begin();
+        ResultScanner newRS = txTable.getScanner(newScanTx, new Scan().setStartRow(startRow).setStopRow(stopRow));
+        Result[] results = newRS.next(10); // Exercise the next(numRows) method
+        for (Result result : results) {
+            if (Bytes.equals(data2, result.getValue(fam, col))) {
+                LOG.trace("Modified :" + Bytes.toString(result.getRow()));
+                modifiedRows++;
             }
+        }
+        assertEquals(modifiedRows, 1, "Expected 1 row modified, but " + modifiedRows + " are.");
 
-            r = rs.next();
+        // Same check as before but checking that the results are correct when retrieved through the Scanner Iterator
+        modifiedRows = 0;
+        ResultScanner iterableRS = txTable.getScanner(newScanTx, new Scan().setStartRow(startRow).setStopRow(stopRow));
+        for (Result res : iterableRS) {
+            if (Bytes.equals(data2, res.getValue(fam, col))) {
+                LOG.trace("Modified :" + Bytes.toString(res.getRow()));
+                modifiedRows++;
+            }
         }
 
-        assertTrue(modifiedrows == 1, "Expected 1 row modified, but " + modifiedrows + " are.");
+        assertEquals(modifiedRows, 1, "Expected 1 row modified, but " + modifiedRows + " are.");
+
+        // Finally, check that the Scanner Iterator does not implement the remove method
+        try {
+            iterableRS.iterator().remove();
+            fail();
+        } catch(RuntimeException re) {
+            // Expected
+        }
 
     }
 
     @Test(timeOut = 30_000)
-    public void runTestInterleaveScanWhenATransactionAborts(ITestContext context) throws Exception {
+    public void testInterleavedScanReturnsTheRightSnapshotResultsWhenATransactionAborts(ITestContext context)
+            throws Exception {
 
         TransactionManager tm = newTransactionManager(context);
-        TTable tt = new TTable(hbaseConf, TEST_TABLE);
+        TTable txTable = new TTable(hbaseConf, TEST_TABLE);
 
-        Transaction t1 = tm.begin();
-        LOG.info("Transaction created " + t1);
-
+        // Basic data-scaffolding for test
         byte[] fam = Bytes.toBytes(TEST_FAMILY);
-        byte[] col = Bytes.toBytes("testdata");
+        byte[] col = Bytes.toBytes("TEST_COL");
         byte[] data1 = Bytes.toBytes("testWrite-1");
         byte[] data2 = Bytes.toBytes("testWrite-2");
 
-        byte[] startrow = Bytes.toBytes("test-scan" + 0);
-        byte[] stoprow = Bytes.toBytes("test-scan" + 9);
-        byte[] modrow = Bytes.toBytes("test-scan" + 3);
+        byte[] startRow = Bytes.toBytes("row-to-scan" + 0);
+        byte[] stopRow = Bytes.toBytes("row-to-scan" + 9);
+        byte[] randomRow = Bytes.toBytes("row-to-scan" + 3);
+
+        // Add some data transactionally to have an initial state for the test
+        Transaction tx1 = tm.begin();
         for (int i = 0; i < 10; i++) {
-            byte[] row = Bytes.toBytes("test-scan" + i);
+            byte[] row = Bytes.toBytes("row-to-scan" + i);
 
             Put p = new Put(row);
             p.add(fam, col, data1);
-            tt.put(t1, p);
+            txTable.put(tx1, p);
         }
-        tm.commit(t1);
+        tm.commit(tx1);
 
-        Transaction t2 = tm.begin();
-        Put p = new Put(modrow);
+        // Start a second transaction modifying a random row and check that a transactional scanner in Tx2 gets the
+        // right snapshot with the new value in the random row just written by Tx2
+        Transaction tx2 = tm.begin();
+        Put p = new Put(randomRow);
         p.add(fam, col, data2);
-        tt.put(t2, p);
+        txTable.put(tx2, p);
 
-        int modifiedrows = 0;
-        ResultScanner rs = tt.getScanner(t2, new Scan().setStartRow(startrow).setStopRow(stoprow).addColumn(fam, col));
+        int modifiedRows = 0;
+        ResultScanner rs = txTable.getScanner(tx2, new Scan().setStartRow(startRow).setStopRow(stopRow));
         Result r = rs.next();
         while (r != null) {
             if (Bytes.equals(data2, r.getValue(fam, col))) {
-                if (LOG.isTraceEnabled()) {
-                    LOG.trace("Modified :" + Bytes.toString(r.getRow()));
-                }
-                modifiedrows++;
+                LOG.trace("Modified :" + Bytes.toString(r.getRow()));
+                modifiedRows++;
             }
 
             r = rs.next();
         }
 
-        assertTrue(modifiedrows == 1, "Expected 1 row modified, but " + modifiedrows + " are.");
-        tm.rollback(t2);
+        assertEquals(modifiedRows, 1, "Expected 1 row modified, but " + modifiedRows + " are.");
 
-        Transaction tscan = tm.begin();
-        rs = tt.getScanner(tscan, new Scan().setStartRow(startrow).setStopRow(stoprow).addColumn(fam, col));
+        // Rollback the second transaction and then check that under a new transactional scanner we get the snapshot
+        // that includes the only the initial rows put by Tx1
+        tm.rollback(tx2);
+
+        Transaction txScan = tm.begin();
+        rs = txTable.getScanner(txScan, new Scan().setStartRow(startRow).setStopRow(stopRow));
         r = rs.next();
         while (r != null) {
-            if (LOG.isTraceEnabled()) {
-                LOG.trace("Scan1 :" + Bytes.toString(r.getRow()) + " => " + Bytes.toString(r.getValue(fam, col)));
-            }
-
+            LOG.trace("Scan1 :" + Bytes.toString(r.getRow()) + " => " + Bytes.toString(r.getValue(fam, col)));
             assertTrue(Bytes.equals(data1, r.getValue(fam, col)),
-                       "Unexpected value for SI scan " + tscan + ": " + Bytes.toString(r.getValue(fam, col)));
+                       "Unexpected value for SI scan " + txScan + ": " + Bytes.toString(r.getValue(fam, col)));
             r = rs.next();
+        }
+
+        // Same check as before but checking that the results are correct when retrieved through the Scanner Iterator
+        ResultScanner iterableRS= txTable.getScanner(txScan, new Scan().setStartRow(startRow).setStopRow(stopRow));
+        for (Result result : iterableRS) {
+            assertTrue(Bytes.equals(data1, result.getValue(fam, col)),
+                    "Unexpected value for SI scan " + txScan + ": " + Bytes.toString(result.getValue(fam, col)));
+        }
+
+        // Finally, check that the Scanner Iterator does not implement the remove method
+        try {
+            iterableRS.iterator().remove();
+            fail();
+        } catch(RuntimeException re) {
+            // Expected
         }
 
     }
-
 
 }
