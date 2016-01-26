@@ -285,6 +285,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
 
             // Write initial values for the test
             HBaseTransaction tx0 = (HBaseTransaction) tm.begin();
+            long initialEpoch = tx0.getEpoch();
             LOG.info("Starting Tx {} writing initial values for cells ({}) ", Bytes.toString(initialData));
             Put putInitialDataRow1 = new Put(row1);
             putInitialDataRow1.add(TEST_FAMILY.getBytes(), qualifier1, initialData);
@@ -311,6 +312,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
             LOG.info("++++++++++++++++++++++++++++++++++++++++++++++++++++++");
             LOG.info("++++++++++++++++++++++++++++++++++++++++++++++++++++++");
             tso1.stopAndWait();
+            TestUtils.waitForSocketNotListening("localhost", TSO1_PORT, 100);
 
             // Try to commit, but it should abort due to the change in mastership
             try {
@@ -320,7 +322,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
                 // Expected
                 LOG.info("Rollback cause for Tx {}: ", tx1, e.getCause());
                 assertEquals(tx1.getStatus(), Transaction.Status.ROLLEDBACK);
-                assertEquals(tx1.getEpoch(), 0);
+                assertEquals(tx1.getEpoch(), initialEpoch);
             }
 
             LOG.info("Sleep some time till the client is informed about"
