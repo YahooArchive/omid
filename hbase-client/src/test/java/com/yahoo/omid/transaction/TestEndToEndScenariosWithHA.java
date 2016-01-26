@@ -82,19 +82,6 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
 
         zkClient = provideInitializedZookeeperClient(zkConnection);
 
-        try {
-            zkClient.delete().forPath(TSO_LEASE_PATH);
-            LOG.info("ZKPath {} deleted", TSO_LEASE_PATH);
-        } catch (Exception e) {
-            LOG.info("Problem removing ZKPath {}", TSO_LEASE_PATH);
-        }
-        try {
-            zkClient.delete().forPath(CURRENT_TSO_PATH);
-            LOG.info("ZKPaths {} deleted", CURRENT_TSO_PATH);
-        } catch (Exception e) {
-            LOG.info("Problem removing ZKPath {}", CURRENT_TSO_PATH);
-        }
-
         // Synchronize TSO start
         barrierTillTSOAddressPublication = new CountDownLatch(1);
         final NodeCache currentTSOZNode = new NodeCache(zkClient, CURRENT_TSO_PATH);
@@ -166,6 +153,12 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         TestUtils.waitForSocketNotListening("localhost", TSO1_PORT, 100);
         tso2.stopAndWait();
         TestUtils.waitForSocketNotListening("localhost", TSO2_PORT, 100);
+
+        zkClient.delete().forPath(TSO_LEASE_PATH);
+        LOG.info("ZKPath {} deleted", TSO_LEASE_PATH);
+        zkClient.delete().forPath(CURRENT_TSO_PATH);
+        LOG.info("ZKPaths {} deleted", CURRENT_TSO_PATH);
+
         zkClient.close();
     }
 
