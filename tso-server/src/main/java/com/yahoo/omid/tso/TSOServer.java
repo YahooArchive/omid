@@ -1,6 +1,5 @@
 package com.yahoo.omid.tso;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.AbstractIdleService;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
@@ -19,7 +18,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
 
 import javax.inject.Inject;
@@ -30,9 +32,8 @@ public class TSOServer extends AbstractIdleService {
 
     private static final Logger LOG = LoggerFactory.getLogger(TSOServer.class);
 
-    // Default network interfaces where this instance is running
-    static final String MAC_TSO_NET_IFACE = "en0";
-    static final String LINUX_TSO_NET_IFACE = "eth0";
+    private static final String LINUX_TSO_NET_IFACE_PREFIX = "eth";
+    private static final String MAC_TSO_NET_IFACE_PREFIX = "en";
 
     // Default lease period
     static final long DEFAULT_LEASE_PERIOD_IN_MSECS = 10 * 1000; // 10 Secs
@@ -84,7 +85,7 @@ public class TSOServer extends AbstractIdleService {
 
         private final TSOServerCommandLineConfig config;
 
-        private final List<Module> guiceModules = new ArrayList<Module>();
+        private final List<Module> guiceModules = new ArrayList<>();
 
         GuiceConfigBuilder(TSOServerCommandLineConfig config) {
             this.config = config;
@@ -186,7 +187,7 @@ public class TSOServer extends AbstractIdleService {
 
     // ------------------------------------------------------------------------
 
-    void attachShutDownHook() {
+    private void attachShutDownHook() {
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
@@ -222,57 +223,17 @@ public class TSOServer extends AbstractIdleService {
     // ************************* Helper methods *******************************
 
     static String getDefaultNetworkIntf() {
-        BaseOperatingSystem currentOperatingSystem = BaseOperatingSystem.get();
-        switch (currentOperatingSystem) {
-            case Mac:
-                return MAC_TSO_NET_IFACE;
-            case Linux:
-                return LINUX_TSO_NET_IFACE;
-            default:
-                throw new IllegalArgumentException(currentOperatingSystem.name());
-        }
-    }
-
-    static final String OS_SYSTEM_PROPERTY = "os.name";
-
-    enum BaseOperatingSystem {
-
-        Mac("mac"),
-        Linux("linux");
-
-        private final String osId;
-
-        BaseOperatingSystem(String osId) {
-            this.osId = osId.toLowerCase();
-        }
-
-        private boolean isIncludedIn(String targetOSId) {
-
-            if (targetOSId.indexOf(osId) != -1) {
-                return true;
-            }
-            return false;
-        }
-
-        static BaseOperatingSystem get() {
-            return get(OS_SYSTEM_PROPERTY, "Unknown OS");
-        }
-
-        /**
-         * This method is intended only for testing purposes. Use get() instead
-         */
-        @VisibleForTesting
-        static BaseOperatingSystem get(String sysProperty, String defaultValue) {
-            String currentBaseOS = System.getProperty(sysProperty, defaultValue).toLowerCase();
-
-            for (BaseOperatingSystem osValue : values()) {
-                if (osValue.isIncludedIn(currentBaseOS)) {
-                    return osValue;
+        try {
+            Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+            while (networkInterfaces.hasMoreElements()) {
+                String name = networkInterfaces.nextElement().getDisplayName();
+                if (name.startsWith(MAC_TSO_NET_IFACE_PREFIX) || name.startsWith(LINUX_TSO_NET_IFACE_PREFIX)) {
+                    return name;
                 }
             }
-            throw new IllegalArgumentException("Operating system not contemplated: " + currentBaseOS);
+        } catch (SocketException ignored) {
         }
-
+        throw new IllegalArgumentException(String.format("No network '%s*'/'%s*' interfaces found",
+                                                         MAC_TSO_NET_IFACE_PREFIX, LINUX_TSO_NET_IFACE_PREFIX));
     }
-
 }
