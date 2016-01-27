@@ -82,9 +82,9 @@ public class ZKModule extends AbstractModule {
         InetAddress addr = getIPAddressFromNetworkInterface(tsoNetIfaceName);
         final int tsoPort = config.getPort();
 
-        String tsoHostAndPortAsString = addr.getHostAddress() + ":" + tsoPort;
+        String tsoHostAndPortAsString = "N/A";
         try {
-            HostAndPort.fromString(tsoHostAndPortAsString);
+            tsoHostAndPortAsString = HostAndPort.fromParts(addr.getHostAddress(), tsoPort).toString();
         } catch (IllegalArgumentException e) {
             LOG.error("Cannot parse TSO host:port string {}", tsoHostAndPortAsString);
             throw e;
@@ -126,7 +126,7 @@ public class ZKModule extends AbstractModule {
      * @throws UnknownHostException
      *             If the LAN address of the machine cannot be found.
      */
-    public static InetAddress getIPAddressFromNetworkInterface(String ifaceName)
+    private static InetAddress getIPAddressFromNetworkInterface(String ifaceName)
     throws SocketException, UnknownHostException {
 
         NetworkInterface iface = NetworkInterface.getByName(ifaceName);
