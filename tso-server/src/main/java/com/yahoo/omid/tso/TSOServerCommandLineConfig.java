@@ -229,7 +229,7 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
 
     private String getDefaultNetworkIntf() {
         try {
-            String envVar = System.getenv(NETWORK_IFACE_ENV_VAR);
+            String envVar = System.getProperty(NETWORK_IFACE_ENV_VAR);
             if (envVar != null && envVar.length() > 0) {
                 return envVar;
             }
