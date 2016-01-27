@@ -228,42 +228,6 @@
                     <version>${coveralls.version}</version>
                 </plugin>
 
-                <!-- ============================================================================================== -->
-                <!-- License Management plugins                                                                     -->
-                <!-- ============================================================================================== -->
-                <plugin>
-                    <groupId>com.mycila</groupId>
-                    <artifactId>license-maven-plugin</artifactId>
-                    <version>${license.maven-plugin.version}</version>
-                    <inherited>false</inherited> <!-- for multi-module config -->
-                    <configuration>
-                        <header>${license.header}</header>
-                        <aggregate>true</aggregate> <!-- for multi-module config -->
-                        <skipExistingHeaders>false</skipExistingHeaders>
-                        <properties>
-                            <owner>${license.owner}</owner>
-                            <inceptionYear>${project.inceptionYear}</inceptionYear>
-                            <latestYearOfContribution>${license.currentYear}</latestYearOfContribution>
-                        </properties>
-                        <includes>
-                            <include>src/**/*.java</include>
-                            <include>src/**/*.xml</include>
-                        </includes>
-                        <excludes>
-                            <!-- Add files to exclude from licensing -->
-                        </excludes>
-                    </configuration>
-                    <executions>
-                        <execution>
-                            <id>check-license</id>
-                            <phase>initialize</phase>
-                            <goals>
-                                <goal>check</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                </plugin>
-
             </plugins>
 
         </pluginManagement>
@@ -299,6 +263,80 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>cobertura-maven-plugin</artifactId>
+            </plugin>
+
+
+            <!-- ============================================================================================== -->
+            <!-- License Management plugins                                                                     -->
+            <!-- ============================================================================================== -->
+            <plugin>
+                <groupId>com.mycila</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <version>${license.maven-plugin.version}</version>
+                <inherited>true</inherited> <!-- for multi-module config -->
+                <configuration>
+                    <header>${license.header}</header>
+                    <aggregate>true</aggregate> <!-- for multi-module config -->
+                    <skipExistingHeaders>false</skipExistingHeaders>
+                    <properties>
+                        <owner>${license.owner}</owner>
+                        <inceptionYear>${project.inceptionYear}</inceptionYear>
+                        <latestYearOfContribution>${license.currentYear}</latestYearOfContribution>
+                    </properties>
+                    <includes>
+                        <!-- Add files where to include licensing -->
+                        <include>src/**/*.java</include>
+                        <include>src/**/*.xml</include>
+                        <include>src/**/*.proto</include>
+                    </includes>
+                    <excludes>
+                        <!-- Add files to exclude from licensing -->
+
+                        <!-- Exclude pom -->
+                        <exclude>**/pom.xml</exclude>
+
+                        <!-- Exclude config and scripts -->
+                        <exclude>**/doc/*</exclude>
+                        <exclude>**/dev-utils/*</exclude>
+                        <exclude>**/bin/*</exclude>
+                        <exclude>**/conf/*</exclude>
+
+                        <!-- Exclude assembly -->
+                        <exclude>**/maven/assembly/*</exclude>
+
+                        <!-- Exclude tests -->
+                        <exclude>**/src/test/**/*</exclude>
+
+                        <!-- Project specific exclusions (e.g. they've been copied/modified from other open-source projects -->
+
+                        <!-- Protocol buffers generated classes -->
+                        <exclude>**/src/main/java/com/yahoo/omid/proto/TSOProto.java</exclude>
+
+                        <!-- Taken from https://github.com/brianfrankcooper/YCSB -->
+                        <exclude>**/src/main/java/com/yahoo/omid/benchmarks/tso/Generator.java</exclude>
+                        <exclude>**/src/main/java/com/yahoo/omid/benchmarks/tso/IntegerGenerator.java</exclude>
+                        <exclude>**/src/main/java/com/yahoo/omid/benchmarks/tso/ZipfianGenerator.java</exclude>
+                        <exclude>**/src/main/java/com/yahoo/omid/benchmarks/tso/ScrambledZipfianGenerator.java</exclude>
+
+                        <!-- Taken from https://github.com/apache/hbase -->
+                        <exclude>**/src/main/java/com/yahoo/omid/committable/hbase/RegionSplitter.java</exclude>
+
+                    </excludes>
+                    <!-- Add comment style for protocol buffers -->
+                    <mapping>
+                        <proto>DOUBLESLASH_STYLE</proto>
+                    </mapping>
+                </configuration>
+                <!-- TODO Uncomment the execution section when adding the License headers -->
+                <!-- executions>
+                    <execution>
+                        <id>check-license</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions -->
             </plugin>
 
         </plugins>
