@@ -4,12 +4,18 @@ import com.beust.jcommander.IVariableArity;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
-import com.yahoo.omid.tools.hbase.HBaseLogin;
 import com.yahoo.omid.metrics.MetricsProvider;
+import com.yahoo.omid.tools.hbase.HBaseLogin;
 import com.yahoo.omid.tsoclient.TSOClient;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.List;
 
 import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
@@ -24,12 +30,19 @@ import static com.yahoo.omid.tso.RequestProcessorImpl.DEFAULT_MAX_ITEMS;
  */
 public class TSOServerCommandLineConfig extends JCommander implements IVariableArity {
 
+    private static final Logger LOG = LoggerFactory.getLogger(TSOServer.class);
+
+    private static final String LINUX_TSO_NET_IFACE_PREFIX = "eth";
+    private static final String MAC_TSO_NET_IFACE_PREFIX = "en";
+    private static final String NETWORK_IFACE_ENV_VAR = "networkIface";
+
     enum TimestampStore {
         MEMORY("com.yahoo.omid.tso.InMemoryTimestampStorageModule"),
         HBASE("com.yahoo.omid.timestamp.storage.HBaseTimestampStorageModule"),
         ZK("com.yahoo.omid.timestamp.storage.ZKTimestampStorageModule"),;
 
         private String clazz;
+
         TimestampStore(String className) {
             clazz = className;
         }
@@ -45,6 +58,7 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
         HBASE("com.yahoo.omid.committable.hbase.HBaseCommitTableStorageModule");
 
         private String clazz;
+
         CommitTableStore(String className) {
             clazz = className;
         }
@@ -119,8 +133,9 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
     @Parameter(names = "-publishHostAndPortInZK", description = "Publishes the host:port of this TSO server in ZK")
     public boolean shouldHostAndPortBePublishedInZK = false;
 
-    @Parameter(names = "-networkIface", description = "Network Interface where TSO is attached to (e.g. eth0, en0...)")
-    private String networkIfaceName = TSOServer.getDefaultNetworkIntf();
+    @Parameter(names = "-"
+                       + NETWORK_IFACE_ENV_VAR, description = "Network Interface where TSO is attached to (e.g. eth0, en0...)")
+    private String networkIfaceName = getDefaultNetworkIntf();
 
     @Parameter(names = "-leasePeriodInMs", description = "Lease period for high availability in ms")
     private long leasePeriodInMs = TSOServer.DEFAULT_LEASE_PERIOD_IN_MSECS;
@@ -208,6 +223,29 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
 
     public long getLeasePeriodInMs() {
         return leasePeriodInMs;
+    }
+
+    // ************************* Helper methods *******************************
+
+    private String getDefaultNetworkIntf() {
+        try {
+            String envVar = System.getenv(NETWORK_IFACE_ENV_VAR);
+            if (envVar != null && envVar.length() > 0) {
+                return envVar;
+            }
+            Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+            while (networkInterfaces.hasMoreElements()) {
+                String name = networkInterfaces.nextElement().getDisplayName();
+                LOG.info("Iterating over network interfaces, found '{}'", name);
+                if (name.startsWith(MAC_TSO_NET_IFACE_PREFIX) || name.startsWith(LINUX_TSO_NET_IFACE_PREFIX)) {
+                    return name;
+                }
+            }
+        } catch (SocketException ignored) {
+            throw new RuntimeException("Failed to find any network interfaces", ignored);
+        }
+        throw new IllegalArgumentException(String.format("No network '%s*'/'%s*' interfaces found",
+                                                         MAC_TSO_NET_IFACE_PREFIX, LINUX_TSO_NET_IFACE_PREFIX));
     }
 
 }

@@ -32,9 +32,6 @@ public class TSOServer extends AbstractIdleService {
 
     private static final Logger LOG = LoggerFactory.getLogger(TSOServer.class);
 
-    private static final String LINUX_TSO_NET_IFACE_PREFIX = "eth";
-    private static final String MAC_TSO_NET_IFACE_PREFIX = "en";
-
     // Default lease period
     static final long DEFAULT_LEASE_PERIOD_IN_MSECS = 10 * 1000; // 10 Secs
 
@@ -218,24 +215,5 @@ public class TSOServer extends AbstractIdleService {
             System.exit(-1);
         }
 
-    }
-
-    // ************************* Helper methods *******************************
-
-    static String getDefaultNetworkIntf() {
-        try {
-            Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
-            while (networkInterfaces.hasMoreElements()) {
-                String name = networkInterfaces.nextElement().getDisplayName();
-                LOG.info("Iterating over network interfaces, found '{}'", name);
-                if (name.startsWith(MAC_TSO_NET_IFACE_PREFIX) || name.startsWith(LINUX_TSO_NET_IFACE_PREFIX)) {
-                    return name;
-                }
-            }
-        } catch (SocketException ignored) {
-            throw new RuntimeException("Failed to find any network interfaces", ignored);
-        }
-        throw new IllegalArgumentException(String.format("No network '%s*'/'%s*' interfaces found",
-                                                         MAC_TSO_NET_IFACE_PREFIX, LINUX_TSO_NET_IFACE_PREFIX));
     }
 }
