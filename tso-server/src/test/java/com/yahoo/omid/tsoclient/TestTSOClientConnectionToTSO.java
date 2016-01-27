@@ -45,9 +45,9 @@ public class TestTSOClientConnectionToTSO {
 
     private Injector injector = null;
 
-    private static TestingServer zkServer;
+    private TestingServer zkServer;
 
-    private static CuratorFramework zkClient;
+    private CuratorFramework zkClient;
     private TSOServer tsoServer;
 
     @BeforeMethod
@@ -69,7 +69,7 @@ public class TestTSOClientConnectionToTSO {
             stat = zkClient.checkExists().forPath(CURRENT_TSO_PATH);
             assertNull(stat, CURRENT_TSO_PATH + " should not exist");
         } catch (NoNodeException e) {
-            LOG.info("{} ZNode did not existed", CURRENT_TSO_PATH);
+            LOG.info("{} ZNode did not exist", CURRENT_TSO_PATH);
         }
 
     }
@@ -108,7 +108,8 @@ public class TestTSOClientConnectionToTSO {
         clientConf.setProperty(TSO_PORT_CONFKEY, tsoPortForTest);
 
         // Launch a TSO WITHOUT publishing the address in ZK...
-        injector = Guice.createInjector(new TSOMockModule(TSOServerCommandLineConfig.configFactory(tsoPortForTest, 1000)));
+        injector =
+            Guice.createInjector(new TSOMockModule(TSOServerCommandLineConfig.configFactory(tsoPortForTest, 1000)));
         LOG.info("Starting TSO");
         tsoServer = injector.getInstance(TSOServer.class);
         tsoServer.startAndWait();
@@ -151,7 +152,7 @@ public class TestTSOClientConnectionToTSO {
         TestUtils.waitForSocketListening(TSO_HOST, tsoPortForTest, 100);
         LOG.info("Finished loading TSO");
 
-        Thread.sleep(1500); // Allow the TSO to register
+        waitTillTsoRegisters(injector.getInstance(CuratorFramework.class));
 
         // When a ZK node for TSOServer is found we should get a connection
         TSOClient tsoClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
@@ -169,7 +170,6 @@ public class TestTSOClientConnectionToTSO {
         LOG.info("TSO Server Stopped");
 
     }
-
     @Test(timeOut = 30_000)
     public void testSuccessOfTSOClientReconnectionsToARestartedTSOWithZKPublishing() throws Exception {
 
@@ -185,7 +185,7 @@ public class TestTSOClientConnectionToTSO {
         TestUtils.waitForSocketListening(TSO_HOST, tsoPortForTest, 100);
         LOG.info("Finished loading TSO");
 
-        Thread.sleep(1500); // Allow the TSO to register
+        waitTillTsoRegisters(injector.getInstance(CuratorFramework.class));
 
         // Then create the TSO Client under test...
         Configuration clientConf = new BaseConfiguration();
@@ -215,8 +215,8 @@ public class TestTSOClientConnectionToTSO {
             FsmImpl fsm = (FsmImpl) clientimpl.fsm;
             assertEquals(e.getCause().getClass(), ConnectionException.class);
             assertTrue(fsm.getState().getClass().equals(TSOClientImpl.ConnectionFailedState.class)
-                    ||
-                    fsm.getState().getClass().equals(TSOClientImpl.DisconnectedState.class));
+                       ||
+                       fsm.getState().getClass().equals(TSOClientImpl.DisconnectedState.class));
         }
 
         // After that, simulate that a new TSO has been launched...
@@ -241,9 +241,28 @@ public class TestTSOClientConnectionToTSO {
 
         // ...and stop the server
         tsoServer.stopAndWait();
-        tsoServer = null;
         TestUtils.waitForSocketNotListening(TSO_HOST, tsoPortForTest, 1000);
         LOG.info("Restarted TSO Server Stopped");
     }
+
+    private void waitTillTsoRegisters(CuratorFramework zkClient) throws Exception {
+        while (true) {
+            try {
+                Stat stat = zkClient.checkExists().forPath(CURRENT_TSO_PATH);
+                if (stat == null) {
+                    continue;
+                }
+                LOG.info("TSO registered in ZK with path {}={}", CURRENT_TSO_PATH, stat.toString());
+                if (stat.toString().length() == 0) {
+                    continue;
+                }
+                return;
+            } catch (Exception e) {
+                LOG.debug("TSO still has not registered yet, sleeping...", e);
+                Thread.sleep(500);
+            }
+        }
+    }
+
 
 }

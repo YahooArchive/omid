@@ -53,7 +53,7 @@ public class TestTSOChannelHandlerNetty {
     @BeforeMethod
     public void beforeTestMethod() {
         MockitoAnnotations.initMocks(this);
-        String[] confString = { "-port", "1234" };
+        String[] confString = { "-port", "1434" };
         TSOServerCommandLineConfig config = TSOServerCommandLineConfig.parseConfig(confString);
         channelHandler = new TSOChannelHandler(config, requestProcessor, new NullMetricsProvider());
     }
@@ -74,7 +74,7 @@ public class TestTSOChannelHandlerNetty {
         channelHandler.reconnect();
         assertTrue(channelHandler.listeningChannel.isOpen());
         assertEquals(channelHandler.channelGroup.size(), 1);
-        assertEquals(((InetSocketAddress) channelHandler.listeningChannel.getLocalAddress()).getPort(), 1234);
+        assertEquals(((InetSocketAddress) channelHandler.listeningChannel.getLocalAddress()).getPort(), 1434);
 
         // Check connection close
         channelHandler.closeConnection();
@@ -115,7 +115,7 @@ public class TestTSOChannelHandlerNetty {
 
         ClientBootstrap nettyClient = createNettyClientBootstrap();
 
-        ChannelFuture channelF = nettyClient.connect(new InetSocketAddress("localhost", 1234));
+        ChannelFuture channelF = nettyClient.connect(new InetSocketAddress("localhost", 1434));
 
         // ////////////////////////////////////////////////////////////////////
         // Test the client can't connect cause the server is not there
@@ -134,7 +134,7 @@ public class TestTSOChannelHandlerNetty {
         // ////////////////////////////////////////////////////////////////////
         // Test that a client can connect now
         // ////////////////////////////////////////////////////////////////////
-        channelF = nettyClient.connect(new InetSocketAddress("localhost", 1234));
+        channelF = nettyClient.connect(new InetSocketAddress("localhost", 1434));
         while(!channelF.isDone()) /** do nothing */ ;
         assertTrue(channelF.isSuccess());
         assertTrue(channelF.getChannel().isConnected());
@@ -153,7 +153,7 @@ public class TestTSOChannelHandlerNetty {
         // Open a new channel and test the connection closing on the server side
         // through the channel handler
         // ////////////////////////////////////////////////////////////////////
-        channelF = nettyClient.connect(new InetSocketAddress("localhost", 1234));
+        channelF = nettyClient.connect(new InetSocketAddress("localhost", 1434));
         while(!channelF.isDone()) /** do nothing */ ;
         assertTrue(channelF.isSuccess());
         // Eventually the channel group of the server should have 2 elements again
@@ -174,7 +174,7 @@ public class TestTSOChannelHandlerNetty {
         // Eventually the channel group of the server should contain the listening channel
         assertEquals(channelHandler.channelGroup.size(), 1);
         // Check the client can connect
-        channelF = nettyClient.connect(new InetSocketAddress("localhost", 1234));
+        channelF = nettyClient.connect(new InetSocketAddress("localhost", 1434));
         while(!channelF.isDone()) /** do nothing */ ;
         assertTrue(channelF.isSuccess());
         // Eventually the channel group of the server should have 2 elements
@@ -207,7 +207,7 @@ public class TestTSOChannelHandlerNetty {
         channelHandler.reconnect();
         // Create client and connect it
         ClientBootstrap nettyClient = createNettyClientBootstrap();
-        ChannelFuture channelF = nettyClient.connect(new InetSocketAddress("localhost", 1234));
+        ChannelFuture channelF = nettyClient.connect(new InetSocketAddress("localhost", 1434));
         // Basic checks for connection
         while(!channelF.isDone()) /** do nothing */ ;
         assertTrue(channelF.isSuccess());
