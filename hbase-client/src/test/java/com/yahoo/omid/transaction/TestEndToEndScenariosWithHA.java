@@ -317,7 +317,8 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
             // Try to commit, but it should abort due to the change in mastership
             try {
                 tm.commit(tx1);
-                fail();
+                String failMsg = String.format("%s should not commit. Initial epoch was: %d", tx1, initialEpoch);
+                fail(failMsg);
             } catch (RollbackException e) {
                 // Expected
                 LOG.info("Rollback cause for Tx {}: ", tx1, e.getCause());
