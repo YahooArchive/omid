@@ -31,7 +31,7 @@ script:
 
 after_success:
   - mvn coveralls:report
-  - mvn -B release:prepare release:perform -Prelease_profile --settings bintray-settings.xml
+  - mvn -B release:prepare release:perform -Prelease_profile,hbase-0 --settings bintray-settings.xml
 
 after_failure:
   - cat common/target/surefire-reports/*.txt
