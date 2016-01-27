@@ -39,8 +39,8 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
     private int tsoServerPortForTest;
 
     // Cells for tests
-    final static public CellId c1 = new DummyCellIdImpl(0xdeadbeefL);
-    final static public CellId c2 = new DummyCellIdImpl(0xfeedcafeL);
+    private final static CellId c1 = new DummyCellIdImpl(0xdeadbeefL);
+    private final static CellId c2 = new DummyCellIdImpl(0xfeedcafeL);
 
     // Required infrastructure for TSO tsoClient-server integration testing
     private TSOServer tsoServer;
@@ -103,7 +103,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
 
     }
 
-    @Test(timeOut = 10_000)
+    @Test(timeOut = 30_000)
     public void testTimestampsOrderingGrowMonotonically() throws Exception {
         long referenceTimestamp;
         long startTsTx1 = tsoClient.getNewStartTimestamp().get();
@@ -123,14 +123,14 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         assertEquals(startTsTx3, ++referenceTimestamp, "Should grow monotonically");
     }
 
-    @Test(timeOut = 10_000)
+    @Test(timeOut = 30_000)
     public void testSimpleTransactionWithNoWriteSetCanCommit() throws Exception {
         long startTsTx1 = tsoClient.getNewStartTimestamp().get();
         long commitTsTx1 = tsoClient.commit(startTsTx1, Sets.<CellId>newHashSet()).get();
         assertTrue(commitTsTx1 > startTsTx1);
     }
 
-    @Test(timeOut = 10_000)
+    @Test(timeOut = 30_000)
     public void testTransactionWithMassiveWriteSetCanCommit() throws Exception {
         long startTs = tsoClient.getNewStartTimestamp().get();
 
@@ -143,7 +143,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         assertTrue(commitTs > startTs, "Commit TS should be higher than Start TS");
     }
 
-    @Test(timeOut = 10_000)
+    @Test(timeOut = 30_000)
     public void testMultipleSerialCommitsDoNotConflict() throws Exception {
         long startTsTx1 = tsoClient.getNewStartTimestamp().get();
         long commitTsTx1 = tsoClient.commit(startTsTx1, Sets.newHashSet(c1)).get();
@@ -160,7 +160,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         assertTrue(commitTsTx3 > startTsTx3, "Commit TS must be greater than Start TS");
     }
 
-    @Test(timeOut = 10_000)
+    @Test(timeOut = 30_000)
     public void testCommitWritesToCommitTable() throws Exception {
         long startTsForTx1 = tsoClient.getNewStartTimestamp().get();
         long startTsForTx2 = tsoClient.getNewStartTimestamp().get();
@@ -179,7 +179,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         assertTrue(commitTs1InCommitTable > startTsForTx2, "Commit TS should be higher than tx's Start TS");
     }
 
-    @Test(timeOut = 10_000)
+    @Test(timeOut = 30_000)
     public void testTwoConcurrentTxWithOverlappingWritesetsHaveConflicts() throws Exception {
         long startTsTx1 = tsoClient.getNewStartTimestamp().get();
         long startTsTx2 = tsoClient.getNewStartTimestamp().get();
@@ -196,7 +196,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         }
     }
 
-    @Test(timeOut = 10_000)
+    @Test(timeOut = 30_000)
     public void testConflictsAndMonotonicallyTimestampGrowthWithTwoDifferentTSOClients() throws Exception {
         long startTsTx1Client1 = tsoClient.getNewStartTimestamp().get();
         long startTsTx2Client1 = tsoClient.getNewStartTimestamp().get();
