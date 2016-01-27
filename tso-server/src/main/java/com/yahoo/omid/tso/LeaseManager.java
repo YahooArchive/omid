@@ -63,12 +63,12 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
     private final String leasePath;
     private final String currentTSOPath;
 
-    public LeaseManager(String tsoHostAndPort,
-                        TSOChannelHandler tsoChannelHandler,
-                        TSOStateManager stateManager,
-                        long leasePeriodInMs,
-                        CuratorFramework zkClient,
-                        Panicker panicker) {
+    LeaseManager(String tsoHostAndPort,
+                 TSOChannelHandler tsoChannelHandler,
+                 TSOStateManager stateManager,
+                 long leasePeriodInMs,
+                 CuratorFramework zkClient,
+                 Panicker panicker) {
         this(tsoHostAndPort, tsoChannelHandler, stateManager, leasePeriodInMs, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkClient, panicker);
     }
 
@@ -169,11 +169,11 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
         }
     }
 
-    boolean haveLease() {
+    private boolean haveLease() {
         return stillInLeasePeriod();
     }
 
-    public long getEndLeaseInMs() {
+    private long getEndLeaseInMs() {
         return endLeaseInMs.get();
     }
 
@@ -256,7 +256,7 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
         return tsoHostAndPort;
     }
 
-    void createLeaseManagementZNode() throws LeaseManagementException {
+    private void createLeaseManagementZNode() throws LeaseManagementException {
 
         try {
             EnsurePath path = zkClient.newNamespaceAwareEnsurePath(leasePath);
@@ -269,7 +269,7 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
         }
     }
 
-    void createCurrentTSOZNode() throws LeaseManagementException {
+    private void createCurrentTSOZNode() throws LeaseManagementException {
 
         try {
             EnsurePath path = zkClient.newNamespaceAwareEnsurePath(currentTSOPath);
@@ -283,7 +283,7 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
 
     }
 
-    void advertiseTSOServerInfoThroughZK(long epoch) throws Exception {
+    private void advertiseTSOServerInfoThroughZK(long epoch) throws Exception {
 
         Stat previousTSOZNodeStat = new Stat();
         byte[] previousTSOInfoAsBytes = zkClient.getData().storingStatIn(previousTSOZNodeStat).forPath(currentTSOPath);
