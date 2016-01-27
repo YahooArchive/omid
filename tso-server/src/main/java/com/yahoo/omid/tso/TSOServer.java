@@ -227,11 +227,13 @@ public class TSOServer extends AbstractIdleService {
             Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
             while (networkInterfaces.hasMoreElements()) {
                 String name = networkInterfaces.nextElement().getDisplayName();
+                LOG.info("Iterating over network interfaces, found '{}'", name);
                 if (name.startsWith(MAC_TSO_NET_IFACE_PREFIX) || name.startsWith(LINUX_TSO_NET_IFACE_PREFIX)) {
                     return name;
                 }
             }
         } catch (SocketException ignored) {
+            throw new RuntimeException("Failed to find any network interfaces", ignored);
         }
         throw new IllegalArgumentException(String.format("No network '%s*'/'%s*' interfaces found",
                                                          MAC_TSO_NET_IFACE_PREFIX, LINUX_TSO_NET_IFACE_PREFIX));
