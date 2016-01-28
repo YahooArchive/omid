@@ -24,20 +24,20 @@
     </licenses>
 
     <modules>
+        <module>benchmarks</module>
         <module>common</module>
         <module>statemachine</module>
         <module>metrics</module>
         <module>codahale-metrics</module>
-        <module>hbase-client</module>
         <module>transaction-client</module>
-        <module>tso-server</module>
-        <module>commit-table</module>
-        <module>hbase-commit-table</module>
-        <module>hbase-coprocessor</module>
-        <module>benchmarks</module>
-        <module>hbase-common</module>
         <module>timestamp-storage</module>
+        <module>commit-table</module>
+        <module>tso-server</module>
         <module>hbase-shims</module>
+        <module>hbase-common</module>
+        <module>hbase-commit-table</module>
+        <module>hbase-client</module>
+        <module>hbase-coprocessor</module>
     </modules>
 
     <scm>
@@ -82,18 +82,20 @@
         <zookeeper.version>3.4.3</zookeeper.version>
 
         <!-- Maven Plugin Versioning -->
+        <maven-antrun-plugin.version>1.7</maven-antrun-plugin.version>
         <maven-source-plugin.version>2.4</maven-source-plugin.version>
         <maven-clean-plugin.version>2.5</maven-clean-plugin.version>
         <maven-compiler-plugin.version>3.3</maven-compiler-plugin.version>
-        <maven-assembly-plugin.version>2.4.1</maven-assembly-plugin.version>
+        <maven-assembly-plugin.version>2.4</maven-assembly-plugin.version>
+        <maven-shade-plugin.version>2.3</maven-shade-plugin.version>
         <maven-release-plugin.version>2.3.2</maven-release-plugin.version>
         <maven-javadoc-plugin.version>2.10.3</maven-javadoc-plugin.version>
         <maven-jar-plugin.version>2.5</maven-jar-plugin.version>
         <maven-surefire-plugin.version>2.19</maven-surefire-plugin.version>
         <maven-surefire-report-plugin.version>2.19</maven-surefire-report-plugin.version>
-        <coveralls.version>4.1.0</coveralls.version>
-        <cobertura.version>2.7</cobertura.version>
-        <license.maven-plugin.version>2.11</license.maven-plugin.version>
+        <maven-coveralls-plugin.version>4.1.0</maven-coveralls-plugin.version>
+        <maven-cobertura-plugin.version>2.7</maven-cobertura-plugin.version>
+        <maven-license-plugin.version>2.11</maven-license-plugin.version>
 
         <!-- Licensing properties (for license-maven-plugins) -->
         <license.header>misc/header.txt</license.header>
@@ -197,7 +199,7 @@
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>cobertura-maven-plugin</artifactId>
-                    <version>${cobertura.version}</version>
+                    <version>${maven-cobertura-plugin.version}</version>
                     <configuration>
                         <check>
                             <haltOnFailure>true</haltOnFailure>
@@ -225,7 +227,7 @@
                 <plugin>
                     <groupId>org.eluder.coveralls</groupId>
                     <artifactId>coveralls-maven-plugin</artifactId>
-                    <version>${coveralls.version}</version>
+                    <version>${maven-coveralls-plugin.version}</version>
                 </plugin>
 
             </plugins>
@@ -272,7 +274,7 @@
             <plugin>
                 <groupId>com.mycila</groupId>
                 <artifactId>license-maven-plugin</artifactId>
-                <version>${license.maven-plugin.version}</version>
+                <version>${maven-license-plugin.version}</version>
                 <inherited>true</inherited> <!-- for multi-module config -->
                 <configuration>
                     <header>${license.header}</header>
