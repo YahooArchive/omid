@@ -1,26 +1,28 @@
 package com.yahoo.omid.tso;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.timeout;
-import static org.mockito.Mockito.verify;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
-
-import java.io.IOException;
-
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.timestamp.storage.TimestampStorage;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import com.yahoo.omid.metrics.MetricsRegistry;
-import com.yahoo.omid.timestamp.storage.TimestampStorage;
+import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
+
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.verify;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 public class TestTimestampOracle {
 
@@ -35,7 +37,7 @@ public class TestTimestampOracle {
 
     // Component under test
     @InjectMocks
-    private TimestampOracleImpl tso;
+    private TimestampOracleImpl timestampOracle;
 
     @BeforeMethod(alwaysRun = true)
     public void initMocksAndComponents() {
@@ -44,31 +46,37 @@ public class TestTimestampOracle {
 
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testMonotonicTimestampGrowth() throws Exception {
 
         // Intialize component under test
-        tso.initialize();
+        timestampOracle.initialize();
 
-        long last = tso.next();
+        long last = timestampOracle.next();
         for (int i = 0; i < (3 * TimestampOracleImpl.TIMESTAMP_BATCH); i++) {
-            long current = tso.next();
+            long current = timestampOracle.next();
             assertEquals(current, last + 1, "Not monotonic growth");
             last = current;
         }
-        assertTrue(tso.getLast() == last);
+        assertTrue(timestampOracle.getLast() == last);
         LOG.info("Last timestamp: {}", last);
     }
 
-    @Test
-    public void testTimestampOraclePanic() throws Exception {
+    @Test(timeOut = 10_000)
+    public void testTimestampOraclePanicsWhenTheStorageHasProblems() throws Exception {
 
         // Intialize component under test
-        tso.initialize();
+        timestampOracle.initialize();
 
         // Cause an exception when updating the max timestamp
-        doThrow(new RuntimeException("Out of memory or something"))
-            .when(timestampStorage).updateMaxTimestamp(anyLong(), anyLong());
+        final CountDownLatch updateMaxTimestampMethodCalled = new CountDownLatch(1);
+        doAnswer(new Answer() {
+            @Override
+            public Object answer(InvocationOnMock invocationOnMock) throws Throwable {
+                updateMaxTimestampMethodCalled.countDown();
+                throw new RuntimeException("Out of memory or something");
+            }
+        }).when(timestampStorage).updateMaxTimestamp(anyLong(), anyLong());
 
         // Make the previous exception to be thrown
         Thread allocThread = new Thread("AllocThread") {
@@ -76,7 +84,7 @@ public class TestTimestampOracle {
             public void run() {
                 try {
                     while (true) {
-                        tso.next();
+                        timestampOracle.next();
                     }
                 } catch (IOException ioe) {
                     LOG.error("Shouldn't occur");
@@ -85,7 +93,10 @@ public class TestTimestampOracle {
         };
         allocThread.start();
 
+        updateMaxTimestampMethodCalled.await();
+
         // Verify that it has blown up
-        verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
+        verify(panicker, atLeastOnce()).panic(anyString(), any(Throwable.class));
     }
+
 }
