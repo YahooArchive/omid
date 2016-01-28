@@ -213,6 +213,11 @@
                             <format>xml</format>
                             <format>html</format>
                         </formats>
+                        <instrumentation>
+                            <excludes>
+                                <exclude>com/yahoo/omid/proto/*.class</exclude>
+                            </excludes>
+                        </instrumentation>
                     </configuration>
                 </plugin>
 
