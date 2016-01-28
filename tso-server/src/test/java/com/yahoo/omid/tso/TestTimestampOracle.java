@@ -39,11 +39,9 @@ public class TestTimestampOracle {
     @InjectMocks
     private TimestampOracleImpl timestampOracle;
 
-    @BeforeMethod(alwaysRun = true)
+    @BeforeMethod(alwaysRun = true, timeOut = 30_000)
     public void initMocksAndComponents() {
-
         MockitoAnnotations.initMocks(this);
-
     }
 
     @Test(timeOut = 10_000)

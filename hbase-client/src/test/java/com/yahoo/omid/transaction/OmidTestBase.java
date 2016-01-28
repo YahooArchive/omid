@@ -177,7 +177,7 @@ public abstract class OmidTestBase {
         TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
     }
 
-    @AfterMethod(groups = "sharedHBase")
+    @AfterMethod(groups = "sharedHBase", timeOut = 30_000)
     public void afterMethod() {
         try {
             LOG.info("tearing Down");

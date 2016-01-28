@@ -39,13 +39,10 @@ public class TestBatch {
     // The batch element to test
     private PersistenceProcessorImpl.Batch batch;
 
-    @BeforeMethod(alwaysRun = true)
+    @BeforeMethod(alwaysRun = true, timeOut = 30_000)
     public void initMocksAndComponents() {
-
         MockitoAnnotations.initMocks(this);
-
         batch = new PersistenceProcessorImpl.Batch(BATCH_SIZE);
-
     }
 
     @Test

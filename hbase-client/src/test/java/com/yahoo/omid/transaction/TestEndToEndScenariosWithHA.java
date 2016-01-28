@@ -75,7 +75,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
 
     private TransactionManager tm;
 
-    @BeforeMethod(alwaysRun = true)
+    @BeforeMethod(alwaysRun = true, timeOut = 30_000)
     public void setup() throws Exception {
         // Get the zkConnection string from minicluster
         String zkConnection = "localhost:" + hBaseUtils.getZkCluster().getClientPort();
@@ -144,7 +144,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
     }
 
 
-    @AfterMethod(alwaysRun = true)
+    @AfterMethod(alwaysRun = true, timeOut = 30_000)
     public void cleanup() throws Exception {
         LOG.info("Cleanup");
         HBaseAdmin admin = hBaseUtils.getHBaseAdmin();

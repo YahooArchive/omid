@@ -43,11 +43,9 @@ public class TestRetryProcessor {
 
     private CommitTable commitTable;
 
-    @BeforeMethod(alwaysRun = true)
+    @BeforeMethod(alwaysRun = true, timeOut = 30_000)
     public void initMocksAndComponents() {
-
         MockitoAnnotations.initMocks(this);
-
         // Init components
         commitTable = new InMemoryCommitTable();
         metrics = new NullMetricsProvider();

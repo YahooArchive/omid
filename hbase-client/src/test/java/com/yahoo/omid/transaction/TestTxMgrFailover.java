@@ -79,7 +79,7 @@ public class TestTxMgrFailover extends OmidTestBase {
         TestUtils.waitForSocketListening(TSO_SERVER_HOST, TSO_SERVER_PORT, 100);
     }
 
-    @BeforeMethod(alwaysRun = true)
+    @BeforeMethod(alwaysRun = true, timeOut = 30_000)
     public void beforeMethod()
         throws ExecutionException, InterruptedException, OmidInstantiationException {
 

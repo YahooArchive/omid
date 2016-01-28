@@ -50,7 +50,7 @@ public class TestPersistenceProcessor {
     private MetricsRegistry metrics;
     private CommitTable commitTable;
 
-    @BeforeMethod(alwaysRun = true)
+    @BeforeMethod(alwaysRun = true, timeOut = 30_000)
     public void initMocksAndComponents() throws Exception {
 
         MockitoAnnotations.initMocks(this);
