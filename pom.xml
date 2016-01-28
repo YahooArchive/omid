@@ -329,8 +329,7 @@
                         <proto>DOUBLESLASH_STYLE</proto>
                     </mapping>
                 </configuration>
-                <!-- TODO Uncomment the execution section when adding the License headers -->
-                <!-- executions>
+                <executions>
                     <execution>
                         <id>check-license</id>
                         <phase>verify</phase>
@@ -338,7 +337,7 @@
                             <goal>check</goal>
                         </goals>
                     </execution>
-                </executions -->
+                </executions>
             </plugin>
 
         </plugins>
