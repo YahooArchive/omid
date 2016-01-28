@@ -13,7 +13,7 @@
     <artifactId>omid</artifactId>
     <packaging>pom</packaging>
     <!-- WARNING: do not update version manually, use mvn versions:set -->
-    <version>2.4.25-SNAPSHOT</version>
+    <version>2.4.25</version>
 
     <licenses>
         <license>
@@ -44,7 +44,7 @@
         <connection>scm:git:git://github.com/yahoo/omid.git</connection>
         <developerConnection>scm:git:https://${GH_TOKEN}@github.com/yahoo/omid.git</developerConnection>
         <url>https://github.com/yahoo/omid</url>
-        <tag>HEAD</tag>
+        <tag>omid-2.4.25</tag>
     </scm>
 
     <distributionManagement>
