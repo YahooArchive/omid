@@ -27,6 +27,7 @@ before_script:
 
 script:
   - mvn cobertura:cobertura
+  # Check if there were any unit test failures
   - mkdir failedTests && find -name testng-failed.xml -exec cp -vf "{}" failedTests/ \; && [ ! -f failedTests/testng-failed.xml ]
 
 after_success:
@@ -34,4 +35,4 @@ after_success:
   - mvn -B release:prepare release:perform -Prelease_profile,hbase-0 --settings bintray-settings.xml
 
 after_failure:
-  - VERSION=`mvn org.apache.maven.plugins:maven-help-plugin:2.1.1:evaluate -Dexpression=project.version | grep -v '\[' | grep SNAPSHOT` && git checkout -b "failed-build-$VERSION" && git config core.autocrlf false && git add -f */surefire-reports/* && git commit --verbose -m"Surefile output" && git push origin $VERSION:$VERSION
+  - VERSION=`mvn org.apache.maven.plugins:maven-help-plugin:2.1.1:evaluate -Dexpression=project.version | grep -v '\[' | grep SNAPSHOT` && git checkout -b "failed-build-$VERSION" && git config core.autocrlf false && git add -f */surefire-reports/* && git commit --verbose -m"Surefile output" && git push "https://${GH_TOKEN}@github.com/yahoo/omid.git" $VERSION:$VERSION
