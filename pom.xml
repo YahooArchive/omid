@@ -13,7 +13,7 @@
     <artifactId>omid</artifactId>
     <packaging>pom</packaging>
     <!-- WARNING: do not update version manually, use mvn versions:set -->
-    <version>2.4.28-SNAPSHOT</version>
+    <version>0.8.1.0-SNAPSHOT</version>
 
     <licenses>
         <license>
