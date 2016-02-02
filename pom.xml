@@ -38,6 +38,7 @@
         <module>hbase-commit-table</module>
         <module>hbase-client</module>
         <module>hbase-coprocessor</module>
+        <module>examples</module>
     </modules>
 
     <scm>
