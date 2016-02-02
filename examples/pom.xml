@@ -1,40 +1,68 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <artifactId>omid</artifactId>
-        <groupId>com.yahoo.omid</groupId>
-        <version>0.8.1.4-SNAPSHOT</version>
-    </parent>
-
+    <groupId>com.yahoo.omid</groupId>
     <artifactId>examples</artifactId>
-    <name>Examples</name>
+    <version>0.8.1.4-SNAPSHOT</version>
+    <name>Omid client examples</name>
+    <description>Omid client examples</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <java.version>1.7</java.version>
+        <min.omid.client.version>0.8.1.1</min.omid.client.version>
+        <max.omid.client.version>0.9</max.omid.client.version>
+    </properties>
+
+
+    <repositories>
+        <repository>
+            <id>bintray-yahoo-maven</id>
+            <url>http://yahoo.bintray.com/maven</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
 
     <dependencies>
-
         <!-- Dependencies on Omid modules -->
-
         <dependency>
             <groupId>com.yahoo.omid</groupId>
             <artifactId>hbase-client</artifactId>
-            <version>${project.version}</version>
+            <version>[${min.omid.client.version},${max.omid.client.version})</version>
         </dependency>
 
         <!-- End of Dependencies on Omid modules -->
 
-        <!-- storage related -->
-
-        <dependency>
-            <groupId>org.apache.hbase</groupId>
-            <artifactId>hbase-client</artifactId>
-        </dependency>
-
-        <!-- end storage related -->
-
     </dependencies>
 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.5</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <compilerArgs>
+                        <arg>-Xlint:deprecation</arg>
+                        <arg>-Xlint:unchecked</arg>
+                    </compilerArgs>
+
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
     <profiles>
 
         <profile>
@@ -46,7 +74,7 @@
                 <dependency>
                     <groupId>com.yahoo.omid</groupId>
                     <artifactId>hbase0-shims</artifactId>
-                    <version>${project.version}</version>
+                    <version>[${min.omid.client.version},${max.omid.client.version})</version>
                 </dependency>
             </dependencies>
         </profile>
@@ -57,7 +85,7 @@
                 <dependency>
                     <groupId>com.yahoo.omid</groupId>
                     <artifactId>hbase1-shims</artifactId>
-                    <version>${project.version}</version>
+                    <version>[${min.omid.client.version},${max.omid.client.version})</version>
                 </dependency>
             </dependencies>
         </profile>
