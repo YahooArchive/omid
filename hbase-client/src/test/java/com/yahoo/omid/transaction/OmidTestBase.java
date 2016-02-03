@@ -22,7 +22,6 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
@@ -51,7 +50,7 @@ public abstract class OmidTestBase {
     private static final Logger LOG = LoggerFactory.getLogger(OmidTestBase.class);
 
     static HBaseTestingUtility hBaseUtils;
-    static MiniHBaseCluster hbaseCluster;
+    private static MiniHBaseCluster hbaseCluster;
     static Configuration hbaseConf;
 
     protected static final String TEST_TABLE = "test";
@@ -105,31 +104,35 @@ public abstract class OmidTestBase {
 
         hBaseUtils = new HBaseTestingUtility(hbaseConf);
         hbaseCluster = hBaseUtils.startMiniCluster(1);
-
-        HBaseAdmin admin = hBaseUtils.getHBaseAdmin();
-        HTableDescriptor desc = new HTableDescriptor(TableName.valueOf(TEST_TABLE));
-        HColumnDescriptor datafam = new HColumnDescriptor(TEST_FAMILY);
-        HColumnDescriptor datafam2 = new HColumnDescriptor(TEST_FAMILY2);
-        datafam.setMaxVersions(Integer.MAX_VALUE);
-        datafam2.setMaxVersions(Integer.MAX_VALUE);
-        desc.addFamily(datafam);
-        desc.addFamily(datafam2);
-
-        admin.createTable(desc);
-
         hBaseUtils
             .createTable(Bytes.toBytes(TIMESTAMP_TABLE_DEFAULT_NAME), new byte[][]{TSO_FAMILY}, Integer.MAX_VALUE);
 
-        // Create commit table
-        String[] args = new String[]{COMMIT_TABLE_COMMAND_NAME, "-numRegions", "1"};
-        OmidTableManager omidTableManager = new OmidTableManager(args);
-        omidTableManager.executeActionsOnHBase(hbaseConf);
+        createTestTable();
+        createCommitTable();
 
         LOG.info("HBase minicluster is up");
     }
 
+    private void createTestTable() throws IOException {
+        HBaseAdmin admin = hBaseUtils.getHBaseAdmin();
+        HTableDescriptor test_table_desc = new HTableDescriptor(TableName.valueOf(TEST_TABLE));
+        HColumnDescriptor datafam = new HColumnDescriptor(TEST_FAMILY);
+        HColumnDescriptor datafam2 = new HColumnDescriptor(TEST_FAMILY2);
+        datafam.setMaxVersions(Integer.MAX_VALUE);
+        datafam2.setMaxVersions(Integer.MAX_VALUE);
+        test_table_desc.addFamily(datafam);
+        test_table_desc.addFamily(datafam2);
+        admin.createTable(test_table_desc);
+    }
 
-    TSOServer getTSO(ITestContext context) {
+    private void createCommitTable() throws IOException {
+        String[] args = new String[]{COMMIT_TABLE_COMMAND_NAME, "-numRegions", "1"};
+        OmidTableManager omidTableManager = new OmidTableManager(args);
+        omidTableManager.executeActionsOnHBase(hbaseConf);
+    }
+
+
+    private TSOServer getTSO(ITestContext context) {
         return (TSOServer) context.getAttribute("tso");
     }
 
@@ -182,21 +185,22 @@ public abstract class OmidTestBase {
         try {
             LOG.info("tearing Down");
             HBaseAdmin admin = hBaseUtils.getHBaseAdmin();
-            truncateTable(admin, TableName.valueOf(TEST_TABLE));
-            truncateTable(admin, TableName.valueOf(CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME));
+            deleteTable(admin, TableName.valueOf(TEST_TABLE));
+            createTestTable();
+            deleteTable(admin, TableName.valueOf(CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME));
+            createCommitTable();
         } catch (Exception e) {
             LOG.error("Error tearing down", e);
         }
     }
 
-    void truncateTable(HBaseAdmin admin, TableName tableName) throws IOException {
-        try {
-            admin.truncateTable(tableName, true);
-        } catch (TableNotDisabledException e) {
-            admin.disableTable(tableName);
-            admin.truncateTable(tableName, true);
+    void deleteTable(HBaseAdmin admin, TableName tableName) throws IOException {
+        if (admin.tableExists(tableName)) {
             if (admin.isTableDisabled(tableName)) {
-                admin.enableTable(tableName);
+                admin.deleteTable(tableName);
+            } else {
+                admin.disableTable(tableName);
+                admin.deleteTable(tableName);
             }
         }
     }

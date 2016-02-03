@@ -37,6 +37,7 @@ import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
 import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
 import static com.yahoo.omid.ZKConstants.TSO_LEASE_PATH;
 import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TSO_FAMILY;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_ZK_CLUSTER_CONFKEY;
 import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
 import static org.testng.Assert.assertEquals;
@@ -148,7 +149,9 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
     public void cleanup() throws Exception {
         LOG.info("Cleanup");
         HBaseAdmin admin = hBaseUtils.getHBaseAdmin();
-        truncateTable(admin, TableName.valueOf(TIMESTAMP_TABLE_DEFAULT_NAME));
+        deleteTable(admin, TableName.valueOf(TIMESTAMP_TABLE_DEFAULT_NAME));
+        hBaseUtils
+            .createTable(Bytes.toBytes(TIMESTAMP_TABLE_DEFAULT_NAME), new byte[][]{TSO_FAMILY}, Integer.MAX_VALUE);
         tso1.stopAndWait();
         TestUtils.waitForSocketNotListening("localhost", TSO1_PORT, 100);
         tso2.stopAndWait();
