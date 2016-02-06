@@ -26,10 +26,35 @@ before_script:
   - git checkout master
 
 script:
-  - if [ "${TRAVIS_PULL_REQUEST}" = "false" ] ; then mvn cobertura:cobertura && mkdir failedTests && find -name testng-failed.xml -exec cp -vf "{}" failedTests/ \; && [ ! -f failedTests/testng-failed.xml ]  ; else mvn test ; fi
+  - if [ "${TRAVIS_PULL_REQUEST}" = "false" ] ; then
+      mvn cobertura:cobertura
+      &&
+      mkdir failedTests
+      &&
+      find -name testng-failed.xml -exec cp -vf "{}" failedTests/ \;
+      &&
+      [ ! -f failedTests/testng-failed.xml ]  ;
+    else
+      mvn test ;
+    fi
 
 after_success:
-  - if [ "${TRAVIS_PULL_REQUEST}" = "false" ] ; then mvn coveralls:report &&  mvn -B clean release:prepare release:perform -Prelease_profile,hbase-0 --settings bintray-settings.xml ; fi
+  - if [ "${TRAVIS_PULL_REQUEST}" = "false" ] ; then
+      mvn coveralls:report
+      &&
+      mvn -B clean release:prepare release:perform -Prelease_profile,hbase-0 --settings bintray-settings.xml ;
+    fi
 
 after_failure:
-  - VERSION_SUFFIX=`date +%s` VERSION=`mvn org.apache.maven.plugins:maven-help-plugin:2.1.1:evaluate -Dexpression=project.version | grep -v '\[' | grep SNAPSHOT` && git checkout -b "failed-build-$VERSION" && git config core.autocrlf false && git add -f */surefire-reports/* && git commit --verbose -m"Surefile output" && git push "https://${GH_TOKEN}@github.com/yahoo/omid.git" failed-build-$VERSION:failed-build-$VERSION-$TRAVIS_PULL_REQUEST-$VERSION_SUFFIX
+  - VERSION_SUFFIX=`date +%s`
+    VERSION=`mvn org.apache.maven.plugins:maven-help-plugin:2.1.1:evaluate -Dexpression=project.version | grep -v '\[' | grep SNAPSHOT`
+    &&
+    git checkout -b "failed-build-$VERSION"
+    &&
+    git config core.autocrlf false
+    &&
+    git add -f */surefire-reports/*
+    &&
+    git commit --verbose -m"Surefile output"
+    &&
+    git push "https://${GH_TOKEN}@github.com/yahoo/omid.git" failed-build-$VERSION:failed-build-$VERSION-$TRAVIS_PULL_REQUEST-$VERSION_SUFFIX
