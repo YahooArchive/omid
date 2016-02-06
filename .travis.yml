@@ -32,4 +32,4 @@ after_success:
   - if [ "${TRAVIS_PULL_REQUEST}" = "false" ] ; then mvn coveralls:report &&  mvn -B release:prepare release:perform -Prelease_profile,hbase-0 --settings bintray-settings.xml ; fi
 
 after_failure:
-  - if [ "${TRAVIS_PULL_REQUEST}" = "false" ] ; then VERSION=`mvn org.apache.maven.plugins:maven-help-plugin:2.1.1:evaluate -Dexpression=project.version | grep -v '\[' | grep SNAPSHOT` && git checkout -b "failed-build-$VERSION" && git config core.autocrlf false && git add -f */surefire-reports/* && git commit --verbose -m"Surefile output" && git push "https://${GH_TOKEN}@github.com/yahoo/omid.git" $VERSION:$VERSION ; fi
+  - VERSION_SUFFIX=`date +%s` VERSION=`mvn org.apache.maven.plugins:maven-help-plugin:2.1.1:evaluate -Dexpression=project.version | grep -v '\[' | grep SNAPSHOT` && git checkout -b "failed-build-$VERSION" && git config core.autocrlf false && git add -f */surefire-reports/* && git commit --verbose -m"Surefile output" && git push "https://${GH_TOKEN}@github.com/yahoo/omid.git" $VERSION:$VERSION-$TRAVIS_PULL_REQUEST-$VERSION_SUFFIX
