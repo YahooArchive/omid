@@ -48,7 +48,7 @@ public class TestRequestProcessor {
 
         persist = mock(PersistenceProcessor.class);
 
-        TSOServerConfig config = new TSOServerConfig();
+        TSOServerCommandLineConfig config = new TSOServerCommandLineConfig();
         config.setMaxItems(1000);
 
         requestProc = new RequestProcessorImpl(metrics,

@@ -52,10 +52,8 @@ class PersistenceProcessorImpl
 
     private static final Logger LOG = LoggerFactory.getLogger(PersistenceProcessor.class);
 
-    static final int DEFAULT_MAX_BATCH_SIZE = 10000;
-    static final String TSO_MAX_BATCH_SIZE_KEY = "tso.maxbatchsize";
+    static final int DEFAULT_MAX_BATCH_SIZE = 10_000;
     static final int DEFAULT_BATCH_PERSIST_TIMEOUT_MS = 100;
-    static final String TSO_BATCH_PERSIST_TIMEOUT_MS_KEY = "tso.batch-persist-timeout-ms";
 
     private final String tsoHostAndPort;
     private final LeaseManagement leaseManager;
@@ -84,7 +82,7 @@ class PersistenceProcessorImpl
                              ReplyProcessor reply,
                              RetryProcessor retryProc,
                              Panicker panicker,
-                             TSOServerConfig config)
+                             TSOServerCommandLineConfig config)
         throws InterruptedException, ExecutionException {
         this(metrics,
              tsoHostAndPort,
@@ -106,7 +104,7 @@ class PersistenceProcessorImpl
                              ReplyProcessor reply,
                              RetryProcessor retryProc,
                              Panicker panicker,
-                             TSOServerConfig config)
+                             TSOServerCommandLineConfig config)
         throws InterruptedException, ExecutionException {
 
         this.tsoHostAndPort = tsoHostAndPort;

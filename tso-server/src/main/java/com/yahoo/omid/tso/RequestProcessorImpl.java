@@ -45,7 +45,6 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
     private static final Logger LOG = LoggerFactory.getLogger(RequestProcessorImpl.class);
 
     static final int DEFAULT_MAX_ITEMS = 1_000_000;
-    public static final String TSO_MAX_ITEMS_KEY = "tso.maxitems";
 
     private final TimestampOracle timestampOracle;
     public final CommitHashMap hashmap;
@@ -60,7 +59,7 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
                          TimestampOracle timestampOracle,
                          PersistenceProcessor persistProc,
                          Panicker panicker,
-                         TSOServerConfig config) throws IOException {
+                         TSOServerCommandLineConfig config) throws IOException {
         this.metrics = metrics;
 
         this.persistProc = persistProc;

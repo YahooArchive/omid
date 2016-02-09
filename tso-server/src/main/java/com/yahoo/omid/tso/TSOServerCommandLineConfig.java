@@ -149,7 +149,7 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
     public boolean shouldHostAndPortBePublishedInZK = false;
 
     @Parameter(names = "-"
-                       + NETWORK_IFACE_ENV_VAR, description = "Network Interface where TSO is attached to (e.g. eth0, en0...)")
+            + NETWORK_IFACE_ENV_VAR, description = "Network Interface where TSO is attached to (e.g. eth0, en0...)")
     private String networkIfaceName = getDefaultNetworkIntf();
 
     @Parameter(names = "-leasePeriodInMs", description = "Lease period for high availability in ms")
@@ -216,6 +216,10 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
         return maxItems;
     }
 
+    public void setMaxItems(int maxItems) {
+        this.maxItems = maxItems;
+    }
+
     public int getMaxBatchSize() {
         return maxBatchSize;
     }
@@ -260,7 +264,7 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
             throw new RuntimeException("Failed to find any network interfaces", ignored);
         }
         throw new IllegalArgumentException(String.format("No network '%s*'/'%s*' interfaces found",
-                                                         MAC_TSO_NET_IFACE_PREFIX, LINUX_TSO_NET_IFACE_PREFIX));
+                MAC_TSO_NET_IFACE_PREFIX, LINUX_TSO_NET_IFACE_PREFIX));
     }
 
 }

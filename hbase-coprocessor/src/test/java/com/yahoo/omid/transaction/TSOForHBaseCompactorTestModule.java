@@ -1,7 +1,5 @@
 package com.yahoo.omid.transaction;
 
-import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -16,7 +14,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import com.google.inject.name.Names;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.metrics.MetricsRegistry;
@@ -60,9 +57,6 @@ public class TSOForHBaseCompactorTestModule extends AbstractModule {
         bind(TimestampOracle.class).to(TimestampOracleImpl.class).in(Singleton.class);
 
         // DisruptorConfig
-        // Overrite default value
-        bindConstant().annotatedWith(Names.named(TSO_MAX_ITEMS_KEY)).to(config.getMaxItems());
-        LOG.info("Overriding {} with value {}", TSO_MAX_ITEMS_KEY, config.getMaxItems());
         install(new DisruptorModule());
 
         // ZK Module
