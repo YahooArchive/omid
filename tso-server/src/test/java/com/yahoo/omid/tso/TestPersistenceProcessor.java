@@ -99,7 +99,7 @@ public class TestPersistenceProcessor {
                                                                  replyProcessor,
                                                                  retryProcessor,
                                                                  panicker,
-                                                                 new TSOServerCommandLineConfig());
+                                                                 TSOServerCommandLineConfig.defaultConfig());
 
         // The non-ha lease manager always return true for
         // stillInLeasePeriod(), so verify the batch sends replies as master
@@ -125,7 +125,7 @@ public class TestPersistenceProcessor {
                                                                  replyProcessor,
                                                                  retryProcessor,
                                                                  panicker,
-                                                                 new TSOServerCommandLineConfig());
+                                                                 TSOServerCommandLineConfig.defaultConfig());
 
         // Configure the lease manager to always return true for
         // stillInLeasePeriod, so verify the batch sends replies as master
@@ -168,7 +168,7 @@ public class TestPersistenceProcessor {
                                                                  mock(ReplyProcessor.class),
                                                                  mock(RetryProcessor.class),
                                                                  panicker,
-                                                                 new TSOServerCommandLineConfig());
+                                                                 TSOServerCommandLineConfig.defaultConfig());
         MonitoringContext monCtx = new MonitoringContext(metrics);
 
         // Configure lease manager to work normally
@@ -192,7 +192,7 @@ public class TestPersistenceProcessor {
                                                                  replyProcessor,
                                                                  retryProcessor,
                                                                  panicker,
-                                                                 new TSOServerCommandLineConfig());
+                                                                 TSOServerCommandLineConfig.defaultConfig());
 
         // Configure writer to explode with a runtime exception
         doThrow(new RuntimeException("Kaboom!")).when(mockWriter).addCommittedTransaction(anyLong(), anyLong());

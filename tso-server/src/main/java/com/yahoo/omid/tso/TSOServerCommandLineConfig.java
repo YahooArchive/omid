@@ -19,6 +19,7 @@ import com.beust.jcommander.IVariableArity;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
+import com.google.common.annotations.VisibleForTesting;
 import com.yahoo.omid.metrics.MetricsProvider;
 import com.yahoo.omid.tools.hbase.HBaseLogin;
 import com.yahoo.omid.tsoclient.TSOClient;
@@ -84,28 +85,31 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
         }
     }
 
-    TSOServerCommandLineConfig() {
-        this(new String[]{});
-    }
+    // ------------------------------------------------------------------------
+    // Configuration creation
+    // ------------------------------------------------------------------------
 
-    TSOServerCommandLineConfig(String[] args) {
+    // Avoid instantiation
+    private TSOServerCommandLineConfig(String[] args) {
         super();
         addObject(this);
         parse(args);
         setProgramName(TSOServer.class.getName());
     }
 
-    // used for testing
-    static public TSOServerCommandLineConfig configFactory(int port, int maxItems) {
-        TSOServerCommandLineConfig config = new TSOServerCommandLineConfig();
-        config.port = port;
-        config.maxItems = maxItems;
-        return config;
-    }
-
-    static public TSOServerCommandLineConfig parseConfig(String args[]) {
+    // Main method
+    public static TSOServerCommandLineConfig parseConfig(String args[]) {
         return new TSOServerCommandLineConfig(args);
     }
+
+    @VisibleForTesting
+    static TSOServerCommandLineConfig defaultConfig() {
+        return parseConfig(new String[]{});
+    }
+
+    // ------------------------------------------------------------------------
+    // Configuration parameters
+    // ------------------------------------------------------------------------
 
     @Parameter(names = "-help", description = "Print command options and exit", help = true)
     private boolean help = false;

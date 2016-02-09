@@ -66,9 +66,9 @@ public abstract class OmidTestBase {
     @BeforeGroups(groups = "sharedHBase")
     public void beforeGroups(ITestContext context) throws Exception {
         // TSO Setup
-        Injector
-            injector =
-            Guice.createInjector(new TSOMockModule(TSOServerCommandLineConfig.configFactory(1234, 1000)));
+        String[] configArgs = new String[]{"-port", Integer.toString(1234), "-maxItems", "1000"};
+        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.parseConfig(configArgs);
+        Injector injector = Guice.createInjector(new TSOMockModule(tsoConfig));
         LOG.info("Starting TSO");
         TSOServer tso = injector.getInstance(TSOServer.class);
         tso.startAndWait();

@@ -69,7 +69,8 @@ public class TestTSOClientRequestAndResponseBehaviours {
     @BeforeClass
     public void setup() throws Exception {
 
-        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.configFactory(TSO_SERVER_PORT, 1000);
+        String[] configArgs = new String[]{"-port", Integer.toString(TSO_SERVER_PORT), "-maxItems", "1000"};
+        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.parseConfig(configArgs);
         Module tsoServerMockModule = new TSOMockModule(tsoConfig);
         Injector injector = Guice.createInjector(tsoServerMockModule);
 
