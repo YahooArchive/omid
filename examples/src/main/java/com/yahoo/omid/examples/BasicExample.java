@@ -88,24 +88,24 @@ public class BasicExample {
         try (TTable tt = new TTable(omidConfig, userTableName)) {
 
             Transaction tx = tm.begin();
-            LOG.info("Transaction {} started", tx);
+            LOG.info("Transaction {} STARTED", tx);
 
             Put row1 = new Put(exampleRow1);
             row1.add(family, qualifier, dataValue1);
             tt.put(tx, row1);
-            LOG.info("Transaction {} writing value in [TABLE:ROW/CF/Q] => {}:{}/{}/{}={} ",
+            LOG.info("Transaction {} writing value in [TABLE:ROW/CF/Q] => {}:{}/{}/{} = {} ",
                     new Object[]{tx, userTableName, Bytes.toString(exampleRow1), Bytes.toString(family),
-                                 Bytes.toString(qualifier), Bytes.toString(dataValue1)});
+                            Bytes.toString(qualifier), Bytes.toString(dataValue1)});
 
             Put row2 = new Put(exampleRow2);
             row2.add(family, qualifier, dataValue2);
             tt.put(tx, row2);
-            LOG.info("Transaction {} writing value in [TABLE:ROW/CF/Q] => {}:{}/{}/{}={} ",
+            LOG.info("Transaction {} writing value in [TABLE:ROW/CF/Q] => {}:{}/{}/{} = {} ",
                     new Object[]{tx, userTableName, Bytes.toString(exampleRow2), Bytes.toString(family),
-                                 Bytes.toString(qualifier), Bytes.toString(dataValue2)});
+                            Bytes.toString(qualifier), Bytes.toString(dataValue2)});
 
             tm.commit(tx);
-            LOG.info("Transaction {} committed", tx);
+            LOG.info("Transaction {} COMMITTED", tx);
         }
 
         tm.close();

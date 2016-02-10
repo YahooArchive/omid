@@ -25,6 +25,8 @@ import com.yahoo.omid.tsoclient.TSOClient;
 
 class Configuration extends HBaseLogin.Config {
 
+    @Parameter(names = "-help", description = "Print command options and exit", help = true)
+    boolean help = false;
     @Parameter(names = "-hbaseConfig", description = "Path to hbase-site.xml. Loads from classpath if not specified")
     String hbaseConfig = "N/A";
     @Parameter(names = "-hadoopConfig", description = "Path to core-site.xml. Loads from classpath if not specified")
@@ -53,10 +55,19 @@ class Configuration extends HBaseLogin.Config {
 
         JCommander commandLine = new JCommander(commandLineConfig);
         try {
+            commandLine.setProgramName(getCallerClass(2).getCanonicalName());
             commandLine.parse(commandLineArgs);
         } catch (ParameterException ex) {
             commandLine.usage();
             throw new IllegalArgumentException(ex.getMessage());
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+            System.exit(-1);
+        }
+
+        if (commandLineConfig.hasHelpFlag()) {
+            commandLine.usage();
+            System.exit(0);
         }
 
         return commandLineConfig;
@@ -65,6 +76,16 @@ class Configuration extends HBaseLogin.Config {
     // ----------------------------------------------------------------------------------------------------------------
     // Helper methods
     // ----------------------------------------------------------------------------------------------------------------
+
+    private static Class getCallerClass(int level) throws ClassNotFoundException {
+        StackTraceElement[] stElements = Thread.currentThread().getStackTrace();
+        String rawFQN = stElements[level+1].toString().split("\\(")[0];
+        return Class.forName(rawFQN.substring(0, rawFQN.lastIndexOf('.')));
+    }
+
+    private boolean hasHelpFlag() {
+        return help;
+    }
 
     public String toString() {
         return Objects.toStringHelper(this)
