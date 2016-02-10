@@ -34,6 +34,7 @@ import com.google.common.base.Optional;
 import com.google.common.collect.Maps;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
+import com.yahoo.omid.committable.hbase.CommitTableConstants;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
 import com.yahoo.omid.tsoclient.CellId;
@@ -92,7 +93,8 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
             boolean ownsCommitTableClient = false;
             if (commitTableClient == null) {
                 try {
-                    HBaseCommitTableConfig config = new HBaseCommitTableConfig();
+                    String commitTableName = conf.get(CommitTableConstants.COMMIT_TABLE_NAME_KEY, CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME);
+                    HBaseCommitTableConfig config = new HBaseCommitTableConfig(commitTableName);
                     CommitTable commitTable =
                             new HBaseCommitTable(conf, config);
                     commitTableClient = commitTable.getClient().get();

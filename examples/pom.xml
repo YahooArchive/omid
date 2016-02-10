@@ -3,32 +3,20 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.yahoo.omid</groupId>
+    <parent>
+        <artifactId>omid</artifactId>
+        <groupId>com.yahoo.omid</groupId>
+        <version>0.8.1.8-SNAPSHOT</version>
+    </parent>
+
     <artifactId>examples</artifactId>
-    <version>0.8.1.8-SNAPSHOT</version>
     <name>Omid client examples</name>
     <description>Omid client examples</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>1.7</java.version>
-        <min.omid.client.version>0.8.1.1</min.omid.client.version>
-        <max.omid.client.version>0.9</max.omid.client.version>
     </properties>
-
-
-    <repositories>
-        <repository>
-            <id>bintray-yahoo-maven</id>
-            <url>http://yahoo.bintray.com/maven</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
 
 
     <dependencies>
@@ -36,11 +24,21 @@
         <dependency>
             <groupId>com.yahoo.omid</groupId>
             <artifactId>hbase-client</artifactId>
-            <version>[${min.omid.client.version},${max.omid.client.version})</version>
+            <version>${project.version}</version>
         </dependency>
 
         <!-- End of Dependencies on Omid modules -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>1.7.7</version>
+        </dependency>
 
+        <dependency>
+            <groupId>com.beust</groupId>
+            <artifactId>jcommander</artifactId>
+            <version>1.35</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -59,6 +57,38 @@
 
                 </configuration>
             </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>${maven-jar-plugin.version}</version>
+                <configuration>
+                    <excludes>
+                        <exclude>**/log4j.properties</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>2.4.1</version>
+                <configuration>
+                    <skipAssembly>false</skipAssembly>
+                    <tarLongFileMode>gnu</tarLongFileMode>
+                    <descriptors>
+                        <descriptor>src/assembly/assembly.xml</descriptor>
+                    </descriptors>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
     <profiles>
@@ -72,7 +102,7 @@
                 <dependency>
                     <groupId>com.yahoo.omid</groupId>
                     <artifactId>hbase0-shims</artifactId>
-                    <version>[${min.omid.client.version},${max.omid.client.version})</version>
+                    <version>${project.version}</version>
                 </dependency>
             </dependencies>
         </profile>
@@ -83,7 +113,7 @@
                 <dependency>
                     <groupId>com.yahoo.omid</groupId>
                     <artifactId>hbase1-shims</artifactId>
-                    <version>[${min.omid.client.version},${max.omid.client.version})</version>
+                    <version>${project.version}</version>
                 </dependency>
             </dependencies>
         </profile>
