@@ -76,7 +76,7 @@
                     <skipAssembly>false</skipAssembly>
                     <tarLongFileMode>gnu</tarLongFileMode>
                     <descriptors>
-                        <descriptor>src/assembly/assembly.xml</descriptor>
+                        <descriptor>maven/assembly/assembly.xml</descriptor>
                     </descriptors>
                 </configuration>
                 <executions>
