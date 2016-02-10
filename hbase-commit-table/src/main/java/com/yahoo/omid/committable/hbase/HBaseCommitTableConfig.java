@@ -28,7 +28,14 @@ public class HBaseCommitTableConfig {
 
     private String tableName = COMMIT_TABLE_DEFAULT_NAME;
 
-    public String getTableName() {
+    public HBaseCommitTableConfig() {
+    }
+
+    public HBaseCommitTableConfig(String tableName) {
+        this.tableName = tableName;
+    }
+
+    String getTableName() {
         return tableName;
     }
 
