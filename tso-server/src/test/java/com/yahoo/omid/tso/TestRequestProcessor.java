@@ -48,8 +48,8 @@ public class TestRequestProcessor {
 
         persist = mock(PersistenceProcessor.class);
 
-        TSOServerConfig config = new TSOServerConfig();
-        config.setMaxItems(1000);
+        String[] configArgs = new String[]{"-maxItems", "1000"};
+        TSOServerCommandLineConfig config = TSOServerCommandLineConfig.parseConfig(configArgs);
 
         requestProc = new RequestProcessorImpl(metrics,
                                                timestampOracle,

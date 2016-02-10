@@ -96,8 +96,9 @@ public class TestCompaction {
 
     @BeforeClass
     public void setupTestCompation() throws Exception {
-        injector = Guice.createInjector(
-            new TSOForHBaseCompactorTestModule(TSOServerCommandLineConfig.configFactory(1234, 1)));
+        String[] configArgs = new String[]{"-port", Integer.toString(1234), "-maxItems", "1"};
+        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.parseConfig(configArgs);
+        injector = Guice.createInjector(new TSOForHBaseCompactorTestModule(tsoConfig));
         hbaseConf = injector.getInstance(Configuration.class);
 
         // settings required for #testDuplicateDeletes()

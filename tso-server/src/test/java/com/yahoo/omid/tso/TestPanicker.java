@@ -12,7 +12,9 @@ import static org.mockito.Mockito.verify;
 
 import java.io.IOException;
 
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterMethod;
@@ -29,8 +31,16 @@ import com.yahoo.omid.timestamp.storage.TimestampStorage;
 public class TestPanicker {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestPanicker.class);
-    private final CommitTable.Writer mockWriter = mock(CommitTable.Writer.class);
-    private MetricsRegistry metrics = new NullMetricsProvider();
+
+    @Mock
+    private CommitTable.Writer mockWriter;
+    @Mock
+    private MetricsRegistry metrics;
+
+    @BeforeMethod
+    public void initMocksAndComponents() {
+        MockitoAnnotations.initMocks(this);
+    }
 
     @AfterMethod
     void afterMethod(){
@@ -45,11 +55,9 @@ public class TestPanicker {
         TimestampStorage storage = spy(new TimestampOracleImpl.InMemoryTimestampStorage());
         Panicker panicker = spy(new MockPanicker());
 
-        doThrow(new RuntimeException("Out of memory or something"))
-            .when(storage).updateMaxTimestamp(anyLong(), anyLong());
+        doThrow(new RuntimeException("Out of memory")).when(storage).updateMaxTimestamp(anyLong(), anyLong());
 
-        final TimestampOracleImpl tso = new TimestampOracleImpl(metrics,
-                storage, panicker);
+        final TimestampOracleImpl tso = new TimestampOracleImpl(metrics, storage, panicker);
         tso.initialize();
         Thread allocThread = new Thread("AllocThread") {
                 @Override
@@ -81,14 +89,14 @@ public class TestPanicker {
         CommitTable commitTable = new CommitTable() {
                 @Override
                 public ListenableFuture<Writer> getWriter() {
-                    SettableFuture<Writer> f = SettableFuture.<Writer>create();
+                    SettableFuture<Writer> f = SettableFuture.create();
                     f.set(mockWriter);
                     return f;
                 }
 
                 @Override
                 public ListenableFuture<Client> getClient() {
-                    SettableFuture<Client> f = SettableFuture.<Client>create();
+                    SettableFuture<Client> f = SettableFuture.create();
                     f.set(mockClient);
                     return f;
                 }
@@ -103,7 +111,7 @@ public class TestPanicker {
                                                                  mock(ReplyProcessor.class),
                                                                  mock(RetryProcessor.class),
                                                                  panicker,
-                                                                 new TSOServerConfig());
+                                                                 TSOServerCommandLineConfig.defaultConfig());
         proc.persistCommit(1, 2, null, new MonitoringContext(metrics));
         verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
     }
@@ -116,21 +124,20 @@ public class TestPanicker {
         Panicker panicker = spy(new MockPanicker());
 
         final CommitTable.Writer mockWriter = mock(CommitTable.Writer.class);
-        doThrow(new RuntimeException("Kaboom!"))
-            .when(mockWriter).addCommittedTransaction(anyLong(),anyLong());
+        doThrow(new RuntimeException("Kaboom!")).when(mockWriter).addCommittedTransaction(anyLong(),anyLong());
 
         final CommitTable.Client mockClient = mock(CommitTable.Client.class);
         CommitTable commitTable = new CommitTable() {
                 @Override
                 public ListenableFuture<Writer> getWriter() {
-                    SettableFuture<Writer> f = SettableFuture.<Writer>create();
+                    SettableFuture<Writer> f = SettableFuture.create();
                     f.set(mockWriter);
                     return f;
                 }
 
                 @Override
                 public ListenableFuture<Client> getClient() {
-                    SettableFuture<Client> f = SettableFuture.<Client>create();
+                    SettableFuture<Client> f = SettableFuture.create();
                     f.set(mockClient);
                     return f;
                 }
@@ -142,7 +149,7 @@ public class TestPanicker {
                                                                  mock(ReplyProcessor.class),
                                                                  mock(RetryProcessor.class),
                                                                  panicker,
-                                                                 new TSOServerConfig());
+                                                                 TSOServerCommandLineConfig.defaultConfig());
         proc.persistCommit(1, 2, null, new MonitoringContext(metrics));
         verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
     }

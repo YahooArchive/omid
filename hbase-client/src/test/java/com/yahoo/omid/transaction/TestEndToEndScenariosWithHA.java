@@ -101,7 +101,8 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         currentTSOZNode.start(true);
 
         // Configure TSO 1
-        TSOServerCommandLineConfig config1 = TSOServerCommandLineConfig.configFactory(TSO1_PORT, 1000);
+        String[] configArgs = new String[]{"-port", Integer.toString(TSO1_PORT), "-maxItems", "1000"};
+        TSOServerCommandLineConfig config1 = TSOServerCommandLineConfig.parseConfig(configArgs);
         config1.shouldHostAndPortBePublishedInZK = true;
         config1.setZKCluster(zkConnection);
         config1.setLeasePeriodInMs(TEST_LEASE_PERIOD_MS);
@@ -114,7 +115,8 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         LOG.info("================ Finished loading TSO 1 ==================");
 
         // Configure TSO 2
-        TSOServerCommandLineConfig config2 = TSOServerCommandLineConfig.configFactory(TSO2_PORT, 1000);
+        configArgs = new String[]{"-port", Integer.toString(TSO2_PORT), "-maxItems", "1000"};
+        TSOServerCommandLineConfig config2 = TSOServerCommandLineConfig.parseConfig(configArgs);
         config2.shouldHostAndPortBePublishedInZK = true;
         config2.setZKCluster(zkConnection);
         config2.setLeasePeriodInMs(TEST_LEASE_PERIOD_MS);
