@@ -13,14 +13,10 @@
     <name>Omid client examples</name>
     <description>Omid client examples</description>
 
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <java.version>1.7</java.version>
-    </properties>
-
-
     <dependencies>
+
         <!-- Dependencies on Omid modules -->
+
         <dependency>
             <groupId>com.yahoo.omid</groupId>
             <artifactId>hbase-client</artifactId>
@@ -28,25 +24,28 @@
         </dependency>
 
         <!-- End of Dependencies on Omid modules -->
+
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-log4j12</artifactId>
-            <version>1.7.7</version>
+            <version>${slf4j.version}</version>
         </dependency>
 
         <dependency>
             <groupId>com.beust</groupId>
             <artifactId>jcommander</artifactId>
-            <version>1.35</version>
+            <version>${jcommander.version}</version>
         </dependency>
     </dependencies>
 
     <build>
+
         <plugins>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.5</version>
+                <version>${maven-compiler-plugin.version}</version>
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
@@ -71,7 +70,7 @@
 
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>2.4.1</version>
+                <version>${maven-assembly-plugin.version}</version>
                 <configuration>
                     <skipAssembly>false</skipAssembly>
                     <tarLongFileMode>gnu</tarLongFileMode>
@@ -89,8 +88,11 @@
                     </execution>
                 </executions>
             </plugin>
+
         </plugins>
+
     </build>
+
     <profiles>
 
         <profile>
