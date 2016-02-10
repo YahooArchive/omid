@@ -15,8 +15,18 @@
  */
 package com.yahoo.omid.tso;
 
-import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
-import static com.yahoo.omid.ZKConstants.TSO_LEASE_PATH;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Charsets;
+import com.google.common.base.Preconditions;
+import com.google.common.util.concurrent.AbstractScheduledService;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.yahoo.omid.tso.TSOStateManager.TSOState;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.utils.EnsurePath;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.data.Stat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -25,19 +35,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.utils.EnsurePath;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.data.Stat;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Charsets;
-import com.google.common.base.Preconditions;
-import com.google.common.util.concurrent.AbstractScheduledService;
-import com.yahoo.omid.tso.TSOStateManager.TSOState;
+import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
+import static com.yahoo.omid.ZKConstants.TSO_LEASE_PATH;
 
 /**
  * Encompasses all the required elements to control the leases required for
@@ -146,10 +145,10 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
                         TSOState newTSOState = stateManager.reset();
                         advertiseTSOServerInfoThroughZK(newTSOState.getEpoch());
                         tsoChannelHandler.reconnect();
-                   } catch (Exception e) {
+                    } catch (Exception e) {
                         Thread t = Thread.currentThread();
                         t.getUncaughtExceptionHandler().uncaughtException(t, e);
-                   }
+                    }
                 }
             });
         } else {

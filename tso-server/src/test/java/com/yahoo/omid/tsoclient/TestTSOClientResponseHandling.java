@@ -1,22 +1,21 @@
 package com.yahoo.omid.tsoclient;
 
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
-import static org.testng.Assert.assertEquals;
-
-import java.util.Collections;
-import java.util.concurrent.ExecutionException;
-
+import com.yahoo.omid.tso.ProgrammableTSOServer;
+import com.yahoo.omid.tso.ProgrammableTSOServer.AbortResponse;
+import com.yahoo.omid.tso.ProgrammableTSOServer.CommitResponse;
+import com.yahoo.omid.tso.ProgrammableTSOServer.TimestampResponse;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import com.yahoo.omid.tso.ProgrammableTSOServer;
-import com.yahoo.omid.tso.ProgrammableTSOServer.AbortResponse;
-import com.yahoo.omid.tso.ProgrammableTSOServer.CommitResponse;
-import com.yahoo.omid.tso.ProgrammableTSOServer.TimestampResponse;
+import java.util.Collections;
+import java.util.concurrent.ExecutionException;
+
+import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
+import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
+import static org.testng.Assert.assertEquals;
 
 public class TestTSOClientResponseHandling {
 
@@ -62,7 +61,7 @@ public class TestTSOClientResponseHandling {
         tsoServer.queueResponse(new AbortResponse(START_TS));
 
         try {
-            tsoClient.commit(START_TS, Collections.<CellId> emptySet()).get();
+            tsoClient.commit(START_TS, Collections.<CellId>emptySet()).get();
         } catch (ExecutionException ee) {
             assertEquals(ee.getCause().getClass(), TSOClient.AbortException.class);
         }
@@ -76,7 +75,7 @@ public class TestTSOClientResponseHandling {
         // Program the TSO to return an Commit response (with no required heuristic actions)
         tsoServer.queueResponse(new CommitResponse(false, START_TS, COMMIT_TS));
 
-        long commitTS = tsoClient.commit(START_TS, Collections.<CellId> emptySet()).get();
+        long commitTS = tsoClient.commit(START_TS, Collections.<CellId>emptySet()).get();
         assertEquals(commitTS, COMMIT_TS);
     }
 
@@ -88,7 +87,7 @@ public class TestTSOClientResponseHandling {
         // Program the TSO to return an Commit response requiring heuristic actions
         tsoServer.queueResponse(new CommitResponse(true, START_TS, COMMIT_TS));
         try {
-            tsoClient.commit(START_TS, Collections.<CellId> emptySet()).get();
+            tsoClient.commit(START_TS, Collections.<CellId>emptySet()).get();
         } catch (ExecutionException ee) {
             assertEquals(ee.getCause().getClass(), TSOClient.NewTSOException.class);
         }

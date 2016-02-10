@@ -15,7 +15,22 @@
  */
 package com.yahoo.omid.benchmarks.tso;
 
-import static com.yahoo.omid.metrics.CodahaleMetricsProvider.CODAHALE_METRICS_CONFIG_PATTERN;
+import com.beust.jcommander.IStringConverter;
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParameterException;
+import com.beust.jcommander.ParametersDelegate;
+import com.google.common.net.HostAndPort;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.yahoo.omid.benchmarks.utils.GeneratorUtils;
+import com.yahoo.omid.benchmarks.utils.GeneratorUtils.RowDistribution;
+import com.yahoo.omid.committable.hbase.CommitTableConstants;
+import com.yahoo.omid.metrics.CodahaleMetricsConfig;
+import com.yahoo.omid.metrics.CodahaleMetricsConfig.Reporter;
+import com.yahoo.omid.metrics.CodahaleMetricsProvider;
+import com.yahoo.omid.tools.hbase.HBaseLogin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -26,23 +41,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 
-import com.yahoo.omid.committable.hbase.CommitTableConstants;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.beust.jcommander.IStringConverter;
-import com.beust.jcommander.JCommander;
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParameterException;
-import com.beust.jcommander.ParametersDelegate;
-import com.google.common.net.HostAndPort;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.benchmarks.utils.GeneratorUtils;
-import com.yahoo.omid.benchmarks.utils.GeneratorUtils.RowDistribution;
-import com.yahoo.omid.tools.hbase.HBaseLogin;
-import com.yahoo.omid.metrics.CodahaleMetricsConfig;
-import com.yahoo.omid.metrics.CodahaleMetricsConfig.Reporter;
-import com.yahoo.omid.metrics.CodahaleMetricsProvider;
+import static com.yahoo.omid.metrics.CodahaleMetricsProvider.CODAHALE_METRICS_CONFIG_PATTERN;
 
 /**
  * Benchmark using directly TSOClient
@@ -73,28 +72,28 @@ public class TSOBenchmark implements Closeable {
 
         String metricsReporter = expConfig.metricsConfig.reporter.toUpperCase();
         switch (metricsReporter) {
-        case "CSV":
-            codahaleConfig.addReporter(Reporter.CSV);
-            codahaleConfig.setCSVDir(expConfig.metricsConfig.reporterConfig);
-            break;
-        case "SLF4J":
-            codahaleConfig.addReporter(Reporter.SLF4J);
-            codahaleConfig.setSlf4jLogger(expConfig.metricsConfig.reporterConfig);
-            break;
-        case "GRAPHITE":
-            codahaleConfig.addReporter(Reporter.GRAPHITE);
-            codahaleConfig.setGraphiteHostConfig(expConfig.metricsConfig.reporterConfig);
-            break;
-        case "CONSOLE":
-            codahaleConfig.addReporter(Reporter.CONSOLE);
-            break;
-        default:
-            LOG.warn("Problem parsing metrics reporter {}.\n"
-                   + "Valid options are [ CSV | SLF4J | CONSOLE | GRAPHITE ]\n"
-                   + "Using console as default.",
-                   metricsReporter);
-            codahaleConfig.addReporter(Reporter.CONSOLE);
-            break;
+            case "CSV":
+                codahaleConfig.addReporter(Reporter.CSV);
+                codahaleConfig.setCSVDir(expConfig.metricsConfig.reporterConfig);
+                break;
+            case "SLF4J":
+                codahaleConfig.addReporter(Reporter.SLF4J);
+                codahaleConfig.setSlf4jLogger(expConfig.metricsConfig.reporterConfig);
+                break;
+            case "GRAPHITE":
+                codahaleConfig.addReporter(Reporter.GRAPHITE);
+                codahaleConfig.setGraphiteHostConfig(expConfig.metricsConfig.reporterConfig);
+                break;
+            case "CONSOLE":
+                codahaleConfig.addReporter(Reporter.CONSOLE);
+                break;
+            default:
+                LOG.warn("Problem parsing metrics reporter {}.\n"
+                                + "Valid options are [ CSV | SLF4J | CONSOLE | GRAPHITE ]\n"
+                                + "Using console as default.",
+                        metricsReporter);
+                codahaleConfig.addReporter(Reporter.CONSOLE);
+                break;
         }
         this.metrics = new CodahaleMetricsProvider(codahaleConfig);
         this.metrics.startMetrics();
@@ -201,41 +200,41 @@ public class TSOBenchmark implements Closeable {
         int nbClients = 1;
 
         @Parameter(names = "-tsoHostAndPort",
-                   description = "Hostname and port of the TSO. Format: HOST:PORT",
-                   converter = HostPortConverter.class)
+                description = "Hostname and port of the TSO. Format: HOST:PORT",
+                converter = HostPortConverter.class)
         HostAndPort tsoHostPort = HostAndPort.fromParts("localhost", 54758);
 
         @Parameter(names = "-runFor",
-                   converter = TimeValueTimeUnitConverter.class,
-                   description = "Benchmark run lenght.\n"
-                               + "Format: TIME_VALUE:TIME_UNIT Example: 10:DAYS, 60:SECONDS...")
+                converter = TimeValueTimeUnitConverter.class,
+                description = "Benchmark run lenght.\n"
+                        + "Format: TIME_VALUE:TIME_UNIT Example: 10:DAYS, 60:SECONDS...")
         TimeValueTimeUnit runFor = new TimeValueTimeUnit(10, TimeUnit.MINUTES);
 
         @Parameter(names = "-requestDistribution",
-                   description = "Request distribution (how to pick rows) [ UNIFORM | ZIPFIAN ]",
-                   converter = GeneratorUtils.RowDistributionConverter.class)
+                description = "Request distribution (how to pick rows) [ UNIFORM | ZIPFIAN ]",
+                converter = GeneratorUtils.RowDistributionConverter.class)
         RowDistribution requestDistribution = RowDistribution.UNIFORM;
 
         @Parameter(names = "-maxWritesetSize", description = "Maximum size of tx in terms of modified columns,\n"
-                                                           + "homogeneously distributed between 1 & this number")
+                + "homogeneously distributed between 1 & this number")
         int maxTxSize = TxRunner.DEFAULT_WRITESET_SIZE;
 
         @Parameter(names = "-maxInFlight", description = "Max number of outstanding messages in the TSO pipe")
         int maxInFlight = 100_000;
 
         @Parameter(names = "-commitDelay",
-                   converter = TimeValueTimeUnitConverter.class,
-                   description = "Simulated delay between acquiring timestamp and committing.\n"
-                               + "Format: TIME_VALUE:TIME_UNIT Example: 50:MILLISECONDS...")
+                converter = TimeValueTimeUnitConverter.class,
+                description = "Simulated delay between acquiring timestamp and committing.\n"
+                        + "Format: TIME_VALUE:TIME_UNIT Example: 50:MILLISECONDS...")
         TimeValueTimeUnit commitDelay = new TimeValueTimeUnit(50, TimeUnit.MILLISECONDS);
 
         @Parameter(names = "-percentRead", description = "% reads")
         float percentReads = 0;
 
         @Parameter(names = "-readProportion",
-                   description = "Proportion of reads, between 1 and 0.\n"
-                               + "Overrides -percentRead if specified",
-                   hidden = true)
+                description = "Proportion of reads, between 1 and 0.\n"
+                        + "Overrides -percentRead if specified",
+                hidden = true)
         float readproportion = -1;
 
         @Parameter(names = "-useHBase", description = "Enable HBase storage")
@@ -245,8 +244,8 @@ public class TSOBenchmark implements Closeable {
         private String hbaseCommitTable = CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
 
         @Parameter(names = "-metricsConfig",
-                   converter = MetricsConfigConverter.class,
-                   description = "Format: REPORTER:REPORTER_CONFIG:TIME_VALUE:TIME_UNIT")
+                converter = MetricsConfigConverter.class,
+                description = "Format: REPORTER:REPORTER_CONFIG:TIME_VALUE:TIME_UNIT")
         MetricsConfig metricsConfig = new MetricsConfig("console", "", 10, TimeUnit.SECONDS);
 
         @ParametersDelegate
@@ -290,9 +289,9 @@ public class TSOBenchmark implements Closeable {
 
             if (matcher.matches()) {
                 return new MetricsConfig(matcher.group(1),
-                                         matcher.group(2),
-                                         Integer.valueOf(matcher.group(3)),
-                                         TimeUnit.valueOf(matcher.group(4)));
+                        matcher.group(2),
+                        Integer.valueOf(matcher.group(3)),
+                        TimeUnit.valueOf(matcher.group(4)));
             } else {
                 throw new ParameterException("Metrics specification " + value
                         + " should have this format: REPORTER:REPORTER_CONFIG:TIME_VALUE:TIME_UNIT\n"
@@ -321,7 +320,7 @@ public class TSOBenchmark implements Closeable {
             String[] s = value.split(":");
             try {
                 return new TimeValueTimeUnit(Integer.parseInt(s[0]), TimeUnit.valueOf(s[1].toUpperCase()));
-            } catch(Exception e) {
+            } catch (Exception e) {
                 throw new ParameterException("Time specification " + value +
                         " should have this format: TIME_VALUE:TIME_UNIT Example: 10:DAYS, 60:SECONDS...");
             }

@@ -18,16 +18,14 @@ package com.yahoo.omid.tso;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Throwables;
 import com.yahoo.omid.metrics.MetricsRegistry;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-
-import javax.annotation.concurrent.NotThreadSafe;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
@@ -50,14 +48,14 @@ public class MonitoringContext {
     }
 
     public void timerStop(String name) {
-        if(flag){
+        if (flag) {
             LOG.warn("timerStop({}) called after publish. Measurement was ignored. {}", name, Throwables.getStackTraceAsString(new Exception()));
             return;
         }
         Stopwatch activeStopwatch = timers.get(name);
         if (activeStopwatch == null) {
             throw new IllegalStateException(
-                String.format("There is no %s timer in the %s monitoring context.", name, this));
+                    String.format("There is no %s timer in the %s monitoring context.", name, this));
         }
         activeStopwatch.stop();
         elapsedTimeMsMap.put(name, activeStopwatch.elapsedTime(TimeUnit.NANOSECONDS));

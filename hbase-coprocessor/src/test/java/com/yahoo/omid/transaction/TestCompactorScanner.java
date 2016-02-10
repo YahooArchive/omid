@@ -1,13 +1,8 @@
 package com.yahoo.omid.transaction;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertFalse;
-
-import java.util.Queue;
-
+import com.google.common.util.concurrent.SettableFuture;
+import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.CommitTable.Client;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
@@ -22,9 +17,13 @@ import org.slf4j.LoggerFactory;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.google.common.util.concurrent.SettableFuture;
-import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.committable.CommitTable.Client;
+import java.util.Queue;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
+import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertFalse;
 
 public class TestCompactorScanner {
 
@@ -34,8 +33,8 @@ public class TestCompactorScanner {
 
     @DataProvider(name = "cell-retain-options")
     public Object[][] createCellRetainOptions() {
-        return new Object[][] {
-                { 1, true }, { 2, false },
+        return new Object[][]{
+                {1, true}, {2, false},
         };
     }
 
@@ -53,7 +52,7 @@ public class TestCompactorScanner {
         RegionCoprocessorEnvironment rce = mock(RegionCoprocessorEnvironment.class);
         HRegion hRegion = mock(HRegion.class);
         HRegionInfo hRegionInfo = mock(HRegionInfo.class);
-        SettableFuture<Long> f = SettableFuture.<Long> create();
+        SettableFuture<Long> f = SettableFuture.<Long>create();
 
         // Wire required mock internals
         f.set(TEST_TS);
@@ -64,11 +63,11 @@ public class TestCompactorScanner {
 
         LOG.info("Testing when retain is {}", retainOption);
         try (CompactorScanner scanner = spy(new CompactorScanner(ctx,
-                                                                 internalScanner,
-                                                                 ctClient,
-                                                                 queue,
-                                                                 false,
-                                                                 retainOption))) {
+                internalScanner,
+                ctClient,
+                queue,
+                false,
+                retainOption))) {
 
             // Different cell types to test
             KeyValue regularKV = new KeyValue(Bytes.toBytes("test-row"), TEST_TS, Type.Put);

@@ -4,7 +4,6 @@ import com.yahoo.omid.tso.util.DummyCellIdImpl;
 import com.yahoo.omid.tsoclient.TSOClient.ConnectionException;
 import com.yahoo.omid.tsoclient.TSOClientImpl.DisconnectedState;
 import com.yahoo.statemachine.StateMachine.FsmImpl;
-
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
 import org.slf4j.Logger;
@@ -33,7 +32,7 @@ public class TestUnconnectedTSOClient {
 
     @Test(timeOut = 30_000) // 30 secs
     public void testRequestsDoneOnAnUnconnectedTSOClientAlwaysReturn()
-        throws Exception {
+            throws Exception {
         Configuration clientConf = new BaseConfiguration();
         clientConf.setProperty(TSO_HOST_CONFKEY, "localhost");
         clientConf.setProperty(TSO_PORT_CONFKEY, 12345);
@@ -42,8 +41,8 @@ public class TestUnconnectedTSOClient {
 
         // Component under test
         TSOClient tsoClient = TSOClient.newBuilder()
-            .withConfiguration(clientConf)
-            .build();
+                .withConfiguration(clientConf)
+                .build();
 
         // Internal accessor to fsm
         TSOClientImpl clientimpl = (TSOClientImpl) tsoClient;

@@ -1,14 +1,5 @@
 package com.yahoo.omid.timestamp.storage;
 
-import static com.yahoo.omid.timestamp.storage.ZKTimestampPaths.TIMESTAMP_ZNODE;
-import static com.yahoo.omid.timestamp.storage.ZKTimestampStorage.INITIAL_MAX_TS_VALUE;
-import static org.mockito.Mockito.doThrow;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.fail;
-
-import java.io.IOException;
-import java.net.BindException;
-
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -23,6 +14,15 @@ import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+
+import java.io.IOException;
+import java.net.BindException;
+
+import static com.yahoo.omid.timestamp.storage.ZKTimestampPaths.TIMESTAMP_ZNODE;
+import static com.yahoo.omid.timestamp.storage.ZKTimestampStorage.INITIAL_MAX_TS_VALUE;
+import static org.mockito.Mockito.doThrow;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.fail;
 
 public class TestZKTimestampStorage {
 
@@ -62,21 +62,21 @@ public class TestZKTimestampStorage {
 
         LOG.info("Creating Zookeeper Client connected to {}", ZK_CLUSTER);
         zkClient = CuratorFrameworkFactory.builder()
-                                          .namespace("omid")
-                                          .connectString(ZK_CLUSTER)
-                                          .retryPolicy(retryPolicy)
-                                          .connectionTimeoutMs(10) // Low timeout for tests
-                                          .build();
+                .namespace("omid")
+                .connectString(ZK_CLUSTER)
+                .retryPolicy(retryPolicy)
+                .connectionTimeoutMs(10) // Low timeout for tests
+                .build();
         zkClient.start();
         zkClient.blockUntilConnected();
 
         LOG.info("Creating Internal Zookeeper Client connected to {}", ZK_CLUSTER);
         storageInternalZKClient = Mockito.spy(CuratorFrameworkFactory.builder()
-                                                                     .namespace("omid")
-                                                                     .connectString(ZK_CLUSTER)
-                                                                     .retryPolicy(retryPolicy)
-                                                                     .connectionTimeoutMs(10) // Low timeout for tests
-                                                                     .build());
+                .namespace("omid")
+                .connectString(ZK_CLUSTER)
+                .retryPolicy(retryPolicy)
+                .connectionTimeoutMs(10) // Low timeout for tests
+                .build());
         storageInternalZKClient.start();
         storageInternalZKClient.blockUntilConnected();
 

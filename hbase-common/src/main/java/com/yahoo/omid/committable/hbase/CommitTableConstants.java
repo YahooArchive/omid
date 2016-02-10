@@ -29,6 +29,7 @@ public class CommitTableConstants {
     public static final byte[] LOW_WATERMARK_FAMILY = "LWF".getBytes(UTF_8);
 
     // Avoid instantiation
-    private CommitTableConstants() {}
+    private CommitTableConstants() {
+    }
 
 }

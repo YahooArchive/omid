@@ -43,10 +43,10 @@ class TSOModule extends AbstractModule {
         bind(Panicker.class).to(SystemExitPanicker.class).in(Singleton.class);
 
         bindConstant().annotatedWith(Names.named(COMMIT_TABLE_NAME_KEY))
-            .to(config.getCommitTable());
+                .to(config.getCommitTable());
 
         bindConstant().annotatedWith(Names.named(TimestampStorage.TIMESTAMPSTORAGE_TABLE_NAME_KEY))
-            .to(config.getTimestampTable());
+                .to(config.getTimestampTable());
 
         // Disruptor setup
         install(new DisruptorModule());

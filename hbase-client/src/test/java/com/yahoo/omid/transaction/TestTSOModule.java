@@ -20,7 +20,6 @@ import com.yahoo.omid.tso.TSOStateManager;
 import com.yahoo.omid.tso.TSOStateManagerImpl;
 import com.yahoo.omid.tso.TimestampOracle;
 import com.yahoo.omid.tso.ZKModule;
-
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
@@ -74,17 +73,17 @@ class TestTSOModule extends AbstractModule {
                                         TSOStateManager stateManager,
                                         CuratorFramework zkClient,
                                         Panicker panicker)
-        throws LeaseManagement.LeaseManagementException {
+            throws LeaseManagement.LeaseManagementException {
 
         LOG.info("Connection to ZK cluster [{}]", zkClient.getState());
         return new PausableLeaseManager(tsoHostAndPort,
-                                        tsoChannelHandler,
-                                        stateManager,
-                                        config.getLeasePeriodInMs(),
-                                        TSO_LEASE_PATH,
-                                        CURRENT_TSO_PATH,
-                                        zkClient,
-                                        panicker);
+                tsoChannelHandler,
+                stateManager,
+                config.getLeasePeriodInMs(),
+                TSO_LEASE_PATH,
+                CURRENT_TSO_PATH,
+                zkClient,
+                panicker);
     }
 
     @Provides

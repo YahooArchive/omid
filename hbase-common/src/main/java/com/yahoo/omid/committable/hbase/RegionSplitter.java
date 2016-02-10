@@ -18,14 +18,13 @@
  */
 package com.yahoo.omid.committable.hbase;
 
-import java.io.IOException;
-import java.util.Arrays;
-
+import com.google.common.base.Preconditions;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.util.Bytes;
 
-import com.google.common.base.Preconditions;
+import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * This class contains only the required behavior of the original
@@ -46,7 +45,7 @@ public class RegionSplitter {
     public interface SplitAlgorithm {
         /**
          * Split a pre-existing region into 2 regions.
-         * 
+         *
          * @param start
          *            first row (inclusive)
          * @param end
@@ -57,10 +56,10 @@ public class RegionSplitter {
 
         /**
          * Split an entire table.
-         * 
+         *
          * @param numRegions
          *            number of regions to split the table into
-         * 
+         *
          * @throws RuntimeException
          *             user input is validated at this time. may throw a runtime exception in response to a parse
          *             failure
@@ -72,7 +71,7 @@ public class RegionSplitter {
         /**
          * In HBase, the first row is represented by an empty byte array. This might cause problems with your split
          * algorithm or row printing. All your APIs will be passed firstRow() instead of empty array.
-         * 
+         *
          * @return your representation of your first row
          */
         byte[] firstRow();
@@ -80,7 +79,7 @@ public class RegionSplitter {
         /**
          * In HBase, the last row is represented by an empty byte array. This might cause problems with your split
          * algorithm or row printing. All your APIs will be passed firstRow() instead of empty array.
-         * 
+         *
          * @return your representation of your last row
          */
         byte[] lastRow();
@@ -88,7 +87,7 @@ public class RegionSplitter {
         /**
          * In HBase, the last row is represented by an empty byte array. Set this value to help the split code
          * understand how to evenly divide the first region.
-         * 
+         *
          * @param userInput
          *            raw user input (may throw RuntimeException on parse failure)
          */
@@ -98,7 +97,7 @@ public class RegionSplitter {
          * In HBase, the last row is represented by an empty byte array. Set this value to help the split code
          * understand how to evenly divide the last region. Note that this last row is inclusive for all rows sharing
          * the same prefix.
-         * 
+         *
          * @param userInput
          *            raw user input (may throw RuntimeException on parse failure)
          */
@@ -125,7 +124,7 @@ public class RegionSplitter {
 
         /**
          * Set the first row
-         * 
+         *
          * @param userInput
          *            byte array of the row key.
          */
@@ -133,7 +132,7 @@ public class RegionSplitter {
 
         /**
          * Set the last row
-         * 
+         *
          * @param userInput
          *            byte array of the row key.
          */
@@ -145,7 +144,7 @@ public class RegionSplitter {
      *             if the specified SplitAlgorithm class couldn't be instantiated
      */
     public static SplitAlgorithm newSplitAlgoInstance(Configuration conf,
-            String splitClassName) throws IOException {
+                                                      String splitClassName) throws IOException {
         Class<?> splitClass;
 
         // For split algorithms builtin to RegionSplitter, the user can specify
@@ -183,7 +182,7 @@ public class RegionSplitter {
         static final byte xFF = (byte) 0xFF;
         byte[] firstRowBytes = ArrayUtils.EMPTY_BYTE_ARRAY;
         byte[] lastRowBytes =
-                new byte[] { xFF, xFF, xFF, xFF, xFF, xFF, xFF, xFF };
+                new byte[]{xFF, xFF, xFF, xFF, xFF, xFF, xFF, xFF};
 
         public byte[] split(byte[] start, byte[] end) {
             return Bytes.split(start, end, 1)[1];

@@ -15,13 +15,10 @@
  */
 package com.yahoo.omid.transaction;
 
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_NAME_KEY;
-
-import java.io.IOException;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutionException;
-
+import com.google.common.annotations.VisibleForTesting;
+import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.hbase.HBaseCommitTable;
+import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -38,10 +35,12 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.committable.hbase.HBaseCommitTable;
-import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
+import java.io.IOException;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_NAME_KEY;
 
 /**
  * Garbage collector for stale data: triggered upon HBase
@@ -53,7 +52,7 @@ public class OmidCompactor extends BaseRegionObserver {
     private static final Logger LOG = LoggerFactory.getLogger(OmidCompactor.class);
 
     private static final String HBASE_RETAIN_NON_TRANSACTIONALLY_DELETED_CELLS_KEY
-        = "omid.hbase.compactor.retain.tombstones";
+            = "omid.hbase.compactor.retain.tombstones";
     private static final boolean HBASE_RETAIN_NON_TRANSACTIONALLY_DELETED_CELLS_DEFAULT = true;
 
     final static String OMID_COMPACTABLE_CF_FLAG = "OMID_ENABLED";
@@ -85,7 +84,7 @@ public class OmidCompactor extends BaseRegionObserver {
         }
         retainNonTransactionallyDeletedCells =
                 conf.getBoolean(HBASE_RETAIN_NON_TRANSACTIONALLY_DELETED_CELLS_KEY,
-                                HBASE_RETAIN_NON_TRANSACTIONALLY_DELETED_CELLS_DEFAULT);
+                        HBASE_RETAIN_NON_TRANSACTIONALLY_DELETED_CELLS_DEFAULT);
         LOG.info("Compactor coprocessor started");
     }
 
@@ -105,11 +104,10 @@ public class OmidCompactor extends BaseRegionObserver {
                                       Store store,
                                       InternalScanner scanner,
                                       ScanType scanType,
-                                      CompactionRequest request) throws IOException
-    {
+                                      CompactionRequest request) throws IOException {
         HTableDescriptor desc = e.getEnvironment().getRegion().getTableDesc();
         HColumnDescriptor famDesc
-            = desc.getFamily(Bytes.toBytes(store.getColumnFamilyName()));
+                = desc.getFamily(Bytes.toBytes(store.getColumnFamilyName()));
         boolean omidCompactable = Boolean.valueOf(famDesc.getValue(OMID_COMPACTABLE_CF_FLAG));
         // only column families tagged as compactable are compacted
         // with omid compactor
@@ -122,11 +120,11 @@ public class OmidCompactor extends BaseRegionObserver {
             }
             boolean isMajorCompaction = request.isMajor();
             return new CompactorScanner(e,
-                                        scanner,
-                                        commitTableClient,
-                                        commitTableClientQueue,
-                                        isMajorCompaction,
-                                        retainNonTransactionallyDeletedCells);
+                    scanner,
+                    commitTableClient,
+                    commitTableClientQueue,
+                    isMajorCompaction,
+                    retainNonTransactionallyDeletedCells);
         }
     }
 

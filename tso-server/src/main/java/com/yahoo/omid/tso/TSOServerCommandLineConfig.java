@@ -23,7 +23,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.yahoo.omid.metrics.MetricsProvider;
 import com.yahoo.omid.tools.hbase.HBaseLogin;
 import com.yahoo.omid.tsoclient.TSOClient;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

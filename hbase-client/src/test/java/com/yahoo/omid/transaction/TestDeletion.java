@@ -77,7 +77,7 @@ public class TestDeletion extends OmidTestBase {
 
         count = countColsInRows(rs, famColA, famColB);
         AssertJUnit
-            .assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
+                .assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
         AssertJUnit.assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
     }
 
@@ -115,7 +115,7 @@ public class TestDeletion extends OmidTestBase {
 
         count = countColsInRows(rs, famColA, famColB);
         AssertJUnit
-            .assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
+                .assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
         AssertJUnit.assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
     }
 
@@ -157,7 +157,7 @@ public class TestDeletion extends OmidTestBase {
         count = countColsInRows(rs, famColA, famColB);
 
         AssertJUnit
-            .assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
+                .assertEquals("ColA count should be equal to rowsWritten - 1", (rowsWritten - 1), (int) count.get(famColA));
         AssertJUnit.assertEquals("ColB count should be equal to rowsWritten", rowsWritten, (int) count.get(famColB));
     }
 
@@ -185,7 +185,7 @@ public class TestDeletion extends OmidTestBase {
 
         int rowsRead = countRows(rs);
         AssertJUnit.assertTrue("Expected " + rowsWritten + " rows but " + rowsRead + " found",
-                               rowsRead == rowsWritten);
+                rowsRead == rowsWritten);
 
         tm.commit(t2);
 
@@ -194,7 +194,7 @@ public class TestDeletion extends OmidTestBase {
 
         rowsRead = countRows(rs);
         AssertJUnit.assertTrue("Expected " + (rowsWritten - 1) + " rows but " + rowsRead + " found",
-                               rowsRead == (rowsWritten - 1));
+                rowsRead == (rowsWritten - 1));
 
     }
 

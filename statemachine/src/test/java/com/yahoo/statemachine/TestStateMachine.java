@@ -1,16 +1,15 @@
 package com.yahoo.statemachine;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.CountDownLatch;
-
 import com.yahoo.statemachine.StateMachine.Fsm;
 import com.yahoo.statemachine.StateMachine.FsmImpl;
 import com.yahoo.statemachine.StateMachine.State;
-
-import org.testng.Assert;
-import org.testng.annotations.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 
 public class TestStateMachine {
     private final static Logger LOG = LoggerFactory.getLogger(TestStateMachine.class);
@@ -70,7 +69,7 @@ public class TestStateMachine {
         }
     }
 
-    @Test(timeOut=60000)
+    @Test(timeOut = 60000)
     public void testOrdering() throws Throwable {
         Fsm fsm = new FsmImpl(Executors.newSingleThreadScheduledExecutor());
         fsm.setInitState(new DeferringState(fsm));

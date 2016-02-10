@@ -1,19 +1,19 @@
 package com.yahoo.omid.transaction;
 
-import static org.testng.AssertJUnit.assertEquals;
-import org.testng.annotations.Test;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-
+import com.google.common.collect.ImmutableList;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.mortbay.log.Log;
+import org.testng.annotations.Test;
 
-import com.google.common.collect.ImmutableList;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+
+import static org.testng.AssertJUnit.assertEquals;
 
 @Test(groups = "noHBase")
 public class TestColumnIterator {
@@ -37,7 +37,7 @@ public class TestColumnIterator {
                     // Group 3 (2 elems but grouping should filter shadow cell, so check for 1)
                     new KeyValue(row, family2, qualifier1, 0, data),
                     new KeyValue(row, family2, CellUtils.addShadowCellSuffix(qualifier1), 0, data)
-                        )
+            )
     );
 
     @Test

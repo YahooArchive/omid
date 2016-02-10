@@ -9,9 +9,7 @@ import com.yahoo.omid.committable.InMemoryCommitTable;
 import com.yahoo.omid.transaction.Transaction.Status;
 import com.yahoo.omid.tso.ProgrammableTSOServer;
 import com.yahoo.omid.tsoclient.TSOClient;
-
 import org.apache.commons.configuration.BaseConfiguration;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.KeyValue;
@@ -26,10 +24,9 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
-
-import javax.annotation.Nullable;
 
 import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.COMMIT_TABLE;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
@@ -81,7 +78,7 @@ public class TestTxMgrFailover extends OmidTestBase {
 
     @BeforeMethod(alwaysRun = true, timeOut = 30_000)
     public void beforeMethod()
-        throws ExecutionException, InterruptedException, OmidInstantiationException {
+            throws ExecutionException, InterruptedException, OmidInstantiationException {
 
         commitTable = new InMemoryCommitTable(); // Use an in-memory commit table to speed up tests
         commitTableClient = spy(commitTable.getClient().get());
@@ -94,10 +91,10 @@ public class TestTxMgrFailover extends OmidTestBase {
         TSOClient tsoClientForTM = spy(TSOClient.newBuilder().withConfiguration(clientConf).build());
 
         tm = spy(HBaseTransactionManager.newBuilder()
-                     .withTSOClient(tsoClientForTM)
-                     .withCommitTableClient(commitTableClient)
-                     .withConfiguration(hbaseConf)
-                     .build());
+                .withTSOClient(tsoClientForTM)
+                .withCommitTableClient(commitTableClient)
+                .withConfiguration(hbaseConf)
+                .build());
     }
 
     @Test
@@ -114,7 +111,7 @@ public class TestTxMgrFailover extends OmidTestBase {
             txTable.put(tx1, put);
             assertEquals(hBaseUtils.countRows(new HTable(hbaseConf, TEST_TABLE)), 1, "Rows should be 1!");
             checkOperationSuccessOnCell(KeyValue.Type.Put, data1, TEST_TABLE.getBytes(), row1, TEST_FAMILY.getBytes(),
-                                        qualifier);
+                    qualifier);
 
             try {
                 tm.commit(tx1);
@@ -129,14 +126,14 @@ public class TestTxMgrFailover extends OmidTestBase {
             assertEquals(tx1.getCommitTimestamp(), 0);
             // Check the cleanup process did its job and the committed data is NOT there
             checkOperationSuccessOnCell(KeyValue.Type.Delete, null, TEST_TABLE.getBytes(), row1, TEST_FAMILY.getBytes(),
-                                        qualifier);
+                    qualifier);
         }
 
     }
 
     @Test
     public void testClientReceivesSuccessfulCommitForNonInvalidatedTxCommittedByPreviousTSO()
-        throws Exception {
+            throws Exception {
 
         // Program the TSO to return an ad-hoc Timestamp and an commit response with heuristic actions
         tso.queueResponse(new ProgrammableTSOServer.TimestampResponse(TX1_ST));
@@ -161,20 +158,20 @@ public class TestTxMgrFailover extends OmidTestBase {
             // Check the cleanup process did its job and the committed data is there
             // Note that now we do not clean up the commit table when exercising the heuristic actions
             assertEquals(commitTable.countElements(), 1,
-                         "Rows should be 1! We don't have to clean CT in this case");
+                    "Rows should be 1! We don't have to clean CT in this case");
             Optional<CommitTimestamp>
-                optionalCT =
-                tm.commitTableClient.getCommitTimestamp(TX1_ST).get();
+                    optionalCT =
+                    tm.commitTableClient.getCommitTimestamp(TX1_ST).get();
             assertTrue(optionalCT.isPresent());
             checkOperationSuccessOnCell(KeyValue.Type.Put, data1, TEST_TABLE.getBytes(), row1, TEST_FAMILY.getBytes(),
-                                        qualifier);
+                    qualifier);
         }
 
     }
 
     @Test
     public void testClientReceivesRollbackExceptionForInvalidatedTxCommittedByPreviousTSO()
-        throws Exception {
+            throws Exception {
 
         // Program the TSO to return an ad-hoc Timestamp and a commit response with heuristic actions
         tso.queueResponse(new ProgrammableTSOServer.TimestampResponse(TX1_ST));
@@ -202,12 +199,12 @@ public class TestTxMgrFailover extends OmidTestBase {
             // Check the cleanup process did its job and the uncommitted data is NOT there
             assertEquals(commitTable.countElements(), 1, "Rows should be 1! Dirty data should be there");
             Optional<CommitTimestamp>
-                optionalCT =
-                tm.commitTableClient.getCommitTimestamp(TX1_ST).get();
+                    optionalCT =
+                    tm.commitTableClient.getCommitTimestamp(TX1_ST).get();
             assertTrue(optionalCT.isPresent());
             assertFalse(optionalCT.get().isValid());
             checkOperationSuccessOnCell(KeyValue.Type.Delete, null, TEST_TABLE.getBytes(), row1, TEST_FAMILY.getBytes(),
-                                        qualifier);
+                    qualifier);
         }
 
     }
@@ -241,19 +238,19 @@ public class TestTxMgrFailover extends OmidTestBase {
             // Uncommitted data should NOT be there
             assertEquals(commitTable.countElements(), 1, "Rows should be 1! Dirty data should be there");
             Optional<CommitTimestamp>
-                optionalCT =
-                tm.commitTableClient.getCommitTimestamp(TX1_ST).get();
+                    optionalCT =
+                    tm.commitTableClient.getCommitTimestamp(TX1_ST).get();
             assertTrue(optionalCT.isPresent());
             assertFalse(optionalCT.get().isValid());
             checkOperationSuccessOnCell(KeyValue.Type.Delete, null, TEST_TABLE.getBytes(), row1, TEST_FAMILY.getBytes(),
-                                        qualifier);
+                    qualifier);
         }
 
     }
 
     @Test
     public void testClientSuccessfullyCommitsWhenReceivingNotificationOfANewTSOAandCANTInvalidateTransaction()
-        throws Exception {
+            throws Exception {
 
         // Program the TSO to return an ad-hoc Timestamp and a commit response with heuristic actions
         tso.queueResponse(new ProgrammableTSOServer.TimestampResponse(TX1_ST));
@@ -284,16 +281,16 @@ public class TestTxMgrFailover extends OmidTestBase {
             // Check the cleanup process did its job and the committed data is there
             // Note that now we do not clean up the commit table when exercising the heuristic actions
             assertEquals(commitTable.countElements(), 1,
-                         "Rows should be 1! We don't have to clean CT in this case");
+                    "Rows should be 1! We don't have to clean CT in this case");
             checkOperationSuccessOnCell(KeyValue.Type.Put, data1, TEST_TABLE.getBytes(), row1, TEST_FAMILY.getBytes(),
-                                        qualifier);
+                    qualifier);
         }
 
     }
 
     @Test
     public void testClientReceivesATransactionExceptionWhenReceivingNotificationOfANewTSOAndCANTInvalidateTransactionAndCTCheckIsUnsuccessful()
-        throws Exception {
+            throws Exception {
 
         // Program the TSO to return an ad-hoc Timestamp and a commit response with heuristic actions
         tso.queueResponse(new ProgrammableTSOServer.TimestampResponse(TX1_ST));
@@ -346,14 +343,14 @@ public class TestTxMgrFailover extends OmidTestBase {
                     assertEquals(latestCell.getTypeByte(), targetOp.getCode());
                     assertEquals(CellUtil.cloneValue(latestCell), expectedValue);
                     LOG.trace("Value for " + Bytes.toString(tableName) + ":"
-                              + Bytes.toString(row) + ":" + Bytes.toString(fam) + ":"
-                              + Bytes.toString(col) + "=>" + Bytes.toString(CellUtil.cloneValue(latestCell))
-                              + " (" + Bytes.toString(expectedValue) + " expected)");
+                            + Bytes.toString(row) + ":" + Bytes.toString(fam) + ":"
+                            + Bytes.toString(col) + "=>" + Bytes.toString(CellUtil.cloneValue(latestCell))
+                            + " (" + Bytes.toString(expectedValue) + " expected)");
                     break;
                 case Delete:
                     LOG.trace("Value for " + Bytes.toString(tableName) + ":"
-                              + Bytes.toString(row) + ":" + Bytes.toString(fam)
-                              + Bytes.toString(col) + " deleted");
+                            + Bytes.toString(row) + ":" + Bytes.toString(fam)
+                            + Bytes.toString(col) + " deleted");
                     assertNull(latestCell);
                     break;
                 default:
@@ -361,8 +358,8 @@ public class TestTxMgrFailover extends OmidTestBase {
             }
         } catch (IOException e) {
             LOG.error("Error reading row " + Bytes.toString(tableName) + ":"
-                      + Bytes.toString(row) + ":" + Bytes.toString(fam)
-                      + Bytes.toString(col), e);
+                    + Bytes.toString(row) + ":" + Bytes.toString(fam)
+                    + Bytes.toString(col), e);
             fail();
         }
     }

@@ -15,26 +15,26 @@
  */
 package com.yahoo.statemachine;
 
-import java.util.List;
-import java.util.ArrayList;
-import java.lang.reflect.Method;
-import java.lang.reflect.InvocationTargetException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.Queue;
-import java.util.ArrayDeque;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class StateMachine {
     static final Logger LOG = LoggerFactory.getLogger(StateMachine.class);
     static final String HANDLER_METHOD_NAME = "handleEvent";
 
     private static ConcurrentHashMap<Class<?>, ConcurrentHashMap<Class<?>, Method>> stateCaches
-        = new ConcurrentHashMap<Class<?>, ConcurrentHashMap<Class<?>, Method>>();
+            = new ConcurrentHashMap<Class<?>, ConcurrentHashMap<Class<?>, Method>>();
 
     public static abstract class State {
         protected final Fsm fsm;
@@ -47,7 +47,7 @@ public class StateMachine {
             if (handlerCache == null) {
                 handlerCache = new ConcurrentHashMap<Class<?>, Method>();
                 ConcurrentHashMap<Class<?>, Method> old = stateCaches.putIfAbsent(getClass(),
-                                                                                  handlerCache);
+                        handlerCache);
                 if (old != null) {
                     handlerCache = old;
                 }
@@ -61,8 +61,8 @@ public class StateMachine {
             List<Method> candidates = new ArrayList<Method>();
             for (Method m : methods) {
                 if (m.getName().equals(HANDLER_METHOD_NAME)
-                    && State.class.isAssignableFrom(m.getReturnType())
-                    && m.getGenericParameterTypes().length == 1) {
+                        && State.class.isAssignableFrom(m.getReturnType())
+                        && m.getGenericParameterTypes().length == 1) {
                     candidates.add(m);
                 }
             }
@@ -74,7 +74,7 @@ public class StateMachine {
                     if (best == null) {
                         best = m;
                     } else if (best.getParameterTypes()[0]
-                               .isAssignableFrom(m.getParameterTypes()[0])) {
+                            .isAssignableFrom(m.getParameterTypes()[0])) {
                         best = m;
                     }
                 }
@@ -101,17 +101,22 @@ public class StateMachine {
 
         State dispatch(Event e)
                 throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-            return (State)findHandler(e.getClass()).invoke(this, e);
+            return (State) findHandler(e.getClass()).invoke(this, e);
         }
     }
 
-    public interface Event { }
+    public interface Event {
+    }
 
     public interface Fsm {
         Fsm newChildFsm();
+
         void setInitState(State initState);
+
         void sendEvent(Event e);
+
         Future<?> sendEvent(Event e, long delay, TimeUnit unit);
+
         void deferEvent(DeferrableEvent e);
     }
 
@@ -153,24 +158,24 @@ public class StateMachine {
         protected void setState(final State curState, final State newState) {
             if (curState != state) {
                 LOG.error("FSM-{}: Tried to transition from {} to {}, but current state is {}",
-                        new Object[] { getFsmId(), state, newState, curState });
+                        new Object[]{getFsmId(), state, newState, curState});
                 throw new IllegalArgumentException();
             }
             state = newState;
 
             if (LOG.isDebugEnabled()) {
                 LOG.debug("FSM-{}: State transition {} -> {}",
-                        new Object[] { getFsmId(), curState, newState });
+                        new Object[]{getFsmId(), curState, newState});
             }
         }
 
         protected boolean processEvent(Event e) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("FSM-{}: Received event {}@{} in state {}@{}",
-                          new Object[] { getFsmId(), e.getClass().getSimpleName(),
-                                         System.identityHashCode(e),
-                                         state.getClass().getSimpleName(),
-                                         System.identityHashCode(state) });
+                        new Object[]{getFsmId(), e.getClass().getSimpleName(),
+                                System.identityHashCode(e),
+                                state.getClass().getSimpleName(),
+                                System.identityHashCode(state)});
             }
             try {
                 State newState = state.dispatch(e);
@@ -225,8 +230,8 @@ public class StateMachine {
         public void deferEvent(DeferrableEvent e) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("FSM-{}: deferred {}@{}",
-                          new Object[] { getFsmId(), e.getClass().getSimpleName(),
-                                         System.identityHashCode(e) });
+                        new Object[]{getFsmId(), e.getClass().getSimpleName(),
+                                System.identityHashCode(e)});
             }
             deferred.add(e);
         }

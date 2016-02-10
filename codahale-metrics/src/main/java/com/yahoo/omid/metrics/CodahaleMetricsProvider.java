@@ -27,10 +27,10 @@ import com.codahale.metrics.graphite.GraphiteReporter;
 import com.google.common.base.Strings;
 import com.google.common.net.HostAndPort;
 import com.yahoo.omid.metrics.CodahaleMetricsConfig.Reporter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -38,15 +38,13 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
-import javax.inject.Inject;
-
 public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry {
 
     private static final Logger LOG = LoggerFactory.getLogger(CodahaleMetricsProvider.class);
 
     public static final Pattern CODAHALE_METRICS_CONFIG_PATTERN = Pattern
-        .compile(
-            "(csv|slf4j|console|graphite):(.+):(\\d+):(DAYS|HOURS|MICROSECONDS|MILLISECONDS|MINUTES|NANOSECONDS|SECONDS)");
+            .compile(
+                    "(csv|slf4j|console|graphite):(.+):(\\d+):(DAYS|HOURS|MICROSECONDS|MILLISECONDS|MINUTES|NANOSECONDS|SECONDS)");
 
     private MetricRegistry metrics = new MetricRegistry();
     private List<ScheduledReporter> reporters = new ArrayList<>();
@@ -67,11 +65,11 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
                     break;
                 case GRAPHITE:
                     codahaleReporter = createAndGetConfiguredGraphiteReporter(conf.getPrefix(),
-                                                                              conf.getGraphiteHostConfig());
+                            conf.getGraphiteHostConfig());
                     break;
                 case CSV:
                     codahaleReporter = createAndGetConfiguredCSVReporter(conf.getPrefix(),
-                                                                         conf.getCSVDir());
+                            conf.getCSVDir());
                     break;
                 case SLF4J:
                     codahaleReporter = createAndGetConfiguredSlf4jReporter(conf.getSlf4jLogger());
@@ -91,7 +89,7 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
     public void startMetrics() {
         for (ScheduledReporter r : reporters) {
             LOG.info("Starting reporter {} with freq {} {}",
-                     r.getClass().getCanonicalName(), metricsOutputFrequency, timeUnit);
+                    r.getClass().getCanonicalName(), metricsOutputFrequency, timeUnit);
             r.start(metricsOutputFrequency, timeUnit);
         }
     }
@@ -137,9 +135,9 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
 
     private ScheduledReporter createAndGetConfiguredConsoleReporter() {
         return ConsoleReporter.forRegistry(metrics)
-            .convertRatesTo(TimeUnit.SECONDS)
-            .convertDurationsTo(TimeUnit.MILLISECONDS)
-            .build();
+                .convertRatesTo(TimeUnit.SECONDS)
+                .convertDurationsTo(TimeUnit.MILLISECONDS)
+                .build();
     }
 
     private ScheduledReporter createAndGetConfiguredGraphiteReporter(String prefix, String graphiteHost) {
@@ -147,14 +145,14 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
         HostAndPort addr = HostAndPort.fromString(graphiteHost);
 
         final Graphite graphite = new Graphite(
-            new InetSocketAddress(addr.getHostText(), addr.getPort()));
+                new InetSocketAddress(addr.getHostText(), addr.getPort()));
 
         return GraphiteReporter.forRegistry(metrics)
-            .prefixedWith(prefix)
-            .convertRatesTo(TimeUnit.SECONDS)
-            .convertDurationsTo(TimeUnit.MILLISECONDS)
-            .filter(MetricFilter.ALL)
-            .build(graphite);
+                .prefixedWith(prefix)
+                .convertRatesTo(TimeUnit.SECONDS)
+                .convertDurationsTo(TimeUnit.MILLISECONDS)
+                .filter(MetricFilter.ALL)
+                .build(graphite);
     }
 
     private ScheduledReporter createAndGetConfiguredCSVReporter(String prefix, String csvDir) {
@@ -170,19 +168,19 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
         }
         LOG.info("Configuring stats with csv output to directory [{}]", outputDir.getAbsolutePath());
         return CsvReporter.forRegistry(metrics)
-            .convertRatesTo(TimeUnit.SECONDS)
-            .convertDurationsTo(TimeUnit.MILLISECONDS)
-            .build(outputDir);
+                .convertRatesTo(TimeUnit.SECONDS)
+                .convertDurationsTo(TimeUnit.MILLISECONDS)
+                .build(outputDir);
     }
 
 
     private ScheduledReporter createAndGetConfiguredSlf4jReporter(String slf4jLogger) {
         LOG.info("Configuring stats with SLF4J with logger {}", slf4jLogger);
         return Slf4jReporter.forRegistry(metrics)
-            .outputTo(LoggerFactory.getLogger(slf4jLogger))
-            .convertRatesTo(TimeUnit.SECONDS)
-            .convertDurationsTo(TimeUnit.MILLISECONDS)
-            .build();
+                .outputTo(LoggerFactory.getLogger(slf4jLogger))
+                .convertRatesTo(TimeUnit.SECONDS)
+                .convertDurationsTo(TimeUnit.MILLISECONDS)
+                .build();
     }
 
     /**

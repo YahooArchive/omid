@@ -1,6 +1,7 @@
 package com.yahoo.omid.committable;
 
 import org.testng.annotations.Test;
+
 import static org.testng.Assert.assertNull;
 
 /**

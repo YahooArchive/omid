@@ -11,8 +11,6 @@ import org.slf4j.LoggerFactory;
 import org.testng.ITestContext;
 import org.testng.annotations.Test;
 
-import java.util.Iterator;
-
 import static org.junit.Assert.fail;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
@@ -54,14 +52,14 @@ public class TestBasicTransaction extends OmidTestBase {
         Result result1 = tt.getHTable().get(getResultRow1);
         byte[] val1 = result1.getValue(famName1, colName1);
         assertTrue(Bytes.equals(dataValue1, result1.getValue(famName1, colName1)),
-                   "Unexpected value for row 1 in col 1: " + Bytes.toString(val1));
+                "Unexpected value for row 1 in col 1: " + Bytes.toString(val1));
         long tsRow1 = result1.rawCells()[0].getTimestamp();
 
         Get getResultRow2 = new Get(rowName2).setMaxVersions(1);
         Result result2 = tt.getHTable().get(getResultRow2);
         byte[] val2 = result2.getValue(famName1, colName1);
         assertTrue(Bytes.equals(dataValue2, result2.getValue(famName1, colName1)),
-                   "Unexpected value for row 2 in col 1: " + Bytes.toString(val2));
+                "Unexpected value for row 2 in col 1: " + Bytes.toString(val2));
         long tsRow2 = result2.rawCells()[0].getTimestamp();
 
         assertEquals(tsRow2, tsRow1, "Timestamps of row 1 and row 2 are different");
@@ -70,7 +68,7 @@ public class TestBasicTransaction extends OmidTestBase {
 
     @Test(timeOut = 30_000)
     public void testTimestampsOfTwoRowsModifiedByTwoSequentialTransactionsAreEqualAndHaveBeenIncreasedMonotonically(ITestContext context)
-        throws Exception {
+            throws Exception {
 
         TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
@@ -114,7 +112,7 @@ public class TestBasicTransaction extends OmidTestBase {
         Result result1 = tt.getHTable().get(getResultRow1);
         byte[] val1 = result1.getValue(famName1, colName1);
         assertTrue(Bytes.equals(dataValue3, result1.getValue(famName1, colName1)),
-                   "Unexpected value for row 1 in col 1: " + Bytes.toString(val1));
+                "Unexpected value for row 1 in col 1: " + Bytes.toString(val1));
 
         long lastTsRow1 = result1.rawCells()[0].getTimestamp();
         long previousTsRow1 = result1.rawCells()[1].getTimestamp();
@@ -123,7 +121,7 @@ public class TestBasicTransaction extends OmidTestBase {
         Result result2 = tt.getHTable().get(getResultRow2);
         byte[] val2 = result2.getValue(famName1, colName1);
         assertTrue(Bytes.equals(dataValue4, result2.getValue(famName1, colName1)),
-                   "Unexpected value for row 2 in col 1: " + Bytes.toString(val2));
+                "Unexpected value for row 2 in col 1: " + Bytes.toString(val2));
 
         long lastTsRow2 = result2.rawCells()[0].getTimestamp();
         long previousTsRow2 = result2.rawCells()[1].getTimestamp();
@@ -166,11 +164,11 @@ public class TestBasicTransaction extends OmidTestBase {
         Get g = new Get(row).setMaxVersions(1);
         Result r = tt.getHTable().get(g);
         assertTrue(Bytes.equals(data2, r.getValue(fam, col)),
-                   "Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)));
+                "Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)));
 
         r = tt.get(tread, g);
         assertTrue(Bytes.equals(data1, r.getValue(fam, col)),
-                   "Unexpected value for SI read " + tread + ": " + Bytes.toString(r.getValue(fam, col)));
+                "Unexpected value for SI read " + tread + ": " + Bytes.toString(r.getValue(fam, col)));
     }
 
     @Test(timeOut = 30_000)
@@ -204,11 +202,11 @@ public class TestBasicTransaction extends OmidTestBase {
         Get g = new Get(row).setMaxVersions(1);
         Result r = tt.getHTable().get(g);
         assertTrue(Bytes.equals(data2, r.getValue(fam, col)),
-                   "Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)));
+                "Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)));
 
         r = tt.get(tread, g);
         assertTrue(Bytes.equals(data1, r.getValue(fam, col)),
-                   "Unexpected value for SI read " + tread + ": " + Bytes.toString(r.getValue(fam, col)));
+                "Unexpected value for SI read " + tread + ": " + Bytes.toString(r.getValue(fam, col)));
 
     }
 
@@ -241,12 +239,12 @@ public class TestBasicTransaction extends OmidTestBase {
         Get g = new Get(row).setMaxVersions(1);
         Result r = tt.get(tread, g);
         assertTrue(Bytes.equals(data1, r.getValue(fam, col)),
-                   "Unexpected value for SI read " + tread + ": " + Bytes.toString(r.getValue(fam, col)));
+                "Unexpected value for SI read " + tread + ": " + Bytes.toString(r.getValue(fam, col)));
         tm.commit(t2);
 
         r = tt.getHTable().get(g);
         assertTrue(Bytes.equals(data2, r.getValue(fam, col)),
-                   "Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)));
+                "Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)));
 
     }
 
@@ -336,7 +334,7 @@ public class TestBasicTransaction extends OmidTestBase {
         try {
             iterableRS.iterator().remove();
             fail();
-        } catch(RuntimeException re) {
+        } catch (RuntimeException re) {
             // Expected
         }
 
@@ -401,12 +399,12 @@ public class TestBasicTransaction extends OmidTestBase {
         while (r != null) {
             LOG.trace("Scan1 :" + Bytes.toString(r.getRow()) + " => " + Bytes.toString(r.getValue(fam, col)));
             assertTrue(Bytes.equals(data1, r.getValue(fam, col)),
-                       "Unexpected value for SI scan " + txScan + ": " + Bytes.toString(r.getValue(fam, col)));
+                    "Unexpected value for SI scan " + txScan + ": " + Bytes.toString(r.getValue(fam, col)));
             r = rs.next();
         }
 
         // Same check as before but checking that the results are correct when retrieved through the Scanner Iterator
-        ResultScanner iterableRS= txTable.getScanner(txScan, new Scan().setStartRow(startRow).setStopRow(stopRow));
+        ResultScanner iterableRS = txTable.getScanner(txScan, new Scan().setStartRow(startRow).setStopRow(stopRow));
         for (Result result : iterableRS) {
             assertTrue(Bytes.equals(data1, result.getValue(fam, col)),
                     "Unexpected value for SI scan " + txScan + ": " + Bytes.toString(result.getValue(fam, col)));
@@ -416,7 +414,7 @@ public class TestBasicTransaction extends OmidTestBase {
         try {
             iterableRS.iterator().remove();
             fail();
-        } catch(RuntimeException re) {
+        } catch (RuntimeException re) {
             // Expected
         }
 

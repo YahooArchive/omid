@@ -53,8 +53,8 @@ public class OmidTableManager {
     public static final String COMMIT_TABLE_COMMAND_NAME = "commit-table";
     public static final String TIMESTAMP_TABLE_COMMAND_NAME = "timestamp-table";
 
-    private static final byte[][] commitTableFamilies = new byte[][] { COMMIT_TABLE_FAMILY, LOW_WATERMARK_FAMILY };
-    private static final byte[][] timestampTableFamilies = new byte[][] { TSO_FAMILY };
+    private static final byte[][] commitTableFamilies = new byte[][]{COMMIT_TABLE_FAMILY, LOW_WATERMARK_FAMILY};
+    private static final byte[][] timestampTableFamilies = new byte[][]{TSO_FAMILY};
 
     private JCommander commandLine;
     private MainConfig mainConfig = new MainConfig();
@@ -78,8 +78,8 @@ public class OmidTableManager {
         HBaseLogin.loginIfNeeded(mainConfig.loginFlags);
 
         try (HBaseAdmin hBaseAdmin = new HBaseAdmin(hbaseConf)) {
-            byte [][] tableFamilies;
-            byte [][] splitKeys = new byte[0][0];
+            byte[][] tableFamilies;
+            byte[][] splitKeys = new byte[0][0];
             String tableName;
 
             LOG.info("----------------------------------------------------------------------------------------------");
@@ -145,7 +145,7 @@ public class OmidTableManager {
 
         HTableDescriptor tableDescriptor = new HTableDescriptor(TableName.valueOf(tableName));
 
-        for(int familyIdx = 0; familyIdx < families.length; ++familyIdx) {
+        for (int familyIdx = 0; familyIdx < families.length; ++familyIdx) {
             byte[] family = families[familyIdx];
             HColumnDescriptor colDescriptor = new HColumnDescriptor(family);
             colDescriptor.setMaxVersions(maxVersions);
@@ -175,7 +175,7 @@ public class OmidTableManager {
         String tableName = COMMIT_TABLE_DEFAULT_NAME;
 
         @Parameter(names = "-numRegions", description = "Number of splits (to pre-split tableName)", required = false,
-                   validateWith = IntegerGreaterThanZero.class)
+                validateWith = IntegerGreaterThanZero.class)
         int numRegions = 16;
 
     }
@@ -193,7 +193,7 @@ public class OmidTableManager {
         public void validate(String name, String value) throws ParameterException {
             int n = Integer.parseInt(value);
             if (n <= 0) {
-                throw new ParameterException("Parameter " + name + " should be > 0 (found " + value +")");
+                throw new ParameterException("Parameter " + name + " should be > 0 (found " + value + ")");
             }
         }
 

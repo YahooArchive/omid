@@ -16,7 +16,6 @@
 package com.yahoo.omid.tools.hbase;
 
 import com.beust.jcommander.Parameter;
-
 import org.apache.hadoop.security.UserGroupInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +46,7 @@ public final class HBaseLogin {
     public static UserGroupInformation loginIfNeeded(Config config) throws IOException {
         if (UserGroupInformation.isSecurityEnabled()) {
             LOG.info("Security is enabled, logging in with principal={}, keytab={}",
-                     config.getPrincipal(), config.getKeytab());
+                    config.getPrincipal(), config.getKeytab());
             UserGroupInformation.loginUserFromKeytab(config.getPrincipal(), config.getKeytab());
         }
         return UserGroupInformation.getCurrentUser();

@@ -57,7 +57,6 @@ public interface Transaction {
     public boolean isRollbackOnly();
 
 
-
     /**
      * Set of methods to attach some metadata to a transaction object. One example
      * of such metadata are notifications
@@ -67,7 +66,9 @@ public interface Transaction {
      * append "value" to the existing set or creates a new one
      */
     public void appendMetadata(String key, Object value);
+
     public void setMetadata(String key, Object value);
+
     public Optional<Object> getMetadata(String key);
 }
 

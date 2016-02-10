@@ -104,9 +104,9 @@ public interface CommitTable {
         @Override
         public String toString() {
             return String.format("Is valid=%s, Location=%s, Value=%d)",
-                                 isValid,
-                                 location,
-                                 value);
+                    isValid,
+                    location,
+                    value);
         }
 
     }

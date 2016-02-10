@@ -67,8 +67,7 @@ public class CompactorScanner implements InternalScanner {
                             Client commitTableClient,
                             Queue<CommitTable.Client> commitTableClientQueue,
                             boolean isMajorCompaction,
-                            boolean preserveNonTransactionallyDeletedCells) throws IOException
-    {
+                            boolean preserveNonTransactionallyDeletedCells) throws IOException {
         this.internalScanner = internalScanner;
         this.commitTableClient = commitTableClient;
         this.commitTableClientQueue = commitTableClientQueue;
@@ -99,7 +98,7 @@ public class CompactorScanner implements InternalScanner {
             hasMoreRows = internalScanner.next(scanResult);
             if (LOG.isTraceEnabled()) {
                 LOG.trace("Row: Result {} limit {} more rows? {}",
-                        new Object[] { scanResult, limit, hasMoreRows });
+                        new Object[]{scanResult, limit, hasMoreRows});
             }
             // 2) Traverse result list separating normal cells from shadow
             // cells and building a map to access easily the shadow cells.
@@ -167,7 +166,7 @@ public class CompactorScanner implements InternalScanner {
         }
 
         // Chomp current row worth values up to the limit
-        if(currentRowWorthValues.size() <= limit) {
+        if (currentRowWorthValues.size() <= limit) {
             result.addAll(currentRowWorthValues);
             currentRowWorthValues.clear();
         } else {
@@ -281,8 +280,8 @@ public class CompactorScanner implements InternalScanner {
 
     private void skipToNextColumn(Cell cell, PeekingIterator<Map.Entry<Cell, Optional<Cell>>> iter) {
         while (iter.hasNext()
-               && CellUtil.matchingFamily(iter.peek().getKey(), cell)
-               && CellUtil.matchingQualifier(iter.peek().getKey(), cell)) {
+                && CellUtil.matchingFamily(iter.peek().getKey(), cell)
+                && CellUtil.matchingQualifier(iter.peek().getKey(), cell)) {
             iter.next();
         }
     }

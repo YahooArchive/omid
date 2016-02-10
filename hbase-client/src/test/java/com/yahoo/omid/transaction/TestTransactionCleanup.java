@@ -1,11 +1,8 @@
 package com.yahoo.omid.transaction;
 
-import static org.mockito.Matchers.anySetOf;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
-import static org.testng.AssertJUnit.assertEquals;
-
+import com.google.common.util.concurrent.SettableFuture;
+import com.yahoo.omid.tsoclient.ForwardingTSOFuture;
+import com.yahoo.omid.tsoclient.TSOClient;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -17,9 +14,11 @@ import org.slf4j.LoggerFactory;
 import org.testng.ITestContext;
 import org.testng.annotations.Test;
 
-import com.google.common.util.concurrent.SettableFuture;
-import com.yahoo.omid.tsoclient.ForwardingTSOFuture;
-import com.yahoo.omid.tsoclient.TSOClient;
+import static org.mockito.Matchers.anySetOf;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.testng.AssertJUnit.assertEquals;
 
 @Test(groups = "sharedHBase")
 public class TestTransactionCleanup extends OmidTestBase {
@@ -92,7 +91,7 @@ public class TestTransactionCleanup extends OmidTestBase {
                 // The last element of the qualifier should have the Delete marker
                 byte encodedType = result.getColumnLatestCell(family, qual).getTypeByte();
                 assertEquals(KeyValue.Type.Delete,
-                             KeyValue.Type.codeToType(encodedType));
+                        KeyValue.Type.codeToType(encodedType));
                 resultCount++;
             }
             assertEquals(ROWS_MODIFIED, resultCount);

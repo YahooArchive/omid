@@ -172,6 +172,7 @@ public class TestTSOClientConnectionToTSO {
         LOG.info("TSO Server Stopped");
 
     }
+
     @Test(timeOut = 30_000)
     public void testSuccessOfTSOClientReconnectionsToARestartedTSOWithZKPublishing() throws Exception {
 
@@ -218,8 +219,8 @@ public class TestTSOClientConnectionToTSO {
             FsmImpl fsm = (FsmImpl) clientimpl.fsm;
             assertEquals(e.getCause().getClass(), ConnectionException.class);
             assertTrue(fsm.getState().getClass().equals(TSOClientImpl.ConnectionFailedState.class)
-                       ||
-                       fsm.getState().getClass().equals(TSOClientImpl.DisconnectedState.class));
+                    ||
+                    fsm.getState().getClass().equals(TSOClientImpl.DisconnectedState.class));
         }
 
         // After that, simulate that a new TSO has been launched...

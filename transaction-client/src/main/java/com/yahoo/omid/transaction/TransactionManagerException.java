@@ -26,5 +26,5 @@ public class TransactionManagerException extends Exception {
     public TransactionManagerException(String reason, Throwable e) {
         super(reason, e);
     }
-    
+
 }

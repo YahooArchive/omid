@@ -15,22 +15,20 @@
  */
 package com.yahoo.omid.tso;
 
-import static com.codahale.metrics.MetricRegistry.name;
-
-import java.io.IOException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-
-import javax.inject.Inject;
-import javax.inject.Singleton;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.metrics.Gauge;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.timestamp.storage.TimestampStorage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import java.io.IOException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+
+import static com.codahale.metrics.MetricRegistry.name;
 
 /**
  * The Timestamp Oracle that gives monotonically increasing timestamps
@@ -74,7 +72,7 @@ public class TimestampOracleImpl implements TimestampOracle {
                 storage.updateMaxTimestamp(previousMaxTimestamp, newMaxTimestamp);
                 maxAllocatedTimestamp = newMaxTimestamp;
                 previousMaxTimestamp = newMaxTimestamp;
-            } catch(Throwable e) {
+            } catch (Throwable e) {
                 panicker.panic("Can't store the new max timestamp", e);
             }
         }
@@ -144,15 +142,15 @@ public class TimestampOracleImpl implements TimestampOracle {
         }
 
         if (lastTimestamp >= maxTimestamp) {
-            assert(maxTimestamp <= maxAllocatedTimestamp);
-            while(maxAllocatedTimestamp == maxTimestamp) {
+            assert (maxTimestamp <= maxAllocatedTimestamp);
+            while (maxAllocatedTimestamp == maxTimestamp) {
                 // spin
             }
-            assert(maxAllocatedTimestamp > maxTimestamp);
+            assert (maxAllocatedTimestamp > maxTimestamp);
             maxTimestamp = maxAllocatedTimestamp;
             nextAllocationThreshold = maxTimestamp - TIMESTAMP_REMAINING_THRESHOLD;
-            assert(nextAllocationThreshold > lastTimestamp && nextAllocationThreshold < maxTimestamp);
-            assert(lastTimestamp < maxTimestamp);
+            assert (nextAllocationThreshold > lastTimestamp && nextAllocationThreshold < maxTimestamp);
+            assert (lastTimestamp < maxTimestamp);
         }
 
         return lastTimestamp;

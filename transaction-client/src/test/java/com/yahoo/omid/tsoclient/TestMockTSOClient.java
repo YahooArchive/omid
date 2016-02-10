@@ -1,25 +1,24 @@
 package com.yahoo.omid.tsoclient;
 
-import static org.testng.AssertJUnit.assertEquals;
-import org.testng.annotations.Test;
-import org.testng.Assert;
-import org.testng.AssertJUnit;
-import java.util.concurrent.ExecutionException;
-
+import com.google.common.collect.Sets;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.InMemoryCommitTable;
-
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
-
-import com.google.common.collect.Sets;
 import com.yahoo.omid.tsoclient.TSOClient.AbortException;
+import org.testng.Assert;
+import org.testng.AssertJUnit;
+import org.testng.annotations.Test;
+
+import java.util.concurrent.ExecutionException;
+
+import static org.testng.AssertJUnit.assertEquals;
 
 public class TestMockTSOClient {
 
     final static public CellId c1 = new DummyCellIdImpl(0xdeadbeefL);
     final static public CellId c2 = new DummyCellIdImpl(-0xfeedcafeL);
 
-    @Test(timeOut=10000)
+    @Test(timeOut = 10000)
     public void testConflicts() throws Exception {
         CommitTable commitTable = new InMemoryCommitTable();
         TSOClient client = new MockTSOClient(commitTable.getWriter().get());
@@ -37,7 +36,7 @@ public class TestMockTSOClient {
         }
     }
 
-    @Test(timeOut=10000)
+    @Test(timeOut = 10000)
     public void testWatermarkUpdate() throws Exception {
         CommitTable commitTable = new InMemoryCommitTable();
         TSOClient client = new MockTSOClient(commitTable.getWriter().get());
