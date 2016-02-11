@@ -1,15 +1,15 @@
 package com.yahoo.omid.tso;
 
-import static org.testng.Assert.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testng.annotations.Test;
 
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testng.annotations.Test;
+import static org.testng.Assert.assertEquals;
+import static org.testng.AssertJUnit.assertTrue;
 
 public class TestLongCache {
 
@@ -59,7 +59,7 @@ public class TestLongCache {
 
     }
 
-    @Test(timeOut=10000)
+    @Test(timeOut = 10000)
     public void testEntriesAge() {
 
         final int entries = 1000;
@@ -94,12 +94,12 @@ public class TestLongCache {
             tempStdDev += (gap - oldAvg) * (gap - tempAvg);
         }
         long elapsed = System.nanoTime() - time;
-        LOG.info("Elapsed (ms): " + (elapsed / (double)1000));
+        LOG.info("Elapsed (ms): " + (elapsed / (double) 1000));
 
         double avgGap = totalAge / (double) removals;
-        LOG.info("Avg gap: " + (tempAvg ));
+        LOG.info("Avg gap: " + (tempAvg));
         LOG.info("Std dev gap: " + Math.sqrt((tempStdDev / entries)));
         assertTrue("avgGap should be greater than entries * 0.6",
-                   avgGap > entries * 0.6);
+                avgGap > entries * 0.6);
     }
 }

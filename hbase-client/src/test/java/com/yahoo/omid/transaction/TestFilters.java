@@ -3,7 +3,6 @@ package com.yahoo.omid.transaction;
 
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.tsoclient.TSOClient;
-
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -52,13 +51,13 @@ public class TestFilters extends OmidTestBase {
         CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(getClientConfiguration(context))
-            .build();
+                .build();
 
         TTable table = new TTable(hbaseConf, TEST_TABLE);
         AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.newBuilder()
-            .withConfiguration(hbaseConf)
-            .withCommitTableClient(commitTableClient)
-            .withTSOClient(client).build());
+                .withConfiguration(hbaseConf)
+                .withCommitTableClient(commitTableClient)
+                .withTSOClient(client).build());
 
         writeRows(table, tm);
 
@@ -95,12 +94,12 @@ public class TestFilters extends OmidTestBase {
     private void testScan(ITestContext context, Filter f) throws Exception {
         CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
         TSOClient client = TSOClient.newBuilder().withConfiguration(getClientConfiguration(context))
-            .build();
+                .build();
         TTable table = new TTable(hbaseConf, TEST_TABLE);
         AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.newBuilder()
-            .withConfiguration(hbaseConf)
-            .withCommitTableClient(commitTableClient)
-            .withTSOClient(client).build());
+                .withConfiguration(hbaseConf)
+                .withCommitTableClient(commitTableClient)
+                .withTSOClient(client).build());
 
         writeRows(table, tm);
 
@@ -133,8 +132,8 @@ public class TestFilters extends OmidTestBase {
 
         // create normal row, but fail to update shadow cells
         doThrow(new TransactionManagerException("fail"))
-            .when((HBaseTransactionManager) tm)
-            .updateShadowCells(any(HBaseTransaction.class));
+                .when((HBaseTransactionManager) tm)
+                .updateShadowCells(any(HBaseTransaction.class));
 
         t = tm.begin();
         p = new Put(row2);

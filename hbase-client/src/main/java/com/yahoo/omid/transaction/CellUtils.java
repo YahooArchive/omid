@@ -15,16 +15,12 @@
  */
 package com.yahoo.omid.transaction;
 
-import static com.yahoo.omid.transaction.HBaseTransactionManager.SHADOW_CELL_SUFFIX;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
-
+import com.google.common.base.Objects;
+import com.google.common.base.Objects.ToStringHelper;
+import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
+import com.google.common.hash.Hasher;
+import com.google.common.hash.Hashing;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.CellUtil;
@@ -36,12 +32,15 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Objects;
-import com.google.common.base.Objects.ToStringHelper;
-import com.google.common.base.Optional;
-import com.google.common.base.Preconditions;
-import com.google.common.hash.Hasher;
-import com.google.common.hash.Hashing;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
+
+import static com.yahoo.omid.transaction.HBaseTransactionManager.SHADOW_CELL_SUFFIX;
 
 public class CellUtils {
 
@@ -69,7 +68,7 @@ public class CellUtils {
                                   byte[] qualifier,
                                   long version,
                                   CellGetter cellGetter)
-    throws IOException {
+            throws IOException {
         Get get = new Get(row);
         get.addColumn(family, qualifier);
         get.setTimeStamp(version);
@@ -95,7 +94,7 @@ public class CellUtils {
                                         long version,
                                         CellGetter cellGetter) throws IOException {
         return hasCell(row, family, addShadowCellSuffix(qualifier),
-                       version, cellGetter);
+                version, cellGetter);
     }
 
     /**
@@ -143,13 +142,13 @@ public class CellUtils {
 
         if (endsWith(qualifier, qualOffset, qualLength, SHADOW_CELL_SUFFIX)) {
             return Arrays.copyOfRange(qualifier,
-                                      qualOffset,
-                                      qualOffset + (qualLength - SHADOW_CELL_SUFFIX.length));
+                    qualOffset,
+                    qualOffset + (qualLength - SHADOW_CELL_SUFFIX.length));
         }
 
         throw new IllegalArgumentException(
                 "Can't find shadow cell suffix in qualifier "
-                + Bytes.toString(qualifier));
+                        + Bytes.toString(qualifier));
     }
 
     /**
@@ -188,7 +187,7 @@ public class CellUtils {
      */
     public static boolean matchingQualifier(final Cell left, final byte[] qualArray, int qualOffset, int qualLen) {
         return Bytes.equals(left.getQualifierArray(), left.getQualifierOffset(), left.getQualifierLength(),
-                            qualArray, qualOffset, qualLen);
+                qualArray, qualOffset, qualLen);
     }
 
     /**
@@ -235,7 +234,7 @@ public class CellUtils {
 
         int suffixOffset = offset + length - suffix.length;
         int result = Bytes.compareTo(value, suffixOffset, suffix.length,
-                                     suffix, 0, suffix.length);
+                suffix, 0, suffix.length);
         return result == 0 ? true : false;
     }
 
@@ -259,8 +258,8 @@ public class CellUtils {
      */
     public static Cell buildShadowCellFromCell(Cell cell, byte[] shadowCellValue) {
         byte[] shadowCellQualifier = addShadowCellSuffix(cell.getQualifierArray(),
-                                                         cell.getQualifierOffset(),
-                                                         cell.getQualifierLength());
+                cell.getQualifierOffset(),
+                cell.getQualifierLength());
         return new KeyValue(
                 cell.getRowArray(), cell.getRowOffset(), cell.getRowLength(),
                 cell.getFamilyArray(), cell.getFamilyOffset(), cell.getFamilyLength(),
@@ -279,7 +278,7 @@ public class CellUtils {
     public static SortedMap<Cell, Optional<Cell>> mapCellsToShadowCells(List<Cell> cells) {
 
         SortedMap<Cell, Optional<Cell>> cellToShadowCellMap
-            = new TreeMap<Cell, Optional<Cell>>(new CellComparator());
+                = new TreeMap<Cell, Optional<Cell>>(new CellComparator());
 
         Map<CellId, Cell> cellIdToCellMap = new HashMap<CellId, Cell>();
         for (Cell cell : cells) {
@@ -304,7 +303,7 @@ public class CellUtils {
                     }
                 } else {
                     cellIdToCellMap.put(key, cell);
-                    cellToShadowCellMap.put(cell, Optional.<Cell> absent());
+                    cellToShadowCellMap.put(cell, Optional.<Cell>absent());
                 }
             } else {
                 CellId key = new CellId(cell, true);
@@ -364,10 +363,10 @@ public class CellUtils {
             // Qualifier comparison
             if (isShadowCell()) {
                 int qualifierLength = qualifierLengthFromShadowCellQualifier(cell.getQualifierArray(),
-                                                                             cell.getQualifierOffset(),
-                                                                             cell.getQualifierLength());
+                        cell.getQualifierOffset(),
+                        cell.getQualifierLength());
                 if (!matchingQualifier(otherCell,
-                                       cell.getQualifierArray(), cell.getQualifierOffset(), qualifierLength)) {
+                        cell.getQualifierArray(), cell.getQualifierOffset(), qualifierLength)) {
                     return false;
                 }
             } else {
@@ -377,7 +376,7 @@ public class CellUtils {
             }
 
             // Timestamp comparison
-            if(otherCell.getTimestamp() != cell.getTimestamp()) {
+            if (otherCell.getTimestamp() != cell.getTimestamp()) {
                 return false;
             }
 
@@ -391,10 +390,10 @@ public class CellUtils {
             hasher.putBytes(cell.getRowArray(), cell.getRowOffset(), cell.getRowLength());
             hasher.putBytes(cell.getFamilyArray(), cell.getFamilyOffset(), cell.getFamilyLength());
             int qualifierLength = cell.getQualifierLength();
-            if(isShadowCell()) { // Update qualifier length when qualifier is shadow cell
+            if (isShadowCell()) { // Update qualifier length when qualifier is shadow cell
                 qualifierLength = qualifierLengthFromShadowCellQualifier(cell.getQualifierArray(),
-                                                                         cell.getQualifierOffset(),
-                                                                         cell.getQualifierLength());
+                        cell.getQualifierOffset(),
+                        cell.getQualifierLength());
             }
             hasher.putBytes(cell.getQualifierArray(), cell.getQualifierOffset(), qualifierLength);
             hasher.putLong(cell.getTimestamp());
@@ -409,10 +408,10 @@ public class CellUtils {
             helper.add("is shadow cell?", isShadowCell);
             helper.add("qualifier",
                     Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength()));
-            if(isShadowCell()) {
+            if (isShadowCell()) {
                 int qualifierLength = qualifierLengthFromShadowCellQualifier(cell.getQualifierArray(),
-                                                                             cell.getQualifierOffset(),
-                                                                             cell.getQualifierLength());
+                        cell.getQualifierOffset(),
+                        cell.getQualifierLength());
                 helper.add("qualifier whithout shadow cell suffix",
                         Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(), qualifierLength));
             }
@@ -429,7 +428,7 @@ public class CellUtils {
 
         public CellInfo(Cell cell, Cell shadowCell) {
             assert (cell != null && shadowCell != null);
-            assert(cell.getTimestamp() == shadowCell.getTimestamp());
+            assert (cell.getTimestamp() == shadowCell.getTimestamp());
             this.cell = cell;
             this.shadowCell = shadowCell;
             this.timestamp = cell.getTimestamp();
@@ -450,10 +449,10 @@ public class CellUtils {
         @Override
         public String toString() {
             return Objects.toStringHelper(this)
-                          .add("ts", timestamp)
-                          .add("cell", cell)
-                          .add("shadow cell", shadowCell)
-                          .toString();
+                    .add("ts", timestamp)
+                    .add("cell", cell)
+                    .add("shadow cell", shadowCell)
+                    .toString();
         }
 
     }

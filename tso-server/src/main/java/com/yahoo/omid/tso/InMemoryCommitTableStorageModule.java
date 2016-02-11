@@ -15,11 +15,11 @@
  */
 package com.yahoo.omid.tso;
 
-import javax.inject.Singleton;
-
 import com.google.inject.AbstractModule;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.NullCommitTable;
+
+import javax.inject.Singleton;
 
 public class InMemoryCommitTableStorageModule extends AbstractModule {
 

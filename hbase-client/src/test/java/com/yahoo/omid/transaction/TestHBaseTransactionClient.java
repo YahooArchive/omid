@@ -1,5 +1,23 @@
 package com.yahoo.omid.transaction;
 
+import com.google.common.base.Optional;
+import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.SettableFuture;
+import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
+import com.yahoo.omid.transaction.HBaseTransactionManager.CommitTimestampLocatorImpl;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.testng.ITestContext;
+import org.testng.annotations.Test;
+
+import java.util.Map;
+
+import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.CACHE;
+import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.COMMIT_TABLE;
+import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.NOT_PRESENT;
+import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.SHADOW_CELL;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -7,27 +25,6 @@ import static org.mockito.Mockito.spy;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertTrue;
-
-import java.util.Map;
-
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.util.Bytes;
-import org.testng.ITestContext;
-import org.testng.annotations.Test;
-
-import com.google.common.base.Optional;
-import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.SettableFuture;
-import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
-
-import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.NOT_PRESENT;
-import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.COMMIT_TABLE;
-import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.SHADOW_CELL;
-import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.CACHE;
-
-import com.yahoo.omid.transaction.HBaseTransactionManager.CommitTimestampLocatorImpl;
 
 @Test(groups = "sharedHBase")
 public class TestHBaseTransactionClient extends OmidTestBase {
@@ -95,16 +92,16 @@ public class TestHBaseTransactionClient extends OmidTestBase {
 
         assertTrue("Cell should be there",
                 CellUtils.hasCell(row1,
-                                   family,
-                                   qualifier,
-                                   t1.getStartTimestamp(),
-                                   new TTableCellGetterAdapter(table)));
+                        family,
+                        qualifier,
+                        t1.getStartTimestamp(),
+                        new TTableCellGetterAdapter(table)));
         assertFalse("Shadow cell should not be there",
                 CellUtils.hasShadowCell(row1,
-                                         family,
-                                         qualifier,
-                                         t1.getStartTimestamp(),
-                                         new TTableCellGetterAdapter(table)));
+                        family,
+                        qualifier,
+                        t1.getStartTimestamp(),
+                        new TTableCellGetterAdapter(table)));
 
         HTable htable = new HTable(hbaseConf, TEST_TABLE);
         HBaseCellId hBaseCellId = new HBaseCellId(htable, row1, family, qualifier, t1.getStartTimestamp());
@@ -177,7 +174,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
             HBaseCellId hBaseCellId = new HBaseCellId(table.getHTable(), row1, family, qualifier, NON_EXISTING_CELL_TS);
             // Set an empty cache to allow to bypass the checking
             CommitTimestampLocator ctLocator = new CommitTimestampLocatorImpl(hBaseCellId,
-                    Maps.<Long, Long> newHashMap());
+                    Maps.<Long, Long>newHashMap());
             Optional<CommitTimestamp> optionalCT = tm
                     .readCommitTimestampFromShadowCell(NON_EXISTING_CELL_TS, ctLocator);
             assertFalse(optionalCT.isPresent());
@@ -212,7 +209,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
         // Pre-load the element to look for in the cache
         HTable table = new HTable(hbaseConf, TEST_TABLE);
         HBaseCellId hBaseCellId = new HBaseCellId(table, row1, family, qualifier, CELL_ST);
-        Map<Long, Long> fakeCache = Maps.<Long, Long> newHashMap();
+        Map<Long, Long> fakeCache = Maps.<Long, Long>newHashMap();
         fakeCache.put(CELL_ST, CELL_CT);
 
         // Then test that locator finds it in the cache
@@ -251,7 +248,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
             HBaseCellId hBaseCellId = new HBaseCellId(table.getHTable(), row1, family, qualifier,
                     tx1.getStartTimestamp());
             CommitTimestampLocator ctLocator = new CommitTimestampLocatorImpl(hBaseCellId,
-                    Maps.<Long, Long> newHashMap());
+                    Maps.<Long, Long>newHashMap());
             CommitTimestamp ct = tm.locateCellCommitTimestamp(tx1.getStartTimestamp(), tm.tsoClient.getEpoch(),
                     ctLocator);
             assertTrue(ct.isValid());
@@ -281,7 +278,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
             HBaseCellId hBaseCellId = new HBaseCellId(table.getHTable(), row1, family, qualifier,
                     tx1.getStartTimestamp());
             CommitTimestampLocator ctLocator = new CommitTimestampLocatorImpl(hBaseCellId,
-                    Maps.<Long, Long> newHashMap());
+                    Maps.<Long, Long>newHashMap());
             CommitTimestamp ct = tm.locateCellCommitTimestamp(tx1.getStartTimestamp(), tm.tsoClient.getEpoch(),
                     ctLocator);
             assertTrue(ct.isValid());
@@ -301,10 +298,10 @@ public class TestHBaseTransactionClient extends OmidTestBase {
         AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context, commitTableClient));
         // The following lines allow to reach step 4)
         // in AbstractTransactionManager.locateCellCommitTimestamp()
-        SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>> create();
-        f.set(Optional.<CommitTimestamp> absent());
+        SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>>create();
+        f.set(Optional.<CommitTimestamp>absent());
         doReturn(f).when(commitTableClient).getCommitTimestamp(any(Long.class));
-        doReturn(Optional.<CommitTimestamp> absent()).when(tm).readCommitTimestampFromShadowCell(any(Long.class),
+        doReturn(Optional.<CommitTimestamp>absent()).when(tm).readCommitTimestampFromShadowCell(any(Long.class),
                 any(CommitTimestampLocator.class));
 
         try (TTable table = new TTable(hbaseConf, TEST_TABLE)) {
@@ -321,7 +318,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
             HBaseCellId hBaseCellId = new HBaseCellId(table.getHTable(), row1, family, qualifier,
                     tx1.getStartTimestamp());
             CommitTimestampLocator ctLocator = new CommitTimestampLocatorImpl(hBaseCellId,
-                    Maps.<Long, Long> newHashMap());
+                    Maps.<Long, Long>newHashMap());
             // Fake the current epoch to simulate a newer TSO
             CommitTimestamp ct = tm.locateCellCommitTimestamp(tx1.getStartTimestamp(), CURRENT_EPOCH_FAKE, ctLocator);
             assertFalse(ct.isValid());
@@ -340,10 +337,10 @@ public class TestHBaseTransactionClient extends OmidTestBase {
         doThrow(new RuntimeException()).when(tm).updateShadowCells(any(HBaseTransaction.class));
         // The next two lines avoid steps 2) and 3) and go directly to step 5)
         // in AbstractTransactionManager.locateCellCommitTimestamp()
-        SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>> create();
-        f.set(Optional.<CommitTimestamp> absent());
+        SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>>create();
+        f.set(Optional.<CommitTimestamp>absent());
         doReturn(f).doCallRealMethod().when(commitTableClient).getCommitTimestamp(any(Long.class));
-        doReturn(Optional.<CommitTimestamp> absent()).when(tm).readCommitTimestampFromShadowCell(any(Long.class),
+        doReturn(Optional.<CommitTimestamp>absent()).when(tm).readCommitTimestampFromShadowCell(any(Long.class),
                 any(CommitTimestampLocator.class));
 
         try (TTable table = new TTable(hbaseConf, TEST_TABLE)) {
@@ -364,7 +361,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
             HBaseCellId hBaseCellId = new HBaseCellId(table.getHTable(), row1, family, qualifier,
                     tx1.getStartTimestamp());
             CommitTimestampLocator ctLocator = new CommitTimestampLocatorImpl(hBaseCellId,
-                    Maps.<Long, Long> newHashMap());
+                    Maps.<Long, Long>newHashMap());
             CommitTimestamp ct = tm.locateCellCommitTimestamp(tx1.getStartTimestamp(), tm.tsoClient.getEpoch(),
                     ctLocator);
             assertTrue(ct.isValid());
@@ -382,10 +379,10 @@ public class TestHBaseTransactionClient extends OmidTestBase {
         AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context, commitTableClient));
         // The next two lines avoid steps 2), 3) and 5) and go directly to step 6)
         // in AbstractTransactionManager.locateCellCommitTimestamp()
-        SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>> create();
-        f.set(Optional.<CommitTimestamp> absent());
+        SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>>create();
+        f.set(Optional.<CommitTimestamp>absent());
         doReturn(f).when(commitTableClient).getCommitTimestamp(any(Long.class));
-        doReturn(Optional.<CommitTimestamp> absent()).doCallRealMethod()
+        doReturn(Optional.<CommitTimestamp>absent()).doCallRealMethod()
                 .when(tm).readCommitTimestampFromShadowCell(any(Long.class), any(CommitTimestampLocator.class));
 
         try (TTable table = new TTable(hbaseConf, TEST_TABLE)) {
@@ -402,7 +399,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
             HBaseCellId hBaseCellId = new HBaseCellId(table.getHTable(), row1, family, qualifier,
                     tx1.getStartTimestamp());
             CommitTimestampLocator ctLocator = new CommitTimestampLocatorImpl(hBaseCellId,
-                    Maps.<Long, Long> newHashMap());
+                    Maps.<Long, Long>newHashMap());
             CommitTimestamp ct = tm.locateCellCommitTimestamp(tx1.getStartTimestamp(), tm.tsoClient.getEpoch(),
                     ctLocator);
             assertTrue(ct.isValid());
@@ -421,16 +418,16 @@ public class TestHBaseTransactionClient extends OmidTestBase {
         CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
         AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context, commitTableClient));
         // The following lines allow to reach the last return statement
-        SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>> create();
-        f.set(Optional.<CommitTimestamp> absent());
+        SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>>create();
+        f.set(Optional.<CommitTimestamp>absent());
         doReturn(f).when(commitTableClient).getCommitTimestamp(any(Long.class));
-        doReturn(Optional.<CommitTimestamp> absent()).when(tm).readCommitTimestampFromShadowCell(any(Long.class),
+        doReturn(Optional.<CommitTimestamp>absent()).when(tm).readCommitTimestampFromShadowCell(any(Long.class),
                 any(CommitTimestampLocator.class));
 
         try (TTable table = new TTable(hbaseConf, TEST_TABLE)) {
             HBaseCellId hBaseCellId = new HBaseCellId(table.getHTable(), row1, family, qualifier, CELL_TS);
             CommitTimestampLocator ctLocator = new CommitTimestampLocatorImpl(hBaseCellId,
-                    Maps.<Long, Long> newHashMap());
+                    Maps.<Long, Long>newHashMap());
             CommitTimestamp ct = tm.locateCellCommitTimestamp(CELL_TS, tm.tsoClient.getEpoch(), ctLocator);
             assertTrue(ct.isValid());
             assertEquals(-1L, ct.getValue());

@@ -44,7 +44,8 @@ public class CodahaleModule extends AbstractModule {
 
     }
 
-    @Provides @Singleton
+    @Provides
+    @Singleton
     MetricsRegistry provideMetricsRegistry() {
         for (String metricConfig : metricsConfigs) {
             Matcher matcher = CODAHALE_METRICS_CONFIG_PATTERN.matcher(metricConfig);
@@ -55,25 +56,25 @@ public class CodahaleModule extends AbstractModule {
                 codahaleConfig.setOutputFreq(Integer.valueOf(matcher.group(3)));
                 codahaleConfig.setOutputFreqTimeUnit(TimeUnit.valueOf(matcher.group(4)));
 
-                switch(reporter) {
-                case "csv":
-                    codahaleConfig.addReporter(Reporter.CSV);
-                    codahaleConfig.setCSVDir(reporterConfig);
-                    break;
-                case "slf4j":
-                    codahaleConfig.addReporter(Reporter.SLF4J);
-                    codahaleConfig.setSlf4jLogger(reporterConfig);
-                    break;
-                case "graphite":
-                    codahaleConfig.addReporter(Reporter.GRAPHITE);
-                    codahaleConfig.setGraphiteHostConfig(reporterConfig);
-                    break;
-                case "console":
-                    codahaleConfig.addReporter(Reporter.CONSOLE);
-                    break;
-                default:
-                    LOG.warn("Reporter {} unknown", reporter);
-                    break;
+                switch (reporter) {
+                    case "csv":
+                        codahaleConfig.addReporter(Reporter.CSV);
+                        codahaleConfig.setCSVDir(reporterConfig);
+                        break;
+                    case "slf4j":
+                        codahaleConfig.addReporter(Reporter.SLF4J);
+                        codahaleConfig.setSlf4jLogger(reporterConfig);
+                        break;
+                    case "graphite":
+                        codahaleConfig.addReporter(Reporter.GRAPHITE);
+                        codahaleConfig.setGraphiteHostConfig(reporterConfig);
+                        break;
+                    case "console":
+                        codahaleConfig.addReporter(Reporter.CONSOLE);
+                        break;
+                    default:
+                        LOG.warn("Reporter {} unknown", reporter);
+                        break;
                 }
             } else {
                 LOG.error("Pattern {} not recognized", metricConfig);

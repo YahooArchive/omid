@@ -15,19 +15,11 @@
  */
 package com.yahoo.omid.tso;
 
-import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
-import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
-
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.net.UnknownHostException;
-import java.util.Enumeration;
-import java.util.concurrent.TimeUnit;
-
-import javax.inject.Named;
-import javax.inject.Singleton;
-
+import com.google.common.net.HostAndPort;
+import com.google.inject.AbstractModule;
+import com.google.inject.Provides;
+import com.yahoo.omid.tso.TSOServerCommandLineConfig.TimestampStore;
+import com.yahoo.omid.zk.ZKUtils;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -35,11 +27,17 @@ import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.net.HostAndPort;
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.yahoo.omid.tso.TSOServerCommandLineConfig.TimestampStore;
-import com.yahoo.omid.zk.ZKUtils;
+import javax.inject.Named;
+import javax.inject.Singleton;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.util.Enumeration;
+import java.util.concurrent.TimeUnit;
+
+import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
+import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
 
 public class ZKModule extends AbstractModule {
 
@@ -63,10 +61,10 @@ public class ZKModule extends AbstractModule {
 
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
         CuratorFramework zkClient = CuratorFrameworkFactory.builder()
-                                      .namespace(OMID_NAMESPACE)
-                                      .connectString(config.getZKCluster())
-                                      .retryPolicy(retryPolicy)
-                                      .build();
+                .namespace(OMID_NAMESPACE)
+                .connectString(config.getZKCluster())
+                .retryPolicy(retryPolicy)
+                .build();
 
         if (config.shouldHostAndPortBePublishedInZK || config.getTimestampStore().equals(TimestampStore.ZK)) {
             try {
@@ -142,7 +140,7 @@ public class ZKModule extends AbstractModule {
      *             If the LAN address of the machine cannot be found.
      */
     private static InetAddress getIPAddressFromNetworkInterface(String ifaceName)
-    throws SocketException, UnknownHostException {
+            throws SocketException, UnknownHostException {
 
         NetworkInterface iface = NetworkInterface.getByName(ifaceName);
         if (iface == null) {

@@ -29,26 +29,24 @@ import com.yahoo.omid.metrics.Histogram;
 import com.yahoo.omid.metrics.Meter;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.metrics.Timer;
-
 import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
+import javax.inject.Named;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import javax.inject.Inject;
-import javax.inject.Named;
-
 import static com.codahale.metrics.MetricRegistry.name;
 import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
 
 class PersistenceProcessorImpl
-    implements EventHandler<PersistenceProcessorImpl.PersistEvent>,
-               PersistenceProcessor, TimeoutHandler {
+        implements EventHandler<PersistenceProcessorImpl.PersistEvent>,
+        PersistenceProcessor, TimeoutHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(PersistenceProcessor.class);
 
@@ -83,16 +81,16 @@ class PersistenceProcessorImpl
                              RetryProcessor retryProc,
                              Panicker panicker,
                              TSOServerCommandLineConfig config)
-        throws InterruptedException, ExecutionException {
+            throws InterruptedException, ExecutionException {
         this(metrics,
-             tsoHostAndPort,
-             new Batch(config.getMaxBatchSize()),
-             leaseManager,
-             commitTable,
-             reply,
-             retryProc,
-             panicker,
-             config);
+                tsoHostAndPort,
+                new Batch(config.getMaxBatchSize()),
+                leaseManager,
+                commitTable,
+                reply,
+                retryProc,
+                panicker,
+                config);
     }
 
     @VisibleForTesting
@@ -105,7 +103,7 @@ class PersistenceProcessorImpl
                              RetryProcessor retryProc,
                              Panicker panicker,
                              TSOServerCommandLineConfig config)
-        throws InterruptedException, ExecutionException {
+            throws InterruptedException, ExecutionException {
 
         this.tsoHostAndPort = tsoHostAndPort;
         this.batch = batch;
@@ -117,7 +115,7 @@ class PersistenceProcessorImpl
         this.panicker = panicker;
 
         LOG.info("Creating the persist processor with batch size {}, and timeout {}ms",
-                 config.getMaxBatchSize(), config.getBatchPersistTimeoutMS());
+                config.getMaxBatchSize(), config.getBatchPersistTimeoutMS());
 
         flushTimer = metrics.timer(name("tso", "persist", "flush"));
         batchSizeHistogram = metrics.histogram(name("tso", "persist", "batchsize"));
@@ -126,44 +124,44 @@ class PersistenceProcessorImpl
         // FIXME consider putting something more like a phased strategy here to avoid
         // all the syscalls
         final TimeoutBlockingWaitStrategy timeoutStrategy
-            = new TimeoutBlockingWaitStrategy(config.getBatchPersistTimeoutMS(), TimeUnit.MILLISECONDS);
+                = new TimeoutBlockingWaitStrategy(config.getBatchPersistTimeoutMS(), TimeUnit.MILLISECONDS);
 
         persistRing = RingBuffer.createSingleProducer(
-            PersistEvent.EVENT_FACTORY, 1 << 20, timeoutStrategy); // 2^20 entries in ringbuffer
+                PersistEvent.EVENT_FACTORY, 1 << 20, timeoutStrategy); // 2^20 entries in ringbuffer
         SequenceBarrier persistSequenceBarrier = persistRing.newBarrier();
         BatchEventProcessor<PersistEvent> persistProcessor = new BatchEventProcessor<PersistEvent>(
-            persistRing,
-            persistSequenceBarrier,
-            this);
+                persistRing,
+                persistSequenceBarrier,
+                this);
         persistRing.addGatingSequences(persistProcessor.getSequence());
         persistProcessor.setExceptionHandler(new FatalExceptionHandler(panicker));
 
         ExecutorService persistExec = Executors.newSingleThreadExecutor(
-            new ThreadFactoryBuilder().setNameFormat("persist-%d").build());
+                new ThreadFactoryBuilder().setNameFormat("persist-%d").build());
         persistExec.submit(persistProcessor);
     }
 
     @Override
     public void onEvent(PersistEvent event, long sequence, boolean endOfBatch) throws Exception {
         switch (event.getType()) {
-        case COMMIT:
-            event.getMonCtx().timerStart("commitPersistProcessor");
-            // TODO: What happens when the IOException is thrown?
-            writer.addCommittedTransaction(event.getStartTimestamp(), event.getCommitTimestamp());
-            batch.addCommit(event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel(),
-                            event.getMonCtx());
-            break;
-        case ABORT:
-            sendAbortOrIdentifyFalsePositive(event.getStartTimestamp(), event.isRetry(), event.getChannel(),
-                                             event.getMonCtx());
-            break;
-        case TIMESTAMP:
-            event.getMonCtx().timerStart("timestampPersistProcessor");
-            batch.addTimestamp(event.getStartTimestamp(), event.getChannel(), event.getMonCtx());
-            break;
-        case LOW_WATERMARK:
-            writer.updateLowWatermark(event.getLowWatermark());
-            break;
+            case COMMIT:
+                event.getMonCtx().timerStart("commitPersistProcessor");
+                // TODO: What happens when the IOException is thrown?
+                writer.addCommittedTransaction(event.getStartTimestamp(), event.getCommitTimestamp());
+                batch.addCommit(event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel(),
+                        event.getMonCtx());
+                break;
+            case ABORT:
+                sendAbortOrIdentifyFalsePositive(event.getStartTimestamp(), event.isRetry(), event.getChannel(),
+                        event.getMonCtx());
+                break;
+            case TIMESTAMP:
+                event.getMonCtx().timerStart("timestampPersistProcessor");
+                batch.addTimestamp(event.getStartTimestamp(), event.getChannel(), event.getMonCtx());
+                break;
+            case LOW_WATERMARK:
+                writer.updateLowWatermark(event.getLowWatermark());
+                break;
         }
 
         if (batch.isFull() || endOfBatch) {
@@ -329,32 +327,32 @@ class PersistenceProcessorImpl
             for (int i = 0; i < numEvents; i++) {
                 PersistEvent e = events[i];
                 switch (e.getType()) {
-                case TIMESTAMP:
-                    e.getMonCtx().timerStop("timestampPersistProcessor");
-                    reply.timestampResponse(e.getStartTimestamp(), e.getChannel(), e.getMonCtx());
-                    break;
-                case COMMIT:
-                    e.getMonCtx().timerStop("commitPersistProcessor");
-                    if (isTSOInstanceMaster) {
-                        reply.commitResponse(false, e.getStartTimestamp(), e.getCommitTimestamp(), e.getChannel(),
-                                             e.getMonCtx());
-                    } else {
-                        // The client will need to perform heuristic actions to determine the output
-                        reply.commitResponse(true, e.getStartTimestamp(), e.getCommitTimestamp(), e.getChannel(),
-                                             e.getMonCtx());
-                    }
-                    break;
-                case ABORT:
-                    if(e.isRetry()) {
-                        retryProc.disambiguateRetryRequestHeuristically(e.getStartTimestamp(), e.getChannel(),
-                                e.getMonCtx());
-                    } else {
-                        LOG.error("We should not be receiving non-retried aborted requests in here");
-                    }
-                    break;
-                default:
-                    LOG.error("We should receive only COMMIT or ABORT event types. Received {}", e.getType());
-                    break;
+                    case TIMESTAMP:
+                        e.getMonCtx().timerStop("timestampPersistProcessor");
+                        reply.timestampResponse(e.getStartTimestamp(), e.getChannel(), e.getMonCtx());
+                        break;
+                    case COMMIT:
+                        e.getMonCtx().timerStop("commitPersistProcessor");
+                        if (isTSOInstanceMaster) {
+                            reply.commitResponse(false, e.getStartTimestamp(), e.getCommitTimestamp(), e.getChannel(),
+                                    e.getMonCtx());
+                        } else {
+                            // The client will need to perform heuristic actions to determine the output
+                            reply.commitResponse(true, e.getStartTimestamp(), e.getCommitTimestamp(), e.getChannel(),
+                                    e.getMonCtx());
+                        }
+                        break;
+                    case ABORT:
+                        if (e.isRetry()) {
+                            retryProc.disambiguateRetryRequestHeuristically(e.getStartTimestamp(), e.getChannel(),
+                                    e.getMonCtx());
+                        } else {
+                            LOG.error("We should not be receiving non-retried aborted requests in here");
+                        }
+                        break;
+                    default:
+                        LOG.error("We should receive only COMMIT or ABORT event types. Received {}", e.getType());
+                        break;
                 }
             }
             numEvents = 0;
@@ -413,15 +411,32 @@ class PersistenceProcessorImpl
             return monCtx;
         }
 
-        Type getType() { return type; }
-        Channel getChannel() { return channel; }
-        boolean isRetry() { return isRetry; }
-        long getStartTimestamp() { return startTimestamp; }
-        long getCommitTimestamp() { return commitTimestamp; }
-        long getLowWatermark() { return lowWatermark; }
+        Type getType() {
+            return type;
+        }
+
+        Channel getChannel() {
+            return channel;
+        }
+
+        boolean isRetry() {
+            return isRetry;
+        }
+
+        long getStartTimestamp() {
+            return startTimestamp;
+        }
+
+        long getCommitTimestamp() {
+            return commitTimestamp;
+        }
+
+        long getLowWatermark() {
+            return lowWatermark;
+        }
 
         public final static EventFactory<PersistEvent> EVENT_FACTORY
-            = new EventFactory<PersistEvent>() {
+                = new EventFactory<PersistEvent>() {
             @Override
             public PersistEvent newInstance() {
                 return new PersistEvent();

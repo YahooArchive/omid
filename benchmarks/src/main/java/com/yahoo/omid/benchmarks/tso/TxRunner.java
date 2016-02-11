@@ -15,9 +15,27 @@
  */
 package com.yahoo.omid.benchmarks.tso;
 
-import static com.codahale.metrics.MetricRegistry.name;
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.yahoo.omid.benchmarks.tso.TSOBenchmark.Config;
+import com.yahoo.omid.benchmarks.tso.TSOBenchmark.TimeValueTimeUnit;
+import com.yahoo.omid.benchmarks.utils.GeneratorUtils;
+import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.NullCommitTable;
+import com.yahoo.omid.committable.hbase.HBaseCommitTable;
+import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
+import com.yahoo.omid.metrics.Counter;
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.metrics.Timer;
+import com.yahoo.omid.tools.hbase.HBaseLogin;
+import com.yahoo.omid.tso.util.DummyCellIdImpl;
+import com.yahoo.omid.tsoclient.CellId;
+import com.yahoo.omid.tsoclient.TSOClient;
+import com.yahoo.omid.tsoclient.TSOFuture;
+import org.apache.commons.configuration.BaseConfiguration;
+import org.apache.commons.configuration.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -30,28 +48,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.configuration.BaseConfiguration;
-import org.apache.commons.configuration.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.benchmarks.tso.TSOBenchmark.Config;
-import com.yahoo.omid.benchmarks.tso.TSOBenchmark.TimeValueTimeUnit;
-import com.yahoo.omid.benchmarks.utils.GeneratorUtils;
-import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.committable.NullCommitTable;
-import com.yahoo.omid.committable.hbase.HBaseCommitTable;
-import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
-import com.yahoo.omid.tools.hbase.HBaseLogin;
-import com.yahoo.omid.metrics.Counter;
-import com.yahoo.omid.metrics.MetricsRegistry;
-import com.yahoo.omid.metrics.Timer;
-import com.yahoo.omid.tso.util.DummyCellIdImpl;
-import com.yahoo.omid.tsoclient.CellId;
-import com.yahoo.omid.tsoclient.TSOClient;
-import com.yahoo.omid.tsoclient.TSOFuture;
+import static com.codahale.metrics.MetricRegistry.name;
+import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
+import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
 
 public class TxRunner implements Runnable {
 
@@ -108,8 +107,8 @@ public class TxRunner implements Runnable {
         LOG.info("TxRunner-{} [ Outstanding transactions -> {} ]", txRunnerId, expConfig.maxInFlight);
         LOG.info("TxRunner-{} [ Max Tx Size -> {} ]", txRunnerId, expConfig.maxTxSize);
         LOG.info("TxRunner-{} [ Commit delay -> {}:{} ]", txRunnerId,
-                                                          expConfig.commitDelay.timeValue,
-                                                          expConfig.commitDelay.timeUnit);
+                expConfig.commitDelay.timeValue,
+                expConfig.commitDelay.timeUnit);
         LOG.info("TxRunner-{} [ % reads -> {} ]", txRunnerId, expConfig.percentReads);
 
         // Commit table client initialization

@@ -1,7 +1,5 @@
 package com.yahoo.omid.tso;
 
-import javax.inject.Singleton;
-
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.yahoo.omid.committable.CommitTable;
@@ -10,6 +8,8 @@ import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.metrics.NullMetricsProvider;
 import com.yahoo.omid.timestamp.storage.TimestampStorage;
 import com.yahoo.omid.tso.TimestampOracleImpl.InMemoryTimestampStorage;
+
+import javax.inject.Singleton;
 
 public class TSOMockModule extends AbstractModule {
 
@@ -47,7 +47,8 @@ public class TSOMockModule extends AbstractModule {
         return config;
     }
 
-    @Provides @Singleton
+    @Provides
+    @Singleton
     MetricsRegistry provideMetricsRegistry() {
         return new NullMetricsProvider();
     }

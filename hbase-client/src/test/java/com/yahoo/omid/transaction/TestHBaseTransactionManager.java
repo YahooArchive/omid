@@ -1,15 +1,14 @@
 package com.yahoo.omid.transaction;
 
+import com.yahoo.omid.tsoclient.TSOClient;
+import org.testng.ITestContext;
+import org.testng.annotations.Test;
+
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.testng.AssertJUnit.assertEquals;
-
-import org.testng.ITestContext;
-import org.testng.annotations.Test;
-
-import com.yahoo.omid.tsoclient.TSOClient;
 
 @Test(groups = "sharedHBase")
 public class TestHBaseTransactionManager extends OmidTestBase {

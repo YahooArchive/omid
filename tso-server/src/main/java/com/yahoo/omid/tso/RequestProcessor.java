@@ -23,6 +23,7 @@ import java.util.Collection;
 public interface RequestProcessor extends TSOStateManager.StateObserver {
 
     void timestampRequest(Channel c, MonitoringContext monCtx);
+
     void commitRequest(long startTimestamp, Collection<Long> writeSet, boolean isRetry, Channel c, MonitoringContext monCtx);
 
 }

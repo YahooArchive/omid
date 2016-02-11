@@ -1,5 +1,18 @@
 package com.yahoo.omid.tso;
 
+import com.google.common.collect.Lists;
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.metrics.NullMetricsProvider;
+import org.jboss.netty.channel.Channel;
+import org.mockito.ArgumentCaptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+
+import java.util.Collections;
+import java.util.List;
+
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyLong;
@@ -8,20 +21,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.testng.AssertJUnit.assertTrue;
-
-import java.util.Collections;
-import java.util.List;
-
-import org.jboss.netty.channel.Channel;
-import org.mockito.ArgumentCaptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
-
-import com.google.common.collect.Lists;
-import com.yahoo.omid.metrics.MetricsRegistry;
-import com.yahoo.omid.metrics.NullMetricsProvider;
 
 public class TestRequestProcessor {
 
@@ -52,10 +51,10 @@ public class TestRequestProcessor {
         TSOServerCommandLineConfig config = TSOServerCommandLineConfig.parseConfig(configArgs);
 
         requestProc = new RequestProcessorImpl(metrics,
-                                               timestampOracle,
-                                               persist,
-                                               new MockPanicker(),
-                                               config);
+                timestampOracle,
+                persist,
+                new MockPanicker(),
+                config);
 
         // Initialize the state for the experiment
         stateManager.register(requestProc);
@@ -118,14 +117,14 @@ public class TestRequestProcessor {
     @Test(timeOut = 30000)
     public void testCommitRequestAbortsWhenResettingRequestProcessorState() throws Exception {
 
-        List<Long> writeSet = Collections.<Long> emptyList();
+        List<Long> writeSet = Collections.<Long>emptyList();
 
         // Start a transaction...
         requestProc.timestampRequest(null, new MonitoringContext(metrics));
         ArgumentCaptor<Long> capturedTS = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(1)).persistTimestamp(capturedTS.capture(),
-                                                                any(Channel.class),
-                                                                any(MonitoringContext.class));
+                any(Channel.class),
+                any(MonitoringContext.class));
         long startTS = capturedTS.getValue();
 
         // ... simulate the reset of the RequestProcessor state (e.g. due to

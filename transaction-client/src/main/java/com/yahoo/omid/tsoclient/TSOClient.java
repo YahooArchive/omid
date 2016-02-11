@@ -15,13 +15,12 @@
  */
 package com.yahoo.omid.tsoclient;
 
-import java.io.IOException;
-import java.util.Set;
-
+import com.codahale.metrics.MetricRegistry;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
 
-import com.codahale.metrics.MetricRegistry;
+import java.io.IOException;
+import java.util.Set;
 
 /**
  * Describes the abstract methods to communicate to the TSO server

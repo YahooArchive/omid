@@ -11,7 +11,6 @@ import com.yahoo.omid.tso.TSOMockModule;
 import com.yahoo.omid.tso.TSOServer;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig;
 import com.yahoo.omid.tsoclient.TSOClient;
-
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
@@ -105,7 +104,7 @@ public abstract class OmidTestBase {
         hBaseUtils = new HBaseTestingUtility(hbaseConf);
         hbaseCluster = hBaseUtils.startMiniCluster(1);
         hBaseUtils
-            .createTable(Bytes.toBytes(TIMESTAMP_TABLE_DEFAULT_NAME), new byte[][]{TSO_FAMILY}, Integer.MAX_VALUE);
+                .createTable(Bytes.toBytes(TIMESTAMP_TABLE_DEFAULT_NAME), new byte[][]{TSO_FAMILY}, Integer.MAX_VALUE);
 
         createTestTable();
         createCommitTable();
@@ -155,17 +154,17 @@ public abstract class OmidTestBase {
 
     protected TransactionManager newTransactionManager(ITestContext context, TSOClient tsoClient) throws Exception {
         return HBaseTransactionManager.newBuilder()
-            .withConfiguration(hbaseConf)
-            .withCommitTableClient(getCommitTable(context).getClient().get())
-            .withTSOClient(tsoClient).build();
+                .withConfiguration(hbaseConf)
+                .withCommitTableClient(getCommitTable(context).getClient().get())
+                .withTSOClient(tsoClient).build();
     }
 
     protected TransactionManager newTransactionManager(ITestContext context, CommitTable.Client commitTableClient)
-        throws Exception {
+            throws Exception {
         return HBaseTransactionManager.newBuilder()
-            .withConfiguration(hbaseConf)
-            .withCommitTableClient(commitTableClient)
-            .withTSOClient(getClient(context)).build();
+                .withConfiguration(hbaseConf)
+                .withCommitTableClient(commitTableClient)
+                .withTSOClient(getClient(context)).build();
     }
 
     @AfterGroups(groups = "sharedHBase")
@@ -215,16 +214,16 @@ public abstract class OmidTestBase {
 
             if (LOG.isTraceEnabled()) {
                 LOG.trace("Value for " + Bytes.toString(tableName) + ":"
-                          + Bytes.toString(row) + ":" + Bytes.toString(fam)
-                          + Bytes.toString(col) + "=>" + Bytes.toString(CellUtil.cloneValue(cell))
-                          + " (" + Bytes.toString(value) + " expected)");
+                        + Bytes.toString(row) + ":" + Bytes.toString(fam)
+                        + Bytes.toString(col) + "=>" + Bytes.toString(CellUtil.cloneValue(cell))
+                        + " (" + Bytes.toString(value) + " expected)");
             }
 
             return Bytes.equals(CellUtil.cloneValue(cell), value);
         } catch (IOException e) {
             LOG.error("Error reading row " + Bytes.toString(tableName) + ":"
-                      + Bytes.toString(row) + ":" + Bytes.toString(fam)
-                      + Bytes.toString(col), e);
+                    + Bytes.toString(row) + ":" + Bytes.toString(fam)
+                    + Bytes.toString(col), e);
             return false;
         }
     }

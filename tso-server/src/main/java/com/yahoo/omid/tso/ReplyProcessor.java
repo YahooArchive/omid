@@ -17,8 +17,7 @@ package com.yahoo.omid.tso;
 
 import org.jboss.netty.channel.Channel;
 
-interface ReplyProcessor
-{
+interface ReplyProcessor {
     /**
      * Informs the client about the outcome of the Tx it was trying to
      * commit. If the heuristic decision flat is enabled, the client
@@ -34,7 +33,9 @@ interface ReplyProcessor
      *            the communication channed with the client
      */
     void commitResponse(boolean makeHeuristicDecision, long startTimestamp, long commitTimestamp, Channel channel, MonitoringContext monCtx);
+
     void abortResponse(long startTimestamp, Channel c, MonitoringContext monCtx);
+
     void timestampResponse(long startTimestamp, Channel c, MonitoringContext monCtx);
 }
 

@@ -18,7 +18,6 @@ package com.yahoo.omid.tso;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.yahoo.omid.tso.LeaseManagement.LeaseManagementException;
-
 import org.apache.curator.framework.CuratorFramework;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,16 +48,16 @@ class LeaseManagementModule extends AbstractModule {
                                         TSOStateManager stateManager,
                                         CuratorFramework zkClient,
                                         Panicker panicker)
-        throws LeaseManagementException {
+            throws LeaseManagementException {
 
         if (config.shouldHostAndPortBePublishedInZK) {
             LOG.info("Connection to ZK cluster [{}]", zkClient.getState());
             return new LeaseManager(tsoHostAndPort,
-                                    tsoChannelHandler,
-                                    stateManager,
-                                    config.getLeasePeriodInMs(),
-                                    zkClient,
-                                    panicker);
+                    tsoChannelHandler,
+                    stateManager,
+                    config.getLeasePeriodInMs(),
+                    zkClient,
+                    panicker);
         } else {
             return new NonHALeaseManager(tsoChannelHandler, stateManager);
         }

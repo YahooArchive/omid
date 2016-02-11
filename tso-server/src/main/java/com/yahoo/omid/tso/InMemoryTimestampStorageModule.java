@@ -15,11 +15,11 @@
  */
 package com.yahoo.omid.tso;
 
-import javax.inject.Singleton;
-
 import com.google.inject.AbstractModule;
 import com.yahoo.omid.timestamp.storage.TimestampStorage;
 import com.yahoo.omid.tso.TimestampOracleImpl.InMemoryTimestampStorage;
+
+import javax.inject.Singleton;
 
 public class InMemoryTimestampStorageModule extends AbstractModule {
 

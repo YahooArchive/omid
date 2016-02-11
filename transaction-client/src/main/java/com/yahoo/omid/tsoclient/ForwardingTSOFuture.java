@@ -15,12 +15,12 @@
  */
 package com.yahoo.omid.tsoclient;
 
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.Executor;
 import com.google.common.util.concurrent.ListenableFuture;
+
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class ForwardingTSOFuture<T> implements TSOFuture<T> {
     private final ListenableFuture<T> future;
@@ -51,7 +51,7 @@ public class ForwardingTSOFuture<T> implements TSOFuture<T> {
 
     @Override
     public T get(long timeout, TimeUnit unit)
-        throws InterruptedException, ExecutionException, TimeoutException {
+            throws InterruptedException, ExecutionException, TimeoutException {
         return future.get(timeout, unit);
     }
 

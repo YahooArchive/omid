@@ -15,18 +15,17 @@
  */
 package com.yahoo.omid.timestamp.storage;
 
-import static com.yahoo.omid.timestamp.storage.ZKTimestampPaths.TIMESTAMP_ZNODE;
-
-import java.io.IOException;
-
-import javax.inject.Inject;
-
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.atomic.AtomicValue;
 import org.apache.curator.framework.recipes.atomic.DistributedAtomicLong;
 import org.apache.curator.retry.RetryNTimes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.inject.Inject;
+import java.io.IOException;
+
+import static com.yahoo.omid.timestamp.storage.ZKTimestampPaths.TIMESTAMP_ZNODE;
 
 public class ZKTimestampStorage implements TimestampStorage {
 
@@ -45,7 +44,7 @@ public class ZKTimestampStorage implements TimestampStorage {
         this.zkClient = zkClient;
         LOG.info("ZK Client state {}", zkClient.getState());
         timestamp = new DistributedAtomicLong(zkClient, TIMESTAMP_ZNODE, new RetryNTimes(3, 1000)); // TODO Configure
-                                                                                                    // this?
+        // this?
         if (timestamp.initialize(INITIAL_MAX_TS_VALUE)) {
             LOG.info("Timestamp value in ZNode initialized to {}", INITIAL_MAX_TS_VALUE);
         }

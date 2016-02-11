@@ -15,8 +15,8 @@
  */
 package com.yahoo.omid.tsoclient;
 
-import java.util.concurrent.Future;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
 
 public interface TSOFuture<T> extends Future<T> {
     public void addListener(Runnable listener, Executor executor);

@@ -22,5 +22,6 @@ import java.io.IOException;
  */
 public interface KeyGenerator {
     byte[] startTimestampToKey(long startTimestamp) throws IOException;
+
     long keyToStartTimestamp(byte[] key) throws IOException;
 }

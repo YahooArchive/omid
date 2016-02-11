@@ -15,14 +15,14 @@
  */
 package com.yahoo.omid.zk;
 
-import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
-
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
 
 public class ZKUtils {
 
@@ -34,10 +34,10 @@ public class ZKUtils {
 
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
         return CuratorFrameworkFactory.builder()
-                                      .namespace(OMID_NAMESPACE)
-                                      .connectString(zkCluster)
-                                      .retryPolicy(retryPolicy)
-                                      .build();
+                .namespace(OMID_NAMESPACE)
+                .connectString(zkCluster)
+                .retryPolicy(retryPolicy)
+                .build();
     }
 
     /**

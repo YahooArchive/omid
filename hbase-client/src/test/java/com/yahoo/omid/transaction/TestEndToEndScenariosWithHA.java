@@ -9,7 +9,6 @@ import com.yahoo.omid.tso.PausableLeaseManager;
 import com.yahoo.omid.tso.TSOServer;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig;
 import com.yahoo.omid.tsoclient.TSOClient;
-
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
@@ -140,9 +139,9 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         LOG.info("TSOClient instance in test {}", tsoClientForTM);
         hbaseConf.setInt(HBASE_CLIENT_RETRIES_NUMBER, 3);
         tm = HBaseTransactionManager.newBuilder()
-            .withTSOClient(tsoClientForTM)
-            .withConfiguration(hbaseConf)
-            .build();
+                .withTSOClient(tsoClientForTM)
+                .withConfiguration(hbaseConf)
+                .build();
         LOG.info("===================== TM Started =========================");
     }
 
@@ -153,7 +152,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         HBaseAdmin admin = hBaseUtils.getHBaseAdmin();
         deleteTable(admin, TableName.valueOf(TIMESTAMP_TABLE_DEFAULT_NAME));
         hBaseUtils
-            .createTable(Bytes.toBytes(TIMESTAMP_TABLE_DEFAULT_NAME), new byte[][]{TSO_FAMILY}, Integer.MAX_VALUE);
+                .createTable(Bytes.toBytes(TIMESTAMP_TABLE_DEFAULT_NAME), new byte[][]{TSO_FAMILY}, Integer.MAX_VALUE);
         tso1.stopAndWait();
         TestUtils.waitForSocketNotListening("localhost", TSO1_PORT, 100);
         tso2.stopAndWait();
@@ -200,7 +199,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
 
             HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
             LOG.info("Starting Tx {} writing values for cells ({}, {}) ", tx1, Bytes.toString(data1_q1),
-                     Bytes.toString(data1_q2));
+                    Bytes.toString(data1_q2));
             Put putData1R1Q1 = new Put(row1);
             putData1R1Q1.add(TEST_FAMILY.getBytes(), qualifier1, data1_q1);
             txTable.put(tx1, putData1R1Q1);
@@ -225,8 +224,8 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
             getRow1.addColumn(TEST_FAMILY.getBytes(), qualifier1);
             Result r = txTable.get(interleavedReadTx, getRow1);
             assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier1), initialData,
-                         "Unexpected value for SI read R1Q1" + interleavedReadTx + ": "
-                         + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier1)));
+                    "Unexpected value for SI read R1Q1" + interleavedReadTx + ": "
+                            + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier1)));
 
             // Try to commit, but it should abort due to the change in mastership
             try {
@@ -243,8 +242,8 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
             Get getRow2 = new Get(row2).setMaxVersions(1);
             r = txTable.get(interleavedReadTx, getRow2);
             assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier2), initialData,
-                         "Unexpected value for SI read R2Q2" + interleavedReadTx + ": "
-                         + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier2)));
+                    "Unexpected value for SI read R2Q2" + interleavedReadTx + ": "
+                            + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier2)));
 
             try {
                 tm.commit(interleavedReadTx);
@@ -260,7 +259,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
             }
 
             LOG.info("Sleep the Lease period till the client is informed about"
-                     + "the new TSO connection parameters and how can connect");
+                    + "the new TSO connection parameters and how can connect");
             TestUtils.waitForSocketListening("localhost", TSO2_PORT, 100);
 
             checkRowValues(txTable, initialData, initialData);
@@ -303,7 +302,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
 
             HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
             LOG.info("Starting Tx {} writing values for cells ({}, {}) ", tx1, Bytes.toString(data1_q1),
-                     Bytes.toString(data1_q2));
+                    Bytes.toString(data1_q2));
             Put putData1R1Q1 = new Put(row1);
             putData1R1Q1.add(TEST_FAMILY.getBytes(), qualifier1, data1_q1);
             txTable.put(tx1, putData1R1Q1);
@@ -333,22 +332,22 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
             }
 
             LOG.info("Sleep some time till the client is informed about"
-                     + "the new TSO connection parameters and how can connect");
+                    + "the new TSO connection parameters and how can connect");
             TimeUnit.SECONDS.sleep(TSOClient.DEFAULT_TSO_RECONNECTION_DELAY_SECS + 2);
 
             HBaseTransaction tx2 = (HBaseTransaction) tm.begin();
             LOG.info("Starting Tx {} writing values for cells ({}, {}) ", tx2, Bytes.toString(data1_q1),
-                     Bytes.toString(data1_q2));
+                    Bytes.toString(data1_q2));
             Get getData1R1Q1 = new Get(row1).setMaxVersions(1);
             Result r = txTable.get(tx2, getData1R1Q1);
             assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier1), initialData,
-                         "Unexpected value for SI read R1Q1" + tx2 + ": "
-                         + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier1)));
+                    "Unexpected value for SI read R1Q1" + tx2 + ": "
+                            + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier1)));
             Get getData1R2Q2 = new Get(row2).setMaxVersions(1);
             r = txTable.get(tx2, getData1R2Q2);
             assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier2), initialData,
-                         "Unexpected value for SI read R1Q1" + tx2 + ": "
-                         + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier2)));
+                    "Unexpected value for SI read R1Q1" + tx2 + ": "
+                            + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier2)));
 
             Put putData2R1Q1 = new Put(row1);
             putData2R1Q1.add(TEST_FAMILY.getBytes(), qualifier1, data2_q1);
@@ -368,20 +367,20 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
     }
 
     private void checkRowValues(TTable txTable, byte[] expectedDataR1Q1, byte[] expectedDataR2Q2)
-        throws TransactionException, IOException, RollbackException {
+            throws TransactionException, IOException, RollbackException {
         Transaction readTx = tm.begin();
         LOG.info("Starting Read Tx {} for checking cell values", readTx.getTransactionId());
         Get getRow1 = new Get(row1).setMaxVersions(1);
         getRow1.addColumn(TEST_FAMILY.getBytes(), qualifier1);
         Result r = txTable.get(readTx, getRow1);
         assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier1), expectedDataR1Q1,
-                     "Unexpected value for SI read R1Q1" + readTx + ": " + Bytes
-                         .toString(r.getValue(TEST_FAMILY.getBytes(), qualifier1)));
+                "Unexpected value for SI read R1Q1" + readTx + ": " + Bytes
+                        .toString(r.getValue(TEST_FAMILY.getBytes(), qualifier1)));
         Get getRow2 = new Get(row2).setMaxVersions(1);
         r = txTable.get(readTx, getRow2);
         assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier2), expectedDataR2Q2,
-                     "Unexpected value for SI read R2Q2" + readTx + ": " + Bytes
-                         .toString(r.getValue(TEST_FAMILY.getBytes(), qualifier2)));
+                "Unexpected value for SI read R2Q2" + readTx + ": " + Bytes
+                        .toString(r.getValue(TEST_FAMILY.getBytes(), qualifier2)));
         tm.commit(readTx);
     }
 
@@ -394,10 +393,10 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
 
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
         CuratorFramework zkClient = CuratorFrameworkFactory
-            .builder()
-            .namespace(OMID_NAMESPACE)
-            .connectString(zkConnection)
-            .retryPolicy(retryPolicy).build();
+                .builder()
+                .namespace(OMID_NAMESPACE)
+                .connectString(zkConnection)
+                .retryPolicy(retryPolicy).build();
 
         LOG.info("Connecting to ZK cluster {}", zkClient.getState());
         zkClient.start();

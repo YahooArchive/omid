@@ -15,22 +15,15 @@
  */
 package com.yahoo.omid.committable.hbase;
 
-import static com.google.common.base.Charsets.UTF_8;
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_FAMILY;
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.LOW_WATERMARK_FAMILY;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
-import javax.inject.Inject;
-
+import com.google.common.base.Optional;
+import com.google.common.util.concurrent.AbstractFuture;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.protobuf.CodedInputStream;
+import com.google.protobuf.CodedOutputStream;
+import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
@@ -41,15 +34,20 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Optional;
-import com.google.common.util.concurrent.AbstractFuture;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.google.protobuf.CodedInputStream;
-import com.google.protobuf.CodedOutputStream;
-import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location;
+import javax.inject.Inject;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import static com.google.common.base.Charsets.UTF_8;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_FAMILY;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.LOW_WATERMARK_FAMILY;
 
 public class HBaseCommitTable implements CommitTable {
 
@@ -98,7 +96,7 @@ public class HBaseCommitTable implements CommitTable {
 
         @Override
         public void addCommittedTransaction(long startTimestamp, long commitTimestamp) throws IOException {
-            assert(startTimestamp < commitTimestamp);
+            assert (startTimestamp < commitTimestamp);
             Put put = new Put(startTimestampToKey(startTimestamp), startTimestamp);
             put.add(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER, encodeCommitTimestamp(startTimestamp, commitTimestamp));
             writeBuffer.add(put);
@@ -150,7 +148,7 @@ public class HBaseCommitTable implements CommitTable {
             deleteQueue = new ArrayBlockingQueue<>(DELETE_BATCH_SIZE);
 
             deleteBatchExecutor = Executors.newSingleThreadExecutor(
-                new ThreadFactoryBuilder().setNameFormat("omid-completor-%d").build());
+                    new ThreadFactoryBuilder().setNameFormat("omid-completor-%d").build());
             deleteBatchExecutor.submit(this);
 
         }
@@ -158,7 +156,7 @@ public class HBaseCommitTable implements CommitTable {
         @Override
         public ListenableFuture<Optional<CommitTimestamp>> getCommitTimestamp(long startTimestamp) {
 
-            SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>> create();
+            SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>>create();
             try {
                 Get get = new Get(startTimestampToKey(startTimestamp));
                 get.addColumn(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER);
@@ -180,7 +178,7 @@ public class HBaseCommitTable implements CommitTable {
                             new CommitTimestamp(Location.COMMIT_TABLE, commitTSValue, true);
                     f.set(Optional.of(validCT));
                 } else {
-                    f.set(Optional.<CommitTimestamp> absent());
+                    f.set(Optional.<CommitTimestamp>absent());
                 }
             } catch (IOException e) {
                 LOG.error("Error getting commit timestamp for TX {}", startTimestamp, e);
@@ -191,7 +189,7 @@ public class HBaseCommitTable implements CommitTable {
 
         @Override
         public ListenableFuture<Long> readLowWatermark() {
-            SettableFuture<Long> f = SettableFuture.<Long> create();
+            SettableFuture<Long> f = SettableFuture.<Long>create();
             try {
                 Get get = new Get(LOW_WATERMARK_ROW);
                 get.addColumn(LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER);
@@ -215,7 +213,7 @@ public class HBaseCommitTable implements CommitTable {
                 synchronized (this) {
 
                     if (isClosed) {
-                        SettableFuture<Void> f = SettableFuture.<Void> create();
+                        SettableFuture<Void> f = SettableFuture.<Void>create();
                         f.setException(new IOException("Not accepting requests anymore"));
                         return f;
                     }
@@ -240,7 +238,7 @@ public class HBaseCommitTable implements CommitTable {
 
         @Override
         public ListenableFuture<Boolean> tryInvalidateTransaction(long startTimestamp) {
-            SettableFuture<Boolean> f = SettableFuture.<Boolean> create();
+            SettableFuture<Boolean> f = SettableFuture.<Boolean>create();
             try {
                 byte[] row = startTimestampToKey(startTimestamp);
                 Put invalidationPut = new Put(row, startTimestamp);
@@ -373,7 +371,7 @@ public class HBaseCommitTable implements CommitTable {
 
     @Override
     public ListenableFuture<Writer> getWriter() {
-        SettableFuture<Writer> f = SettableFuture.<Writer> create();
+        SettableFuture<Writer> f = SettableFuture.<Writer>create();
         try {
             f.set(new HBaseWriter(hbaseConfig, tableName));
         } catch (IOException ioe) {
@@ -384,7 +382,7 @@ public class HBaseCommitTable implements CommitTable {
 
     @Override
     public ListenableFuture<Client> getClient() {
-        SettableFuture<Client> f = SettableFuture.<Client> create();
+        SettableFuture<Client> f = SettableFuture.<Client>create();
         try {
             f.set(new HBaseClient(hbaseConfig, tableName));
         } catch (IOException ioe) {

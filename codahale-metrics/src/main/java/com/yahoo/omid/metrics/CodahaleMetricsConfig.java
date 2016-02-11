@@ -15,13 +15,12 @@
  */
 package com.yahoo.omid.metrics;
 
-import java.util.HashSet;
-import java.util.Set;
+import com.google.inject.Inject;
 
 import javax.inject.Named;
 import javax.inject.Singleton;
-
-import com.google.inject.Inject;
+import java.util.HashSet;
+import java.util.Set;
 
 @Singleton
 public class CodahaleMetricsConfig extends AbstractMetricsConfig {

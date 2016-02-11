@@ -15,12 +15,12 @@
  */
 package com.yahoo.omid.metrics;
 
+import com.google.common.base.Optional;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
-import com.google.common.base.Optional;
 
 public class MetricsRegistryMap {
 
@@ -81,8 +81,8 @@ public class MetricsRegistryMap {
     @SuppressWarnings("unchecked")
     public <T extends Metric, U extends Number> List<Gauge<U>> getGauges() {
         List<Gauge<U>> gaugesList = new ArrayList<>();
-        for(Metric metric : metrics.values()) {
-            if(metric instanceof Gauge) {
+        for (Metric metric : metrics.values()) {
+            if (metric instanceof Gauge) {
                 gaugesList.add((Gauge<U>) metric);
             }
         }
@@ -93,10 +93,10 @@ public class MetricsRegistryMap {
         final Metric existing = metrics.putIfAbsent(name, metric);
         if (existing != null) {
             throw new IllegalArgumentException("A metric named " +
-                                               name +
-                                               " of class " +
-                                               metric.getClass().getCanonicalName() +
-                                               " already exists");
+                    name +
+                    " of class " +
+                    metric.getClass().getCanonicalName() +
+                    " already exists");
         }
     }
 

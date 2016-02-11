@@ -15,12 +15,6 @@
  */
 package com.yahoo.omid.timestamp.storage;
 
-import static com.google.common.base.Charsets.UTF_8;
-
-import java.io.IOException;
-
-import javax.inject.Inject;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
@@ -29,6 +23,11 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.inject.Inject;
+import java.io.IOException;
+
+import static com.google.common.base.Charsets.UTF_8;
 
 public class HBaseTimestampStorage implements TimestampStorage {
 
@@ -45,7 +44,7 @@ public class HBaseTimestampStorage implements TimestampStorage {
 
     @Inject
     public HBaseTimestampStorage(Configuration hbaseConfig, HBaseTimestampStorageConfig config)
-    throws IOException {
+            throws IOException {
         this.table = new HTable(hbaseConfig, config.getTableName());
     }
 

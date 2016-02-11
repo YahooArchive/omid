@@ -15,9 +15,9 @@
  */
 package com.yahoo.omid.transaction;
 
-import java.io.IOException;
-
 import com.google.common.base.Optional;
+
+import java.io.IOException;
 
 /**
  * An behavior that needs to be implemented by transaction managers 
@@ -29,6 +29,7 @@ import com.google.common.base.Optional;
 public interface CommitTimestampLocator {
 
     public Optional<Long> readCommitTimestampFromCache(long startTimestamp);
+
     public Optional<Long> readCommitTimestampFromShadowCell(long startTimestamp)
             throws IOException;
 
