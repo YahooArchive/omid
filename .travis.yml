@@ -57,4 +57,4 @@ after_failure:
     &&
     git commit --verbose -m"Surefile output"
     &&
-    git push "https://${GH_TOKEN}@github.com/yahoo/omid.git" failed-build-$VERSION:failed-build-$VERSION-$TRAVIS_PULL_REQUEST-$VERSION_SUFFIX
+    git push -f "https://${GH_TOKEN}@github.com/yahoo/omid.git" failed-build-$VERSION:failed-build-$VERSION-$TRAVIS_PULL_REQUEST-$VERSION_SUFFIX
