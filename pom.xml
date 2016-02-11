@@ -1,5 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
 
@@ -14,7 +13,7 @@
     <artifactId>omid</artifactId>
     <packaging>pom</packaging>
     <!-- WARNING: do not update version manually, use mvn versions:set -->
-    <version>0.8.1.12-SNAPSHOT</version>
+    <version>0.8.1.12</version>
 
     <licenses>
         <license>
@@ -46,7 +45,7 @@
         <connection>scm:git:git://github.com/yahoo/omid.git</connection>
         <developerConnection>scm:git:https://${GH_TOKEN}@github.com/yahoo/omid.git</developerConnection>
         <url>https://github.com/yahoo/omid</url>
-        <tag>HEAD</tag>
+        <tag>omid-0.8.1.12</tag>
     </scm>
 
     <distributionManagement>
