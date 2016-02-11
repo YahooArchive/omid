@@ -26,8 +26,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This example shows how by using OMID transactions, an application can atomically write data to two different rows
- * in HBase.
+ * ****************************************************************************************************
+ *
+ * Example code demonstrated to atomic write into two different rows in HBase
+ *
+ * ****************************************************************************************************
  *
  * After building the package with 'mvn clean package' find the resulting examples-<version>-bin.tar.gz file in the
  * 'examples/target' folder. Copy it to the target host and expand with 'tar -zxvf examples-<version>-bin.tar.gz'.
@@ -53,7 +56,7 @@ import org.slf4j.LoggerFactory;
  * specify it like this: 'namespace:table_name'
  *
  * Finally, run the example using the 'run.sh' script without arguments or specifying the necessary configuration
- * parameters if required.
+ * parameters.
  */
 public class BasicExample {
 
@@ -61,7 +64,7 @@ public class BasicExample {
 
     public static void main(String[] args) throws Exception {
 
-        LOG.info("Creating required configuration for the Basic Example, by parsing the command line args provided");
+        LOG.info("Parsing command line arguments");
         Configuration exampleConfig = Configuration.parse(args);
 
 

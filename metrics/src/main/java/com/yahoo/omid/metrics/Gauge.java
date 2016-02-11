@@ -21,6 +21,6 @@ package com.yahoo.omid.metrics;
  */
 public interface Gauge<T extends Number> extends Metric {
 
-    public T getValue();
+    T getValue();
 
 }

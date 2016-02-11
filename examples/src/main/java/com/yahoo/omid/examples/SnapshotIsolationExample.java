@@ -31,7 +31,14 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 
 /**
- * The example shows how OMID transactions preserve Snapshot Isolation guarantees when writing shared data concurrently.
+ * ****************************************************************************************************************
+ *
+ *  Example code demonstrates preservation of Snapshot Isolation guarantees when writing shared data concurrently
+ *
+ * ****************************************************************************************************************
+ *
+ * Please @see{BasicExample} first
+ *
  * In the code below, two concurrent transactions (Tx1 & Tx2), try to update the same column in HBase. This will result
  * in the rollback of Tx2 -the last one trying to commit- due to conflicts in the writeset with the previously
  * committed transaction Tx1. Also shows how Tx2 reads the right values from its own snapshot in HBase data.
@@ -68,7 +75,7 @@ public class SnapshotIsolationExample {
 
     public static void main(String[] args) throws Exception {
 
-        LOG.info("Creating configuration for the Snapshot Isolation Example, by parsing the command line args provided");
+        LOG.info("Parsing the command line arguments");
         Configuration exampleConfiguration = Configuration.parse(args);
 
         //Logging in to Secure HBase if required"

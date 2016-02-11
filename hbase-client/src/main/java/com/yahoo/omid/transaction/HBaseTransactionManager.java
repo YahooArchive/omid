@@ -32,8 +32,6 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -43,15 +41,12 @@ import java.util.concurrent.ExecutionException;
 
 public class HBaseTransactionManager extends AbstractTransactionManager implements HBaseTransactionClient {
 
-    private static final Logger LOG = LoggerFactory.getLogger(HBaseTransactionManager.class);
-
-    public static final byte[] SHADOW_CELL_SUFFIX = "\u0080".getBytes(Charsets.UTF_8); // Non printable char (128 ASCII)
+    static final byte[] SHADOW_CELL_SUFFIX = "\u0080".getBytes(Charsets.UTF_8); // Non printable char (128 ASCII)
 
     private static class HBaseTransactionFactory implements TransactionFactory<HBaseCellId> {
 
         @Override
-        public HBaseTransaction createTransaction(
-                long transactionId, long epoch, AbstractTransactionManager tm) {
+        public HBaseTransaction createTransaction(long transactionId, long epoch, AbstractTransactionManager tm) {
 
             return new HBaseTransaction(transactionId, epoch, new HashSet<HBaseCellId>(), tm);
 
