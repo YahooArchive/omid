@@ -15,15 +15,12 @@
  */
 package com.yahoo.omid.examples;
 
-import com.yahoo.omid.committable.hbase.CommitTableConstants;
 import com.yahoo.omid.tools.hbase.HBaseLogin;
 import com.yahoo.omid.transaction.HBaseTransactionManager;
 import com.yahoo.omid.transaction.RollbackException;
 import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;
-import com.yahoo.omid.tsoclient.TSOClient;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -73,11 +70,10 @@ public class SnapshotIsolationExample {
 
         LOG.info("Creating configuration for the Snapshot Isolation Example, by parsing the command line args provided");
         Configuration exampleConfiguration = Configuration.parse(args);
-        LOG.info("{}", exampleConfiguration);
 
-        LOG.info("Logging in to Secure HBase if required");
+        //Logging in to Secure HBase if required"
         HBaseLogin.loginIfNeeded(exampleConfiguration);
-        org.apache.hadoop.conf.Configuration hbaseConfig = buildOmidConfig(exampleConfiguration);
+        org.apache.hadoop.conf.Configuration hbaseConfig = exampleConfiguration.toOmidConfig();
 
         LOG.info("Creating HBase transaction manager...");
         TransactionManager tm = HBaseTransactionManager.newBuilder().withConfiguration(hbaseConfig).build();
@@ -92,7 +88,7 @@ public class SnapshotIsolationExample {
 
         LOG.info("--------------------------------------------------------------------------------------------------");
         LOG.info("NOTE: All Transactions in the Example access column {}:{}/{}/{} [TABLE:ROW/CF/Q]",
-                new Object[]{userTableName, Bytes.toString(exampleRow), Bytes.toString(family), Bytes.toString(qualifier)});
+                 userTableName, Bytes.toString(exampleRow), Bytes.toString(family), Bytes.toString(qualifier));
         LOG.info("--------------------------------------------------------------------------------------------------");
 
         LOG.info("Creating access to Transactional Table '{}'", userTableName);
@@ -105,8 +101,8 @@ public class SnapshotIsolationExample {
             txTable.put(tx0, initialPut);
             tm.commit(tx0);
             LOG.info("Initial Transaction {} COMMITTED. Base value written in {}:{}/{}/{} = {}",
-                    new Object[]{tx0, userTableName, Bytes.toString(exampleRow), Bytes.toString(family),
-                            Bytes.toString(qualifier), Bytes.toString(initialData)});
+                     tx0, userTableName, Bytes.toString(exampleRow), Bytes.toString(family),
+                     Bytes.toString(qualifier), Bytes.toString(initialData));
 
             // Transaction Tx1 starts, creates its own snapshot of the current data in HBase and writes new data
             Transaction tx1 = tm.begin();
@@ -115,8 +111,8 @@ public class SnapshotIsolationExample {
             tx1Put.add(family, qualifier, dataValue1);
             txTable.put(tx1, tx1Put);
             LOG.info("Transaction {} updates base value in {}:{}/{}/{} = {} in its own Snapshot",
-                    new Object[]{tx1, userTableName, Bytes.toString(exampleRow), Bytes.toString(family),
-                            Bytes.toString(qualifier), Bytes.toString(dataValue1)});
+                     tx1, userTableName, Bytes.toString(exampleRow), Bytes.toString(family),
+                     Bytes.toString(qualifier), Bytes.toString(dataValue1));
 
             // A concurrent transaction Tx2 starts, creates its own snapshot and reads the column value
             Transaction tx2 = tm.begin();
@@ -127,14 +123,14 @@ public class SnapshotIsolationExample {
             Result tx2GetResult = txTable.get(tx2, tx2Get);
             assert Arrays.equals(tx2GetResult.value(), initialData);
             LOG.info("Concurrent Transaction {} should read base value in {}:{}/{}/{} from its Snapshot | Value read = {}",
-                    new Object[]{tx2, userTableName, Bytes.toString(exampleRow), Bytes.toString(family),
-                            Bytes.toString(qualifier), Bytes.toString(tx2GetResult.value())});
+                     tx2, userTableName, Bytes.toString(exampleRow), Bytes.toString(family),
+                     Bytes.toString(qualifier), Bytes.toString(tx2GetResult.value()));
 
             // Transaction Tx1 tries to commit and as there're no conflicting changes, persists the new value in HBase
             tm.commit(tx1);
             LOG.info("Transaction {} COMMITTED. New column value {}:{}/{}/{} = {}",
-                    new Object[]{tx1, userTableName, Bytes.toString(exampleRow), Bytes.toString(family),
-                            Bytes.toString(qualifier), Bytes.toString(dataValue1)});
+                     tx1, userTableName, Bytes.toString(exampleRow), Bytes.toString(family),
+                     Bytes.toString(qualifier), Bytes.toString(dataValue1));
 
             // Tx2 reading again after Tx1 commit must read data from its snapshot...
             tx2Get = new Get(exampleRow);
@@ -142,16 +138,16 @@ public class SnapshotIsolationExample {
             tx2GetResult = txTable.get(tx2, tx2Get);
             // ...so it must read the initial value written by Tx0
             LOG.info("Concurrent Transaction {} should read again base value in {}:{}/{}/{} from its Snapshot | Value read = {}",
-                    new Object[]{tx2, userTableName, Bytes.toString(exampleRow), Bytes.toString(family),
-                            Bytes.toString(qualifier), Bytes.toString(tx2GetResult.value())});
+                     tx2, userTableName, Bytes.toString(exampleRow), Bytes.toString(family),
+                     Bytes.toString(qualifier), Bytes.toString(tx2GetResult.value()));
 
             // Tx2 tries to write the column written by the committed concurrent transaction Tx1...
             Put tx2Put = new Put(exampleRow);
             tx2Put.add(family, qualifier, dataValue2);
             txTable.put(tx2, tx2Put);
             LOG.info("Concurrent Transaction {} updates {}:{}/{}/{} = {} in its own Snapshot (Will conflict with {} at commit time)",
-                    new Object[]{tx2, userTableName, Bytes.toString(exampleRow), Bytes.toString(family),
-                            Bytes.toString(qualifier), Bytes.toString(dataValue1), tx1});
+                     tx2, userTableName, Bytes.toString(exampleRow), Bytes.toString(family),
+                     Bytes.toString(qualifier), Bytes.toString(dataValue1), tx1);
 
             // ... and when committing, Tx2 has to abort due to concurrent conflicts with committed transaction Tx1
             try {
@@ -164,15 +160,6 @@ public class SnapshotIsolationExample {
 
         tm.close();
 
-    }
-
-    private static org.apache.hadoop.conf.Configuration buildOmidConfig(Configuration commandLineConfig) {
-        org.apache.hadoop.conf.Configuration conf = HBaseConfiguration.create();
-        conf.set(TSOClient.TSO_HOST_CONFKEY, commandLineConfig.tsoHost);
-        conf.setInt(TSOClient.TSO_PORT_CONFKEY, commandLineConfig.tsoPort);
-        conf.setInt(TSOClient.ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, 0);
-        conf.setStrings(CommitTableConstants.COMMIT_TABLE_NAME_KEY, commandLineConfig.commitTableName);
-        return conf;
     }
 
 }

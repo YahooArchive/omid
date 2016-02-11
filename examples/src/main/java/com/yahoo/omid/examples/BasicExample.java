@@ -15,14 +15,11 @@
  */
 package com.yahoo.omid.examples;
 
-import com.yahoo.omid.committable.hbase.CommitTableConstants;
 import com.yahoo.omid.tools.hbase.HBaseLogin;
 import com.yahoo.omid.transaction.HBaseTransactionManager;
 import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;
-import com.yahoo.omid.tsoclient.TSOClient;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
@@ -66,7 +63,7 @@ public class BasicExample {
 
         LOG.info("Creating required configuration for the Basic Example, by parsing the command line args provided");
         Configuration exampleConfig = Configuration.parse(args);
-        LOG.info("{}", exampleConfig);
+
 
         String userTableName = exampleConfig.userTableName;
         byte[] family = Bytes.toBytes(exampleConfig.cfName);
@@ -76,9 +73,9 @@ public class BasicExample {
         byte[] dataValue1 = Bytes.toBytes("val1");
         byte[] dataValue2 = Bytes.toBytes("val2");
 
-        LOG.info("Logging in to Secure HBase if required");
+        //Logging in to Secure HBase if required
         HBaseLogin.loginIfNeeded(exampleConfig);
-        org.apache.hadoop.conf.Configuration omidConfig = buildOmidConfig(exampleConfig);
+        org.apache.hadoop.conf.Configuration omidConfig = exampleConfig.toOmidConfig();
 
         LOG.info("Creating HBase Transaction Manager");
         TransactionManager tm = HBaseTransactionManager.newBuilder().withConfiguration(omidConfig).build();
@@ -93,15 +90,15 @@ public class BasicExample {
             row1.add(family, qualifier, dataValue1);
             tt.put(tx, row1);
             LOG.info("Transaction {} writing value in [TABLE:ROW/CF/Q] => {}:{}/{}/{} = {} ",
-                    new Object[]{tx, userTableName, Bytes.toString(exampleRow1), Bytes.toString(family),
-                            Bytes.toString(qualifier), Bytes.toString(dataValue1)});
+                     tx, userTableName, Bytes.toString(exampleRow1), Bytes.toString(family),
+                     Bytes.toString(qualifier), Bytes.toString(dataValue1));
 
             Put row2 = new Put(exampleRow2);
             row2.add(family, qualifier, dataValue2);
             tt.put(tx, row2);
             LOG.info("Transaction {} writing value in [TABLE:ROW/CF/Q] => {}:{}/{}/{} = {} ",
-                    new Object[]{tx, userTableName, Bytes.toString(exampleRow2), Bytes.toString(family),
-                            Bytes.toString(qualifier), Bytes.toString(dataValue2)});
+                     tx, userTableName, Bytes.toString(exampleRow2), Bytes.toString(family),
+                     Bytes.toString(qualifier), Bytes.toString(dataValue2));
 
             tm.commit(tx);
             LOG.info("Transaction {} COMMITTED", tx);
@@ -109,15 +106,6 @@ public class BasicExample {
 
         tm.close();
 
-    }
-
-    private static org.apache.hadoop.conf.Configuration buildOmidConfig(Configuration commandLineConfig) {
-        org.apache.hadoop.conf.Configuration conf = HBaseConfiguration.create();
-        conf.set(TSOClient.TSO_HOST_CONFKEY, commandLineConfig.tsoHost);
-        conf.setInt(TSOClient.TSO_PORT_CONFKEY, commandLineConfig.tsoPort);
-        conf.setInt(TSOClient.ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, 0);
-        conf.setStrings(CommitTableConstants.COMMIT_TABLE_NAME_KEY, commandLineConfig.commitTableName);
-        return conf;
     }
 
 }
