@@ -84,11 +84,6 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
             return this;
         }
 
-        public Builder withMetrics(MetricsRegistry metricsRegistry) {
-            this.metricsRegistry = metricsRegistry;
-            return this;
-        }
-
         public Builder withTSOClient(TSOClient tsoClient) {
             this.tsoClient = tsoClient;
             return this;
