@@ -291,7 +291,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
             // Write initial values for the test
             HBaseTransaction tx0 = (HBaseTransaction) tm.begin();
             long initialEpoch = tx0.getEpoch();
-            LOG.info("Starting Tx {} writing initial values for cells ({}) ", Bytes.toString(initialData));
+            LOG.info("Starting Tx {} writing initial values for cells ({}) ", tx0, Bytes.toString(initialData));
             Put putInitialDataRow1 = new Put(row1);
             putInitialDataRow1.add(TEST_FAMILY.getBytes(), qualifier1, initialData);
             txTable.put(tx0, putInitialDataRow1);

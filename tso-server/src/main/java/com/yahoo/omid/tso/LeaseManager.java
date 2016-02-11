@@ -119,7 +119,7 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
 
     @Override
     public void stopService() throws LeaseManagementException {
-        stop();
+        stopAndWait();
     }
 
     @Override
