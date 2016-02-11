@@ -24,28 +24,25 @@ import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.tso.TSOStateManager.TSOState;
-
 import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import javax.inject.Inject;
-
 public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestEvent>,
-                                             RequestProcessor
+        RequestProcessor
 
 {
 
     private static final Logger LOG = LoggerFactory.getLogger(RequestProcessorImpl.class);
 
     static final int DEFAULT_MAX_ITEMS = 1_000_000;
-    public static final String TSO_MAX_ITEMS_KEY = "tso.maxitems";
 
     private final TimestampOracle timestampOracle;
     public final CommitHashMap hashmap;
@@ -60,7 +57,7 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
                          TimestampOracle timestampOracle,
                          PersistenceProcessor persistProc,
                          Panicker panicker,
-                         TSOServerConfig config) throws IOException {
+                         TSOServerCommandLineConfig config) throws IOException {
         this.metrics = metrics;
 
         this.persistProc = persistProc;
@@ -70,17 +67,17 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
 
         // Set up the disruptor thread
         requestRing = RingBuffer.<RequestEvent>createMultiProducer(RequestEvent.EVENT_FACTORY, 1 << 12,
-                                                                   new BusySpinWaitStrategy());
+                new BusySpinWaitStrategy());
         SequenceBarrier requestSequenceBarrier = requestRing.newBarrier();
         BatchEventProcessor<RequestEvent> requestProcessor =
-            new BatchEventProcessor<RequestEvent>(requestRing,
-                                                  requestSequenceBarrier,
-                                                  this);
+                new BatchEventProcessor<RequestEvent>(requestRing,
+                        requestSequenceBarrier,
+                        this);
         requestRing.addGatingSequences(requestProcessor.getSequence());
         requestProcessor.setExceptionHandler(new FatalExceptionHandler(panicker));
 
         ExecutorService requestExec = Executors.newSingleThreadExecutor(
-            new ThreadFactoryBuilder().setNameFormat("request-%d").build());
+                new ThreadFactoryBuilder().setNameFormat("request-%d").build());
         // Each processor runs on a separate thread
         requestExec.submit(requestProcessor);
 
@@ -301,7 +298,7 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
         }
 
         public final static EventFactory<RequestEvent> EVENT_FACTORY
-            = new EventFactory<RequestEvent>() {
+                = new EventFactory<RequestEvent>() {
             @Override
             public RequestEvent newInstance() {
                 return new RequestEvent();

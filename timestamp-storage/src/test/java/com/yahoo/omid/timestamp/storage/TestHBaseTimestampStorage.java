@@ -1,14 +1,5 @@
 package com.yahoo.omid.timestamp.storage;
 
-import static org.testng.AssertJUnit.assertEquals;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.Test;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.Assert;
-import java.io.IOException;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
@@ -19,13 +10,23 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+
+import java.io.IOException;
+
+import static org.testng.AssertJUnit.assertEquals;
 
 public class TestHBaseTimestampStorage {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestHBaseTimestampStorage.class);
 
     private static final String TEST_TABLE = "TEST";
-    
+
     private static final TableName TABLE_NAME = TableName.valueOf(TEST_TABLE);
 
     private static HBaseTestingUtility testutil;

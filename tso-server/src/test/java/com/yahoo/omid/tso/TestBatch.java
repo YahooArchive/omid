@@ -2,7 +2,6 @@ package com.yahoo.omid.tso;
 
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.metrics.NullMetricsProvider;
-
 import org.jboss.netty.channel.Channel;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -98,10 +97,10 @@ public class TestBatch {
         final boolean SHOULD_MAKE_HEURISTIC_DECISSION = true;
         batch.sendRepliesAndReset(replyProcessor, retryProcessor, MASTER_INSTANCE);
         verify(replyProcessor, timeout(100).times(BATCH_SIZE / 2))
-               .timestampResponse(anyLong(), any(Channel.class), any(MonitoringContext.class));
+                .timestampResponse(anyLong(), any(Channel.class), any(MonitoringContext.class));
         verify(replyProcessor, timeout(100).times(BATCH_SIZE / 2))
-            .commitResponse(eq(!SHOULD_MAKE_HEURISTIC_DECISSION), anyLong(), anyLong(),
-                            any(Channel.class), any(MonitoringContext.class));
+                .commitResponse(eq(!SHOULD_MAKE_HEURISTIC_DECISSION), anyLong(), anyLong(),
+                        any(Channel.class), any(MonitoringContext.class));
         AssertJUnit.assertFalse("Batch shouldn't be full", batch.isFull());
         AssertJUnit.assertEquals("Num events should be 0", 0, batch.getNumEvents());
 
@@ -131,10 +130,10 @@ public class TestBatch {
         final boolean SHOULD_MAKE_HEURISTIC_DECISSION = true;
         batch.sendRepliesAndReset(replyProcessor, retryProcessor, !MASTER_INSTANCE);
         verify(replyProcessor, timeout(100).times(BATCH_SIZE / 2))
-            .timestampResponse(anyLong(), any(Channel.class), any(MonitoringContext.class));
+                .timestampResponse(anyLong(), any(Channel.class), any(MonitoringContext.class));
         verify(replyProcessor, timeout(100).times(BATCH_SIZE / 2))
-            .commitResponse(eq(SHOULD_MAKE_HEURISTIC_DECISSION), anyLong(), anyLong(), any(Channel.class), any(
-                MonitoringContext.class));
+                .commitResponse(eq(SHOULD_MAKE_HEURISTIC_DECISSION), anyLong(), anyLong(), any(Channel.class), any(
+                        MonitoringContext.class));
         assertFalse(batch.isFull(), "Batch shouldn't be full");
         assertEquals(batch.getNumEvents(), 0, "Num events should be 0");
 

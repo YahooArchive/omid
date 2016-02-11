@@ -110,8 +110,7 @@ public class TestLeaseManager {
 
     @Test(timeOut = 60000)
     public void testLeaseHolderDoesNotChangeWhenPausedForALongTimeAndTheresNoOtherInstance()
-            throws Exception
-    {
+            throws Exception {
 
         final String TEST_TSO_LEASE_PATH = "/test1_tsolease";
         final String TEST_CURRENT_TSO_PATH = "/test1_currenttso";
@@ -121,13 +120,13 @@ public class TestLeaseManager {
         TSOStateManager stateManager1 = mock(TSOStateManager.class);
         when(stateManager1.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
         leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
-                                                 tsoChannelHandler1,
-                                                 stateManager1,
-                                                 TEST_LEASE_PERIOD_IN_MS,
-                                                 TEST_TSO_LEASE_PATH,
-                                                 TEST_CURRENT_TSO_PATH,
-                                                 zkClient,
-                                                 panicker);
+                tsoChannelHandler1,
+                stateManager1,
+                TEST_LEASE_PERIOD_IN_MS,
+                TEST_TSO_LEASE_PATH,
+                TEST_CURRENT_TSO_PATH,
+                zkClient,
+                panicker);
         leaseManager1.startService();
 
         // ... let the test run for some time...
@@ -172,13 +171,13 @@ public class TestLeaseManager {
         TSOStateManager stateManager1 = mock(TSOStateManager.class);
         when(stateManager1.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
         leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
-                                                 tsoChannelHandler1,
-                                                 stateManager1,
-                                                 TEST_LEASE_PERIOD_IN_MS,
-                                                 TEST_TSO_LEASE_PATH,
-                                                 TEST_CURRENT_TSO_PATH,
-                                                 zkClient,
-                                                 panicker);
+                tsoChannelHandler1,
+                stateManager1,
+                TEST_LEASE_PERIOD_IN_MS,
+                TEST_TSO_LEASE_PATH,
+                TEST_CURRENT_TSO_PATH,
+                zkClient,
+                panicker);
 
         leaseManager1.startService();
 
@@ -195,13 +194,13 @@ public class TestLeaseManager {
         TSOStateManager stateManager2 = mock(TSOStateManager.class);
         when(stateManager2.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_2, DUMMY_EPOCH_2));
         leaseManager2 = new PausableLeaseManager(LEASE_MGR_ID_2,
-                                                 tsoChannelHandler2,
-                                                 stateManager2,
-                                                 TEST_LEASE_PERIOD_IN_MS,
-                                                 TEST_TSO_LEASE_PATH,
-                                                 TEST_CURRENT_TSO_PATH,
-                                                 zkClient,
-                                                 panicker);
+                tsoChannelHandler2,
+                stateManager2,
+                TEST_LEASE_PERIOD_IN_MS,
+                TEST_TSO_LEASE_PATH,
+                TEST_CURRENT_TSO_PATH,
+                zkClient,
+                panicker);
         leaseManager2.startService();
 
         // ... let the test run for some time...
@@ -225,13 +224,13 @@ public class TestLeaseManager {
         TSOStateManager stateManager1 = mock(TSOStateManager.class);
         when(stateManager1.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
         leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
-                                                 tsoChannelHandler1,
-                                                 stateManager1,
-                                                 TEST_LEASE_PERIOD_IN_MS,
-                                                 TEST_TSO_LEASE_PATH,
-                                                 TEST_CURRENT_TSO_PATH,
-                                                 zkClient,
-                                                 panicker);
+                tsoChannelHandler1,
+                stateManager1,
+                TEST_LEASE_PERIOD_IN_MS,
+                TEST_TSO_LEASE_PATH,
+                TEST_CURRENT_TSO_PATH,
+                zkClient,
+                panicker);
 
         leaseManager1.startService();
 
@@ -248,13 +247,13 @@ public class TestLeaseManager {
         TSOStateManager stateManager2 = mock(TSOStateManager.class);
         when(stateManager2.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_2, DUMMY_EPOCH_2));
         leaseManager2 = new PausableLeaseManager(LEASE_MGR_ID_2,
-                                                 tsoChannelHandler2,
-                                                 stateManager2,
-                                                 TEST_LEASE_PERIOD_IN_MS,
-                                                 TEST_TSO_LEASE_PATH,
-                                                 TEST_CURRENT_TSO_PATH,
-                                                 zkClient,
-                                                 panicker);
+                tsoChannelHandler2,
+                stateManager2,
+                TEST_LEASE_PERIOD_IN_MS,
+                TEST_TSO_LEASE_PATH,
+                TEST_CURRENT_TSO_PATH,
+                zkClient,
+                panicker);
         leaseManager2.startService();
 
         // ... and pause active lease manager...
@@ -373,7 +372,7 @@ public class TestLeaseManager {
 
         // Launch the instance...
         NonHALeaseManager leaseManager = new NonHALeaseManager(mock(TSOChannelHandler.class),
-                                                               mock(TSOStateManager.class));
+                mock(TSOStateManager.class));
 
         leaseManager.startService();
         assertTrue(leaseManager.stillInLeasePeriod());

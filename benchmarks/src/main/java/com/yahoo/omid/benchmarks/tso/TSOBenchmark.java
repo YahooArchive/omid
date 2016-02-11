@@ -67,14 +67,16 @@ public class TSOBenchmark implements Closeable {
                 Arrays.asList(expConfig.metricsConfig.toString().split("\\s*,\\s*")));
 
         // Executor for TxRunners (Clients triggering transactions)
-        this.txRunnerExec = Executors.newScheduledThreadPool(expConfig.nbClients,
-                new ThreadFactoryBuilder().setNameFormat("tx-runner-%d")
-                        .setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
-                            @Override
-                            public void uncaughtException(Thread t, Throwable e) {
-                                LOG.error("Thread {} threw exception", t, e);
-                            }
-                        }).build());
+        Thread.UncaughtExceptionHandler uncaughtExceptionHandler = new Thread.UncaughtExceptionHandler() {
+            @Override
+            public void uncaughtException(Thread t, Throwable e) {
+                LOG.error("Thread {} threw exception", t, e);
+            }
+        };
+        ThreadFactoryBuilder threadFactoryBuilder = new ThreadFactoryBuilder()
+                .setNameFormat("tx-runner-%d")
+                .setUncaughtExceptionHandler(uncaughtExceptionHandler);
+        this.txRunnerExec = Executors.newScheduledThreadPool(expConfig.nbClients, threadFactoryBuilder.build());
 
     }
 
@@ -168,19 +170,19 @@ public class TSOBenchmark implements Closeable {
         int nbClients = 1;
 
         @Parameter(names = "-tsoHostAndPort",
-                description = "Hostname and port of the TSO. Format: HOST:PORT",
-                converter = HostPortConverter.class)
+                   description = "Hostname and port of the TSO. Format: HOST:PORT",
+                   converter = HostPortConverter.class)
         HostAndPort tsoHostPort = HostAndPort.fromParts("localhost", 54758);
 
         @Parameter(names = "-runFor",
-                converter = TimeValueTimeUnitConverter.class,
-                description = "Benchmark run lenght.\n"
-                        + "Format: TIME_VALUE:TIME_UNIT Example: 10:DAYS, 60:SECONDS...")
+                   converter = TimeValueTimeUnitConverter.class,
+                   description = "Benchmark run lenght.\n"
+                           + "Format: TIME_VALUE:TIME_UNIT Example: 10:DAYS, 60:SECONDS...")
         TimeValueTimeUnit runFor = new TimeValueTimeUnit(10, TimeUnit.MINUTES);
 
         @Parameter(names = "-requestDistribution",
-                description = "Request distribution (how to pick rows) [ UNIFORM | ZIPFIAN ]",
-                converter = GeneratorUtils.RowDistributionConverter.class)
+                   description = "Request distribution (how to pick rows) [ UNIFORM | ZIPFIAN ]",
+                   converter = GeneratorUtils.RowDistributionConverter.class)
         RowDistribution requestDistribution = RowDistribution.UNIFORM;
 
         @Parameter(names = "-maxWritesetSize", description = "Maximum size of tx in terms of modified columns,\n"
@@ -191,18 +193,18 @@ public class TSOBenchmark implements Closeable {
         int maxInFlight = 100_000;
 
         @Parameter(names = "-commitDelay",
-                converter = TimeValueTimeUnitConverter.class,
-                description = "Simulated delay between acquiring timestamp and committing.\n"
-                        + "Format: TIME_VALUE:TIME_UNIT Example: 50:MILLISECONDS...")
+                   converter = TimeValueTimeUnitConverter.class,
+                   description = "Simulated delay between acquiring timestamp and committing.\n"
+                           + "Format: TIME_VALUE:TIME_UNIT Example: 50:MILLISECONDS...")
         TimeValueTimeUnit commitDelay = new TimeValueTimeUnit(50, TimeUnit.MILLISECONDS);
 
         @Parameter(names = "-percentRead", description = "% reads")
         float percentReads = 0;
 
         @Parameter(names = "-readProportion",
-                description = "Proportion of reads, between 1 and 0.\n"
-                        + "Overrides -percentRead if specified",
-                hidden = true)
+                   description = "Proportion of reads, between 1 and 0.\n"
+                           + "Overrides -percentRead if specified",
+                   hidden = true)
         float readproportion = -1;
 
         @Parameter(names = "-useHBase", description = "Enable HBase storage")
@@ -212,8 +214,8 @@ public class TSOBenchmark implements Closeable {
         private String hbaseCommitTable = CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
 
         @Parameter(names = "-metricsConfig",
-                converter = MetricsConfigConverter.class,
-                description = "Format: REPORTER:REPORTER_CONFIG:TIME_VALUE:TIME_UNIT")
+                   converter = MetricsConfigConverter.class,
+                   description = "Format: REPORTER:REPORTER_CONFIG:TIME_VALUE:TIME_UNIT")
         MetricsConfig metricsConfig = new MetricsConfig("console", "", 10, TimeUnit.SECONDS);
 
         @ParametersDelegate
@@ -262,13 +264,13 @@ public class TSOBenchmark implements Closeable {
 
             if (matcher.matches()) {
                 return new MetricsConfig(matcher.group(1),
-                        matcher.group(2),
-                        Integer.valueOf(matcher.group(3)),
-                        TimeUnit.valueOf(matcher.group(4)));
+                                         matcher.group(2),
+                                         Integer.valueOf(matcher.group(3)),
+                                         TimeUnit.valueOf(matcher.group(4)));
             } else {
                 throw new ParameterException("Metrics specification " + value
-                        + " should have this format: REPORTER:REPORTER_CONFIG:TIME_VALUE:TIME_UNIT\n"
-                        + " where REPORTER=csv|slf4j|console|graphite");
+                                                     + " should have this format: REPORTER:REPORTER_CONFIG:TIME_VALUE:TIME_UNIT\n"
+                                                     + " where REPORTER=csv|slf4j|console|graphite");
             }
 
         }
@@ -295,7 +297,7 @@ public class TSOBenchmark implements Closeable {
                 return new TimeValueTimeUnit(Integer.parseInt(s[0]), TimeUnit.valueOf(s[1].toUpperCase()));
             } catch (Exception e) {
                 throw new ParameterException("Time specification " + value +
-                        " should have this format: TIME_VALUE:TIME_UNIT Example: 10:DAYS, 60:SECONDS...");
+                                                     " should have this format: TIME_VALUE:TIME_UNIT Example: 10:DAYS, 60:SECONDS...");
             }
         }
     }

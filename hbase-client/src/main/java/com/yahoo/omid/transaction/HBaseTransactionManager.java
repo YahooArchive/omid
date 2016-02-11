@@ -41,12 +41,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ExecutionException;
-
 public class HBaseTransactionManager extends AbstractTransactionManager implements HBaseTransactionClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(HBaseTransactionManager.class);
@@ -121,8 +115,8 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
                 }
             }
             return new HBaseTransactionManager(metricsRegistry, tsoClient, ownsTsoClient,
-                    commitTableClient, ownsCommitTableClient,
-                    new HBaseTransactionFactory());
+                                               commitTableClient, ownsCommitTableClient,
+                                               new HBaseTransactionFactory());
         }
 
         private org.apache.commons.configuration.Configuration convertToCommonsConf(Configuration hconf) {
@@ -207,7 +201,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
         try {
             CommitTimestamp tentativeCommitTimestamp =
                     locateCellCommitTimestamp(hBaseCellId.getTimestamp(), tsoClient.getEpoch(),
-                            new CommitTimestampLocatorImpl(hBaseCellId, Maps.<Long, Long>newHashMap()));
+                                              new CommitTimestampLocatorImpl(hBaseCellId, Maps.<Long, Long>newHashMap()));
 
             // If transaction that added the cell was invalidated
             if (!tentativeCommitTimestamp.isValid()) {

@@ -1,22 +1,12 @@
 package com.yahoo.omid.committable.hbase;
 
-import static org.testng.AssertJUnit.assertTrue;
-import static org.testng.AssertJUnit.assertFalse;
-import static org.testng.AssertJUnit.assertEquals;
-
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.Test;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.Assert;
-
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_FAMILY;
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.LOW_WATERMARK_FAMILY;
-
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-
+import com.google.common.base.Optional;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.CommitTable.Client;
+import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
+import com.yahoo.omid.committable.CommitTable.Writer;
+import com.yahoo.omid.committable.hbase.HBaseCommitTable.HBaseClient;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
@@ -30,14 +20,21 @@ import org.apache.hadoop.hbase.client.coprocessor.AggregationClient;
 import org.apache.hadoop.hbase.client.coprocessor.LongColumnInterpreter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
 
-import com.google.common.base.Optional;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.committable.CommitTable.Client;
-import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
-import com.yahoo.omid.committable.CommitTable.Writer;
-import com.yahoo.omid.committable.hbase.HBaseCommitTable.HBaseClient;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_FAMILY;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.LOW_WATERMARK_FAMILY;
+import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertFalse;
+import static org.testng.AssertJUnit.assertTrue;
 
 public class TestHBaseCommitTable {
 
@@ -226,7 +223,7 @@ public class TestHBaseCommitTable {
         assertFalse(commitTimestamp.get().isValid());
         ct = commitTimestamp.get().getValue();
         assertEquals("Commit timestamp should be " + CommitTable.INVALID_TRANSACTION_MARKER,
-                     CommitTable.INVALID_TRANSACTION_MARKER, ct);
+                CommitTable.INVALID_TRANSACTION_MARKER, ct);
         // ...and that if it has been already invalidated, it remains
         // invalidated when someone tries to commit it
         writer.addCommittedTransaction(TX2_ST, TX2_CT);
@@ -236,7 +233,7 @@ public class TestHBaseCommitTable {
         assertFalse(commitTimestamp.get().isValid());
         ct = commitTimestamp.get().getValue();
         assertEquals("Commit timestamp should be " + CommitTable.INVALID_TRANSACTION_MARKER,
-                     CommitTable.INVALID_TRANSACTION_MARKER, ct);
+                CommitTable.INVALID_TRANSACTION_MARKER, ct);
 
         // Test that at the end of the test, the commit table contains 2
         // elements, which correspond to the two rows added in the test

@@ -15,12 +15,11 @@
  */
 package com.yahoo.omid.transaction;
 
-import static com.google.common.base.Charsets.UTF_8;
-
-import org.apache.hadoop.hbase.client.HTableInterface;
-
 import com.google.common.hash.Hashing;
 import com.yahoo.omid.tsoclient.CellId;
+import org.apache.hadoop.hbase.client.HTableInterface;
+
+import static com.google.common.base.Charsets.UTF_8;
 
 public class HBaseCellId implements CellId {
 

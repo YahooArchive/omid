@@ -1,24 +1,21 @@
 package com.yahoo.omid.transaction;
 
-import static org.testng.AssertJUnit.assertFalse;
-import static org.testng.AssertJUnit.assertNotNull;
-import static org.testng.AssertJUnit.assertTrue;
-
-import org.testng.ITestContext;
-import org.testng.annotations.Test;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
-import com.yahoo.omid.transaction.TTable;
-import com.yahoo.omid.transaction.Transaction;
-import com.yahoo.omid.transaction.TransactionManager;
+import org.testng.ITestContext;
+import org.testng.annotations.Test;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.testng.AssertJUnit.assertFalse;
+import static org.testng.AssertJUnit.assertNotNull;
+import static org.testng.AssertJUnit.assertTrue;
 
 @Test(groups = "sharedHBase")
 public class TestReadPath extends OmidTestBase {
@@ -52,7 +49,7 @@ public class TestReadPath extends OmidTestBase {
     public void testReadWithSeveralUncommitted(ITestContext context) throws Exception {
         TransactionManager tm = newTransactionManager(context);
         TTable table = new TTable(hbaseConf, TEST_TABLE);
-        
+
         // Put some data on the DB
         Transaction t = tm.begin();
         Put put = new Put(row);

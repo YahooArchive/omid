@@ -15,11 +15,14 @@
  */
 package com.yahoo.omid.transaction;
 
-import java.util.*;
-
 import com.google.common.base.Optional;
-import com.yahoo.omid.transaction.Transaction.Status;
 import com.yahoo.omid.tsoclient.CellId;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Omid's base abstract implementation of the {@link Transaction} interface.

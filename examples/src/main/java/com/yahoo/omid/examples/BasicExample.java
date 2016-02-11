@@ -22,7 +22,6 @@ import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;
 import com.yahoo.omid.tsoclient.TSOClient;
-
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -88,24 +87,24 @@ public class BasicExample {
         try (TTable tt = new TTable(omidConfig, userTableName)) {
 
             Transaction tx = tm.begin();
-            LOG.info("Transaction {} started", tx);
+            LOG.info("Transaction {} STARTED", tx);
 
             Put row1 = new Put(exampleRow1);
             row1.add(family, qualifier, dataValue1);
             tt.put(tx, row1);
-            LOG.info("Transaction {} writing value in [TABLE:ROW/CF/Q] => {}:{}/{}/{}={} ",
+            LOG.info("Transaction {} writing value in [TABLE:ROW/CF/Q] => {}:{}/{}/{} = {} ",
                     new Object[]{tx, userTableName, Bytes.toString(exampleRow1), Bytes.toString(family),
-                                 Bytes.toString(qualifier), Bytes.toString(dataValue1)});
+                            Bytes.toString(qualifier), Bytes.toString(dataValue1)});
 
             Put row2 = new Put(exampleRow2);
             row2.add(family, qualifier, dataValue2);
             tt.put(tx, row2);
-            LOG.info("Transaction {} writing value in [TABLE:ROW/CF/Q] => {}:{}/{}/{}={} ",
+            LOG.info("Transaction {} writing value in [TABLE:ROW/CF/Q] => {}:{}/{}/{} = {} ",
                     new Object[]{tx, userTableName, Bytes.toString(exampleRow2), Bytes.toString(family),
-                                 Bytes.toString(qualifier), Bytes.toString(dataValue2)});
+                            Bytes.toString(qualifier), Bytes.toString(dataValue2)});
 
             tm.commit(tx);
-            LOG.info("Transaction {} committed", tx);
+            LOG.info("Transaction {} COMMITTED", tx);
         }
 
         tm.close();

@@ -1,39 +1,34 @@
 package com.yahoo.omid.transaction;
 
-import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-
-import javax.inject.Singleton;
-
-import com.yahoo.omid.tso.TSOChannelHandler;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import com.google.inject.name.Names;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.metrics.NullMetricsProvider;
+import com.yahoo.omid.timestamp.storage.HBaseTimestampStorage;
 import com.yahoo.omid.timestamp.storage.TimestampStorage;
 import com.yahoo.omid.tso.DisruptorModule;
 import com.yahoo.omid.tso.LeaseManagement;
 import com.yahoo.omid.tso.MockPanicker;
 import com.yahoo.omid.tso.NonHALeaseManager;
 import com.yahoo.omid.tso.Panicker;
-import com.yahoo.omid.tso.TSOStateManager;
+import com.yahoo.omid.tso.TSOChannelHandler;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig;
+import com.yahoo.omid.tso.TSOStateManager;
 import com.yahoo.omid.tso.TSOStateManagerImpl;
 import com.yahoo.omid.tso.TimestampOracle;
 import com.yahoo.omid.tso.TimestampOracleImpl;
 import com.yahoo.omid.tso.ZKModule;
-import com.yahoo.omid.timestamp.storage.HBaseTimestampStorage;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.inject.Singleton;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 
 public class TSOForHBaseCompactorTestModule extends AbstractModule {
 
@@ -60,9 +55,6 @@ public class TSOForHBaseCompactorTestModule extends AbstractModule {
         bind(TimestampOracle.class).to(TimestampOracleImpl.class).in(Singleton.class);
 
         // DisruptorConfig
-        // Overrite default value
-        bindConstant().annotatedWith(Names.named(TSO_MAX_ITEMS_KEY)).to(config.getMaxItems());
-        LOG.info("Overriding {} with value {}", TSO_MAX_ITEMS_KEY, config.getMaxItems());
         install(new DisruptorModule());
 
         // ZK Module

@@ -1,5 +1,22 @@
 package com.yahoo.omid.tso;
 
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
+import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.metrics.NullMetricsProvider;
+import com.yahoo.omid.tso.PersistenceProcessorImpl.Batch;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+
+import java.io.IOException;
+
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
@@ -11,24 +28,6 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
-
-import java.io.IOException;
-
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
-
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
-import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.metrics.MetricsRegistry;
-import com.yahoo.omid.metrics.NullMetricsProvider;
-import com.yahoo.omid.tso.PersistenceProcessorImpl.Batch;
 
 public class TestPersistenceProcessor {
 
@@ -65,14 +64,14 @@ public class TestPersistenceProcessor {
         commitTable = new CommitTable() {
             @Override
             public ListenableFuture<Writer> getWriter() {
-                SettableFuture<Writer> f = SettableFuture.<Writer> create();
+                SettableFuture<Writer> f = SettableFuture.<Writer>create();
                 f.set(mockWriter);
                 return f;
             }
 
             @Override
             public ListenableFuture<Client> getClient() {
-                SettableFuture<Client> f = SettableFuture.<Client> create();
+                SettableFuture<Client> f = SettableFuture.<Client>create();
                 f.set(mockClient);
                 return f;
             }
@@ -80,7 +79,7 @@ public class TestPersistenceProcessor {
     }
 
     @AfterMethod
-    void afterMethod(){
+    void afterMethod() {
         Mockito.reset(mockWriter);
     }
 
@@ -89,17 +88,17 @@ public class TestPersistenceProcessor {
 
         // Init a non-HA lease manager
         NonHALeaseManager leaseManager = spy(new NonHALeaseManager(mock(TSOChannelHandler.class),
-                                                                   mock(TSOStateManager.class)));
+                mock(TSOStateManager.class)));
         // Component under test
         PersistenceProcessor proc = new PersistenceProcessorImpl(metrics,
-                                                                 "localhost:1234",
-                                                                 batch,
-                                                                 leaseManager,
-                                                                 commitTable,
-                                                                 replyProcessor,
-                                                                 retryProcessor,
-                                                                 panicker,
-                                                                 new TSOServerConfig());
+                "localhost:1234",
+                batch,
+                leaseManager,
+                commitTable,
+                replyProcessor,
+                retryProcessor,
+                panicker,
+                TSOServerCommandLineConfig.defaultConfig());
 
         // The non-ha lease manager always return true for
         // stillInLeasePeriod(), so verify the batch sends replies as master
@@ -107,8 +106,8 @@ public class TestPersistenceProcessor {
         proc.persistCommit(1, 2, null, monCtx);
         verify(leaseManager, timeout(1000).times(2)).stillInLeasePeriod();
         verify(batch, timeout(1000).times(2)).sendRepliesAndReset(any(ReplyProcessor.class),
-                                                                  any(RetryProcessor.class),
-                                                                  eq(true));
+                any(RetryProcessor.class),
+                eq(true));
     }
 
     @Test
@@ -118,14 +117,14 @@ public class TestPersistenceProcessor {
         LeaseManager leaseManager = mock(LeaseManager.class);
         // Component under test
         PersistenceProcessor proc = new PersistenceProcessorImpl(metrics,
-                                                                 "localhost:1234",
-                                                                 batch,
-                                                                 leaseManager,
-                                                                 commitTable,
-                                                                 replyProcessor,
-                                                                 retryProcessor,
-                                                                 panicker,
-                                                                 new TSOServerConfig());
+                "localhost:1234",
+                batch,
+                leaseManager,
+                commitTable,
+                replyProcessor,
+                retryProcessor,
+                panicker,
+                TSOServerCommandLineConfig.defaultConfig());
 
         // Configure the lease manager to always return true for
         // stillInLeasePeriod, so verify the batch sends replies as master
@@ -162,13 +161,13 @@ public class TestPersistenceProcessor {
         // Init lease management (doesn't matter if HA or not)
         LeaseManagement leaseManager = mock(LeaseManagement.class);
         PersistenceProcessor proc = new PersistenceProcessorImpl(metrics,
-                                                                 "localhost:1234",
-                                                                 leaseManager,
-                                                                 commitTable,
-                                                                 mock(ReplyProcessor.class),
-                                                                 mock(RetryProcessor.class),
-                                                                 panicker,
-                                                                 new TSOServerConfig());
+                "localhost:1234",
+                leaseManager,
+                commitTable,
+                mock(ReplyProcessor.class),
+                mock(RetryProcessor.class),
+                panicker,
+                TSOServerCommandLineConfig.defaultConfig());
         MonitoringContext monCtx = new MonitoringContext(metrics);
 
         // Configure lease manager to work normally
@@ -186,13 +185,13 @@ public class TestPersistenceProcessor {
     public void testRuntimeExceptionOnCommitPersistenceTakesDownDaemon() throws Exception {
 
         PersistenceProcessor proc = new PersistenceProcessorImpl(metrics,
-                                                                 "localhost:1234",
-                                                                 mock(LeaseManagement.class),
-                                                                 commitTable,
-                                                                 replyProcessor,
-                                                                 retryProcessor,
-                                                                 panicker,
-                                                                 new TSOServerConfig());
+                "localhost:1234",
+                mock(LeaseManagement.class),
+                commitTable,
+                replyProcessor,
+                retryProcessor,
+                panicker,
+                TSOServerCommandLineConfig.defaultConfig());
 
         // Configure writer to explode with a runtime exception
         doThrow(new RuntimeException("Kaboom!")).when(mockWriter).addCommittedTransaction(anyLong(), anyLong());

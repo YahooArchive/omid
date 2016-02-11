@@ -53,7 +53,8 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
 
         tsoServerPortForTest = TestUtils.getFreeLocalPort();
 
-        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.configFactory(tsoServerPortForTest, 1000);
+        String[] configArgs = new String[]{"-port", Integer.toString(tsoServerPortForTest), "-maxItems", "1000"};
+        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.parseConfig(configArgs);
         Module tsoServerMockModule = new TSOMockModule(tsoConfig);
         Injector injector = Guice.createInjector(tsoServerMockModule);
 

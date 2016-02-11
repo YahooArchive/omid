@@ -22,7 +22,8 @@ public class NullMetricsProvider implements MetricsProvider, MetricsRegistry {
 
     private static final Logger LOG = LoggerFactory.getLogger(NullMetricsProvider.class);
 
-    public NullMetricsProvider() {}
+    public NullMetricsProvider() {
+    }
 
     /* ********************************** MetricsProvider interface implementation ********************************** */
 

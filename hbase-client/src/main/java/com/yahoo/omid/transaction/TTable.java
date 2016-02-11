@@ -15,19 +15,14 @@
  */
 package com.yahoo.omid.transaction;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.NavigableMap;
-import java.util.NavigableSet;
-
+import com.google.common.base.Function;
+import com.google.common.base.Optional;
+import com.google.common.base.Predicate;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Multimaps;
+import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
+import com.yahoo.omid.transaction.HBaseTransactionManager.CommitTimestampLocatorImpl;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
@@ -49,14 +44,18 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Function;
-import com.google.common.base.Optional;
-import com.google.common.base.Predicate;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Multimaps;
-import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
-import com.yahoo.omid.transaction.HBaseTransactionManager.CommitTimestampLocatorImpl;
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.NavigableMap;
+import java.util.NavigableSet;
 
 /**
  * Provides transactional methods for accessing and modifying a given snapshot
@@ -178,41 +177,41 @@ public class TTable implements Closeable {
             for (Cell cell : cells) {
                 CellUtils.validateCell(cell, startTimestamp);
                 switch (KeyValue.Type.codeToType(cell.getTypeByte())) {
-                case DeleteColumn:
-                    deleteP.add(CellUtil.cloneFamily(cell),
+                    case DeleteColumn:
+                        deleteP.add(CellUtil.cloneFamily(cell),
                                 CellUtil.cloneQualifier(cell),
                                 startTimestamp,
                                 DELETE_TOMBSTONE);
-                    transaction.addWriteSetElement(
-                                                   new HBaseCellId(table,
-                                                                   delete.getRow(),
-                                                                   CellUtil.cloneFamily(cell),
-                                                                   CellUtil.cloneQualifier(cell),
-                                                                   cell.getTimestamp()));
-                    break;
-                case DeleteFamily:
-                    deleteG.addFamily(CellUtil.cloneFamily(cell));
-                    issueGet = true;
-                    break;
-                case Delete:
-                    if (cell.getTimestamp() == HConstants.LATEST_TIMESTAMP) {
-                        deleteP.add(CellUtil.cloneFamily(cell),
+                        transaction.addWriteSetElement(
+                                new HBaseCellId(table,
+                                        delete.getRow(),
+                                        CellUtil.cloneFamily(cell),
+                                        CellUtil.cloneQualifier(cell),
+                                        cell.getTimestamp()));
+                        break;
+                    case DeleteFamily:
+                        deleteG.addFamily(CellUtil.cloneFamily(cell));
+                        issueGet = true;
+                        break;
+                    case Delete:
+                        if (cell.getTimestamp() == HConstants.LATEST_TIMESTAMP) {
+                            deleteP.add(CellUtil.cloneFamily(cell),
                                     CellUtil.cloneQualifier(cell),
                                     startTimestamp,
                                     DELETE_TOMBSTONE);
-                        transaction.addWriteSetElement(
-                                                       new HBaseCellId(table,
-                                                                       delete.getRow(),
-                                                                       CellUtil.cloneFamily(cell),
-                                                                       CellUtil.cloneQualifier(cell),
-                                                                       cell.getTimestamp()));
+                            transaction.addWriteSetElement(
+                                    new HBaseCellId(table,
+                                            delete.getRow(),
+                                            CellUtil.cloneFamily(cell),
+                                            CellUtil.cloneQualifier(cell),
+                                            cell.getTimestamp()));
+                            break;
+                        } else {
+                            throw new UnsupportedOperationException(
+                                    "Cannot delete specific versions on Snapshot Isolation.");
+                        }
+                    default:
                         break;
-                    } else {
-                        throw new UnsupportedOperationException(
-                                "Cannot delete specific versions on Snapshot Isolation.");
-                    }
-                default:
-                    break;
                 }
             }
         }
@@ -263,11 +262,11 @@ public class TTable implements Closeable {
                 tsput.add(kv);
 
                 transaction.addWriteSetElement(
-                                               new HBaseCellId(table,
-                                                               CellUtil.cloneRow(kv),
-                                                               CellUtil.cloneFamily(kv),
-                                                               CellUtil.cloneQualifier(kv),
-                                                               kv.getTimestamp()));
+                        new HBaseCellId(table,
+                                CellUtil.cloneRow(kv),
+                                CellUtil.cloneFamily(kv),
+                                CellUtil.cloneQualifier(kv),
+                                kv.getTimestamp()));
             }
         }
 
@@ -316,7 +315,7 @@ public class TTable implements Closeable {
      * @throws IOException
      */
     List<Cell> filterCellsForSnapshot(List<Cell> rawCells, HBaseTransaction transaction,
-            int versionsToRequest) throws IOException {
+                                      int versionsToRequest) throws IOException {
 
         assert (rawCells != null && transaction != null && versionsToRequest >= 1);
 
@@ -399,8 +398,8 @@ public class TTable implements Closeable {
         Get pendingGet = new Get(CellUtil.cloneRow(cell));
         pendingGet.addColumn(CellUtil.cloneFamily(cell), CellUtil.cloneQualifier(cell));
         pendingGet.addColumn(CellUtil.cloneFamily(cell), CellUtils.addShadowCellSuffix(cell.getQualifierArray(),
-                                                                                       cell.getQualifierOffset(),
-                                                                                       cell.getQualifierLength()));
+                cell.getQualifierOffset(),
+                cell.getQualifierLength()));
         pendingGet.setMaxVersions(versionCount);
         pendingGet.setTimeRange(0, cell.getTimestamp());
 
@@ -408,9 +407,9 @@ public class TTable implements Closeable {
     }
 
     private Optional<Long> tryToLocateCellCommitTimestamp(AbstractTransactionManager transactionManager,
-                                                        long epoch,
-                                                        Cell cell,
-                                                        Map<Long, Long> commitCache)
+                                                          long epoch,
+                                                          Cell cell,
+                                                          Map<Long, Long> commitCache)
             throws IOException {
 
         CommitTimestamp tentativeCommitTimestamp =
@@ -418,34 +417,34 @@ public class TTable implements Closeable {
                         cell.getTimestamp(),
                         epoch,
                         new CommitTimestampLocatorImpl(
-                                                       new HBaseCellId(table,
-                                                                       CellUtil.cloneRow(cell),
-                                                                       CellUtil.cloneFamily(cell),
-                                                                       CellUtil.cloneQualifier(cell),
-                                                                       cell.getTimestamp()),
-                                                                       commitCache));
+                                new HBaseCellId(table,
+                                        CellUtil.cloneRow(cell),
+                                        CellUtil.cloneFamily(cell),
+                                        CellUtil.cloneQualifier(cell),
+                                        cell.getTimestamp()),
+                                commitCache));
 
         // If transaction that added the cell was invalidated
-        if (! tentativeCommitTimestamp.isValid()) {
+        if (!tentativeCommitTimestamp.isValid()) {
             return Optional.absent();
         }
 
-        switch(tentativeCommitTimestamp.getLocation()) {
-        case COMMIT_TABLE:
-            // If the commit timestamp is found in the persisted commit table,
-            // that means the writing process of the shadow cell in the post
-            // commit phase of the client probably failed, so we heal the shadow
-            // cell with the right commit timestamp for avoiding further reads to
-            // hit the storage
-            healShadowCell(cell, tentativeCommitTimestamp.getValue());
-        case CACHE:
-        case SHADOW_CELL:
-            return Optional.of(tentativeCommitTimestamp.getValue());
-        case NOT_PRESENT:
-            return Optional.absent();
-        default:
-            assert (false);
-            return Optional.absent();
+        switch (tentativeCommitTimestamp.getLocation()) {
+            case COMMIT_TABLE:
+                // If the commit timestamp is found in the persisted commit table,
+                // that means the writing process of the shadow cell in the post
+                // commit phase of the client probably failed, so we heal the shadow
+                // cell with the right commit timestamp for avoiding further reads to
+                // hit the storage
+                healShadowCell(cell, tentativeCommitTimestamp.getValue());
+            case CACHE:
+            case SHADOW_CELL:
+                return Optional.of(tentativeCommitTimestamp.getValue());
+            case NOT_PRESENT:
+                return Optional.absent();
+            default:
+                assert (false);
+                return Optional.absent();
         }
     }
 
@@ -453,8 +452,8 @@ public class TTable implements Closeable {
         Put put = new Put(CellUtil.cloneRow(cell));
         byte[] family = CellUtil.cloneFamily(cell);
         byte[] shadowCellQualifier = CellUtils.addShadowCellSuffix(cell.getQualifierArray(),
-                                                                   cell.getQualifierOffset(),
-                                                                   cell.getQualifierLength());
+                cell.getQualifierOffset(),
+                cell.getQualifierLength());
         put.add(family, shadowCellQualifier, cell.getTimestamp(), Bytes.toBytes(commitTimestamp));
         try {
             healerTable.put(put);
@@ -536,10 +535,12 @@ public class TTable implements Closeable {
                     throw new RuntimeException(e);
                 }
             }
+
             @Override
             public boolean hasNext() {
-                return currentResult!=null && !currentResult.isEmpty();
+                return currentResult != null && !currentResult.isEmpty();
             }
+
             @Override
             public Result next() {
                 try {
@@ -695,7 +696,7 @@ public class TTable implements Closeable {
     /**
      * Delegates to {@link HTable.flushCommits()}
      */
-    public void flushCommits() throws IOException{
+    public void flushCommits() throws IOException {
         table.flushCommits();
     }
 
@@ -733,7 +734,7 @@ public class TTable implements Closeable {
         } else {
             throw new IllegalArgumentException(
                     String.format("The transaction object passed %s is not an instance of HBaseTransaction",
-                                  tx.getClass().getName()));
+                            tx.getClass().getName()));
         }
     }
 
@@ -758,7 +759,7 @@ public class TTable implements Closeable {
         };
 
         return Multimaps.index(Iterables.filter(rawCells, shadowCellFilter), cellToColumnWrapper)
-                        .asMap().values()
-                        .asList();
+                .asMap().values()
+                .asList();
     }
 }

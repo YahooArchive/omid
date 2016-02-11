@@ -1,12 +1,11 @@
 package com.yahoo.omid.tsoclient;
 
-import java.util.concurrent.ExecutionException;
-
+import com.yahoo.omid.proto.TSOProto;
+import com.yahoo.omid.proto.TSOProto.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.yahoo.omid.proto.TSOProto;
-import com.yahoo.omid.proto.TSOProto.Response;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Communication endpoint for TSO clients.
@@ -33,9 +32,9 @@ public class TSOClientOneShot {
         TSOProto.HandshakeRequest.Builder handshake = TSOProto.HandshakeRequest.newBuilder();
         handshake.setClientCapabilities(TSOProto.Capabilities.newBuilder().build());
         raw.write(TSOProto.Request.newBuilder()
-                  .setHandshakeRequest(handshake.build()).build());
+                .setHandshakeRequest(handshake.build()).build());
         Response response = raw.getResponse().get();
-        assert(response.getHandshakeResponse().getClientCompatible());
+        assert (response.getHandshakeResponse().getClientCompatible());
 
         raw.write(request);
         response = raw.getResponse().get();

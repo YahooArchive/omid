@@ -108,8 +108,9 @@ public class TestTSOClientConnectionToTSO {
         clientConf.setProperty(TSO_PORT_CONFKEY, tsoPortForTest);
 
         // Launch a TSO WITHOUT publishing the address in ZK...
-        injector =
-            Guice.createInjector(new TSOMockModule(TSOServerCommandLineConfig.configFactory(tsoPortForTest, 1000)));
+        String[] configArgs = new String[]{"-port", Integer.toString(tsoPortForTest), "-maxItems", "1000"};
+        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.parseConfig(configArgs);
+        injector = Guice.createInjector(new TSOMockModule(tsoConfig));
         LOG.info("Starting TSO");
         tsoServer = injector.getInstance(TSOServer.class);
         tsoServer.startAndWait();
@@ -141,7 +142,8 @@ public class TestTSOClientConnectionToTSO {
         clientConf.setProperty(TSO_ZK_CLUSTER_CONFKEY, zkClusterForTest);
 
         // Launch a TSO publishing the address in ZK...
-        TSOServerCommandLineConfig config = TSOServerCommandLineConfig.configFactory(tsoPortForTest, 1000);
+        String[] configArgs = new String[]{"-port", Integer.toString(tsoPortForTest), "-maxItems", "1000"};
+        TSOServerCommandLineConfig config = TSOServerCommandLineConfig.parseConfig(configArgs);
         config.shouldHostAndPortBePublishedInZK = true;
         config.setLeasePeriodInMs(1000);
         config.setZKCluster(zkClusterForTest);
@@ -170,11 +172,13 @@ public class TestTSOClientConnectionToTSO {
         LOG.info("TSO Server Stopped");
 
     }
+
     @Test(timeOut = 30_000)
     public void testSuccessOfTSOClientReconnectionsToARestartedTSOWithZKPublishing() throws Exception {
 
         // Start a TSO with ZK...
-        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.configFactory(tsoPortForTest, 1000);
+        String[] configArgs = new String[]{"-port", Integer.toString(tsoPortForTest), "-maxItems", "1000"};
+        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.parseConfig(configArgs);
         tsoConfig.shouldHostAndPortBePublishedInZK = true;
         tsoConfig.setLeasePeriodInMs(1000);
         tsoConfig.setZKCluster(zkClusterForTest);
@@ -215,8 +219,8 @@ public class TestTSOClientConnectionToTSO {
             FsmImpl fsm = (FsmImpl) clientimpl.fsm;
             assertEquals(e.getCause().getClass(), ConnectionException.class);
             assertTrue(fsm.getState().getClass().equals(TSOClientImpl.ConnectionFailedState.class)
-                       ||
-                       fsm.getState().getClass().equals(TSOClientImpl.DisconnectedState.class));
+                    ||
+                    fsm.getState().getClass().equals(TSOClientImpl.DisconnectedState.class));
         }
 
         // After that, simulate that a new TSO has been launched...

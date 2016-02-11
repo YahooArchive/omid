@@ -31,23 +31,23 @@ public class TestCellUtils {
     @DataProvider(name = "shadow-cell-suffixes")
     public Object[][] createShadowCellSuffixes() {
         return new Object[][]{
-            {SHADOW_CELL_SUFFIX},
-            };
+                {SHADOW_CELL_SUFFIX},
+        };
     }
 
     @Test(dataProvider = "shadow-cell-suffixes")
     public void testShadowCellQualifiers(byte[] shadowCellSuffixToTest) throws IOException {
 
         final byte[] validShadowCellQualifier =
-            com.google.common.primitives.Bytes.concat(qualifier, shadowCellSuffixToTest);
+                com.google.common.primitives.Bytes.concat(qualifier, shadowCellSuffixToTest);
         final byte[] sandwichValidShadowCellQualifier =
-            com.google.common.primitives.Bytes.concat(shadowCellSuffixToTest, validShadowCellQualifier);
+                com.google.common.primitives.Bytes.concat(shadowCellSuffixToTest, validShadowCellQualifier);
         final byte[] doubleEndedValidShadowCellQualifier =
-            com.google.common.primitives.Bytes.concat(validShadowCellQualifier, shadowCellSuffixToTest);
+                com.google.common.primitives.Bytes.concat(validShadowCellQualifier, shadowCellSuffixToTest);
         final byte[] interleavedValidShadowCellQualifier =
-            com.google.common.primitives.Bytes.concat(validShadowCellQualifier,
-                                                      com.google.common.primitives.Bytes
-                                                          .concat(validShadowCellQualifier, validShadowCellQualifier));
+                com.google.common.primitives.Bytes.concat(validShadowCellQualifier,
+                        com.google.common.primitives.Bytes
+                                .concat(validShadowCellQualifier, validShadowCellQualifier));
         final byte[] value = Bytes.toBytes("test-value");
 
         // Test the qualifier passed is a shadow cell
@@ -83,11 +83,11 @@ public class TestCellUtils {
     public void testCorrectMapingOfCellsToShadowCells() throws IOException {
         // Create the required data
         final byte[] validShadowCellQualifier =
-            com.google.common.primitives.Bytes.concat(qualifier, SHADOW_CELL_SUFFIX);
+                com.google.common.primitives.Bytes.concat(qualifier, SHADOW_CELL_SUFFIX);
 
         final byte[] qualifier2 = Bytes.toBytes("test-qual2");
         final byte[] validShadowCellQualifier2 =
-            com.google.common.primitives.Bytes.concat(qualifier2, SHADOW_CELL_SUFFIX);
+                com.google.common.primitives.Bytes.concat(qualifier2, SHADOW_CELL_SUFFIX);
 
         final byte[] qualifier3 = Bytes.toBytes("test-qual3");
 
@@ -115,8 +115,8 @@ public class TestCellUtils {
         KeyValue lastKey = (KeyValue) cellsToShadowCells.lastKey();
         assertTrue(firstKey.equals(lastKey));
         assertTrue("Should be equal", 0 == Bytes.compareTo(
-            firstKey.getValueArray(), firstKey.getValueOffset(), firstKey.getValueLength(),
-            cell1.getValueArray(), cell1.getValueOffset(), cell1.getValueLength()));
+                firstKey.getValueArray(), firstKey.getValueOffset(), firstKey.getValueLength(),
+                cell1.getValueArray(), cell1.getValueOffset(), cell1.getValueLength()));
 
         // Modify dup shadow cell to have a greater MVCC and check that is replaced
         HBaseShims.setKeyValueSequenceId((KeyValue) dupCell1WithAnotherValue, 1);
@@ -127,9 +127,9 @@ public class TestCellUtils {
         lastKey = (KeyValue) cellsToShadowCells.lastKey();
         assertTrue(firstKey.equals(lastKey));
         assertTrue("Should be equal", 0 == Bytes.compareTo(
-            firstKey.getValueArray(), firstKey.getValueOffset(), firstKey.getValueLength(),
-            dupCell1WithAnotherValue.getValueArray(), dupCell1WithAnotherValue.getValueOffset(),
-            dupCell1WithAnotherValue.getValueLength()));
+                firstKey.getValueArray(), firstKey.getValueOffset(), firstKey.getValueLength(),
+                dupCell1WithAnotherValue.getValueArray(), dupCell1WithAnotherValue.getValueOffset(),
+                dupCell1WithAnotherValue.getValueLength()));
         // Check a list of cells with duplicate values
         List<Cell> cellListWithDups = new ArrayList<>();
         cellListWithDups.add(cell1);
@@ -157,8 +157,8 @@ public class TestCellUtils {
 
         Cell cell = new KeyValue(row, family, qualifier, 1, Bytes.toBytes("value"));
         byte[] suffixedQualifier = CellUtils.addShadowCellSuffix(cell.getQualifierArray(),
-                                                                 cell.getQualifierOffset(),
-                                                                 cell.getQualifierLength());
+                cell.getQualifierOffset(),
+                cell.getQualifierLength());
         byte[] expectedQualifier = com.google.common.primitives.Bytes.concat(qualifier, SHADOW_CELL_SUFFIX);
         assertEquals(expectedQualifier, suffixedQualifier);
 
@@ -171,8 +171,8 @@ public class TestCellUtils {
         byte[] suffixedQualifier = com.google.common.primitives.Bytes.concat(qualifier, shadowCellSuffixToTest);
         Cell cell = new KeyValue(row, family, suffixedQualifier, 1, Bytes.toBytes("value"));
         byte[] resultedQualifier = CellUtils.removeShadowCellSuffix(cell.getQualifierArray(),
-                                                                    cell.getQualifierOffset(),
-                                                                    cell.getQualifierLength());
+                cell.getQualifierOffset(),
+                cell.getQualifierLength());
         byte[] expectedQualifier = qualifier;
         assertEquals(expectedQualifier, resultedQualifier);
 
@@ -181,8 +181,8 @@ public class TestCellUtils {
         Cell badCell = new KeyValue(row, family, badlySuffixedQualifier, 1, Bytes.toBytes("value"));
         try {
             CellUtils.removeShadowCellSuffix(badCell.getQualifierArray(),
-                                             badCell.getQualifierOffset(),
-                                             badCell.getQualifierLength());
+                    badCell.getQualifierOffset(),
+                    badCell.getQualifierLength());
             fail();
         } catch (IllegalArgumentException e) {
             // Expected
@@ -201,12 +201,12 @@ public class TestCellUtils {
         // Test suffixed qualifier
         byte[] suffixedQualifier = com.google.common.primitives.Bytes.concat(qualifier, shadowCellSuffixToTest);
         int originalQualifierLength =
-            CellUtils.qualifierLengthFromShadowCellQualifier(suffixedQualifier, 0, suffixedQualifier.length);
+                CellUtils.qualifierLengthFromShadowCellQualifier(suffixedQualifier, 0, suffixedQualifier.length);
         assertEquals(qualifier.length, originalQualifierLength);
 
         // Test passing qualifier without shadow cell suffix
         originalQualifierLength =
-            CellUtils.qualifierLengthFromShadowCellQualifier(qualifier, 0, qualifier.length);
+                CellUtils.qualifierLengthFromShadowCellQualifier(qualifier, 0, qualifier.length);
         assertEquals(qualifier.length, originalQualifierLength);
     }
 

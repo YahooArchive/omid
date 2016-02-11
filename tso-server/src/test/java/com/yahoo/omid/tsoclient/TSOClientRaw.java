@@ -1,22 +1,19 @@
 package com.yahoo.omid.tsoclient;
 
-import java.net.InetSocketAddress;
-import java.util.concurrent.Future;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ArrayBlockingQueue;
-
+import com.google.common.util.concurrent.SettableFuture;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.yahoo.omid.proto.TSOProto;
+import com.yahoo.omid.proto.TSOProto.Response;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFactory;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelPipeline;
+import org.jboss.netty.channel.ChannelStateEvent;
+import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
-import org.jboss.netty.channel.ExceptionEvent;
-import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.handler.codec.frame.LengthFieldBasedFrameDecoder;
 import org.jboss.netty.handler.codec.frame.LengthFieldPrepender;
@@ -25,10 +22,12 @@ import org.jboss.netty.handler.codec.protobuf.ProtobufEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.util.concurrent.SettableFuture;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.yahoo.omid.proto.TSOProto;
-import com.yahoo.omid.proto.TSOProto.Response;
+import java.net.InetSocketAddress;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * Raw client for communicating with tso server directly with protobuf messages
@@ -38,7 +37,7 @@ public class TSOClientRaw {
     private static final Logger LOG = LoggerFactory.getLogger(TSOClientRaw.class);
 
     private final BlockingQueue<SettableFuture<Response>> responseQueue
-        = new ArrayBlockingQueue<SettableFuture<Response>>(5);
+            = new ArrayBlockingQueue<SettableFuture<Response>>(5);
     private final Channel channel;
 
     public TSOClientRaw(String host, int port) throws InterruptedException, ExecutionException {
@@ -55,10 +54,10 @@ public class TSOClientRaw {
 
         ChannelPipeline pipeline = bootstrap.getPipeline();
         pipeline.addLast("lengthbaseddecoder",
-                         new LengthFieldBasedFrameDecoder(8*1024, 0, 4, 0, 4));
+                new LengthFieldBasedFrameDecoder(8 * 1024, 0, 4, 0, 4));
         pipeline.addLast("lengthprepender", new LengthFieldPrepender(4));
         pipeline.addLast("protobufdecoder",
-                         new ProtobufDecoder(TSOProto.Response.getDefaultInstance()));
+                new ProtobufDecoder(TSOProto.Response.getDefaultInstance()));
         pipeline.addLast("protobufencoder", new ProtobufEncoder());
 
         Handler handler = new Handler();

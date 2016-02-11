@@ -31,7 +31,11 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static org.mockito.Matchers.*;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyCollectionOf;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
@@ -53,7 +57,7 @@ public class TestTSOChannelHandlerNetty {
     @BeforeMethod
     public void beforeTestMethod() {
         MockitoAnnotations.initMocks(this);
-        String[] confString = { "-port", "1434" };
+        String[] confString = {"-port", "1434"};
         TSOServerCommandLineConfig config = TSOServerCommandLineConfig.parseConfig(confString);
         channelHandler = new TSOChannelHandler(config, requestProcessor, new NullMetricsProvider());
     }
@@ -63,7 +67,7 @@ public class TestTSOChannelHandlerNetty {
         channelHandler.close();
     }
 
-    @Test(timeOut=10_000)
+    @Test(timeOut = 10_000)
     public void testMainAPI() throws Exception {
 
         // Check initial state
@@ -110,7 +114,7 @@ public class TestTSOChannelHandlerNetty {
 
     }
 
-    @Test(timeOut=10_000)
+    @Test(timeOut = 10_000)
     public void testNettyConnectionToTSOFromClient() throws Exception {
 
         ClientBootstrap nettyClient = createNettyClientBootstrap();
@@ -120,7 +124,7 @@ public class TestTSOChannelHandlerNetty {
         // ////////////////////////////////////////////////////////////////////
         // Test the client can't connect cause the server is not there
         // ////////////////////////////////////////////////////////////////////
-        while(!channelF.isDone()) /** do nothing */ ;
+        while (!channelF.isDone()) /** do nothing */ ;
         assertFalse(channelF.isSuccess());
 
         // ////////////////////////////////////////////////////////////////////
@@ -135,11 +139,11 @@ public class TestTSOChannelHandlerNetty {
         // Test that a client can connect now
         // ////////////////////////////////////////////////////////////////////
         channelF = nettyClient.connect(new InetSocketAddress("localhost", 1434));
-        while(!channelF.isDone()) /** do nothing */ ;
+        while (!channelF.isDone()) /** do nothing */ ;
         assertTrue(channelF.isSuccess());
         assertTrue(channelF.getChannel().isConnected());
         // Eventually the channel group of the server should have 2 elements
-        while(channelHandler.channelGroup.size() != 2) /** do nothing */ ;
+        while (channelHandler.channelGroup.size() != 2) /** do nothing */ ;
 
         // ////////////////////////////////////////////////////////////////////
         // Close the channel on the client side and test we have one element
@@ -147,17 +151,17 @@ public class TestTSOChannelHandlerNetty {
         // ////////////////////////////////////////////////////////////////////
         channelF.getChannel().close().await();
         // Eventually the channel group of the server should have only one element
-        while(channelHandler.channelGroup.size() != 1) /** do nothing */ ;
+        while (channelHandler.channelGroup.size() != 1) /** do nothing */ ;
 
         // ////////////////////////////////////////////////////////////////////
         // Open a new channel and test the connection closing on the server side
         // through the channel handler
         // ////////////////////////////////////////////////////////////////////
         channelF = nettyClient.connect(new InetSocketAddress("localhost", 1434));
-        while(!channelF.isDone()) /** do nothing */ ;
+        while (!channelF.isDone()) /** do nothing */ ;
         assertTrue(channelF.isSuccess());
         // Eventually the channel group of the server should have 2 elements again
-        while(channelHandler.channelGroup.size() != 2) /** do nothing */ ;
+        while (channelHandler.channelGroup.size() != 2) /** do nothing */ ;
         channelHandler.closeConnection();
         assertFalse(channelHandler.listeningChannel.isOpen());
         assertEquals(channelHandler.channelGroup.size(), 0);
@@ -175,10 +179,10 @@ public class TestTSOChannelHandlerNetty {
         assertEquals(channelHandler.channelGroup.size(), 1);
         // Check the client can connect
         channelF = nettyClient.connect(new InetSocketAddress("localhost", 1434));
-        while(!channelF.isDone()) /** do nothing */ ;
+        while (!channelF.isDone()) /** do nothing */ ;
         assertTrue(channelF.isSuccess());
         // Eventually the channel group of the server should have 2 elements
-        while(channelHandler.channelGroup.size() != 2) /** do nothing */ ;
+        while (channelHandler.channelGroup.size() != 2) /** do nothing */ ;
         // Re-connect and check that client connection was gone
         channelHandler.reconnect();
         assertTrue(channelHandler.listeningChannel.isOpen());
@@ -196,7 +200,7 @@ public class TestTSOChannelHandlerNetty {
         assertEquals(channelHandler.channelGroup.size(), 0);
     }
 
-    @Test(timeOut=10_000)
+    @Test(timeOut = 10_000)
     public void testNettyChannelWriting() throws Exception {
 
         // ////////////////////////////////////////////////////////////////////
@@ -209,12 +213,12 @@ public class TestTSOChannelHandlerNetty {
         ClientBootstrap nettyClient = createNettyClientBootstrap();
         ChannelFuture channelF = nettyClient.connect(new InetSocketAddress("localhost", 1434));
         // Basic checks for connection
-        while(!channelF.isDone()) /** do nothing */ ;
+        while (!channelF.isDone()) /** do nothing */ ;
         assertTrue(channelF.isSuccess());
         assertTrue(channelF.getChannel().isConnected());
         Channel channel = channelF.getChannel();
         // Eventually the channel group of the server should have 2 elements
-        while(channelHandler.channelGroup.size() != 2) /** do nothing */ ;
+        while (channelHandler.channelGroup.size() != 2) /** do nothing */ ;
         // Write first handshake request
         TSOProto.HandshakeRequest.Builder handshake = TSOProto.HandshakeRequest.newBuilder();
         // NOTE: Add here the required handshake capabilities when necessary

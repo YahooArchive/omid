@@ -2,7 +2,6 @@ package com.yahoo.omid.transaction;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import com.google.inject.name.Names;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.metrics.MetricsRegistry;
@@ -21,7 +20,6 @@ import com.yahoo.omid.tso.TSOStateManager;
 import com.yahoo.omid.tso.TSOStateManagerImpl;
 import com.yahoo.omid.tso.TimestampOracle;
 import com.yahoo.omid.tso.ZKModule;
-
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
@@ -32,7 +30,6 @@ import javax.inject.Singleton;
 
 import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
 import static com.yahoo.omid.ZKConstants.TSO_LEASE_PATH;
-import static com.yahoo.omid.tso.RequestProcessorImpl.TSO_MAX_ITEMS_KEY;
 import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
 
 /**
@@ -61,8 +58,6 @@ class TestTSOModule extends AbstractModule {
         bind(Panicker.class).to(MockPanicker.class).in(Singleton.class);
 
         // Disruptor setup
-        // Overwrite default value
-        bindConstant().annotatedWith(Names.named(TSO_MAX_ITEMS_KEY)).to(config.getMaxItems());
         install(new DisruptorModule());
 
         // ZK Module
@@ -78,17 +73,17 @@ class TestTSOModule extends AbstractModule {
                                         TSOStateManager stateManager,
                                         CuratorFramework zkClient,
                                         Panicker panicker)
-        throws LeaseManagement.LeaseManagementException {
+            throws LeaseManagement.LeaseManagementException {
 
         LOG.info("Connection to ZK cluster [{}]", zkClient.getState());
         return new PausableLeaseManager(tsoHostAndPort,
-                                        tsoChannelHandler,
-                                        stateManager,
-                                        config.getLeasePeriodInMs(),
-                                        TSO_LEASE_PATH,
-                                        CURRENT_TSO_PATH,
-                                        zkClient,
-                                        panicker);
+                tsoChannelHandler,
+                stateManager,
+                config.getLeasePeriodInMs(),
+                TSO_LEASE_PATH,
+                CURRENT_TSO_PATH,
+                zkClient,
+                panicker);
     }
 
     @Provides

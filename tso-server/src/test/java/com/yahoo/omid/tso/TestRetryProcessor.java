@@ -1,11 +1,11 @@
 package com.yahoo.omid.tso;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.timeout;
-import static org.mockito.Mockito.verify;
-import static org.testng.AssertJUnit.assertEquals;
-
+import com.google.common.base.Optional;
+import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
+import com.yahoo.omid.committable.InMemoryCommitTable;
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.metrics.NullMetricsProvider;
 import org.jboss.netty.channel.Channel;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -16,12 +16,11 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import com.google.common.base.Optional;
-import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
-import com.yahoo.omid.committable.InMemoryCommitTable;
-import com.yahoo.omid.metrics.MetricsRegistry;
-import com.yahoo.omid.metrics.NullMetricsProvider;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
+import static org.testng.AssertJUnit.assertEquals;
 
 public class TestRetryProcessor {
 
@@ -72,7 +71,7 @@ public class TestRetryProcessor {
         retryProc.disambiguateRetryRequestHeuristically(ST_TX_1, channel, new MonitoringContext(metrics));
         ArgumentCaptor<Long> secondTScapture = ArgumentCaptor.forClass(Long.class);
         verify(replyProc, timeout(100).times(1))
-                        .commitResponse(eq(false), firstTScapture.capture(), secondTScapture.capture(), any(Channel.class), any(MonitoringContext.class));
+                .commitResponse(eq(false), firstTScapture.capture(), secondTScapture.capture(), any(Channel.class), any(MonitoringContext.class));
 
         startTS = firstTScapture.getValue();
         long commitTS = secondTScapture.getValue();
@@ -97,7 +96,7 @@ public class TestRetryProcessor {
 
         // Test we'll reply with an abort for a retry request when the
         // transaction id IS in the commit table BUT invalidated
-        retryProc.disambiguateRetryRequestHeuristically(ST_TX_1, channel,new MonitoringContext(metrics));
+        retryProc.disambiguateRetryRequestHeuristically(ST_TX_1, channel, new MonitoringContext(metrics));
         ArgumentCaptor<Long> startTScapture = ArgumentCaptor.forClass(Long.class);
         verify(replyProc, timeout(100).times(1)).abortResponse(startTScapture.capture(), any(Channel.class), any(MonitoringContext.class));
 

@@ -15,12 +15,11 @@
  */
 package com.yahoo.omid.transaction;
 
-import java.io.IOException;
-
+import com.yahoo.omid.transaction.CellUtils.CellGetter;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
 
-import com.yahoo.omid.transaction.CellUtils.CellGetter;
+import java.io.IOException;
 
 public class TTableCellGetterAdapter implements CellGetter {
 

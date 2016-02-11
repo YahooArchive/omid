@@ -24,23 +24,18 @@ import com.google.inject.Provides;
 import com.yahoo.omid.tools.hbase.HBaseLogin;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig.CommitTableStore;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig.TimestampStore;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.net.NetworkInterface;
-import java.net.SocketException;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.List;
-
-import javax.inject.Inject;
-import javax.inject.Singleton;
 
 @Singleton
 public class TSOServer extends AbstractIdleService {
@@ -136,7 +131,7 @@ public class TSOServer extends AbstractIdleService {
                 LOG.info("\t* Timestamp store set to {}", module);
             } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException e) {
                 throw new IllegalStateException(
-                    String.format("Class named '%s' was not found in classpath", className));
+                        String.format("Class named '%s' was not found in classpath", className));
             }
         }
 
@@ -153,13 +148,13 @@ public class TSOServer extends AbstractIdleService {
                 LOG.info("\t* Commit table store set to {}", module);
             } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException e) {
                 throw new IllegalStateException(
-                    String.format("Class named '%s' was not found in classpath", className));
+                        String.format("Class named '%s' was not found in classpath", className));
             }
         }
 
         private void addHBaseConfigModuleIfRequired() throws IOException {
             if (config.getCommitTableStore() == CommitTableStore.HBASE
-                || config.getTimestampStore() == TimestampStore.HBASE) {
+                    || config.getTimestampStore() == TimestampStore.HBASE) {
                 guiceModules.add(new HBaseConfigModule());
                 HBaseLogin.loginIfNeeded(config.getLoginFlags());
             }
@@ -168,10 +163,10 @@ public class TSOServer extends AbstractIdleService {
         static Module instantiateGuiceMetricsModule(String className, List<String> metricsConfigs) {
             try {
                 return Module.class.cast(Class.forName(className)
-                                             .getConstructor(List.class)
-                                             .newInstance(metricsConfigs));
+                        .getConstructor(List.class)
+                        .newInstance(metricsConfigs));
             } catch (InstantiationException | IllegalAccessException | ClassNotFoundException
-                | NoSuchMethodException | IllegalStateException | InvocationTargetException e) {
+                    | NoSuchMethodException | IllegalStateException | InvocationTargetException e) {
                 LOG.error("Error instantiating and casting Guice metrics module from class {})", className, e);
                 throw new IllegalStateException(e);
             }

@@ -15,11 +15,11 @@
  */
 package com.yahoo.omid.committable;
 
-import java.io.IOException;
-
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+
+import java.io.IOException;
 
 public class NullCommitTable implements CommitTable {
     @Override
@@ -58,7 +58,8 @@ public class NullCommitTable implements CommitTable {
         }
 
         @Override
-        public void close() {}
+        public void close() {
+        }
 
     }
 
@@ -86,6 +87,7 @@ public class NullCommitTable implements CommitTable {
         }
 
         @Override
-        public void close() {}
+        public void close() {
+        }
     }
 }

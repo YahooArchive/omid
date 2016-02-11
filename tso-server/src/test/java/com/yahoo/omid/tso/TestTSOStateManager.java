@@ -1,5 +1,12 @@
 package com.yahoo.omid.tso;
 
+import com.yahoo.omid.tso.TSOStateManager.StateObserver;
+import com.yahoo.omid.tso.TSOStateManager.TSOState;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+
+import java.io.IOException;
+
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -8,14 +15,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
 import static org.testng.AssertJUnit.assertTrue;
-
-import java.io.IOException;
-
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
-
-import com.yahoo.omid.tso.TSOStateManager.StateObserver;
-import com.yahoo.omid.tso.TSOStateManager.TSOState;
 
 public class TestTSOStateManager {
 

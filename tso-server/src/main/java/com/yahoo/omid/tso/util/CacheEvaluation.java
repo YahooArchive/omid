@@ -15,13 +15,13 @@
  */
 package com.yahoo.omid.tso.util;
 
+import com.yahoo.omid.tso.Cache;
+import com.yahoo.omid.tso.LongCache;
+
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.Random;
-
-import com.yahoo.omid.tso.Cache;
-import com.yahoo.omid.tso.LongCache;
 
 public class CacheEvaluation {
 
@@ -96,7 +96,7 @@ public class CacheEvaluation {
     }
 
     public static void main(String[] args) throws FileNotFoundException, UnsupportedEncodingException {
-        int[] asoc = new int[] { 8, 16, 32 };
+        int[] asoc = new int[]{8, 16, 32};
         for (int i = 0; i < asoc.length; ++i) {
             PrintWriter writer = new PrintWriter(asoc[i] + ".out", "UTF-8");
             new CacheEvaluation().testEntriesAge(new LongCache(ENTRIES, asoc[i]), writer);

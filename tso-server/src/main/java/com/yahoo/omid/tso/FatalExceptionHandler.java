@@ -33,7 +33,7 @@ public class FatalExceptionHandler implements ExceptionHandler {
                                      long sequence,
                                      Object event) {
         LOG.error("Uncaught exception throws for sequence {}, event {}",
-                  new Object[] { sequence, event, ex });
+                new Object[]{sequence, event, ex});
         panicker.panic("Uncaught exception in disruptor thread", ex);
     }
 

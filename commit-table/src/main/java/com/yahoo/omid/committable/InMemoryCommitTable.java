@@ -68,22 +68,23 @@ public class InMemoryCommitTable implements CommitTable {
         }
 
         @Override
-        public void close() {}
+        public void close() {
+        }
     }
 
     public class Client implements CommitTable.Client {
         @Override
         public ListenableFuture<Optional<CommitTimestamp>> getCommitTimestamp(long startTimestamp) {
-            SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>> create();
+            SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>>create();
             Long result = table.get(startTimestamp);
             if (result == null) {
-                f.set(Optional.<CommitTimestamp> absent());
+                f.set(Optional.<CommitTimestamp>absent());
             } else {
                 if (result == INVALID_TRANSACTION_MARKER) {
-                    f.set(Optional.<CommitTimestamp> of(new CommitTimestamp(Location.COMMIT_TABLE,
+                    f.set(Optional.<CommitTimestamp>of(new CommitTimestamp(Location.COMMIT_TABLE,
                             INVALID_TRANSACTION_MARKER, false)));
                 } else {
-                    f.set(Optional.<CommitTimestamp> of(new CommitTimestamp(Location.COMMIT_TABLE, result, true)));
+                    f.set(Optional.<CommitTimestamp>of(new CommitTimestamp(Location.COMMIT_TABLE, result, true)));
                 }
             }
             return f;
@@ -91,7 +92,7 @@ public class InMemoryCommitTable implements CommitTable {
 
         @Override
         public ListenableFuture<Long> readLowWatermark() {
-            SettableFuture<Long> f = SettableFuture.<Long> create();
+            SettableFuture<Long> f = SettableFuture.<Long>create();
             f.set(lowWatermark);
             return f;
         }
@@ -134,7 +135,8 @@ public class InMemoryCommitTable implements CommitTable {
         }
 
         @Override
-        public void close() {}
+        public void close() {
+        }
     }
 
     public int countElements() {

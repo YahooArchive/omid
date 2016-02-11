@@ -15,15 +15,13 @@
  */
 package com.yahoo.omid.tso;
 
-import java.io.IOException;
-
-import javax.inject.Inject;
-
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.timestamp.storage.TimestampStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.yahoo.omid.metrics.MetricsRegistry;
-import com.yahoo.omid.timestamp.storage.TimestampStorage;
+import javax.inject.Inject;
+import java.io.IOException;
 
 public class PausableTimestampOracle extends TimestampOracleImpl {
 

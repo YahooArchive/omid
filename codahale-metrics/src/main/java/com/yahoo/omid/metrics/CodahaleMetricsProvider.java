@@ -30,6 +30,7 @@ import com.yahoo.omid.metrics.CodahaleMetricsConfig.Reporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;

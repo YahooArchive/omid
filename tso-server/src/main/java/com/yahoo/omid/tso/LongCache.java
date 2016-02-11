@@ -21,13 +21,13 @@ public class LongCache implements Cache {
 
     public static final long RESET_VALUE = 0L;
 
-    private final long [] cache;
+    private final long[] cache;
     private final int size;
     private final int associativity;
-    
+
     public LongCache(int size, int associativity) {
         this.size = size;
-        this.cache = new long[2*(size + associativity)];
+        this.cache = new long[2 * (size + associativity)];
         this.associativity = associativity;
     }
 
@@ -60,7 +60,7 @@ public class LongCache implements Cache {
         cache[oldestIndex + 1] = value;
         return oldestValue;
     }
-    
+
     /* (non-Javadoc)
      * @see com.yahoo.omid.tso.Cache#get(long)
      */

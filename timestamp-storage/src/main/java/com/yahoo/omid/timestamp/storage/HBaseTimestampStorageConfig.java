@@ -15,13 +15,13 @@
  */
 package com.yahoo.omid.timestamp.storage;
 
-import static com.yahoo.omid.timestamp.storage.TimestampStorage.TIMESTAMPSTORAGE_TABLE_NAME_KEY;
-import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
+import com.google.inject.Inject;
 
 import javax.inject.Named;
 import javax.inject.Singleton;
 
-import com.google.inject.Inject;
+import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.timestamp.storage.TimestampStorage.TIMESTAMPSTORAGE_TABLE_NAME_KEY;
 
 @Singleton
 public class HBaseTimestampStorageConfig {

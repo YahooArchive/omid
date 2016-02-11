@@ -51,7 +51,7 @@ public class TestOmidTableManager {
     @Test(timeOut = 20_000)
     public void testCreateDefaultTimestampTableSucceeds() throws Throwable {
 
-        String[] args = new String[] {TIMESTAMP_TABLE_COMMAND_NAME};
+        String[] args = new String[]{TIMESTAMP_TABLE_COMMAND_NAME};
 
         OmidTableManager omidTableManager = new OmidTableManager(args);
         omidTableManager.executeActionsOnHBase(hbaseConf);
@@ -67,7 +67,7 @@ public class TestOmidTableManager {
     @Test(timeOut = 20_000)
     public void testCreateDefaultCommitTableSucceeds() throws Throwable {
 
-        String[] args = new String[] {COMMIT_TABLE_COMMAND_NAME};
+        String[] args = new String[]{COMMIT_TABLE_COMMAND_NAME};
 
         OmidTableManager omidTableManager = new OmidTableManager(args);
         omidTableManager.executeActionsOnHBase(hbaseConf);
@@ -83,7 +83,7 @@ public class TestOmidTableManager {
     @Test(timeOut = 20_000)
     public void testCreateCustomCommitTableSucceeds() throws Throwable {
 
-        String[] args = new String[] {COMMIT_TABLE_COMMAND_NAME, "-tableName", "my-commit-table", "-numRegions", "1"};
+        String[] args = new String[]{COMMIT_TABLE_COMMAND_NAME, "-tableName", "my-commit-table", "-numRegions", "1"};
 
         OmidTableManager omidTableManager = new OmidTableManager(args);
         omidTableManager.executeActionsOnHBase(hbaseConf);

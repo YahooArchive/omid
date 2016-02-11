@@ -69,7 +69,8 @@ public class TestTSOClientRequestAndResponseBehaviours {
     @BeforeClass
     public void setup() throws Exception {
 
-        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.configFactory(TSO_SERVER_PORT, 1000);
+        String[] configArgs = new String[]{"-port", Integer.toString(TSO_SERVER_PORT), "-maxItems", "1000"};
+        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.parseConfig(configArgs);
         Module tsoServerMockModule = new TSOMockModule(tsoConfig);
         Injector injector = Guice.createInjector(tsoServerMockModule);
 
@@ -223,7 +224,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
     public void testOutOfOrderMessages() throws Exception {
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(tsoClientConf).build();
-        TSOClientOneShot clientOneShot =  new TSOClientOneShot(TSO_SERVER_HOST, TSO_SERVER_PORT);
+        TSOClientOneShot clientOneShot = new TSOClientOneShot(TSO_SERVER_HOST, TSO_SERVER_PORT);
 
         long ts1 = client.getNewStartTimestamp().get();
 
@@ -237,7 +238,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
     public void testDuplicateCommitAborting() throws Exception {
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(tsoClientConf).build();
-        TSOClientOneShot clientOneShot =  new TSOClientOneShot(TSO_SERVER_HOST, TSO_SERVER_PORT);
+        TSOClientOneShot clientOneShot = new TSOClientOneShot(TSO_SERVER_HOST, TSO_SERVER_PORT);
 
         long ts1 = client.getNewStartTimestamp().get();
         long ts2 = client.getNewStartTimestamp().get();
@@ -253,15 +254,15 @@ public class TestTSOClientRequestAndResponseBehaviours {
     public void testDuplicateCommit() throws Exception {
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(tsoClientConf).build();
-        TSOClientOneShot clientOneShot =  new TSOClientOneShot(TSO_SERVER_HOST, TSO_SERVER_PORT);
+        TSOClientOneShot clientOneShot = new TSOClientOneShot(TSO_SERVER_HOST, TSO_SERVER_PORT);
 
         long ts1 = client.getNewStartTimestamp().get();
 
         TSOProto.Response response1 = clientOneShot.makeRequest(createCommitRequest(ts1, false, testWriteSet));
         TSOProto.Response response2 = clientOneShot.makeRequest(createCommitRequest(ts1, true, testWriteSet));
         assertEquals(response2.getCommitResponse().getCommitTimestamp(),
-                     response1.getCommitResponse().getCommitTimestamp(),
-                     "Commit timestamp should be the same");
+                response1.getCommitResponse().getCommitTimestamp(),
+                "Commit timestamp should be the same");
     }
 
     // ----------------------------------------------------------------------------------------------------------------
@@ -311,7 +312,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
         TSOFuture<Long> future = client.commit(ts1, testWriteSet);
         try {
             future.get();
-        } catch(ExecutionException e) {
+        } catch (ExecutionException e) {
             assertEquals(e.getCause().getClass(), ServiceUnavailableException.class,
                     "Should be a ServiceUnavailableExeption");
         }
@@ -342,7 +343,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
     public void testCommitTimestampPresentInCommitTableReturnsCommit() throws Exception {
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(tsoClientConf).build();
-        TSOClientOneShot clientOneShot =  new TSOClientOneShot(TSO_SERVER_HOST, TSO_SERVER_PORT);
+        TSOClientOneShot clientOneShot = new TSOClientOneShot(TSO_SERVER_HOST, TSO_SERVER_PORT);
 
         long tx1ST = client.getNewStartTimestamp().get();
 
@@ -357,7 +358,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
     public void testInvalidCommitTimestampPresentInCommitTableReturnsAbort() throws Exception {
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(tsoClientConf).build();
-        TSOClientOneShot clientOneShot =  new TSOClientOneShot(TSO_SERVER_HOST, TSO_SERVER_PORT);
+        TSOClientOneShot clientOneShot = new TSOClientOneShot(TSO_SERVER_HOST, TSO_SERVER_PORT);
 
         long tx1ST = client.getNewStartTimestamp().get();
         // Invalidate the transaction
@@ -374,7 +375,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
     public void testCommitTimestampNotPresentInCommitTableReturnsAnAbort() throws Exception {
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(tsoClientConf).build();
-        TSOClientOneShot clientOneShot =  new TSOClientOneShot(TSO_SERVER_HOST, TSO_SERVER_PORT);
+        TSOClientOneShot clientOneShot = new TSOClientOneShot(TSO_SERVER_HOST, TSO_SERVER_PORT);
 
         long tx1ST = client.getNewStartTimestamp().get();
 

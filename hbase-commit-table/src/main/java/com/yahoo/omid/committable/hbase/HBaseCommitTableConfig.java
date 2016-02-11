@@ -15,13 +15,13 @@
  */
 package com.yahoo.omid.committable.hbase;
 
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_NAME_KEY;
+import com.google.inject.Inject;
 
 import javax.inject.Named;
 import javax.inject.Singleton;
 
-import com.google.inject.Inject;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
+import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_NAME_KEY;
 
 @Singleton
 public class HBaseCommitTableConfig {

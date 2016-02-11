@@ -15,16 +15,14 @@
  */
 package com.yahoo.omid.tso;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.inject.Inject;
-
+import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Preconditions;
+import javax.inject.Inject;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Implements the management of the state of the TSO

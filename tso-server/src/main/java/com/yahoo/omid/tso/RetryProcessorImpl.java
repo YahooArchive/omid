@@ -15,13 +15,6 @@
  */
 package com.yahoo.omid.tso;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-
-import javax.inject.Inject;
-
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BatchEventProcessor;
@@ -31,26 +24,27 @@ import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.YieldingWaitStrategy;
-
-import org.jboss.netty.channel.Channel;
-
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
-import com.yahoo.omid.metrics.MetricsRegistry;
-
-import static com.codahale.metrics.MetricRegistry.name;
-
 import com.yahoo.omid.metrics.Meter;
-
+import com.yahoo.omid.metrics.MetricsRegistry;
+import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.inject.Inject;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import static com.codahale.metrics.MetricRegistry.name;
 
 /**
  * Manages the retry requests that clients can send when they did
  * not received the response in the specified timeout
  */
 class RetryProcessorImpl
-    implements EventHandler<RetryProcessorImpl.RetryEvent>, RetryProcessor {
+        implements EventHandler<RetryProcessorImpl.RetryEvent>, RetryProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(RetryProcessor.class);
 
@@ -67,7 +61,7 @@ class RetryProcessorImpl
     @Inject
     RetryProcessorImpl(MetricsRegistry metrics, CommitTable commitTable,
                        ReplyProcessor replyProc, Panicker panicker)
-        throws InterruptedException, ExecutionException {
+            throws InterruptedException, ExecutionException {
         this.commitTableClient = commitTable.getClient().get();
         this.writer = commitTable.getWriter().get();
         this.replyProc = replyProc;
@@ -75,7 +69,7 @@ class RetryProcessorImpl
         WaitStrategy strategy = new YieldingWaitStrategy();
 
         retryRing = RingBuffer.<RetryEvent>createSingleProducer(
-                RetryEvent.EVENT_FACTORY, 1<<12, strategy);
+                RetryEvent.EVENT_FACTORY, 1 << 12, strategy);
         SequenceBarrier retrySequenceBarrier = retryRing.newBarrier();
         BatchEventProcessor<RetryEvent> retryProcessor = new BatchEventProcessor<RetryEvent>(
                 retryRing,
@@ -95,16 +89,16 @@ class RetryProcessorImpl
 
     @Override
     public void onEvent(final RetryEvent event, final long sequence, final boolean endOfBatch)
-        throws Exception {
+            throws Exception {
 
         switch (event.getType()) {
-        case COMMIT:
-            // TODO: What happens when the IOException is thrown?
-            handleCommitRetry(event);
-            break;
-        default:
-            assert(false);
-            break;
+            case COMMIT:
+                // TODO: What happens when the IOException is thrown?
+                handleCommitRetry(event);
+                break;
+            default:
+                assert (false);
+                break;
         }
 
     }
@@ -115,7 +109,7 @@ class RetryProcessorImpl
 
         try {
             Optional<CommitTimestamp> commitTimestamp = commitTableClient.getCommitTimestamp(startTimestamp).get();
-            if(commitTimestamp.isPresent()) {
+            if (commitTimestamp.isPresent()) {
                 if (commitTimestamp.get().isValid()) {
                     LOG.trace("Valid commit TS found in Commit Table");
                     replyProc.commitResponse(false, startTimestamp, commitTimestamp.get().getValue(),
@@ -151,6 +145,7 @@ class RetryProcessorImpl
         enum Type {
             COMMIT
         }
+
         private Type type = null;
 
         private long startTimestamp = 0;
@@ -164,17 +159,26 @@ class RetryProcessorImpl
             e.channel = c;
         }
 
-        MonitoringContext getMonCtx() { return monCtx; }
+        MonitoringContext getMonCtx() {
+            return monCtx;
+        }
 
-        Type getType() { return type; }
-        Channel getChannel() { return channel; }
-        long getStartTimestamp() { return startTimestamp; }
+        Type getType() {
+            return type;
+        }
+
+        Channel getChannel() {
+            return channel;
+        }
+
+        long getStartTimestamp() {
+            return startTimestamp;
+        }
 
         public final static EventFactory<RetryEvent> EVENT_FACTORY
-            = new EventFactory<RetryEvent>() {
+                = new EventFactory<RetryEvent>() {
             @Override
-            public RetryEvent newInstance()
-            {
+            public RetryEvent newInstance() {
                 return new RetryEvent();
             }
         };
