@@ -17,10 +17,10 @@ package com.yahoo.omid.metrics;
 
 public interface Timer extends Metric {
 
-    public void start();
+    void start();
 
-    public void stop();
+    void stop();
 
-    public void update(long durationInNs);
+    void update(long durationInNs);
 
 }

@@ -59,7 +59,7 @@ public class TSOBenchmark implements Closeable {
 
     private final CodahaleMetricsProvider metrics;
 
-    public TSOBenchmark(Config expConfig) {
+    private TSOBenchmark(Config expConfig) {
 
         this.expConfig = expConfig;
 
@@ -78,7 +78,7 @@ public class TSOBenchmark implements Closeable {
 
     }
 
-    public void createTxRunner() throws IOException, InterruptedException, ExecutionException {
+    private void createTxRunner() throws IOException, InterruptedException, ExecutionException {
 
         TxRunner txRunner = new TxRunner(metrics, expConfig);
         txRunnerExec.submit(txRunner);
@@ -116,7 +116,7 @@ public class TSOBenchmark implements Closeable {
         isCleaningDone = true;
     }
 
-    public void attachShutDownHook() {
+    private void attachShutDownHook() {
         Runtime.getRuntime().addShutdownHook(new Thread("benchmark-cleaner") {
             @Override
             public void run() {
@@ -158,7 +158,7 @@ public class TSOBenchmark implements Closeable {
 
     static class Config {
 
-        static public Config parseConfig(String args[]) {
+        static Config parseConfig(String args[]) {
             Config config = new Config();
             new JCommander(config, args);
             return config;
@@ -168,41 +168,41 @@ public class TSOBenchmark implements Closeable {
         int nbClients = 1;
 
         @Parameter(names = "-tsoHostAndPort",
-                   description = "Hostname and port of the TSO. Format: HOST:PORT",
-                   converter = HostPortConverter.class)
+                description = "Hostname and port of the TSO. Format: HOST:PORT",
+                converter = HostPortConverter.class)
         HostAndPort tsoHostPort = HostAndPort.fromParts("localhost", 54758);
 
         @Parameter(names = "-runFor",
-                   converter = TimeValueTimeUnitConverter.class,
-                   description = "Benchmark run lenght.\n"
-                               + "Format: TIME_VALUE:TIME_UNIT Example: 10:DAYS, 60:SECONDS...")
+                converter = TimeValueTimeUnitConverter.class,
+                description = "Benchmark run lenght.\n"
+                        + "Format: TIME_VALUE:TIME_UNIT Example: 10:DAYS, 60:SECONDS...")
         TimeValueTimeUnit runFor = new TimeValueTimeUnit(10, TimeUnit.MINUTES);
 
         @Parameter(names = "-requestDistribution",
-                   description = "Request distribution (how to pick rows) [ UNIFORM | ZIPFIAN ]",
-                   converter = GeneratorUtils.RowDistributionConverter.class)
+                description = "Request distribution (how to pick rows) [ UNIFORM | ZIPFIAN ]",
+                converter = GeneratorUtils.RowDistributionConverter.class)
         RowDistribution requestDistribution = RowDistribution.UNIFORM;
 
         @Parameter(names = "-maxWritesetSize", description = "Maximum size of tx in terms of modified columns,\n"
-                                                           + "homogeneously distributed between 1 & this number")
+                + "homogeneously distributed between 1 & this number")
         int maxTxSize = TxRunner.DEFAULT_WRITESET_SIZE;
 
         @Parameter(names = "-maxInFlight", description = "Max number of outstanding messages in the TSO pipe")
         int maxInFlight = 100_000;
 
         @Parameter(names = "-commitDelay",
-                   converter = TimeValueTimeUnitConverter.class,
-                   description = "Simulated delay between acquiring timestamp and committing.\n"
-                               + "Format: TIME_VALUE:TIME_UNIT Example: 50:MILLISECONDS...")
+                converter = TimeValueTimeUnitConverter.class,
+                description = "Simulated delay between acquiring timestamp and committing.\n"
+                        + "Format: TIME_VALUE:TIME_UNIT Example: 50:MILLISECONDS...")
         TimeValueTimeUnit commitDelay = new TimeValueTimeUnit(50, TimeUnit.MILLISECONDS);
 
         @Parameter(names = "-percentRead", description = "% reads")
         float percentReads = 0;
 
         @Parameter(names = "-readProportion",
-                   description = "Proportion of reads, between 1 and 0.\n"
-                               + "Overrides -percentRead if specified",
-                   hidden = true)
+                description = "Proportion of reads, between 1 and 0.\n"
+                        + "Overrides -percentRead if specified",
+                hidden = true)
         float readproportion = -1;
 
         @Parameter(names = "-useHBase", description = "Enable HBase storage")
@@ -212,34 +212,34 @@ public class TSOBenchmark implements Closeable {
         private String hbaseCommitTable = CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
 
         @Parameter(names = "-metricsConfig",
-                   converter = MetricsConfigConverter.class,
-                   description = "Format: REPORTER:REPORTER_CONFIG:TIME_VALUE:TIME_UNIT")
+                converter = MetricsConfigConverter.class,
+                description = "Format: REPORTER:REPORTER_CONFIG:TIME_VALUE:TIME_UNIT")
         MetricsConfig metricsConfig = new MetricsConfig("console", "", 10, TimeUnit.SECONDS);
 
         @ParametersDelegate
         private HBaseLogin.Config loginFlags = new HBaseLogin.Config();
 
-        public boolean isHBase() {
+        boolean isHBase() {
             return hbase;
         }
 
-        public String getHBaseCommitTable() {
+        String getHBaseCommitTable() {
             return hbaseCommitTable;
         }
 
-        public HBaseLogin.Config getLoginFlags() {
+        HBaseLogin.Config getLoginFlags() {
             return loginFlags;
         }
     }
 
-    public static class MetricsConfig {
+    static class MetricsConfig {
 
-        public String reporter;
-        public String reporterConfig;
-        public Integer timeValue;
-        public TimeUnit timeUnit;
+        String reporter;
+        String reporterConfig;
+        Integer timeValue;
+        TimeUnit timeUnit;
 
-        public MetricsConfig(String reporter, String reporterConfig, Integer timeValue, TimeUnit timeUnit) {
+        MetricsConfig(String reporter, String reporterConfig, Integer timeValue, TimeUnit timeUnit) {
             this.reporter = reporter;
             this.reporterConfig = reporterConfig;
             this.timeValue = timeValue;
@@ -253,7 +253,7 @@ public class TSOBenchmark implements Closeable {
 
     }
 
-    public static class MetricsConfigConverter implements IStringConverter<MetricsConfig> {
+    private static class MetricsConfigConverter implements IStringConverter<MetricsConfig> {
 
         @Override
         public MetricsConfig convert(String value) {
@@ -262,9 +262,9 @@ public class TSOBenchmark implements Closeable {
 
             if (matcher.matches()) {
                 return new MetricsConfig(matcher.group(1),
-                                         matcher.group(2),
-                                         Integer.valueOf(matcher.group(3)),
-                                         TimeUnit.valueOf(matcher.group(4)));
+                        matcher.group(2),
+                        Integer.valueOf(matcher.group(3)),
+                        TimeUnit.valueOf(matcher.group(4)));
             } else {
                 throw new ParameterException("Metrics specification " + value
                         + " should have this format: REPORTER:REPORTER_CONFIG:TIME_VALUE:TIME_UNIT\n"
@@ -275,32 +275,32 @@ public class TSOBenchmark implements Closeable {
 
     }
 
-    public static class TimeValueTimeUnit {
+    static class TimeValueTimeUnit {
 
-        public Integer timeValue;
-        public TimeUnit timeUnit;
+        Integer timeValue;
+        TimeUnit timeUnit;
 
-        public TimeValueTimeUnit(Integer timeValue, TimeUnit timeUnit) {
+        TimeValueTimeUnit(Integer timeValue, TimeUnit timeUnit) {
             this.timeValue = timeValue;
             this.timeUnit = timeUnit;
         }
 
     }
 
-    public static class TimeValueTimeUnitConverter implements IStringConverter<TimeValueTimeUnit> {
+    private static class TimeValueTimeUnitConverter implements IStringConverter<TimeValueTimeUnit> {
         @Override
         public TimeValueTimeUnit convert(String value) {
             String[] s = value.split(":");
             try {
                 return new TimeValueTimeUnit(Integer.parseInt(s[0]), TimeUnit.valueOf(s[1].toUpperCase()));
-            } catch(Exception e) {
+            } catch (Exception e) {
                 throw new ParameterException("Time specification " + value +
                         " should have this format: TIME_VALUE:TIME_UNIT Example: 10:DAYS, 60:SECONDS...");
             }
         }
     }
 
-    public static class HostPortConverter implements IStringConverter<HostAndPort> {
+    private static class HostPortConverter implements IStringConverter<HostAndPort> {
 
         @Override
         public HostAndPort convert(String value) {

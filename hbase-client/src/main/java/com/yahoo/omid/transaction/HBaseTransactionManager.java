@@ -41,6 +41,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
+
 public class HBaseTransactionManager extends AbstractTransactionManager implements HBaseTransactionClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(HBaseTransactionManager.class);
@@ -70,6 +76,11 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
 
         public Builder withConfiguration(Configuration conf) {
             this.conf = conf;
+            return this;
+        }
+
+        public Builder withMetrics(MetricsRegistry metricsRegistry) {
+            this.metricsRegistry = metricsRegistry;
             return this;
         }
 

@@ -39,6 +39,11 @@
         </dependency>
         <dependency>
             <groupId>com.yahoo.omid</groupId>
+            <artifactId>metrics</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
             <artifactId>commit-table</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
@@ -123,8 +128,8 @@
                                 <configuration>
                                     <target>
                                         <exec executable="protoc" failonerror="true">
-                                            <arg value="--java_out=src/main/java" />
-                                            <arg value="src/main/proto/TSOProto.proto" />
+                                            <arg value="--java_out=src/main/java"/>
+                                            <arg value="src/main/proto/TSOProto.proto"/>
                                         </exec>
                                     </target>
                                 </configuration>

@@ -17,15 +17,11 @@ package com.yahoo.omid.metrics;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Singleton;
 import java.util.List;
 
 public class CodahaleModule extends AbstractModule {
-
-    private static final Logger LOG = LoggerFactory.getLogger(CodahaleModule.class);
 
     private final List<String> metricsConfigs;
 
@@ -38,11 +34,12 @@ public class CodahaleModule extends AbstractModule {
 
     }
 
-    @Provides @Singleton
+    @Provides
+    @Singleton
     MetricsRegistry provideMetricsRegistry() {
 
         return CodahaleMetricsProvider.createCodahaleMetricsProvider(metricsConfigs);
-        
+
     }
 
 }
