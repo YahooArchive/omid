@@ -22,8 +22,12 @@ import com.google.common.base.Objects;
 import com.yahoo.omid.committable.hbase.CommitTableConstants;
 import com.yahoo.omid.tools.hbase.HBaseLogin;
 import com.yahoo.omid.tsoclient.TSOClient;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class Configuration extends HBaseLogin.Config {
+    private static final Logger LOG = LoggerFactory.getLogger(Configuration.class);
 
     @Parameter(names = "-help", description = "Print command options and exit", help = true)
     boolean help = false;
@@ -69,7 +73,7 @@ class Configuration extends HBaseLogin.Config {
             commandLine.usage();
             System.exit(0);
         }
-
+        LOG.info("{}", commandLineConfig);
         return commandLineConfig;
     }
 
@@ -79,8 +83,17 @@ class Configuration extends HBaseLogin.Config {
 
     private static Class getCallerClass(int level) throws ClassNotFoundException {
         StackTraceElement[] stElements = Thread.currentThread().getStackTrace();
-        String rawFQN = stElements[level+1].toString().split("\\(")[0];
+        String rawFQN = stElements[level + 1].toString().split("\\(")[0];
         return Class.forName(rawFQN.substring(0, rawFQN.lastIndexOf('.')));
+    }
+
+    org.apache.hadoop.conf.Configuration toOmidConfig() {
+        org.apache.hadoop.conf.Configuration conf = HBaseConfiguration.create();
+        conf.set(TSOClient.TSO_HOST_CONFKEY, tsoHost);
+        conf.setInt(TSOClient.TSO_PORT_CONFKEY, tsoPort);
+        conf.setInt(TSOClient.ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, 0);
+        conf.setStrings(CommitTableConstants.COMMIT_TABLE_NAME_KEY, commitTableName);
+        return conf;
     }
 
     private boolean hasHelpFlag() {

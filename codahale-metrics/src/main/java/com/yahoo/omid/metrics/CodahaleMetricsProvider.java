@@ -30,7 +30,6 @@ import com.yahoo.omid.metrics.CodahaleMetricsConfig.Reporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -44,8 +43,7 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
     private static final Logger LOG = LoggerFactory.getLogger(CodahaleMetricsProvider.class);
 
     public static final Pattern CODAHALE_METRICS_CONFIG_PATTERN = Pattern
-            .compile(
-                    "(csv|slf4j|console|graphite):(.+):(\\d+):(DAYS|HOURS|MICROSECONDS|MILLISECONDS|MINUTES|NANOSECONDS|SECONDS)");
+            .compile("(csv|slf4j|console|graphite):(.+):(\\d+):(DAYS|HOURS|MICROSECONDS|MILLISECONDS|MINUTES|NANOSECONDS|SECONDS)");
 
     private MetricRegistry metrics = new MetricRegistry();
     private List<ScheduledReporter> reporters = new ArrayList<>();
@@ -107,11 +105,11 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
                     break;
                 case GRAPHITE:
                     codahaleReporter = createAndGetConfiguredGraphiteReporter(conf.getPrefix(),
-                            conf.getGraphiteHostConfig());
+                                                                              conf.getGraphiteHostConfig());
                     break;
                 case CSV:
                     codahaleReporter = createAndGetConfiguredCSVReporter(conf.getPrefix(),
-                            conf.getCSVDir());
+                                                                         conf.getCSVDir());
                     break;
                 case SLF4J:
                     codahaleReporter = createAndGetConfiguredSlf4jReporter(conf.getSlf4jLogger());
@@ -131,7 +129,7 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
     public void startMetrics() {
         for (ScheduledReporter r : reporters) {
             LOG.info("Starting reporter {} with freq {} {}",
-                    r.getClass().getCanonicalName(), metricsOutputFrequency, timeUnit);
+                     r.getClass().getCanonicalName(), metricsOutputFrequency, timeUnit);
             r.start(metricsOutputFrequency, timeUnit);
         }
     }

@@ -41,12 +41,10 @@ import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.SH
 import static com.yahoo.omid.metrics.MetricsUtils.name;
 
 /**
- * Omid's base abstract implementation of the
- * {@link TransactionManager} interface.
+ * Omid's base abstract implementation of the {@link TransactionManager} interface.
  *
  * Provides extra methods to allow transaction manager developers to perform
- * different actions before/after the methods exposed by the
- * {@link TransactionManager} interface.
+ * different actions before/after the methods exposed by the {@link TransactionManager} interface.
  *
  * So, this abstract class must be extended by particular implementations of
  * transaction managers related to different storage systems (HBase...)
