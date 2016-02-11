@@ -15,7 +15,8 @@
  */
 package com.yahoo.omid.tsoclient;
 
-import com.codahale.metrics.MetricRegistry;
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.metrics.NullMetricsProvider;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
 
@@ -56,20 +57,8 @@ public abstract class TSOClient {
 
     public abstract TSOFuture<Long> getNewStartTimestamp();
 
-    /**
-     * @throws AbortException
-     *             if the TSO server has aborted the transaction we try to commit.
-     *
-     * @throws ServiceUnavailableException
-     *             if the request to the TSO server has been retried a certain 
-     *             number of times and couldn't reach the endpoint
-     */
     public abstract TSOFuture<Long> commit(long transactionId, Set<? extends CellId> cells);
 
-    /**
-     * @throws ClosingException
-     *             if there's a problem when closing the link with the TSO server
-     */
     public abstract TSOFuture<Void> close();
 
     // ****************** High availability related interface *****************
@@ -93,19 +82,6 @@ public abstract class TSOClient {
     }
 
     // ************************* Useful exceptions ****************************
-
-    /**
-     * Thrown when a problem is found when creating the TSO client
-     */
-    public static class InstantiationException extends Exception {
-
-        private static final long serialVersionUID = 8262507672984590285L;
-
-        public InstantiationException(String message) {
-            super(message);
-        }
-
-    }
 
     /**
      * Thrown when there are problems with the comm channel with the TSO server
@@ -173,14 +149,14 @@ public abstract class TSOClient {
     public static class Builder {
 
         private Configuration conf = new BaseConfiguration();
-        private MetricRegistry metrics = new MetricRegistry();
+        private MetricsRegistry metrics = new NullMetricsProvider();
 
         public Builder withConfiguration(Configuration conf) {
             this.conf = conf;
             return this;
         }
 
-        public Builder withMetrics(MetricRegistry metrics) {
+        public Builder withMetrics(MetricsRegistry metrics) {
             this.metrics = metrics;
             return this;
         }

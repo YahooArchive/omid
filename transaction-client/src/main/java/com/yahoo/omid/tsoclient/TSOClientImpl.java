@@ -15,11 +15,11 @@
  */
 package com.yahoo.omid.tsoclient;
 
-import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Charsets;
 import com.google.common.net.HostAndPort;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.proto.TSOProto;
 import com.yahoo.omid.zk.ZKUtils.ZKException;
 import com.yahoo.statemachine.StateMachine.DeferrableEvent;
@@ -91,11 +91,8 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
     private final int retryDelayMs; // ignored for now
     private final int tsoReconnectionDelaySecs;
     private InetSocketAddress tsoAddr;
-    private final MetricRegistry metrics;
 
-    TSOClientImpl(Configuration conf, MetricRegistry metrics) {
-
-        this.metrics = metrics;
+    TSOClientImpl(Configuration conf, MetricsRegistry metrics) {
 
         // Start client with Nb of active threads = 3 as maximum.
         int tsoExecutorThreads = conf.getInt(TSO_EXECUTOR_THREAD_NUM_CONFKEY, DEFAULT_TSO_EXECUTOR_THREAD_NUM);
@@ -157,11 +154,11 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
 
     // *********************** Helper methods & classes ***********************
 
-    synchronized void setTSOAddress(String host, int port) {
+    private synchronized void setTSOAddress(String host, int port) {
         tsoAddr = new InetSocketAddress(host, port);
     }
 
-    synchronized InetSocketAddress getAddress() {
+    private synchronized InetSocketAddress getAddress() {
         return tsoAddr;
     }
 
@@ -236,7 +233,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         builder.setTimestampRequest(tsreqBuilder.build());
         RequestEvent request = new RequestEvent(builder.build(), requestMaxRetries);
         fsm.sendEvent(request);
-        return new ForwardingTSOFuture<Long>(request);
+        return new ForwardingTSOFuture<>(request);
     }
 
     @Override
@@ -250,7 +247,7 @@ class TSOClientImpl extends TSOClient implements NodeCacheListener {
         builder.setCommitRequest(commitbuilder.build());
         RequestEvent request = new RequestEvent(builder.build(), requestMaxRetries);
         fsm.sendEvent(request);
-        return new ForwardingTSOFuture<Long>(request);
+        return new ForwardingTSOFuture<>(request);
     }
 
     @Override

@@ -18,6 +18,9 @@ package com.yahoo.omid.transaction;
 import com.google.common.base.Optional;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
+import com.yahoo.omid.metrics.Counter;
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.metrics.Timer;
 import com.yahoo.omid.transaction.Transaction.Status;
 import com.yahoo.omid.tsoclient.CellId;
 import com.yahoo.omid.tsoclient.TSOClient;
@@ -35,10 +38,11 @@ import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.CA
 import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.COMMIT_TABLE;
 import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.NOT_PRESENT;
 import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.SHADOW_CELL;
+import static com.yahoo.omid.metrics.MetricsUtils.name;
 
 /**
  * Omid's base abstract implementation of the
- * {@link TransactionManagerExtension} interface.
+ * {@link TransactionManager} interface.
  *
  * Provides extra methods to allow transaction manager developers to perform
  * different actions before/after the methods exposed by the
@@ -53,9 +57,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
 
     public interface TransactionFactory<T extends CellId> {
 
-        public AbstractTransaction<T> createTransaction(long transactionId,
-                                                        long epoch,
-                                                        AbstractTransactionManager tm);
+        AbstractTransaction<T> createTransaction(long transactionId, long epoch, AbstractTransactionManager tm);
 
     }
 
@@ -65,9 +67,21 @@ public abstract class AbstractTransactionManager implements TransactionManager {
     private final boolean ownsCommitTableClient;
     private final TransactionFactory<? extends CellId> transactionFactory;
 
+    // Metrics
+    private final Timer startTimestampTimer;
+    private final Timer commitTimer;
+    private final Timer commitTableUpdateTimer;
+    private final Timer shadowCellsUpdateTimer;
+    private final Counter committedTxsCounter;
+    private final Counter rolledbackTxsCounter;
+    private final Counter errorTxsCounter;
+    private final Counter invalidatedTxsCounter;
+
     /**
      * Base constructor
      *
+     * @param metrics
+     *            allows to add metrics to this component
      * @param tsoClient
      *            a client for accessing functionality of the status oracle
      * @param ownsTSOClient
@@ -83,7 +97,8 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      *            a transaction factory to create the specific transaction
      *            objects required by the transaction manager being implemented.
      */
-    public AbstractTransactionManager(TSOClient tsoClient,
+    public AbstractTransactionManager(MetricsRegistry metrics,
+                                      TSOClient tsoClient,
                                       boolean ownsTSOClient,
                                       CommitTable.Client commitTableClient,
                                       boolean ownsCommitTableClient,
@@ -93,6 +108,16 @@ public abstract class AbstractTransactionManager implements TransactionManager {
         this.commitTableClient = commitTableClient;
         this.ownsCommitTableClient = ownsCommitTableClient;
         this.transactionFactory = transactionFactory;
+
+        // Metrics configuration
+        this.startTimestampTimer = metrics.timer(name("omid", "tm", "hbase", "startTimestamp", "latency"));
+        this.commitTimer = metrics.timer(name("omid", "tm", "hbase", "commit", "latency"));
+        this.commitTableUpdateTimer = metrics.timer(name("omid", "tm", "hbase", "commitTableUpdate", "latency"));
+        this.shadowCellsUpdateTimer = metrics.timer(name("omid", "tm", "hbase", "shadowCellsUpdate", "latency"));
+        this.committedTxsCounter = metrics.counter(name("omid", "tm", "hbase", "committedTxs"));
+        this.rolledbackTxsCounter = metrics.counter(name("omid", "tm", "hbase", "rolledbackTxs"));
+        this.errorTxsCounter = metrics.counter(name("omid", "tm", "hbase", "erroredTxs"));
+        this.invalidatedTxsCounter = metrics.counter(name("omid", "tm", "hbase", "invalidatedTxs"));
     }
 
     /**
@@ -112,7 +137,6 @@ public abstract class AbstractTransactionManager implements TransactionManager {
     public void preBegin() throws TransactionManagerException {
     }
 
-    ;
 
     /**
      * @see com.yahoo.omid.transaction.TransactionManager#begin()
@@ -121,11 +145,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
     public final Transaction begin() throws TransactionException {
 
         try {
-            try {
-                preBegin();
-            } catch (TransactionManagerException e) {
-                LOG.warn(e.getMessage());
-            }
+            preBegin();
 
             long startTimestamp, epoch;
 
@@ -135,19 +155,22 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             // so we need to start the transaction again. We use the fact that epoch
             // is always smaller or equal to a timestamp, and therefore, we first need
             // to get the timestamp and then the epoch.
-            do {
-                startTimestamp = tsoClient.getNewStartTimestamp().get();
-                epoch = tsoClient.getEpoch();
-            } while (epoch > startTimestamp);
+            startTimestampTimer.start();
+            try {
+                do {
+                    startTimestamp = tsoClient.getNewStartTimestamp().get();
+                    epoch = tsoClient.getEpoch();
+                } while (epoch > startTimestamp);
+            } finally {
+                startTimestampTimer.stop();
+            }
 
             AbstractTransaction<? extends CellId> tx =
                     transactionFactory.createTransaction(startTimestamp, epoch, this);
-            try {
-                postBegin(tx);
-            } catch (TransactionManagerException e) {
-                LOG.warn(e.getMessage());
-            }
+            postBegin(tx);
             return tx;
+        } catch (TransactionManagerException e) {
+            throw new TransactionException("An error has occured during PreBegin/PostBegin", e);
         } catch (ExecutionException e) {
             throw new TransactionException("Could not get new timestamp", e);
         } catch (InterruptedException ie) {
@@ -163,11 +186,9 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      *            the transaction that was just created.
      * @throws TransactionManagerException
      */
-    public void postBegin(AbstractTransaction<? extends CellId> transaction)
-            throws TransactionManagerException {
+    public void postBegin(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {
     }
 
-    ;
 
     /**
      * Allows transaction manager developers to perform actions before
@@ -176,18 +197,15 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      *            the transaction that is going to be committed.
      * @throws TransactionManagerException
      */
-    public void preCommit(AbstractTransaction<? extends CellId> transaction)
-            throws TransactionManagerException {
+    public void preCommit(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {
     }
 
-    ;
 
     /**
-     * @see com.yahoo.omid.transaction.TransactionManager#commit()
+     * @see com.yahoo.omid.transaction.TransactionManager#commit(Transaction)
      */
     @Override
-    public final void commit(Transaction transaction)
-            throws RollbackException, TransactionException {
+    public final void commit(Transaction transaction) throws RollbackException, TransactionException {
 
         AbstractTransaction<? extends CellId> tx = enforceAbstractTransactionAsParam(transaction);
         enforceTransactionIsInRunningState(tx);
@@ -198,17 +216,25 @@ public abstract class AbstractTransactionManager implements TransactionManager {
         }
 
         try {
+            preCommit(tx);
+
+            commitTimer.start();
+            long commitTs;
             try {
-                preCommit(tx);
-            } catch (TransactionManagerException e) {
-                tx.cleanup();
-                throw new TransactionException(e.getMessage(), e);
+                commitTs = tsoClient.commit(tx.getStartTimestamp(), tx.getWriteSet()).get();
+            } finally {
+                commitTimer.stop();
             }
-            long commitTs = tsoClient.commit(tx.getStartTimestamp(), tx.getWriteSet()).get();
+
             completeCommittedTx(tx, commitTs, true);
+            committedTxsCounter.inc();
+        } catch (TransactionManagerException e) {
+            tx.cleanup();
+            throw new TransactionException(e.getMessage(), e);
         } catch (ExecutionException e) {
             if (e.getCause() instanceof AbortException) { // Conflicts detected, so rollback
                 rollback(tx);
+                rolledbackTxsCounter.inc();
                 throw new RollbackException("Conflicts detected in tx writeset. Transaction aborted.", e.getCause());
             } else if (e.getCause() instanceof ServiceUnavailableException
                     ||
@@ -216,6 +242,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
                     ||
                     e.getCause() instanceof ConnectionException) {
 
+                errorTxsCounter.inc();
                 try {
                     LOG.warn("Can't contact the TSO for receiving outcome for Tx {}. Checking commit table...", tx);
                     // Check the commit table to try to find if the target
@@ -231,22 +258,20 @@ public abstract class AbstractTransactionManager implements TransactionManager {
                         } else {
                             rollback(tx);
                             LOG.warn("Tx {} was found invalidated in Commit Table and was rolled back", tx);
-                            throw new RollbackException(tx + " rolled-back."
-                                    + " Invalidated by another TX started in a new TSO",
-                                    e.getCause());
+                            throw new RollbackException(tx + " rolled-back. Invalidated by another TX started in a new TSO",
+                                                        e.getCause());
                         }
                     } else {
                         LOG.warn("Trying to invalidate Tx {} proactively", tx);
                         boolean invalidated = commitTableClient.tryInvalidateTransaction(tx.getStartTimestamp()).get();
                         if (invalidated) {
+                            invalidatedTxsCounter.inc();
                             rollback(tx);
                             LOG.warn("Tx {} invalidated and rolled back", tx);
-                            throw new RollbackException(tx + " rolled-back preventively."
-                                    + " Other TSO was detected.",
-                                    e.getCause());
+                            throw new RollbackException(tx + " rolled-back preventively. Other TSO was detected.",
+                                                        e.getCause());
                         } else {
-                            LOG.warn("Tx {} appeared committed in Commit Table and wasn't invalidated. "
-                                    + "Double checking Commit Table...", tx);
+                            LOG.warn("Tx {} appeared committed in Commit Table and wasn't invalidated. Double checking Commit Table...", tx);
                             // TODO: Decide what we should we do if we can not contact the commit table
                             commitTimestamp = commitTableClient.getCommitTimestamp(tx.getStartTimestamp()).get();
                             if (commitTimestamp.isPresent() && commitTimestamp.get().isValid()) {
@@ -264,7 +289,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
                     throw new TransactionException("Interrupted reading commit TS from Commit Table", e1);
                 } catch (ExecutionException e1) {
                     throw new TransactionException("Could not commit. Interrupted reading commit TS from Commit Table",
-                            e1);
+                                                   e1);
                 }
             } else {
                 throw new TransactionException("Could not commit", e.getCause());
@@ -277,8 +302,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
     }
 
     /**
-     * Allows transaction manager developers to perform actions after
-     * commiting a transaction.
+     * Allows transaction manager developers to perform actions after committing a transaction.
      * @param transaction
      *            the transaction that was committed.
      * @throws TransactionManagerException
@@ -286,8 +310,6 @@ public abstract class AbstractTransactionManager implements TransactionManager {
     public void postCommit(AbstractTransaction<? extends CellId> transaction)
             throws TransactionManagerException {
     }
-
-    ;
 
     /**
      * Allows transaction manager developers to perform actions before
@@ -300,10 +322,8 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             throws TransactionManagerException {
     }
 
-    ;
-
     /**
-     * @see com.yahoo.omid.transaction.TransactionManager#rollback()
+     * @see com.yahoo.omid.transaction.TransactionManager#rollback(Transaction)
      */
     @Override
     public final void rollback(Transaction transaction)
@@ -343,7 +363,6 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             throws TransactionManagerException {
     }
 
-    ;
 
     /**
      * Check if the transaction commit data is in the shadow cell
@@ -351,10 +370,9 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      *            the transaction start timestamp
      *        locator
      *            the timestamp locator
-     * @throws InterruptedException, ExecutionException
+     * @throws IOException
      */
-    Optional<CommitTimestamp> readCommitTimestampFromShadowCell(long cellStartTimestamp,
-                                                                CommitTimestampLocator locator)
+    Optional<CommitTimestamp> readCommitTimestampFromShadowCell(long cellStartTimestamp, CommitTimestampLocator locator)
             throws IOException {
         Optional<CommitTimestamp> commitTS = Optional.absent();
 
@@ -362,7 +380,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
                 locator.readCommitTimestampFromShadowCell(cellStartTimestamp);
         if (commitTimestamp.isPresent()) {
             commitTS = Optional.of(// Valid commit Timestamp
-                    new CommitTimestamp(SHADOW_CELL, commitTimestamp.get(), true));
+                                   new CommitTimestamp(SHADOW_CELL, commitTimestamp.get(), true));
         }
 
         return commitTS;
@@ -496,10 +514,20 @@ public abstract class AbstractTransactionManager implements TransactionManager {
         txToSetup.setStatus(Status.COMMITTED);
         txToSetup.setCommitTimestamp(commitTS);
         try {
-            updateShadowCells(txToSetup);
+            shadowCellsUpdateTimer.start();
+            try {
+                updateShadowCells(txToSetup);
+            } finally {
+                shadowCellsUpdateTimer.stop();
+            }
             if (shouldRemoveCommitTableEntry) {
                 // Remove transaction from commit table if not failure occurred
-                commitTableClient.completeTransaction(txToSetup.getStartTimestamp()).get();
+                commitTableUpdateTimer.start();
+                try {
+                    commitTableClient.completeTransaction(txToSetup.getStartTimestamp()).get();
+                } finally {
+                    commitTableUpdateTimer.stop();
+                }
             }
             postCommit(txToSetup);
         } catch (TransactionManagerException e) {

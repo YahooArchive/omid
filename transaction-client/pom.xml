@@ -33,6 +33,16 @@
         </dependency>
         <dependency>
             <groupId>com.yahoo.omid</groupId>
+            <artifactId>metrics</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>metrics</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
             <artifactId>commit-table</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
@@ -69,11 +79,6 @@
             <groupId>commons-configuration</groupId>
             <artifactId>commons-configuration</artifactId>
             <version>${commons.conf.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.codahale.metrics</groupId>
-            <artifactId>metrics-core</artifactId>
-            <version>${metrics.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>

@@ -23,6 +23,8 @@ import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
 import com.yahoo.omid.committable.hbase.CommitTableConstants;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
+import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.metrics.NullMetricsProvider;
 import com.yahoo.omid.tsoclient.CellId;
 import com.yahoo.omid.tsoclient.TSOClient;
 import org.apache.hadoop.conf.Configuration;
@@ -59,6 +61,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
 
     public static class Builder {
         Configuration conf = new Configuration();
+        MetricsRegistry metricsRegistry = new NullMetricsProvider();
         TSOClient tsoClient;
         CommitTable.Client commitTableClient;
 
@@ -67,6 +70,11 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
 
         public Builder withConfiguration(Configuration conf) {
             this.conf = conf;
+            return this;
+        }
+
+        public Builder withMetrics(MetricsRegistry metricsRegistry) {
+            this.metricsRegistry = metricsRegistry;
             return this;
         }
 
@@ -81,6 +89,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
         }
 
         public HBaseTransactionManager build() throws OmidInstantiationException {
+
             boolean ownsTsoClient = false;
             if (tsoClient == null) {
                 tsoClient = TSOClient.newBuilder()
@@ -105,9 +114,9 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
                     throw new OmidInstantiationException("Exception whilst getting the CommitTable client", e);
                 }
             }
-            return new HBaseTransactionManager(tsoClient, ownsTsoClient,
-                    commitTableClient, ownsCommitTableClient,
-                    new HBaseTransactionFactory());
+            return new HBaseTransactionManager(metricsRegistry, tsoClient, ownsTsoClient,
+                                               commitTableClient, ownsCommitTableClient,
+                                               new HBaseTransactionFactory());
         }
 
         private org.apache.commons.configuration.Configuration convertToCommonsConf(Configuration hconf) {
@@ -118,18 +127,20 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
             }
             return conf;
         }
+
     }
 
     public static Builder newBuilder() {
         return new Builder();
     }
 
-    private HBaseTransactionManager(TSOClient tsoClient,
+    private HBaseTransactionManager(MetricsRegistry metrics,
+                                    TSOClient tsoClient,
                                     boolean ownsTSOClient,
                                     CommitTable.Client commitTableClient,
                                     boolean ownsCommitTableClient,
                                     HBaseTransactionFactory hBaseTransactionFactory) {
-        super(tsoClient, ownsTSOClient, commitTableClient, ownsCommitTableClient, hBaseTransactionFactory);
+        super(metrics, tsoClient, ownsTSOClient, commitTableClient, ownsCommitTableClient, hBaseTransactionFactory);
     }
 
     @Override
@@ -190,7 +201,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
         try {
             CommitTimestamp tentativeCommitTimestamp =
                     locateCellCommitTimestamp(hBaseCellId.getTimestamp(), tsoClient.getEpoch(),
-                            new CommitTimestampLocatorImpl(hBaseCellId, Maps.<Long, Long>newHashMap()));
+                                              new CommitTimestampLocatorImpl(hBaseCellId, Maps.<Long, Long>newHashMap()));
 
             // If transaction that added the cell was invalidated
             if (!tentativeCommitTimestamp.isValid()) {
