@@ -67,6 +67,16 @@
                 </configuration>
             </plugin>
 
+            <!-- Disable cobertura execution for benchmarks as they don't have tests -->
+            <!-- TODO Enable cobertura when if we add tests to this module -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>cobertura-maven-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+
         </plugins>
 
     </build>
