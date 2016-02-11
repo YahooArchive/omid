@@ -10,8 +10,8 @@
     </parent>
 
     <artifactId>examples</artifactId>
-    <name>Omid client examples</name>
-    <description>Omid client examples</description>
+    <name>Omid Client Examples</name>
+    <description>Includes some examples showing Omid features</description>
 
     <dependencies>
 
@@ -92,6 +92,15 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+
+            <!-- Disable cobertura execution for examples as they don't have tests -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>cobertura-maven-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
             </plugin>
 
         </plugins>
