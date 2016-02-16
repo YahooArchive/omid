@@ -34,7 +34,8 @@ import java.util.Set;
  * transaction managers related to different storage systems (HBase...)
  */
 public abstract class AbstractTransaction<T extends CellId> implements Transaction {
-    private transient Map<String, Object> metadata = new HashMap<String, Object>();
+
+    private transient Map<String, Object> metadata = new HashMap<>();
     private final AbstractTransactionManager transactionManager;
     private final long startTimestamp;
     private final long epoch;
@@ -175,11 +176,13 @@ public abstract class AbstractTransaction<T extends CellId> implements Transacti
 
     @Override
     public String toString() {
-        return String.format("Tx-%s (ST=%d, CT=%d, Epoch=%d)",
-                Long.toHexString(getTransactionId()),
-                startTimestamp,
-                commitTimestamp,
-                epoch);
+        return String.format("Tx-%s [%s] (ST=%d, CT=%d, Epoch=%d) WriteSet %s",
+                             Long.toHexString(getTransactionId()),
+                             status,
+                             startTimestamp,
+                             commitTimestamp,
+                             epoch,
+                             writeSet);
     }
 
     @Override
@@ -196,7 +199,7 @@ public abstract class AbstractTransaction<T extends CellId> implements Transacti
     public void appendMetadata(String key, Object value) {
         List existingValue = (List) metadata.get(key);
         if (existingValue == null) {
-            List<Object> newList = new ArrayList<Object>();
+            List<Object> newList = new ArrayList<>();
             newList.add(value);
             metadata.put(key, newList);
         } else {
