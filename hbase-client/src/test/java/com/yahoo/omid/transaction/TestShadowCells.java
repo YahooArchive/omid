@@ -238,9 +238,14 @@ public class TestShadowCells extends OmidTestBase {
 
         // When committing, a TransactionManagerException should be thrown by tm.updateShadowCells(). The exception
         // must be catch internally by tm.commit(), avoiding the transaction completion on the commit table.
+        // After that, a TransacionException is thrown to the application.
         // This requires to set the HConstants.HBASE_CLIENT_RETRIES_NUMBER in the HBase config to a finite number:
         // e.g -> hbaseConf.setInt(HBASE_CLIENT_RETRIES_NUMBER, 3); Otherwise it will get stuck in tm.commit();
-        tm.commit(tx);
+        try {
+            tm.commit(tx);
+        } catch (TransactionException e) {
+            // Expected, see comment above
+        }
 
         // Re-enable table to allow the required checks below
         HBaseAdmin admin = hBaseUtils.getHBaseAdmin();

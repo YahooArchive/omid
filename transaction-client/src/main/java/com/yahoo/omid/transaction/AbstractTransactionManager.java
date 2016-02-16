@@ -128,13 +128,10 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             throws TransactionManagerException;
 
     /**
-     * Allows transaction manager developers to perform actions before
-     * creating a transaction.
+     * Allows transaction manager developers to perform actions before creating a transaction.
      * @throws TransactionManagerException
      */
-    public void preBegin() throws TransactionManagerException {
-    }
-
+    public void preBegin() throws TransactionManagerException {}
 
     /**
      * @see com.yahoo.omid.transaction.TransactionManager#begin()
@@ -163,9 +160,10 @@ public abstract class AbstractTransactionManager implements TransactionManager {
                 startTimestampTimer.stop();
             }
 
-            AbstractTransaction<? extends CellId> tx =
-                    transactionFactory.createTransaction(startTimestamp, epoch, this);
+            AbstractTransaction<? extends CellId> tx = transactionFactory.createTransaction(startTimestamp, epoch, this);
+
             postBegin(tx);
+
             return tx;
         } catch (TransactionManagerException e) {
             throw new TransactionException("An error has occured during PreBegin/PostBegin", e);
@@ -178,26 +176,20 @@ public abstract class AbstractTransactionManager implements TransactionManager {
     }
 
     /**
-     * Allows transaction manager developers to perform actions after
-     * having started a transaction.
+     * Allows transaction manager developers to perform actions after having started a transaction.
      * @param transaction
      *            the transaction that was just created.
      * @throws TransactionManagerException
      */
-    public void postBegin(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {
-    }
-
+    public void postBegin(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {}
 
     /**
-     * Allows transaction manager developers to perform actions before
-     * committing a transaction.
+     * Allows transaction manager developers to perform actions before committing a transaction.
      * @param transaction
      *            the transaction that is going to be committed.
      * @throws TransactionManagerException
      */
-    public void preCommit(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {
-    }
-
+    public void preCommit(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {}
 
     /**
      * @see com.yahoo.omid.transaction.TransactionManager#commit(Transaction)
@@ -208,93 +200,27 @@ public abstract class AbstractTransactionManager implements TransactionManager {
         AbstractTransaction<? extends CellId> tx = enforceAbstractTransactionAsParam(transaction);
         enforceTransactionIsInRunningState(tx);
 
-        if (tx.isRollbackOnly()) { // If the tx was marked to rollback, do it
+        if (tx.isRollbackOnly()) { // Manage explicit user rollback
             rollback(tx);
-            throw new RollbackException("Transaction was set to rollback");
+            throw new RollbackException(tx + ": Tx was set to rollback explicitly");
         }
 
         try {
+
             preCommit(tx);
 
             commitTimer.start();
-            long commitTs;
             try {
-                commitTs = tsoClient.commit(tx.getStartTimestamp(), tx.getWriteSet()).get();
+                commitRegularTransaction(tx);
+                committedTxsCounter.inc();
             } finally {
                 commitTimer.stop();
             }
 
-            completeCommittedTx(tx, commitTs, true);
-            committedTxsCounter.inc();
+            postCommit(tx);
+
         } catch (TransactionManagerException e) {
-            tx.cleanup();
             throw new TransactionException(e.getMessage(), e);
-        } catch (ExecutionException e) {
-            if (e.getCause() instanceof AbortException) { // Conflicts detected, so rollback
-                rollback(tx);
-                rolledbackTxsCounter.inc();
-                throw new RollbackException("Conflicts detected in tx writeset. Transaction aborted.", e.getCause());
-            } else if (e.getCause() instanceof ServiceUnavailableException
-                    ||
-                    e.getCause() instanceof NewTSOException
-                    ||
-                    e.getCause() instanceof ConnectionException) {
-
-                errorTxsCounter.inc();
-                try {
-                    LOG.warn("Can't contact the TSO for receiving outcome for Tx {}. Checking commit table...", tx);
-                    // Check the commit table to try to find if the target
-                    // TSO woke up in the meantime and put the commit
-                    // TODO: Decide what we should we do if we can not contact the commit table
-                    Optional<CommitTimestamp> commitTimestamp =
-                            commitTableClient.getCommitTimestamp(tx.getStartTimestamp()).get();
-                    if (commitTimestamp.isPresent()) {
-                        if (commitTimestamp.get().isValid()) {
-                            long commitTS = commitTimestamp.get().getValue();
-                            completeCommittedTx(tx, commitTS, false);
-                            LOG.warn("Valid commit TS found in Commit Table for Tx {} and was committed", tx);
-                        } else {
-                            rollback(tx);
-                            LOG.warn("Tx {} was found invalidated in Commit Table and was rolled back", tx);
-                            throw new RollbackException(tx + " rolled-back. Invalidated by another TX started in a new TSO",
-                                                        e.getCause());
-                        }
-                    } else {
-                        LOG.warn("Trying to invalidate Tx {} proactively", tx);
-                        boolean invalidated = commitTableClient.tryInvalidateTransaction(tx.getStartTimestamp()).get();
-                        if (invalidated) {
-                            invalidatedTxsCounter.inc();
-                            rollback(tx);
-                            LOG.warn("Tx {} invalidated and rolled back", tx);
-                            throw new RollbackException(tx + " rolled-back preventively. Other TSO was detected.",
-                                                        e.getCause());
-                        } else {
-                            LOG.warn("Tx {} appeared committed in Commit Table and wasn't invalidated. Double checking Commit Table...", tx);
-                            // TODO: Decide what we should we do if we can not contact the commit table
-                            commitTimestamp = commitTableClient.getCommitTimestamp(tx.getStartTimestamp()).get();
-                            if (commitTimestamp.isPresent() && commitTimestamp.get().isValid()) {
-                                completeCommittedTx(tx, commitTimestamp.get().getValue(), false);
-                                LOG.warn("Valid commit TS found in Commit Table for Tx {} and was committedd", tx);
-                            } else {
-                                LOG.error("Can't determine the outcome of Tx {}", tx);
-                                throw new TransactionException("Cannot determite the outcome of " + tx);
-                            }
-                        }
-
-                    }
-                } catch (InterruptedException e1) {
-                    Thread.currentThread().interrupt();
-                    throw new TransactionException("Interrupted reading commit TS from Commit Table", e1);
-                } catch (ExecutionException e1) {
-                    throw new TransactionException("Could not commit. Interrupted reading commit TS from Commit Table",
-                                                   e1);
-                }
-            } else {
-                throw new TransactionException("Could not commit", e.getCause());
-            }
-        } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            throw new TransactionException("Interrupted committing transaction", ie);
         }
 
     }
@@ -305,45 +231,37 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      *            the transaction that was committed.
      * @throws TransactionManagerException
      */
-    public void postCommit(AbstractTransaction<? extends CellId> transaction)
-            throws TransactionManagerException {
-    }
+    public void postCommit(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {}
 
     /**
-     * Allows transaction manager developers to perform actions before
-     * rolling-back a transaction.
+     * Allows transaction manager developers to perform actions before rolling-back a transaction.
      * @param transaction
      *            the transaction that is going to be rolled-back.
      * @throws TransactionManagerException
      */
-    public void preRollback(AbstractTransaction<? extends CellId> transaction)
-            throws TransactionManagerException {
-    }
+    public void preRollback(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {}
 
     /**
      * @see com.yahoo.omid.transaction.TransactionManager#rollback(Transaction)
      */
     @Override
-    public final void rollback(Transaction transaction)
-            throws TransactionException {
+    public final void rollback(Transaction transaction) throws TransactionException {
 
         AbstractTransaction<? extends CellId> tx = enforceAbstractTransactionAsParam(transaction);
         enforceTransactionIsInRunningState(tx);
 
         try {
-            try {
-                preRollback(tx);
-            } catch (TransactionManagerException e) {
-                throw new TransactionException(e.getMessage(), e);
-            }
+
+            preRollback(tx);
+
             // Make sure its commit timestamp is 0, so the cleanup does the right job
             tx.setCommitTimestamp(0);
             tx.setStatus(Status.ROLLEDBACK);
-            try {
-                postRollback(tx);
-            } catch (TransactionManagerException e) {
-                LOG.warn(e.getMessage());
-            }
+
+            postRollback(tx);
+
+        } catch (TransactionManagerException e) {
+            throw new TransactionException(e.getMessage(), e);
         } finally {
             tx.cleanup();
         }
@@ -351,16 +269,12 @@ public abstract class AbstractTransactionManager implements TransactionManager {
     }
 
     /**
-     * Allows transaction manager developers to perform actions after
-     * rolling-back a transaction.
+     * Allows transaction manager developers to perform actions after rolling-back a transaction.
      * @param transaction
      *            the transaction that was rolled-back.
      * @throws TransactionManagerException
      */
-    public void postRollback(AbstractTransaction<? extends CellId> transaction)
-            throws TransactionManagerException {
-    }
-
+    public void postRollback(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {}
 
     /**
      * Check if the transaction commit data is in the shadow cell
@@ -371,26 +285,24 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      * @throws IOException
      */
     Optional<CommitTimestamp> readCommitTimestampFromShadowCell(long cellStartTimestamp, CommitTimestampLocator locator)
-            throws IOException {
+            throws IOException
+    {
+
         Optional<CommitTimestamp> commitTS = Optional.absent();
 
-        Optional<Long> commitTimestamp =
-                locator.readCommitTimestampFromShadowCell(cellStartTimestamp);
+        Optional<Long> commitTimestamp = locator.readCommitTimestampFromShadowCell(cellStartTimestamp);
         if (commitTimestamp.isPresent()) {
-            commitTS = Optional.of(// Valid commit Timestamp
-                                   new CommitTimestamp(SHADOW_CELL, commitTimestamp.get(), true));
+            commitTS = Optional.of(new CommitTimestamp(SHADOW_CELL, commitTimestamp.get(), true)); // Valid commit TS
         }
 
         return commitTS;
     }
 
     /**
-     * This function returns the commit timestamp for a particular cell
-     * if the transaction was already committed in the system. In case the
-     * transaction was not committed and the cell was written by transaction
-     * initialized by a previous TSO server, an invalidation try occurs.
-     * Otherwise the function returns a value that indicates that the commit
-     * timestamp was not found.
+     * This function returns the commit timestamp for a particular cell if the transaction was already committed in
+     * the system. In case the transaction was not committed and the cell was written by transaction initialized by a
+     * previous TSO server, an invalidation try occurs.
+     * Otherwise the function returns a value that indicates that the commit timestamp was not found.
      * @param cellStartTimestamp
      *          start timestamp of the cell to locate the commit timestamp for.
      * @param epoch
@@ -406,31 +318,25 @@ public abstract class AbstractTransactionManager implements TransactionManager {
 
         try {
             // 1) First check the cache
-            Optional<Long> commitTimestamp =
-                    locator.readCommitTimestampFromCache(cellStartTimestamp);
+            Optional<Long> commitTimestamp = locator.readCommitTimestampFromCache(cellStartTimestamp);
             if (commitTimestamp.isPresent()) { // Valid commit timestamp
                 return new CommitTimestamp(CACHE, commitTimestamp.get(), true);
             }
 
             // 2) Then check the commit table
-            // If the data was written at a previous epoch,
-            // check whether the transaction was invalidated
-
-            Optional<CommitTimestamp> commitTimeStamp =
-                    commitTableClient.getCommitTimestamp(cellStartTimestamp).get();
+            // If the data was written at a previous epoch, check whether the transaction was invalidated
+            Optional<CommitTimestamp> commitTimeStamp = commitTableClient.getCommitTimestamp(cellStartTimestamp).get();
             if (commitTimeStamp.isPresent()) {
                 return commitTimeStamp.get();
             }
 
             // 3) Read from shadow cell
-
             commitTimeStamp = readCommitTimestampFromShadowCell(cellStartTimestamp, locator);
             if (commitTimeStamp.isPresent()) {
                 return commitTimeStamp.get();
             }
 
             // 4) Check the epoch and invalidate the entry
-
             // if the data was written by a transaction from a previous epoch (previous TSO)
             if (cellStartTimestamp < epoch) {
                 boolean invalidated = commitTableClient.tryInvalidateTransaction(cellStartTimestamp).get();
@@ -439,8 +345,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
                 }
             }
 
-            // 5) We did not manage to invalidate the transactions then
-            // check the commit table
+            // 5) We did not manage to invalidate the transactions then check the commit table
             commitTimeStamp = commitTableClient.getCommitTimestamp(cellStartTimestamp).get();
             if (commitTimeStamp.isPresent()) {
                 return commitTimeStamp.get();
@@ -478,9 +383,9 @@ public abstract class AbstractTransactionManager implements TransactionManager {
 
     }
 
-    // ****************************************************************************************************************
+    // ----------------------------------------------------------------------------------------------------------------
     // Helper methods
-    // ****************************************************************************************************************
+    // ----------------------------------------------------------------------------------------------------------------
 
     private void enforceTransactionIsInRunningState(Transaction transaction) {
 
@@ -492,8 +397,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
 
     @SuppressWarnings("unchecked")
     // NOTE: We are sure that tx is not parametrized
-    private AbstractTransaction<? extends CellId>
-    enforceAbstractTransactionAsParam(Transaction tx) {
+    private AbstractTransaction<? extends CellId> enforceAbstractTransactionAsParam(Transaction tx) {
 
         if (tx instanceof AbstractTransaction) {
             return (AbstractTransaction<? extends CellId>) tx;
@@ -504,32 +408,114 @@ public abstract class AbstractTransactionManager implements TransactionManager {
 
     }
 
-    private void completeCommittedTx(AbstractTransaction<? extends CellId> txToSetup,
-                                     long commitTS,
-                                     boolean shouldRemoveCommitTableEntry)
-            throws InterruptedException, ExecutionException {
+    private void commitRegularTransaction(AbstractTransaction<? extends CellId> tx)
+            throws RollbackException, TransactionException, TransactionManagerException
+    {
+
+        try {
+            long commitTs = tsoClient.commit(tx.getStartTimestamp(), tx.getWriteSet()).get();
+            certifyCommitForTx(tx, commitTs);
+            updateShadowCellsForTx(tx);
+            removeCommitTableEntryForTx(tx);
+        } catch (ExecutionException e) {
+
+            if (e.getCause() instanceof AbortException) { // TSO reports Tx conflicts as AbortExceptions in the future
+                rollback(tx);
+                rolledbackTxsCounter.inc();
+                throw new RollbackException("Conflicts detected in tx writeset", e.getCause());
+            }
+
+            if (e.getCause() instanceof ServiceUnavailableException
+                    ||
+                    e.getCause() instanceof NewTSOException
+                    ||
+                    e.getCause() instanceof ConnectionException) {
+
+                errorTxsCounter.inc();
+                try {
+                    LOG.warn("Can't contact the TSO for receiving outcome for Tx {}. Checking Commit Table...", tx);
+                    // Check the commit table to find if the target TSO woke up in the meantime and added the commit
+                    // TODO: Decide what we should we do if we can not contact the commit table
+                    Optional<CommitTimestamp> commitTimestamp =
+                            commitTableClient.getCommitTimestamp(tx.getStartTimestamp()).get();
+                    if (commitTimestamp.isPresent()) {
+                        if (commitTimestamp.get().isValid()) {
+                            LOG.warn("{}: Valid commit TS found in Commit Table. Committing Tx...", tx);
+                            certifyCommitForTx(tx, commitTimestamp.get().getValue());
+                            updateShadowCellsForTx(tx); // But do NOT remove transaction from commit table
+                        } else { // Probably another Tx in a new TSO Server invalidated this transaction
+                            LOG.warn("{}: Invalidated commit TS found in Commit Table. Rolling-back...", tx);
+                            rollback(tx);
+                            throw new RollbackException(tx + " invalidated by other Tx started", e.getCause());
+                        }
+                    } else {
+                        LOG.warn("{}: Trying to invalidate Tx proactively in Commit Table...", tx);
+                        boolean invalidated = commitTableClient.tryInvalidateTransaction(tx.getStartTimestamp()).get();
+                        if (invalidated) {
+                            LOG.warn("{}: Invalidated proactively in Commit Table. Rolling-back Tx...", tx);
+                            invalidatedTxsCounter.inc();
+                            rollback(tx); // Rollback proactively cause it's likely that a new TSOServer is now master
+                            throw new RollbackException(tx + " rolled-back precautionary", e.getCause());
+                        } else {
+                            LOG.warn("{}: Invalidation could NOT be completed. Re-checking Commit Table...", tx);
+                            // TODO: Decide what we should we do if we can not contact the commit table
+                            commitTimestamp = commitTableClient.getCommitTimestamp(tx.getStartTimestamp()).get();
+                            if (commitTimestamp.isPresent() && commitTimestamp.get().isValid()) {
+                                LOG.warn("{}: Valid commit TS found in Commit Table. Committing Tx...", tx);
+                                certifyCommitForTx(tx, commitTimestamp.get().getValue());
+                                updateShadowCellsForTx(tx); // But do NOT remove transaction from commit table
+                            } else {
+                                LOG.error("{}: Can't determine Transaction outcome", tx);
+                                throw new TransactionException(tx + ": cannot determine Tx outcome");
+                            }
+                        }
+                    }
+                } catch (ExecutionException e1) {
+                    throw new TransactionException(tx + ": problem reading commitTS from Commit Table", e1);
+                } catch (InterruptedException e1) {
+                    Thread.currentThread().interrupt();
+                    throw new TransactionException(tx + ": interrupted while reading commitTS from Commit Table", e1);
+                }
+            } else {
+                throw new TransactionException(tx + ": cannot determine Tx outcome", e.getCause());
+            }
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new TransactionException(tx + ": interrupted during commit", ie);
+        }
+
+    }
+
+    private void certifyCommitForTx(AbstractTransaction<? extends CellId> txToSetup, long commitTS) {
 
         txToSetup.setStatus(Status.COMMITTED);
         txToSetup.setCommitTimestamp(commitTS);
+
+    }
+
+    private void updateShadowCellsForTx(AbstractTransaction<? extends CellId> tx) throws TransactionManagerException {
+
+        shadowCellsUpdateTimer.start();
         try {
-            shadowCellsUpdateTimer.start();
-            try {
-                updateShadowCells(txToSetup);
-            } finally {
-                shadowCellsUpdateTimer.stop();
-            }
-            if (shouldRemoveCommitTableEntry) {
-                // Remove transaction from commit table if not failure occurred
-                commitTableUpdateTimer.start();
-                try {
-                    commitTableClient.completeTransaction(txToSetup.getStartTimestamp()).get();
-                } finally {
-                    commitTableUpdateTimer.stop();
-                }
-            }
-            postCommit(txToSetup);
-        } catch (TransactionManagerException e) {
-            LOG.warn(e.getMessage());
+            updateShadowCells(tx);
+        } finally {
+            shadowCellsUpdateTimer.stop();
+        }
+
+    }
+
+    private void removeCommitTableEntryForTx(AbstractTransaction<? extends CellId> tx) throws TransactionManagerException {
+
+        commitTableUpdateTimer.start();
+        try {
+            commitTableClient.completeTransaction(tx.getStartTimestamp()).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new TransactionManagerException(tx + ": interrupted during commit table entry delete");
+        } catch (ExecutionException e) {
+            throw new TransactionManagerException(tx + ": can't remove commit table entry");
+        } finally {
+            commitTableUpdateTimer.stop();
         }
 
     }
