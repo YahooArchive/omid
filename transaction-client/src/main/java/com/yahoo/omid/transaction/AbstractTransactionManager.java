@@ -53,6 +53,8 @@ public abstract class AbstractTransactionManager implements TransactionManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractTransactionManager.class);
 
+    static final long READ_ONLY_TX_COMMIT_TS = Long.MIN_VALUE;
+
     public interface TransactionFactory<T extends CellId> {
 
         AbstractTransaction<T> createTransaction(long transactionId, long epoch, AbstractTransactionManager tm);
@@ -211,7 +213,11 @@ public abstract class AbstractTransactionManager implements TransactionManager {
 
             commitTimer.start();
             try {
-                commitRegularTransaction(tx);
+                if (tx.getWriteSet().isEmpty()) {
+                    commitReadOnlyTransaction(tx); // No need for read-only transactions to contact the TSO Server
+                } else {
+                    commitRegularTransaction(tx);
+                }
                 committedTxsCounter.inc();
             } finally {
                 commitTimer.stop();
@@ -405,6 +411,12 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             throw new IllegalArgumentException(
                     "The transaction object passed is not an instance of AbstractTransaction");
         }
+
+    }
+
+    private void commitReadOnlyTransaction(AbstractTransaction<? extends CellId> readOnlyTx) {
+
+        certifyCommitForTx(readOnlyTx, READ_ONLY_TX_COMMIT_TS);
 
     }
 
