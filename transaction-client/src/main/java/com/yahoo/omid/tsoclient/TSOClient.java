@@ -15,18 +15,65 @@
  */
 package com.yahoo.omid.tsoclient;
 
+import com.google.common.base.Charsets;
+import com.google.common.net.HostAndPort;
+import com.google.common.util.concurrent.AbstractFuture;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.metrics.NullMetricsProvider;
+import com.yahoo.omid.proto.TSOProto;
+import com.yahoo.omid.zk.ZKUtils;
+import com.yahoo.statemachine.StateMachine;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.recipes.cache.ChildData;
+import org.apache.curator.framework.recipes.cache.NodeCache;
+import org.apache.curator.framework.recipes.cache.NodeCacheListener;
+import org.jboss.netty.bootstrap.ClientBootstrap;
+import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelFactory;
+import org.jboss.netty.channel.ChannelFuture;
+import org.jboss.netty.channel.ChannelFutureListener;
+import org.jboss.netty.channel.ChannelHandlerContext;
+import org.jboss.netty.channel.ChannelPipeline;
+import org.jboss.netty.channel.ChannelStateEvent;
+import org.jboss.netty.channel.ExceptionEvent;
+import org.jboss.netty.channel.MessageEvent;
+import org.jboss.netty.channel.SimpleChannelHandler;
+import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+import org.jboss.netty.handler.codec.frame.LengthFieldBasedFrameDecoder;
+import org.jboss.netty.handler.codec.frame.LengthFieldPrepender;
+import org.jboss.netty.handler.codec.protobuf.ProtobufDecoder;
+import org.jboss.netty.handler.codec.protobuf.ProtobufEncoder;
+import org.jboss.netty.util.HashedWheelTimer;
+import org.jboss.netty.util.Timeout;
+import org.jboss.netty.util.TimerTask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.ArrayDeque;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
+import static com.yahoo.omid.zk.ZKUtils.provideZookeeperClient;
 
 /**
  * Describes the abstract methods to communicate to the TSO server
  */
-public abstract class TSOClient {
+public class TSOClient implements TSOProtocol, NodeCacheListener {
+
+    private static final Logger LOG = LoggerFactory.getLogger(TSOClient.class);
 
     // ZK-related constants
     public static final String TSO_ZK_CLUSTER_CONFKEY = "tso.zkcluster";
@@ -53,98 +100,25 @@ public abstract class TSOClient {
     private static final long DEFAULT_EPOCH = -1L;
     private volatile long epoch = DEFAULT_EPOCH;
 
-    // ************* Abstract interface to communicate to the TSO *************
+    // Attributes
+    private CuratorFramework zkClient;
+    private NodeCache currentTSOZNode;
 
-    public abstract TSOFuture<Long> getNewStartTimestamp();
+    private ChannelFactory factory;
+    private ClientBootstrap bootstrap;
+    private Channel currentChannel;
+    private final ScheduledExecutorService fsmExecutor;
+    StateMachine.Fsm fsm;
 
-    public abstract TSOFuture<Long> commit(long transactionId, Set<? extends CellId> cells);
+    private final int requestTimeoutMs;
+    private final int requestMaxRetries;
+    private final int retryDelayMs; // ignored for now
+    private final int tsoReconnectionDelaySecs;
+    private InetSocketAddress tsoAddr;
 
-    public abstract TSOFuture<Void> close();
-
-    // ****************** High availability related interface *****************
-
-    /**
-     * Sets the new epoch obtained from the new TSO
-     * Used for high availability support.
-     *
-     * @param epoch the new epoch to set
-     */
-    public void setEpoch(long epoch) {
-        this.epoch = epoch;
-    }
-
-    /**
-     * Returns the epoch of the TSO server that initialized this transaction.
-     * Used for high availability support.
-     */
-    public long getEpoch() {
-        return epoch;
-    }
-
-    // ************************* Useful exceptions ****************************
-
-    /**
-     * Thrown when there are problems with the comm channel with the TSO server
-     * (e.g. when it is closed or disconnected)
-     */
-    public static class ConnectionException extends IOException {
-
-        private static final long serialVersionUID = -8489539195700267443L;
-
-    }
-
-    /**
-     * Thrown when an error is produced when performing the actions required
-     * to close the communication with the TSO server
-     */
-    public static class ClosingException extends Exception {
-
-        private static final long serialVersionUID = -5681694952053689884L;
-
-    }
-
-    /**
-     * Thrown when some incompatibilities between the TSO client & server are
-     * found
-     */
-    public static class HandshakeFailedException extends Exception {
-
-        private static final long serialVersionUID = 8545505066920548834L;
-
-    }
-
-    /**
-     * Thrown when the requests from TSO client to the TSO server have reached
-     * a number of retries
-     */
-    public static class ServiceUnavailableException extends Exception {
-
-        private static final long serialVersionUID = -1551974284011474385L;
-
-        public ServiceUnavailableException(String message) {
-            super(message);
-        }
-    }
-
-    /**
-     * Thrown when the TSO server has aborted a transaction
-     */
-    public static class AbortException extends Exception {
-
-        private static final long serialVersionUID = 1861474360100681040L;
-
-    }
-
-    /**
-     * Thrown when a new TSO has been detected
-     */
-    public static class NewTSOException extends Exception {
-
-        private static final long serialVersionUID = -3250655858200759321L;
-
-    }
-
-    // ****************************** Builder *********************************
+    // ----------------------------------------------------------------------------------------------------------------
+    // Construction
+    // ----------------------------------------------------------------------------------------------------------------
 
     public static class Builder {
 
@@ -163,13 +137,860 @@ public abstract class TSOClient {
 
         public TSOClient build() {
 
-            return new TSOClientImpl(conf, metrics);
+            return new TSOClient(conf, metrics);
 
         }
     }
 
     public static Builder newBuilder() {
         return new Builder();
+    }
+
+    // Avoid instantiation
+    private TSOClient(Configuration conf, MetricsRegistry metrics) {
+
+        // Start client with Nb of active threads = 3 as maximum.
+        int tsoExecutorThreads = conf.getInt(TSO_EXECUTOR_THREAD_NUM_CONFKEY, DEFAULT_TSO_EXECUTOR_THREAD_NUM);
+
+        factory = new NioClientSocketChannelFactory(
+                Executors.newCachedThreadPool(
+                        new ThreadFactoryBuilder().setNameFormat("tsoclient-boss-%d").build()),
+                Executors.newCachedThreadPool(
+                        new ThreadFactoryBuilder().setNameFormat("tsoclient-worker-%d").build()), tsoExecutorThreads);
+        // Create the bootstrap
+        bootstrap = new ClientBootstrap(factory);
+
+        requestTimeoutMs = conf.getInt(REQUEST_TIMEOUT_IN_MS_CONFKEY, DEFAULT_REQUEST_TIMEOUT_MS);
+        requestMaxRetries = conf.getInt(REQUEST_MAX_RETRIES_CONFKEY, DEFAULT_TSO_MAX_REQUEST_RETRIES);
+        retryDelayMs = conf.getInt(TSO_RETRY_DELAY_MS_CONFKEY, DEFAULT_TSO_RETRY_DELAY_MS);
+        tsoReconnectionDelaySecs = conf.getInt(TSO_RECONNECTION_DELAY_SECS, DEFAULT_TSO_RECONNECTION_DELAY_SECS);
+
+        LOG.info("Connecting to TSO...");
+        // Try to connect to TSO from ZK. If fails, go through host:port config
+        try {
+            connectToZK(conf);
+            configureCurrentTSOServerZNodeCache();
+
+            String tsoInfo = getCurrentTSOInfoFoundInZK();
+            // TSO info includes the new TSO host:port address and epoch
+            String[] currentTSOAndEpochArray = tsoInfo.split("#");
+            HostAndPort hp = HostAndPort.fromString(currentTSOAndEpochArray[0]);
+            setTSOAddress(hp.getHostText(), hp.getPort());
+            epoch = Long.parseLong(currentTSOAndEpochArray[1]);
+            LOG.info("\t* Current TSO host:port found in ZK: {} Epoch {}", hp, getEpoch());
+        } catch (ZKUtils.ZKException e) {
+            LOG.warn("A problem connecting to TSO was found ({}). Trying to connect directly with host:port",
+                     e.getMessage());
+            String host = conf.getString(TSO_HOST_CONFKEY, DEFAULT_TSO_HOST);
+            int port = conf.getInt(TSO_PORT_CONFKEY, DEFAULT_TSO_PORT);
+            setTSOAddress(host, port);
+            LOG.info("\t* TSO host:port {}:{} will be connected directly", host, port);
+        }
+
+        fsmExecutor = Executors.newSingleThreadScheduledExecutor(
+                new ThreadFactoryBuilder().setNameFormat("tsofsm-%d").build());
+        fsm = new StateMachine.FsmImpl(fsmExecutor);
+        fsm.setInitState(new DisconnectedState(fsm));
+
+        ChannelPipeline pipeline = bootstrap.getPipeline();
+        pipeline.addLast("lengthbaseddecoder", new LengthFieldBasedFrameDecoder(8 * 1024, 0, 4, 0, 4));
+        pipeline.addLast("lengthprepender", new LengthFieldPrepender(4));
+        pipeline.addLast("protobufdecoder", new ProtobufDecoder(TSOProto.Response.getDefaultInstance()));
+        pipeline.addLast("protobufencoder", new ProtobufEncoder());
+        pipeline.addLast("handler", new Handler(fsm));
+
+        bootstrap.setOption("tcpNoDelay", true);
+        bootstrap.setOption("keepAlive", true);
+        bootstrap.setOption("reuseAddress", true);
+        bootstrap.setOption("connectTimeoutMillis", 100);
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // TSOProtocol interface
+    // ----------------------------------------------------------------------------------------------------------------
+
+    /**
+     * @see TSOProtocol#getNewStartTimestamp()
+     */
+    @Override
+    public TSOFuture<Long> getNewStartTimestamp() {
+        TSOProto.Request.Builder builder = TSOProto.Request.newBuilder();
+        TSOProto.TimestampRequest.Builder tsreqBuilder = TSOProto.TimestampRequest.newBuilder();
+        builder.setTimestampRequest(tsreqBuilder.build());
+        RequestEvent request = new RequestEvent(builder.build(), requestMaxRetries);
+        fsm.sendEvent(request);
+        return new ForwardingTSOFuture<>(request);
+    }
+
+    /**
+     * @see TSOProtocol#commit(long, Set)
+     */
+    @Override
+    public TSOFuture<Long> commit(long transactionId, Set<? extends CellId> cells) {
+        TSOProto.Request.Builder builder = TSOProto.Request.newBuilder();
+        TSOProto.CommitRequest.Builder commitbuilder = TSOProto.CommitRequest.newBuilder();
+        commitbuilder.setStartTimestamp(transactionId);
+        for (CellId cell : cells) {
+            commitbuilder.addCellId(cell.getCellId());
+        }
+        builder.setCommitRequest(commitbuilder.build());
+        RequestEvent request = new RequestEvent(builder.build(), requestMaxRetries);
+        fsm.sendEvent(request);
+        return new ForwardingTSOFuture<>(request);
+    }
+
+    /**
+     * @see TSOProtocol#close()
+     */
+    @Override
+    public TSOFuture<Void> close() {
+        final CloseEvent closeEvent = new CloseEvent();
+        fsm.sendEvent(closeEvent);
+        closeEvent.addListener(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    closeEvent.get();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    e.printStackTrace();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                } finally {
+                    fsmExecutor.shutdown();
+                    if (currentTSOZNode != null) {
+                        try {
+                            currentTSOZNode.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    if (zkClient != null) {
+                        zkClient.close();
+                    }
+                }
+
+            }
+        }, fsmExecutor);
+        return new ForwardingTSOFuture<Void>(closeEvent);
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // High availability related interface
+    // ----------------------------------------------------------------------------------------------------------------
+
+    /**
+     * Returns the epoch of the TSO server that initialized this transaction.
+     * Used for high availability support.
+     */
+    public long getEpoch() {
+        return epoch;
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // NodeCacheListener interface
+    // ----------------------------------------------------------------------------------------------------------------
+
+    @Override
+    public void nodeChanged() throws Exception {
+
+        String tsoInfo = getCurrentTSOInfoFoundInZK();
+        // TSO info includes the new TSO host:port address and epoch
+        String[] currentTSOAndEpochArray = tsoInfo.split("#");
+        HostAndPort hp = HostAndPort.fromString(currentTSOAndEpochArray[0]);
+        setTSOAddress(hp.getHostText(), hp.getPort());
+        epoch = Long.parseLong(currentTSOAndEpochArray[1]);
+        LOG.info("CurrentTSO ZNode changed. New TSO Host & Port {}/Epoch {}", hp, getEpoch());
+        if (currentChannel != null && currentChannel.isConnected()) {
+            LOG.info("\tClosing channel with previous TSO {}", currentChannel);
+            currentChannel.close();
+        }
+
+    }
+
+    // ****************************************** Finite State Machine ************************************************
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // FSM: Events
+    // ----------------------------------------------------------------------------------------------------------------
+
+    private static class ParamEvent<T> implements StateMachine.Event {
+
+        final T param;
+
+        ParamEvent(T param) {
+            this.param = param;
+        }
+
+        T getParam() {
+            return param;
+        }
+    }
+
+    private static class ErrorEvent extends ParamEvent<Throwable> {
+
+        ErrorEvent(Throwable t) {
+            super(t);
+        }
+    }
+
+    private static class ConnectedEvent extends ParamEvent<Channel> {
+
+        ConnectedEvent(Channel c) {
+            super(c);
+        }
+    }
+
+    private static class UserEvent<T> extends AbstractFuture<T>
+            implements StateMachine.DeferrableEvent {
+
+        public void success(T value) {
+            set(value);
+        }
+
+        @Override
+        public void error(Throwable t) {
+            setException(t);
+        }
+    }
+
+    private static class CloseEvent extends UserEvent<Void> {
+
+    }
+
+    private static class ChannelClosedEvent extends ParamEvent<Throwable> {
+
+        ChannelClosedEvent(Throwable t) {
+            super(t);
+        }
+    }
+
+    private static class ReconnectEvent implements StateMachine.Event {
+
+    }
+
+    private static class HandshakeTimeoutEvent implements StateMachine.Event {
+
+    }
+
+    private static class TimestampRequestTimeoutEvent implements StateMachine.Event {
+
+    }
+
+    private static class CommitRequestTimeoutEvent implements StateMachine.Event {
+
+        final long startTimestamp;
+
+        public CommitRequestTimeoutEvent(long startTimestamp) {
+            this.startTimestamp = startTimestamp;
+        }
+
+        public long getStartTimestamp() {
+            return startTimestamp;
+        }
+    }
+
+    private static class RequestEvent extends UserEvent<Long> {
+
+        TSOProto.Request req;
+        int retriesLeft;
+
+        RequestEvent(TSOProto.Request req, int retriesLeft) {
+            this.req = req;
+            this.retriesLeft = retriesLeft;
+        }
+
+        TSOProto.Request getRequest() {
+            return req;
+        }
+
+        void setRequest(TSOProto.Request request) {
+            this.req = request;
+        }
+
+        int getRetriesLeft() {
+            return retriesLeft;
+        }
+
+        void decrementRetries() {
+            retriesLeft--;
+        }
+
+    }
+
+    private static class ResponseEvent extends ParamEvent<TSOProto.Response> {
+
+        ResponseEvent(TSOProto.Response r) {
+            super(r);
+        }
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // FSM: States
+    // ----------------------------------------------------------------------------------------------------------------
+
+    class BaseState extends StateMachine.State {
+
+        BaseState(StateMachine.Fsm fsm) {
+            super(fsm);
+        }
+
+        public StateMachine.State handleEvent(StateMachine.Event e) {
+            LOG.error("Unhandled event {} while in state {}", e, this.getClass().getName());
+            return this;
+        }
+    }
+
+    class DisconnectedState extends BaseState {
+
+        DisconnectedState(StateMachine.Fsm fsm) {
+            super(fsm);
+            LOG.debug("NEW STATE: DISCONNECTED");
+        }
+
+        public StateMachine.State handleEvent(RequestEvent e) {
+            fsm.deferEvent(e);
+            return tryToConnectToTSOServer();
+        }
+
+        public StateMachine.State handleEvent(CloseEvent e) {
+            factory.releaseExternalResources();
+            e.success(null);
+            return this;
+        }
+
+        private StateMachine.State tryToConnectToTSOServer() {
+            final InetSocketAddress tsoAddress = getAddress();
+            LOG.info("Trying to connect to TSO [{}]", tsoAddress);
+            ChannelFuture channelFuture = bootstrap.connect(tsoAddress);
+            channelFuture.addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture channelFuture) throws Exception {
+                    if (channelFuture.isSuccess()) {
+                        LOG.info("Connection to TSO [{}] established. Channel {}",
+                                 tsoAddress, channelFuture.getChannel());
+                    } else {
+                        LOG.error("Failed connection attempt to TSO [{}] failed. Channel {}",
+                                  tsoAddress, channelFuture.getChannel());
+                    }
+                }
+            });
+            return new ConnectingState(fsm);
+        }
+    }
+
+    private class ConnectingState extends BaseState {
+
+        ConnectingState(StateMachine.Fsm fsm) {
+            super(fsm);
+            LOG.debug("NEW STATE: CONNECTING");
+        }
+
+        public StateMachine.State handleEvent(UserEvent e) {
+            fsm.deferEvent(e);
+            return this;
+        }
+
+        public StateMachine.State handleEvent(ConnectedEvent e) {
+            return new HandshakingState(fsm, e.getParam());
+        }
+
+        public StateMachine.State handleEvent(ChannelClosedEvent e) {
+            return new ConnectionFailedState(fsm, e.getParam());
+        }
+
+        public StateMachine.State handleEvent(ErrorEvent e) {
+            return new ConnectionFailedState(fsm, e.getParam());
+        }
+
+    }
+
+    static class RequestAndTimeout {
+
+        final RequestEvent event;
+        final Timeout timeout;
+
+        RequestAndTimeout(RequestEvent event, Timeout timeout) {
+            this.event = event;
+            this.timeout = timeout;
+        }
+
+        RequestEvent getRequest() {
+            return event;
+        }
+
+        Timeout getTimeout() {
+            return timeout;
+        }
+
+        public String toString() {
+            String info = new String("Request type ");
+            if (event.getRequest().hasTimestampRequest()) {
+                info += "[Timestamp]";
+            } else if (event.getRequest().hasCommitRequest()) {
+                info += "[Commit] Start TS ->" + event.getRequest().getCommitRequest().getStartTimestamp();
+            } else {
+                info += "NONE";
+            }
+            return info;
+        }
+    }
+
+    private class HandshakingState extends BaseState {
+
+        final Channel channel;
+
+        final HashedWheelTimer timeoutExecutor = new HashedWheelTimer(
+                new ThreadFactoryBuilder().setNameFormat("tso-client-timeout").build());
+        final Timeout timeout;
+
+        HandshakingState(StateMachine.Fsm fsm, Channel channel) {
+            super(fsm);
+            LOG.debug("NEW STATE: HANDSHAKING");
+            this.channel = channel;
+            TSOProto.HandshakeRequest.Builder handshake = TSOProto.HandshakeRequest.newBuilder();
+            // Add the required handshake capabilities when necessary
+            handshake.setClientCapabilities(TSOProto.Capabilities.newBuilder().build());
+            channel.write(TSOProto.Request.newBuilder().setHandshakeRequest(handshake.build()).build());
+            timeout = newTimeout();
+        }
+
+        private Timeout newTimeout() {
+            if (requestTimeoutMs > 0) {
+                return timeoutExecutor.newTimeout(new TimerTask() {
+                    @Override
+                    public void run(Timeout timeout) {
+                        fsm.sendEvent(new HandshakeTimeoutEvent());
+                    }
+                }, 30, TimeUnit.SECONDS);
+            } else {
+                return null;
+            }
+        }
+
+        public StateMachine.State handleEvent(UserEvent e) {
+            fsm.deferEvent(e);
+            return this;
+        }
+
+        public StateMachine.State handleEvent(ResponseEvent e) {
+            if (e.getParam().hasHandshakeResponse() && e.getParam().getHandshakeResponse().getClientCompatible()) {
+                if (timeout != null) {
+                    timeout.cancel();
+                }
+                return new ConnectedState(fsm, channel, timeoutExecutor);
+            } else {
+                cleanupState();
+                LOG.error("Client incompatible with server");
+                return new HandshakeFailedState(fsm, new HandshakeFailedException());
+            }
+        }
+
+        public StateMachine.State handleEvent(HandshakeTimeoutEvent e) {
+            cleanupState();
+            return new ClosingState(fsm);
+        }
+
+        public StateMachine.State handleEvent(ErrorEvent e) {
+            cleanupState();
+            Throwable exception = e.getParam();
+            LOG.error("Error during handshake", exception);
+            return new HandshakeFailedState(fsm, exception);
+        }
+
+        private void cleanupState() {
+            timeoutExecutor.stop();
+            channel.close();
+            if (timeout != null) {
+                timeout.cancel();
+            }
+        }
+
+    }
+
+    class ConnectionFailedState extends BaseState {
+
+        final HashedWheelTimer reconnectionTimeoutExecutor = new HashedWheelTimer(
+                new ThreadFactoryBuilder().setNameFormat("tso-client-backoff-timeout").build());
+
+        Throwable exception;
+
+        ConnectionFailedState(final StateMachine.Fsm fsm, final Throwable exception) {
+            super(fsm);
+            LOG.debug("NEW STATE: CONNECTION FAILED [RE-CONNECTION BACKOFF]");
+            this.exception = exception;
+            reconnectionTimeoutExecutor.newTimeout(new TimerTask() {
+                @Override
+                public void run(Timeout timeout) {
+                    fsm.sendEvent(new ReconnectEvent());
+                }
+            }, tsoReconnectionDelaySecs, TimeUnit.SECONDS);
+        }
+
+        public StateMachine.State handleEvent(UserEvent e) {
+            e.error(exception);
+            return this;
+        }
+
+        public StateMachine.State handleEvent(ErrorEvent e) {
+            return this;
+        }
+
+        public StateMachine.State handleEvent(ChannelClosedEvent e) {
+            return new DisconnectedState(fsm);
+        }
+
+        public StateMachine.State handleEvent(ReconnectEvent e) {
+            return new DisconnectedState(fsm);
+        }
+
+    }
+
+    private class HandshakeFailedState extends ConnectionFailedState {
+
+        HandshakeFailedState(StateMachine.Fsm fsm, Throwable exception) {
+            super(fsm, exception);
+            LOG.debug("STATE: HANDSHAKING FAILED");
+        }
+
+    }
+
+    class ConnectedState extends BaseState {
+
+        final Queue<RequestAndTimeout> timestampRequests;
+        final Map<Long, RequestAndTimeout> commitRequests;
+        final Channel channel;
+
+        final HashedWheelTimer timeoutExecutor;
+
+        ConnectedState(StateMachine.Fsm fsm, Channel channel, HashedWheelTimer timeoutExecutor) {
+            super(fsm);
+            LOG.debug("NEW STATE: CONNECTED");
+            this.channel = channel;
+            this.timeoutExecutor = timeoutExecutor;
+            timestampRequests = new ArrayDeque<>();
+            commitRequests = new HashMap<>();
+        }
+
+        private Timeout newTimeout(final StateMachine.Event timeoutEvent) {
+            if (requestTimeoutMs > 0) {
+                return timeoutExecutor.newTimeout(new TimerTask() {
+                    @Override
+                    public void run(Timeout timeout) {
+                        fsm.sendEvent(timeoutEvent);
+                    }
+                }, requestTimeoutMs, TimeUnit.MILLISECONDS);
+            } else {
+                return null;
+            }
+        }
+
+        private void sendRequest(final StateMachine.Fsm fsm, RequestEvent request) {
+            TSOProto.Request req = request.getRequest();
+
+            if (req.hasTimestampRequest()) {
+                timestampRequests.add(new RequestAndTimeout(request, newTimeout(new TimestampRequestTimeoutEvent())));
+            } else if (req.hasCommitRequest()) {
+                TSOProto.CommitRequest commitReq = req.getCommitRequest();
+                commitRequests.put(commitReq.getStartTimestamp(), new RequestAndTimeout(
+                        request, newTimeout(new CommitRequestTimeoutEvent(commitReq.getStartTimestamp()))));
+            } else {
+                request.error(new IllegalArgumentException("Unknown request type"));
+                return;
+            }
+            ChannelFuture f = channel.write(req);
+
+            f.addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) {
+                    if (!future.isSuccess()) {
+                        fsm.sendEvent(new ErrorEvent(future.getCause()));
+                    }
+                }
+            });
+        }
+
+        private void handleResponse(ResponseEvent response) {
+            TSOProto.Response resp = response.getParam();
+            if (resp.hasTimestampResponse()) {
+                if (timestampRequests.size() == 0) {
+                    LOG.debug("Received timestamp response when no requests outstanding");
+                    return;
+                }
+                RequestAndTimeout e = timestampRequests.remove();
+                e.getRequest().success(resp.getTimestampResponse().getStartTimestamp());
+                if (e.getTimeout() != null) {
+                    e.getTimeout().cancel();
+                }
+            } else if (resp.hasCommitResponse()) {
+                long startTimestamp = resp.getCommitResponse().getStartTimestamp();
+                RequestAndTimeout e = commitRequests.remove(startTimestamp);
+                if (e == null) {
+                    LOG.debug("Received commit response for request that doesn't exist. Start TS: {}", startTimestamp);
+                    return;
+                }
+                if (e.getTimeout() != null) {
+                    e.getTimeout().cancel();
+                }
+                if (resp.getCommitResponse().getAborted()) {
+                    e.getRequest().error(new AbortException());
+                } else {
+                    // Check if the commit response received implies heuristic
+                    // actions during commit (because there's a new TSO master
+                    // replica) and inform the caller (e.g. the TxMgr) about it
+                    if (resp.getCommitResponse().getMakeHeuristicDecision()) {
+                        e.getRequest().error(new NewTSOException());
+                    } else {
+                        e.getRequest().success(resp.getCommitResponse().getCommitTimestamp());
+                    }
+                }
+            }
+        }
+
+        public StateMachine.State handleEvent(TimestampRequestTimeoutEvent e) {
+            if (!timestampRequests.isEmpty()) {
+                RequestAndTimeout r = timestampRequests.remove();
+                if (r.getTimeout() != null) {
+                    r.getTimeout().cancel();
+                }
+                queueRetryOrError(fsm, r.getRequest());
+            }
+            return this;
+        }
+
+        public StateMachine.State handleEvent(CommitRequestTimeoutEvent e) {
+            long startTimestamp = e.getStartTimestamp();
+            if (commitRequests.containsKey(startTimestamp)) {
+                RequestAndTimeout r = commitRequests.remove(startTimestamp);
+                if (r.getTimeout() != null) {
+                    r.getTimeout().cancel();
+                }
+                queueRetryOrError(fsm, r.getRequest());
+            }
+            return this;
+        }
+
+        public StateMachine.State handleEvent(CloseEvent e) {
+            LOG.debug("CONNECTED STATE: CloseEvent");
+            timeoutExecutor.stop();
+            closeChannelAndErrorRequests();
+            fsm.deferEvent(e);
+            return new ClosingState(fsm);
+        }
+
+        public StateMachine.State handleEvent(RequestEvent e) {
+            sendRequest(fsm, e);
+            return this;
+        }
+
+        public StateMachine.State handleEvent(ResponseEvent e) {
+            handleResponse(e);
+            return this;
+        }
+
+        public StateMachine.State handleEvent(ErrorEvent e) {
+            LOG.debug("CONNECTED STATE: ErrorEvent");
+            timeoutExecutor.stop();
+            handleError(fsm);
+            return new ClosingState(fsm);
+        }
+
+        private void handleError(StateMachine.Fsm fsm) {
+            LOG.debug("CONNECTED STATE: Cancelling Timeouts in handleError");
+            while (timestampRequests.size() > 0) {
+                RequestAndTimeout r = timestampRequests.remove();
+                if (r.getTimeout() != null) {
+                    r.getTimeout().cancel();
+                }
+                queueRetryOrError(fsm, r.getRequest());
+            }
+            Iterator<Map.Entry<Long, RequestAndTimeout>> iter = commitRequests.entrySet().iterator();
+            while (iter.hasNext()) {
+                RequestAndTimeout r = iter.next().getValue();
+                if (r.getTimeout() != null) {
+                    r.getTimeout().cancel();
+                }
+                queueRetryOrError(fsm, r.getRequest());
+                iter.remove();
+            }
+            channel.close();
+        }
+
+        private void queueRetryOrError(StateMachine.Fsm fsm, RequestEvent e) {
+            if (e.getRetriesLeft() > 0) {
+                e.decrementRetries();
+                if (e.getRequest().hasCommitRequest()) {
+                    TSOProto.CommitRequest commitRequest = e.getRequest().getCommitRequest();
+                    if (!commitRequest.getIsRetry()) { // Create a new retry for the commit request
+                        TSOProto.Request.Builder builder = TSOProto.Request.newBuilder();
+                        TSOProto.CommitRequest.Builder commitBuilder = TSOProto.CommitRequest.newBuilder();
+                        commitBuilder.mergeFrom(commitRequest);
+                        commitBuilder.setIsRetry(true);
+                        builder.setCommitRequest(commitBuilder.build());
+                        e.setRequest(builder.build());
+                    }
+                }
+                fsm.sendEvent(e);
+            } else {
+                e.error(
+                        new ServiceUnavailableException("Number of retries exceeded. This API request failed permanently"));
+            }
+        }
+
+        private void closeChannelAndErrorRequests() {
+            channel.close();
+            for (RequestAndTimeout r : timestampRequests) {
+                if (r.getTimeout() != null) {
+                    r.getTimeout().cancel();
+                }
+                r.getRequest().error(new ClosingException());
+            }
+            for (RequestAndTimeout r : commitRequests.values()) {
+                if (r.getTimeout() != null) {
+                    r.getTimeout().cancel();
+                }
+                r.getRequest().error(new ClosingException());
+            }
+        }
+    }
+
+    private class ClosingState extends BaseState {
+
+        ClosingState(StateMachine.Fsm fsm) {
+            super(fsm);
+            LOG.debug("NEW STATE: CLOSING");
+        }
+
+        public StateMachine.State handleEvent(TimestampRequestTimeoutEvent e) {
+            // Ignored. They will be retried or errored
+            return this;
+        }
+
+        public StateMachine.State handleEvent(CommitRequestTimeoutEvent e) {
+            // Ignored. They will be retried or errored
+            return this;
+        }
+
+        public StateMachine.State handleEvent(ErrorEvent e) {
+            // Ignored. They will be retried or errored
+            return this;
+        }
+
+        public StateMachine.State handleEvent(ResponseEvent e) {
+            // Ignored. They will be retried or errored
+            return this;
+        }
+
+        public StateMachine.State handleEvent(UserEvent e) {
+            fsm.deferEvent(e);
+            return this;
+        }
+
+        public StateMachine.State handleEvent(ChannelClosedEvent e) {
+            return new DisconnectedState(fsm);
+        }
+
+        public StateMachine.State handleEvent(HandshakeTimeoutEvent e) {
+            return this;
+        }
+
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // Helper classes & methods
+    // ----------------------------------------------------------------------------------------------------------------
+
+    private class Handler extends SimpleChannelHandler {
+
+        private StateMachine.Fsm fsm;
+
+        Handler(StateMachine.Fsm fsm) {
+            this.fsm = fsm;
+        }
+
+        @Override
+        public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) {
+            currentChannel = e.getChannel();
+            LOG.debug("HANDLER (CHANNEL CONNECTED): Connection {}. Sending connected event to FSM", e);
+            fsm.sendEvent(new ConnectedEvent(e.getChannel()));
+        }
+
+        @Override
+        public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+            LOG.debug("HANDLER (CHANNEL DISCONNECTED): Connection {}. Sending error event to FSM", e);
+            fsm.sendEvent(new ErrorEvent(new ConnectionException()));
+        }
+
+        @Override
+        public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+            LOG.debug("HANDLER (CHANNEL CLOSED): Connection {}. Sending channel closed event to FSM", e);
+            fsm.sendEvent(new ChannelClosedEvent(new ConnectionException()));
+        }
+
+        @Override
+        public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
+            if (e.getMessage() instanceof TSOProto.Response) {
+                fsm.sendEvent(new ResponseEvent((TSOProto.Response) e.getMessage()));
+            } else {
+                LOG.warn("Received unknown message", e.getMessage());
+            }
+        }
+
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
+            LOG.error("Error on channel {}", ctx.getChannel(), e.getCause());
+            fsm.sendEvent(new ErrorEvent(e.getCause()));
+        }
+    }
+
+    private synchronized void setTSOAddress(String host, int port) {
+        tsoAddr = new InetSocketAddress(host, port);
+    }
+
+    private synchronized InetSocketAddress getAddress() {
+        return tsoAddr;
+    }
+
+    private void connectToZK(Configuration conf) throws ZKUtils.ZKException {
+
+        String zkCluster = conf.getString(TSO_ZK_CLUSTER_CONFKEY, DEFAULT_ZK_CLUSTER);
+        int zkConnTimeOut = conf.getInt(ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, DEFAULT_ZK_CONNECTION_TIMEOUT_IN_SECS);
+        try {
+            zkClient = provideZookeeperClient(zkCluster);
+            LOG.info("\t* Connecting to ZK cluster {}", zkClient.getState());
+            zkClient.start();
+            if (!zkClient.blockUntilConnected(zkConnTimeOut, TimeUnit.SECONDS)) {
+                String msg = "Cannot connect to ZK Cluster " + zkCluster + " after " + zkConnTimeOut + " seconds";
+                zkClient.close();
+                throw new ZKUtils.ZKException(msg);
+            }
+            LOG.info("\t* Connection to ZK cluster {}", zkClient.getState());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ZKUtils.ZKException("Cannot connect to ZK Cluster " + zkCluster + " Cause: " + e.getMessage());
+        }
+    }
+
+    private void configureCurrentTSOServerZNodeCache() throws ZKUtils.ZKException {
+        try {
+            currentTSOZNode = new NodeCache(zkClient, CURRENT_TSO_PATH);
+            currentTSOZNode.getListenable().addListener(this);
+            currentTSOZNode.start(true);
+        } catch (Exception e) {
+            throw new ZKUtils.ZKException("Cannot start watcher on current TSO Server ZNode: " + e.getMessage());
+        }
+    }
+
+    private String getCurrentTSOInfoFoundInZK() throws ZKUtils.ZKException {
+        ChildData currentTSOData = currentTSOZNode.getCurrentData();
+        if (currentTSOData == null) {
+            throw new ZKUtils.ZKException("No data found in ZKNode " + CURRENT_TSO_PATH);
+        }
+        byte[] currentTSOAndEpochAsBytes = currentTSOData.getData();
+        if (currentTSOAndEpochAsBytes == null) {
+            throw new ZKUtils.ZKException("No data found for current TSO in ZKNode " + CURRENT_TSO_PATH);
+        }
+        return new String(currentTSOAndEpochAsBytes, Charsets.UTF_8);
     }
 
 }

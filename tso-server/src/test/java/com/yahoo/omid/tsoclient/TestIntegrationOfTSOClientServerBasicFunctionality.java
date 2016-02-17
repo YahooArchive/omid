@@ -193,7 +193,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
             tsoClient.commit(startTsTx2, Sets.newHashSet(c1, c2)).get();
             Assert.fail("Second TX should fail on commit");
         } catch (ExecutionException ee) {
-            assertEquals(TSOClient.AbortException.class, ee.getCause().getClass(), "Should have aborted");
+            assertEquals(AbortException.class, ee.getCause().getClass(), "Should have aborted");
         }
     }
 
@@ -208,7 +208,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
             tsoClient.commit(startTsTx3Client1, Sets.newHashSet(c1, c2)).get();
             Assert.fail("Second commit should fail as conflicts with the previous concurrent one");
         } catch (ExecutionException ee) {
-            assertEquals(TSOClient.AbortException.class, ee.getCause().getClass(), "Should have aborted");
+            assertEquals(AbortException.class, ee.getCause().getClass(), "Should have aborted");
         }
         long startTsTx4Client2 = justAnotherTSOClient.getNewStartTimestamp().get();
 

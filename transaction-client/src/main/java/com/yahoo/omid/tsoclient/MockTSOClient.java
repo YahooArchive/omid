@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class MockTSOClient extends TSOClient {
+public class MockTSOClient implements TSOProtocol {
     private final AtomicLong timestampGenerator = new AtomicLong();
     private final int CONFLICT_MAP_SIZE = 1 * 1000 * 1000;
     private final long[] conflictMap = new long[CONFLICT_MAP_SIZE];

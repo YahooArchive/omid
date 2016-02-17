@@ -1,6 +1,7 @@
 package com.yahoo.omid.transaction;
 
 import com.google.common.util.concurrent.SettableFuture;
+import com.yahoo.omid.tsoclient.AbortException;
 import com.yahoo.omid.tsoclient.ForwardingTSOFuture;
 import com.yahoo.omid.tsoclient.TSOClient;
 import org.apache.hadoop.hbase.KeyValue;
@@ -49,7 +50,7 @@ public class TestTransactionCleanup extends OmidTestBase {
         ForwardingTSOFuture<Long> stFF = new ForwardingTSOFuture<>(startTSF);
 
         SettableFuture<Long> abortingF = SettableFuture.create();
-        abortingF.setException(new TSOClient.AbortException());
+        abortingF.setException(new AbortException());
         ForwardingTSOFuture<Long> abortingFF = new ForwardingTSOFuture<>(abortingF);
 
         // Mock the TSO Client setting the right method responses

@@ -6,7 +6,6 @@ import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.tso.TSOMockModule;
 import com.yahoo.omid.tso.TSOServer;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig;
-import com.yahoo.omid.tsoclient.TSOClient.ConnectionException;
 import com.yahoo.statemachine.StateMachine.FsmImpl;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
@@ -215,12 +214,11 @@ public class TestTSOClientConnectionToTSO {
         } catch (ExecutionException e) {
             LOG.info("Exception expected");
             // Internal accessor to fsm to do the required checkings
-            TSOClientImpl clientimpl = (TSOClientImpl) tsoClient;
-            FsmImpl fsm = (FsmImpl) clientimpl.fsm;
+            FsmImpl fsm = (FsmImpl) tsoClient.fsm;
             assertEquals(e.getCause().getClass(), ConnectionException.class);
-            assertTrue(fsm.getState().getClass().equals(TSOClientImpl.ConnectionFailedState.class)
+            assertTrue(fsm.getState().getClass().equals(TSOClient.ConnectionFailedState.class)
                     ||
-                    fsm.getState().getClass().equals(TSOClientImpl.DisconnectedState.class));
+                    fsm.getState().getClass().equals(TSOClient.DisconnectedState.class));
         }
 
         // After that, simulate that a new TSO has been launched...
@@ -267,6 +265,5 @@ public class TestTSOClientConnectionToTSO {
             }
         }
     }
-
 
 }

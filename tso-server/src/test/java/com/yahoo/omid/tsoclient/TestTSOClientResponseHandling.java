@@ -63,7 +63,7 @@ public class TestTSOClientResponseHandling {
         try {
             tsoClient.commit(START_TS, Collections.<CellId>emptySet()).get();
         } catch (ExecutionException ee) {
-            assertEquals(ee.getCause().getClass(), TSOClient.AbortException.class);
+            assertEquals(ee.getCause().getClass(), AbortException.class);
         }
     }
 
@@ -89,7 +89,7 @@ public class TestTSOClientResponseHandling {
         try {
             tsoClient.commit(START_TS, Collections.<CellId>emptySet()).get();
         } catch (ExecutionException ee) {
-            assertEquals(ee.getCause().getClass(), TSOClient.NewTSOException.class);
+            assertEquals(ee.getCause().getClass(), NewTSOException.class);
         }
 
     }

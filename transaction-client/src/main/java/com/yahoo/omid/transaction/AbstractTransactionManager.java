@@ -24,10 +24,10 @@ import com.yahoo.omid.metrics.Timer;
 import com.yahoo.omid.transaction.Transaction.Status;
 import com.yahoo.omid.tsoclient.CellId;
 import com.yahoo.omid.tsoclient.TSOClient;
-import com.yahoo.omid.tsoclient.TSOClient.AbortException;
-import com.yahoo.omid.tsoclient.TSOClient.ConnectionException;
-import com.yahoo.omid.tsoclient.TSOClient.NewTSOException;
-import com.yahoo.omid.tsoclient.TSOClient.ServiceUnavailableException;
+import com.yahoo.omid.tsoclient.AbortException;
+import com.yahoo.omid.tsoclient.ConnectionException;
+import com.yahoo.omid.tsoclient.NewTSOException;
+import com.yahoo.omid.tsoclient.ServiceUnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
