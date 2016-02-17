@@ -123,7 +123,7 @@ public class TSOClientRaw {
             LOG.info("Disconnected");
             try {
                 SettableFuture<Response> future = responseQueue.take();
-                future.setException(new TSOClient.ConnectionException());
+                future.setException(new ConnectionException());
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
                 LOG.warn("Interrupted handling exception", ie);

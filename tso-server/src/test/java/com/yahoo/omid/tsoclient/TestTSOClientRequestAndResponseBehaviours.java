@@ -13,8 +13,6 @@ import com.yahoo.omid.tso.TSOServer;
 import com.yahoo.omid.tso.TSOServerCommandLineConfig;
 import com.yahoo.omid.tso.TimestampOracle;
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
-import com.yahoo.omid.tsoclient.TSOClient.ConnectionException;
-import com.yahoo.omid.tsoclient.TSOClient.ServiceUnavailableException;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
 import org.apache.curator.test.TestingServer;

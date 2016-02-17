@@ -4,7 +4,6 @@ import com.google.common.collect.Sets;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.InMemoryCommitTable;
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
-import com.yahoo.omid.tsoclient.TSOClient.AbortException;
 import org.testng.Assert;
 import org.testng.AssertJUnit;
 import org.testng.annotations.Test;
@@ -21,7 +20,7 @@ public class TestMockTSOClient {
     @Test(timeOut = 10000)
     public void testConflicts() throws Exception {
         CommitTable commitTable = new InMemoryCommitTable();
-        TSOClient client = new MockTSOClient(commitTable.getWriter().get());
+        TSOProtocol client = new MockTSOClient(commitTable.getWriter().get());
 
         long tr1 = client.getNewStartTimestamp().get();
         long tr2 = client.getNewStartTimestamp().get();
@@ -39,7 +38,7 @@ public class TestMockTSOClient {
     @Test(timeOut = 10000)
     public void testWatermarkUpdate() throws Exception {
         CommitTable commitTable = new InMemoryCommitTable();
-        TSOClient client = new MockTSOClient(commitTable.getWriter().get());
+        TSOProtocol client = new MockTSOClient(commitTable.getWriter().get());
         CommitTable.Client commitTableClient = commitTable.getClient().get();
 
         long tr1 = client.getNewStartTimestamp().get();

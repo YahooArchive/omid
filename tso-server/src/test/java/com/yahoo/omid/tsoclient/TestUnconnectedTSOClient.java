@@ -1,8 +1,7 @@
 package com.yahoo.omid.tsoclient;
 
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
-import com.yahoo.omid.tsoclient.TSOClient.ConnectionException;
-import com.yahoo.omid.tsoclient.TSOClientImpl.DisconnectedState;
+import com.yahoo.omid.tsoclient.TSOClient.DisconnectedState;
 import com.yahoo.statemachine.StateMachine.FsmImpl;
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
@@ -45,8 +44,7 @@ public class TestUnconnectedTSOClient {
                 .build();
 
         // Internal accessor to fsm
-        TSOClientImpl clientimpl = (TSOClientImpl) tsoClient;
-        FsmImpl fsm = (FsmImpl) clientimpl.fsm;
+        FsmImpl fsm = (FsmImpl) tsoClient.fsm;
 
         assertEquals(fsm.getState().getClass(), DisconnectedState.class);
 
