@@ -140,13 +140,21 @@ public class TestFilters extends OmidTestBase {
         p.add(family, col1, col1);
         p.add(family, col2, col2);
         table.put(t, p);
-        tm.commit(t);
+        try {
+            tm.commit(t);
+        } catch (TransactionException e) {
+            // Expected, see comment above
+        }
 
         // create normal row with only one cell
         t = tm.begin();
         p = new Put(row3);
         p.add(family, col2, col2);
         table.put(t, p);
-        tm.commit(t);
+        try {
+            tm.commit(t);
+        } catch (TransactionException e) {
+            // Expected, see comment above
+        }
     }
 }
