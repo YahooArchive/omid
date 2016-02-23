@@ -25,22 +25,18 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class InMemoryCommitTable implements CommitTable {
 
-    final ConcurrentHashMap<Long, Long> table = new ConcurrentHashMap<Long, Long>();
+    final ConcurrentHashMap<Long, Long> table = new ConcurrentHashMap<>();
 
     long lowWatermark;
 
     @Override
-    public ListenableFuture<CommitTable.Writer> getWriter() {
-        SettableFuture<CommitTable.Writer> f = SettableFuture.<CommitTable.Writer>create();
-        f.set(new Writer());
-        return f;
+    public CommitTable.Writer getWriter() {
+        return new Writer();
     }
 
     @Override
-    public ListenableFuture<CommitTable.Client> getClient() {
-        SettableFuture<CommitTable.Client> f = SettableFuture.<CommitTable.Client>create();
-        f.set(new Client());
-        return f;
+    public CommitTable.Client getClient() {
+        return new Client();
     }
 
     public class Writer implements CommitTable.Writer {
@@ -75,16 +71,15 @@ public class InMemoryCommitTable implements CommitTable {
     public class Client implements CommitTable.Client {
         @Override
         public ListenableFuture<Optional<CommitTimestamp>> getCommitTimestamp(long startTimestamp) {
-            SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>>create();
+            SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.create();
             Long result = table.get(startTimestamp);
             if (result == null) {
                 f.set(Optional.<CommitTimestamp>absent());
             } else {
                 if (result == INVALID_TRANSACTION_MARKER) {
-                    f.set(Optional.<CommitTimestamp>of(new CommitTimestamp(Location.COMMIT_TABLE,
-                            INVALID_TRANSACTION_MARKER, false)));
+                    f.set(Optional.of(new CommitTimestamp(Location.COMMIT_TABLE, INVALID_TRANSACTION_MARKER, false)));
                 } else {
-                    f.set(Optional.<CommitTimestamp>of(new CommitTimestamp(Location.COMMIT_TABLE, result, true)));
+                    f.set(Optional.of(new CommitTimestamp(Location.COMMIT_TABLE, result, true)));
                 }
             }
             return f;
@@ -92,14 +87,14 @@ public class InMemoryCommitTable implements CommitTable {
 
         @Override
         public ListenableFuture<Long> readLowWatermark() {
-            SettableFuture<Long> f = SettableFuture.<Long>create();
+            SettableFuture<Long> f = SettableFuture.create();
             f.set(lowWatermark);
             return f;
         }
 
         @Override
         public ListenableFuture<Void> completeTransaction(long startTimestamp) {
-            SettableFuture<Void> f = SettableFuture.<Void>create();
+            SettableFuture<Void> f = SettableFuture.create();
             table.remove(startTimestamp);
             f.set(null);
             return f;
@@ -108,7 +103,7 @@ public class InMemoryCommitTable implements CommitTable {
         @Override
         public ListenableFuture<Boolean> tryInvalidateTransaction(long startTimestamp) {
 
-            SettableFuture<Boolean> f = SettableFuture.<Boolean>create();
+            SettableFuture<Boolean> f = SettableFuture.create();
             Long old = table.get(startTimestamp);
 
             // If the transaction represented by startTimestamp is not in the map

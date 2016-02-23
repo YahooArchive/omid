@@ -26,7 +26,6 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
 
 import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.COMMIT_TABLE;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
@@ -77,12 +76,11 @@ public class TestTxMgrFailover extends OmidTestBase {
     }
 
     @BeforeMethod(alwaysRun = true, timeOut = 30_000)
-    public void beforeMethod()
-            throws ExecutionException, InterruptedException, OmidInstantiationException {
+    public void beforeMethod() throws OmidInstantiationException {
 
         commitTable = new InMemoryCommitTable(); // Use an in-memory commit table to speed up tests
-        commitTableClient = spy(commitTable.getClient().get());
-        commitTableWriter = spy(commitTable.getWriter().get());
+        commitTableClient = spy(commitTable.getClient());
+        commitTableWriter = spy(commitTable.getWriter());
 
         BaseConfiguration clientConf = new BaseConfiguration();
         clientConf.setProperty(TSO_HOST_CONFKEY, TSO_SERVER_HOST);
@@ -97,7 +95,7 @@ public class TestTxMgrFailover extends OmidTestBase {
                 .build());
     }
 
-    @Test
+    @Test(timeOut = 30_000)
     public void testAbortResponseFromTSOThrowsRollbackExceptionInClient() throws Exception {
         // Program the TSO to return an ad-hoc Timestamp and an abort response for tx 1
         tso.queueResponse(new ProgrammableTSOServer.TimestampResponse(TX1_ST));
@@ -131,9 +129,8 @@ public class TestTxMgrFailover extends OmidTestBase {
 
     }
 
-    @Test
-    public void testClientReceivesSuccessfulCommitForNonInvalidatedTxCommittedByPreviousTSO()
-            throws Exception {
+    @Test(timeOut = 30_000)
+    public void testClientReceivesSuccessfulCommitForNonInvalidatedTxCommittedByPreviousTSO() throws Exception {
 
         // Program the TSO to return an ad-hoc Timestamp and an commit response with heuristic actions
         tso.queueResponse(new ProgrammableTSOServer.TimestampResponse(TX1_ST));
@@ -169,9 +166,8 @@ public class TestTxMgrFailover extends OmidTestBase {
 
     }
 
-    @Test
-    public void testClientReceivesRollbackExceptionForInvalidatedTxCommittedByPreviousTSO()
-            throws Exception {
+    @Test(timeOut = 30_000)
+    public void testClientReceivesRollbackExceptionForInvalidatedTxCommittedByPreviousTSO() throws Exception {
 
         // Program the TSO to return an ad-hoc Timestamp and a commit response with heuristic actions
         tso.queueResponse(new ProgrammableTSOServer.TimestampResponse(TX1_ST));
@@ -209,7 +205,7 @@ public class TestTxMgrFailover extends OmidTestBase {
 
     }
 
-    @Test
+    @Test(timeOut = 30_000)
     public void testClientReceivesNotificationOfANewTSOCanInvalidateTransaction() throws Exception {
 
         // Program the TSO to return an ad-hoc Timestamp and a commit response with heuristic actions
@@ -248,7 +244,7 @@ public class TestTxMgrFailover extends OmidTestBase {
 
     }
 
-    @Test
+    @Test(timeOut = 30_000)
     public void testClientSuccessfullyCommitsWhenReceivingNotificationOfANewTSOAandCANTInvalidateTransaction()
             throws Exception {
 
@@ -260,9 +256,9 @@ public class TestTxMgrFailover extends OmidTestBase {
         commitTableWriter.addCommittedTransaction(TX1_ST, TX1_CT);
         commitTableWriter.flush();
         assertEquals(commitTable.countElements(), 1, "Rows should be 1!");
-        SettableFuture<Optional<CommitTimestamp>> f1 = SettableFuture.<Optional<CommitTimestamp>>create();
+        SettableFuture<Optional<CommitTimestamp>> f1 = SettableFuture.create();
         f1.set(Optional.<CommitTimestamp>absent());
-        SettableFuture<Optional<CommitTimestamp>> f2 = SettableFuture.<Optional<CommitTimestamp>>create();
+        SettableFuture<Optional<CommitTimestamp>> f2 = SettableFuture.create();
         f2.set(Optional.of(new CommitTimestamp(COMMIT_TABLE, TX1_CT, true)));
         doReturn(f1).doReturn(f2).when(commitTableClient).getCommitTimestamp(TX1_ST);
 
@@ -288,7 +284,7 @@ public class TestTxMgrFailover extends OmidTestBase {
 
     }
 
-    @Test
+    @Test(timeOut = 30_000)
     public void testClientReceivesATransactionExceptionWhenReceivingNotificationOfANewTSOAndCANTInvalidateTransactionAndCTCheckIsUnsuccessful()
             throws Exception {
 

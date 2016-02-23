@@ -59,7 +59,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         Injector injector = Guice.createInjector(tsoServerMockModule);
 
         CommitTable commitTable = injector.getInstance(CommitTable.class);
-        commitTableClient = commitTable.getClient().get();
+        commitTableClient = commitTable.getClient();
 
         LOG.info("==================================================================================================");
         LOG.info("======================================= Init TSO Server ==========================================");

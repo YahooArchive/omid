@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -81,7 +80,7 @@ class PersistenceProcessorImpl
                              RetryProcessor retryProc,
                              Panicker panicker,
                              TSOServerCommandLineConfig config)
-            throws InterruptedException, ExecutionException {
+            throws IOException {
         this(metrics,
                 tsoHostAndPort,
                 new Batch(config.getMaxBatchSize()),
@@ -103,13 +102,13 @@ class PersistenceProcessorImpl
                              RetryProcessor retryProc,
                              Panicker panicker,
                              TSOServerCommandLineConfig config)
-            throws InterruptedException, ExecutionException {
+            throws IOException {
 
         this.tsoHostAndPort = tsoHostAndPort;
         this.batch = batch;
         this.leaseManager = leaseManager;
-        this.commitTableClient = commitTable.getClient().get();
-        this.writer = commitTable.getWriter().get();
+        this.commitTableClient = commitTable.getClient();
+        this.writer = commitTable.getWriter();
         this.reply = reply;
         this.retryProc = retryProc;
         this.panicker = panicker;
@@ -129,7 +128,7 @@ class PersistenceProcessorImpl
         persistRing = RingBuffer.createSingleProducer(
                 PersistEvent.EVENT_FACTORY, 1 << 20, timeoutStrategy); // 2^20 entries in ringbuffer
         SequenceBarrier persistSequenceBarrier = persistRing.newBarrier();
-        BatchEventProcessor<PersistEvent> persistProcessor = new BatchEventProcessor<PersistEvent>(
+        BatchEventProcessor<PersistEvent> persistProcessor = new BatchEventProcessor<>(
                 persistRing,
                 persistSequenceBarrier,
                 this);

@@ -38,7 +38,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutionException;
 
 import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_NAME_KEY;
 
@@ -131,16 +130,9 @@ public class OmidCompactor extends BaseRegionObserver {
     private CommitTable.Client initAndGetCommitTableClient() throws IOException {
         LOG.info("Trying to get the commit table client");
         CommitTable commitTable = new HBaseCommitTable(conf, commitTableConf);
-        try {
-            CommitTable.Client commitTableClient = commitTable.getClient().get();
-            LOG.info("Commit table client obtained {}", commitTableClient.getClass().getCanonicalName());
-            return commitTableClient;
-        } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            throw new IOException("Interrupted getting the commit table client");
-        } catch (ExecutionException ee) {
-            throw new IOException("Error getting the commit table client", ee.getCause());
-        }
+        CommitTable.Client commitTableClient = commitTable.getClient();
+        LOG.info("Commit table client obtained {}", commitTableClient.getClass().getCanonicalName());
+        return commitTableClient;
     }
 
 }

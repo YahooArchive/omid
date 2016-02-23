@@ -23,17 +23,13 @@ import java.io.IOException;
 
 public class NullCommitTable implements CommitTable {
     @Override
-    public ListenableFuture<CommitTable.Writer> getWriter() {
-        SettableFuture<CommitTable.Writer> f = SettableFuture.<CommitTable.Writer>create();
-        f.set(new Writer());
-        return f;
+    public CommitTable.Writer getWriter() {
+        return new Writer();
     }
 
     @Override
-    public ListenableFuture<CommitTable.Client> getClient() {
-        SettableFuture<CommitTable.Client> f = SettableFuture.<CommitTable.Client>create();
-        f.set(new Client());
-        return f;
+    public CommitTable.Client getClient() {
+        return new Client();
     }
 
     public class Writer implements CommitTable.Writer {
@@ -76,7 +72,7 @@ public class NullCommitTable implements CommitTable {
 
         @Override
         public ListenableFuture<Void> completeTransaction(long startTimestamp) {
-            SettableFuture<Void> f = SettableFuture.<Void>create();
+            SettableFuture<Void> f = SettableFuture.create();
             f.set(null);
             return f;
         }

@@ -92,8 +92,7 @@ public class TxRunner implements Runnable {
     private final Timer abortTimer;
     private final Counter errorCounter;
 
-    public TxRunner(MetricsRegistry metrics, Config expConfig) throws IOException, InterruptedException,
-            ExecutionException {
+    public TxRunner(MetricsRegistry metrics, Config expConfig) throws IOException {
 
         // Tx Runner config
         this.outstandingTxs = new Semaphore(expConfig.maxInFlight);
@@ -123,16 +122,8 @@ public class TxRunner implements Runnable {
             commitTable = new NullCommitTable();
             LOG.info("TxRunner-{} [ Using Null Commit Table ]", txRunnerId);
         }
-        try {
-            this.commitTableClient = commitTable.getClient().get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            e.printStackTrace();
-            throw e;
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-            throw e;
-        }
+
+        this.commitTableClient = commitTable.getClient();
 
         // TSO Client initialization
         Configuration tsoConfig = new BaseConfiguration();
@@ -234,7 +225,7 @@ public class TxRunner implements Runnable {
             boolean readOnly = (randomGen.nextFloat() * 100) < percentReads;
 
             int txSize = readOnly ? 0 : randomGen.nextInt(maxTxSize);
-            final Set<CellId> cells = new HashSet<CellId>();
+            final Set<CellId> cells = new HashSet<>();
             for (byte i = 0; i < txSize; i++) {
                 long cellId = intGenerator.nextInt();
                 cells.add(new DummyCellIdImpl(cellId));

@@ -80,7 +80,9 @@ public class HBaseCommitTable implements CommitTable {
 
     }
 
-    // ************************* Reader and writer *************************
+    // ----------------------------------------------------------------------------------------------------------------
+    // Reader and Writer
+    // ----------------------------------------------------------------------------------------------------------------
 
     public class HBaseWriter implements Writer {
 
@@ -156,7 +158,7 @@ public class HBaseCommitTable implements CommitTable {
         @Override
         public ListenableFuture<Optional<CommitTimestamp>> getCommitTimestamp(long startTimestamp) {
 
-            SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>>create();
+            SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.create();
             try {
                 Get get = new Get(startTimestampToKey(startTimestamp));
                 get.addColumn(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER);
@@ -189,7 +191,7 @@ public class HBaseCommitTable implements CommitTable {
 
         @Override
         public ListenableFuture<Long> readLowWatermark() {
-            SettableFuture<Long> f = SettableFuture.<Long>create();
+            SettableFuture<Long> f = SettableFuture.create();
             try {
                 Get get = new Get(LOW_WATERMARK_ROW);
                 get.addColumn(LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER);
@@ -213,7 +215,7 @@ public class HBaseCommitTable implements CommitTable {
                 synchronized (this) {
 
                     if (isClosed) {
-                        SettableFuture<Void> f = SettableFuture.<Void>create();
+                        SettableFuture<Void> f = SettableFuture.create();
                         f.setException(new IOException("Not accepting requests anymore"));
                         return f;
                     }
@@ -225,12 +227,12 @@ public class HBaseCommitTable implements CommitTable {
                 }
             } catch (IOException ioe) {
                 LOG.warn("Error generating timestamp for transaction completion", ioe);
-                SettableFuture<Void> f = SettableFuture.<Void>create();
+                SettableFuture<Void> f = SettableFuture.create();
                 f.setException(ioe);
                 return f;
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
-                SettableFuture<Void> f = SettableFuture.<Void>create();
+                SettableFuture<Void> f = SettableFuture.create();
                 f.setException(ie);
                 return f;
             }
@@ -238,7 +240,7 @@ public class HBaseCommitTable implements CommitTable {
 
         @Override
         public ListenableFuture<Boolean> tryInvalidateTransaction(long startTimestamp) {
-            SettableFuture<Boolean> f = SettableFuture.<Boolean>create();
+            SettableFuture<Boolean> f = SettableFuture.create();
             try {
                 byte[] row = startTimestampToKey(startTimestamp);
                 Put invalidationPut = new Put(row, startTimestamp);
@@ -260,7 +262,7 @@ public class HBaseCommitTable implements CommitTable {
 
         @Override
         public void run() {
-            List<DeleteRequest> reqbatch = new ArrayList<DeleteRequest>();
+            List<DeleteRequest> reqbatch = new ArrayList<>();
             try {
                 while (true) {
                     DeleteRequest r = deleteQueue.poll();
@@ -273,7 +275,7 @@ public class HBaseCommitTable implements CommitTable {
                     }
 
                     if (r == null || reqbatch.size() == DELETE_BATCH_SIZE) {
-                        List<Delete> deletes = new ArrayList<Delete>();
+                        List<Delete> deletes = new ArrayList<>();
                         for (DeleteRequest dr : reqbatch) {
                             deletes.add(dr.getDelete());
                         }
@@ -367,31 +369,23 @@ public class HBaseCommitTable implements CommitTable {
         }
     }
 
-    // ******************************* Getters ********************************
+    // ----------------------------------------------------------------------------------------------------------------
+    // Getters
+    // ----------------------------------------------------------------------------------------------------------------
 
     @Override
-    public ListenableFuture<Writer> getWriter() {
-        SettableFuture<Writer> f = SettableFuture.<Writer>create();
-        try {
-            f.set(new HBaseWriter(hbaseConfig, tableName));
-        } catch (IOException ioe) {
-            f.setException(ioe);
-        }
-        return f;
+    public Writer getWriter() throws IOException {
+        return new HBaseWriter(hbaseConfig, tableName);
     }
 
     @Override
-    public ListenableFuture<Client> getClient() {
-        SettableFuture<Client> f = SettableFuture.<Client>create();
-        try {
-            f.set(new HBaseClient(hbaseConfig, tableName));
-        } catch (IOException ioe) {
-            f.setException(ioe);
-        }
-        return f;
+    public Client getClient() throws IOException {
+        return new HBaseClient(hbaseConfig, tableName);
     }
 
-    // *************************** Helper methods *****************************
+    // ----------------------------------------------------------------------------------------------------------------
+    // Helper methods
+    // ----------------------------------------------------------------------------------------------------------------
 
     protected byte[] startTimestampToKey(long startTimestamp) throws IOException {
         return keygen.startTimestampToKey(startTimestamp);
