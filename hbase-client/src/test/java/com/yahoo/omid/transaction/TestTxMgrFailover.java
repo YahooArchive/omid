@@ -9,7 +9,6 @@ import com.yahoo.omid.committable.InMemoryCommitTable;
 import com.yahoo.omid.transaction.Transaction.Status;
 import com.yahoo.omid.tso.ProgrammableTSOServer;
 import com.yahoo.omid.tsoclient.TSOClient;
-import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.KeyValue;
@@ -28,9 +27,6 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 
 import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.COMMIT_TABLE;
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
-import static com.yahoo.omid.tsoclient.TSOClient.ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 import static org.testng.Assert.assertEquals;
@@ -76,22 +72,20 @@ public class TestTxMgrFailover extends OmidTestBase {
     }
 
     @BeforeMethod(alwaysRun = true, timeOut = 30_000)
-    public void beforeMethod() throws OmidInstantiationException {
+    public void beforeMethod() throws IOException {
 
         commitTable = new InMemoryCommitTable(); // Use an in-memory commit table to speed up tests
         commitTableClient = spy(commitTable.getClient());
         commitTableWriter = spy(commitTable.getWriter());
 
-        BaseConfiguration clientConf = new BaseConfiguration();
-        clientConf.setProperty(TSO_HOST_CONFKEY, TSO_SERVER_HOST);
-        clientConf.setProperty(TSO_PORT_CONFKEY, TSO_SERVER_PORT);
-        clientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, 0);
-        TSOClient tsoClientForTM = spy(TSOClient.newBuilder().withConfiguration(clientConf).build());
+        HBaseOmidClientConfiguration hbaseOmidClientConf = HBaseOmidClientConfiguration.create();
+        hbaseOmidClientConf.setConnectionString(TSO_SERVER_HOST + ":" + TSO_SERVER_PORT);
+        hbaseOmidClientConf.setHBaseConfiguration(hbaseConf);
+        TSOClient tsoClientForTM = spy(TSOClient.newInstance(hbaseOmidClientConf.getOmidClientConfiguration()));
 
-        tm = spy(HBaseTransactionManager.newBuilder()
-                .withTSOClient(tsoClientForTM)
-                .withCommitTableClient(commitTableClient)
-                .withConfiguration(hbaseConf)
+        tm = spy(HBaseTransactionManager.builder(hbaseOmidClientConf)
+                .tsoClient(tsoClientForTM)
+                .commitTableClient(commitTableClient)
                 .build());
     }
 
