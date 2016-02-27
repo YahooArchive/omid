@@ -37,7 +37,6 @@ import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
 import static com.yahoo.omid.ZKConstants.TSO_LEASE_PATH;
 import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
 import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TSO_FAMILY;
-import static com.yahoo.omid.transaction.AbstractTransactionManager.READ_ONLY_TX_COMMIT_TS;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_ZK_CLUSTER_CONFKEY;
 import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
 import static org.testng.Assert.assertEquals;
@@ -239,7 +238,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
                 assertEquals(tx1.getEpoch(), initialEpoch);
             }
 
-            // Read interleaved and check the values writen by tx 1
+            // Read interleaved and check the values written by tx 1
             Get getRow2 = new Get(row2).setMaxVersions(1);
             r = txTable.get(interleavedReadTx, getRow2);
             assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier2), initialData,
@@ -249,8 +248,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
             // Should commit because its a read only tx does not have to contact the TSO
             tm.commit(interleavedReadTx);
             assertEquals(interleavedReadTx.getEpoch(), initialEpoch);
-            assertEquals(((AbstractTransaction) interleavedReadTx).getCommitTimestamp(), READ_ONLY_TX_COMMIT_TS);
-            assertEquals(interleavedReadTx.getStatus(), Transaction.Status.COMMITTED);
+            assertEquals(interleavedReadTx.getStatus(), Transaction.Status.COMMITTED_RO);
 
             LOG.info("Wait till the client is informed about the connection parameters of the new TSO");
             TestUtils.waitForSocketListening("localhost", TSO2_PORT, 100);

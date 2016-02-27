@@ -77,9 +77,7 @@ public class TestHBaseTransactionManager extends OmidTestBase {
             tm.commit(readOnlyTx);
 
             verify(tsoClient, times(EXPECTED_INVOCATIONS_FOR_COMMIT)).commit(anyLong(), anySetOf(HBaseCellId.class));
-            assertEquals(readOnlyTx.getStatus(), Transaction.Status.COMMITTED);
-            assertEquals(readOnlyTx.getCommitTimestamp(), AbstractTransactionManager.READ_ONLY_TX_COMMIT_TS);
-
+            assertEquals(readOnlyTx.getStatus(), Transaction.Status.COMMITTED_RO);
         }
 
     }
