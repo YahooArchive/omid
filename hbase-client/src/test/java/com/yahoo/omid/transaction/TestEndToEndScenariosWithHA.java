@@ -37,6 +37,7 @@ import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
 import static com.yahoo.omid.ZKConstants.TSO_LEASE_PATH;
 import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
 import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TSO_FAMILY;
+import static com.yahoo.omid.transaction.AbstractTransactionManager.READ_ONLY_TX_COMMIT_TS;
 import static com.yahoo.omid.tsoclient.TSOClient.TSO_ZK_CLUSTER_CONFKEY;
 import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
 import static org.testng.Assert.assertEquals;
@@ -245,21 +246,13 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
                     "Unexpected value for SI read R2Q2" + interleavedReadTx + ": "
                             + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier2)));
 
-            try {
-                tm.commit(interleavedReadTx);
-                fail();
-            } catch (RollbackException e) {
-                // Expected
-                // NOTE: This is a read only transaction (It's writeset is empty)
-                // and probably it should not be aborted despite the change in
-                // TSO mastership. We should take this into consideration for future improvements
-                LOG.info("Rollback cause for Tx {}: ", interleavedReadTx, e.getCause());
-                assertEquals(interleavedReadTx.getEpoch(), initialEpoch);
-                assertEquals(interleavedReadTx.getStatus(), Transaction.Status.ROLLEDBACK);
-            }
+            // Should commit because its a read only tx does not have to contact the TSO
+            tm.commit(interleavedReadTx);
+            assertEquals(interleavedReadTx.getEpoch(), initialEpoch);
+            assertEquals(((AbstractTransaction) interleavedReadTx).getCommitTimestamp(), READ_ONLY_TX_COMMIT_TS);
+            assertEquals(interleavedReadTx.getStatus(), Transaction.Status.COMMITTED);
 
-            LOG.info("Sleep the Lease period till the client is informed about"
-                    + "the new TSO connection parameters and how can connect");
+            LOG.info("Wait till the client is informed about the connection parameters of the new TSO");
             TestUtils.waitForSocketListening("localhost", TSO2_PORT, 100);
 
             checkRowValues(txTable, initialData, initialData);
