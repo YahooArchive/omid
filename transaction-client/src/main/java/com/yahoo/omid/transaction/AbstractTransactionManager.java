@@ -414,7 +414,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
 
     private void markReadOnlyTransaction(AbstractTransaction<? extends CellId> readOnlyTx) {
 
-        readOnlyTx.setStatus(Status.COMMITTED);
+        readOnlyTx.setStatus(Status.COMMITTED_RO);
 
     }
 
