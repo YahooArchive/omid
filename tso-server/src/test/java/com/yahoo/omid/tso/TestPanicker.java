@@ -1,7 +1,5 @@
 package com.yahoo.omid.tso;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.timestamp.storage.TimestampStorage;
@@ -86,17 +84,13 @@ public class TestPanicker {
         final CommitTable.Client mockClient = mock(CommitTable.Client.class);
         CommitTable commitTable = new CommitTable() {
             @Override
-            public ListenableFuture<Writer> getWriter() {
-                SettableFuture<Writer> f = SettableFuture.create();
-                f.set(mockWriter);
-                return f;
+            public Writer getWriter() {
+                return mockWriter;
             }
 
             @Override
-            public ListenableFuture<Client> getClient() {
-                SettableFuture<Client> f = SettableFuture.create();
-                f.set(mockClient);
-                return f;
+            public Client getClient() {
+                return mockClient;
             }
         };
 
@@ -127,17 +121,13 @@ public class TestPanicker {
         final CommitTable.Client mockClient = mock(CommitTable.Client.class);
         CommitTable commitTable = new CommitTable() {
             @Override
-            public ListenableFuture<Writer> getWriter() {
-                SettableFuture<Writer> f = SettableFuture.create();
-                f.set(mockWriter);
-                return f;
+            public Writer getWriter() {
+                return mockWriter;
             }
 
             @Override
-            public ListenableFuture<Client> getClient() {
-                SettableFuture<Client> f = SettableFuture.create();
-                f.set(mockClient);
-                return f;
+            public Client getClient() {
+                return mockClient;
             }
         };
         PersistenceProcessor proc = new PersistenceProcessorImpl(metrics,

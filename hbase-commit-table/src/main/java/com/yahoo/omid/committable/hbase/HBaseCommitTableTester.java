@@ -82,14 +82,13 @@ public class HBaseCommitTableTester {
             keygen = new SeqKeyGenerator();
         } else {
             keygen = null;
-            assert (false);
         }
 
         HBaseLogin.loginIfNeeded(config.loginFlags);
 
         CommitTable commitTable = new HBaseCommitTable(hbaseConfig, COMMIT_TABLE_DEFAULT_NAME, keygen);
 
-        CommitTable.Writer writer = commitTable.getWriter().get();
+        CommitTable.Writer writer = commitTable.getWriter();
 
         MetricRegistry metrics = new MetricRegistry();
         if (config.graphite != null) {

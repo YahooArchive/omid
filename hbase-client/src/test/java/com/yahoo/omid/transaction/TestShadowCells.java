@@ -94,7 +94,7 @@ public class TestShadowCells extends OmidTestBase {
                 "Shadow cell should be there");
 
         // Test that we can make a valid read after adding a shadow cell without hitting the commit table
-        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(getTSOClientDefaultConfiguration()).build();
         TransactionManager tm2 = HBaseTransactionManager.newBuilder()
@@ -112,7 +112,7 @@ public class TestShadowCells extends OmidTestBase {
 
     @Test(timeOut = 60_000)
     public void testCrashingAfterCommitDoesNotWriteShadowCells(ITestContext context) throws Exception {
-        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(getTSOClientDefaultConfiguration()).build();
         AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.newBuilder()
@@ -153,7 +153,7 @@ public class TestShadowCells extends OmidTestBase {
 
     @Test(timeOut = 60_000)
     public void testShadowCellIsHealedAfterCommitCrash(ITestContext context) throws Exception {
-        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(getTSOClientDefaultConfiguration()).build();
         AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.newBuilder()
@@ -208,7 +208,7 @@ public class TestShadowCells extends OmidTestBase {
     public void testTransactionNeverCompletesWhenCommitThrowsAnInternalTransactionManagerExceptionUpdatingShadowCells(
             ITestContext context)
             throws Exception {
-        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(getTSOClientDefaultConfiguration()).build();
         AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.newBuilder()
@@ -392,7 +392,7 @@ public class TestShadowCells extends OmidTestBase {
 
         // ensure that transaction is no longer in commit table
         // the only place that should have the mapping is the shadow cells
-        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
         Optional<CommitTable.CommitTimestamp> ct1 = commitTableClient.getCommitTimestamp(t1.getStartTimestamp()).get();
         Optional<CommitTable.CommitTimestamp> ct2 = commitTableClient.getCommitTimestamp(t2.getStartTimestamp()).get();
         Optional<CommitTable.CommitTimestamp> ct3 = commitTableClient.getCommitTimestamp(t3.getStartTimestamp()).get();

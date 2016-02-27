@@ -110,16 +110,14 @@ public class TestHBaseCommitTable {
         }
     }
 
-    @Test
+    @Test(timeOut = 30_000)
     public void testBasicBehaviour() throws Throwable {
         HBaseCommitTableConfig config = new HBaseCommitTableConfig();
         config.setTableName(TEST_TABLE);
         HBaseCommitTable commitTable = new HBaseCommitTable(hbaseConf, config);
 
-        ListenableFuture<Writer> futureWriter = commitTable.getWriter();
-        Writer writer = futureWriter.get();
-        ListenableFuture<Client> futureClient = commitTable.getClient();
-        Client client = futureClient.get();
+        Writer writer = commitTable.getWriter();
+        Client client = commitTable.getClient();
 
         // Test that the first time the table is empty
         assertEquals("Rows should be 0!", 0, rowCount(TABLE_NAME, COMMIT_TABLE_FAMILY));
@@ -142,7 +140,7 @@ public class TestHBaseCommitTable {
         assertEquals("Rows should be 1000!", 1000, rowCount(TABLE_NAME, COMMIT_TABLE_FAMILY));
 
         // Test the successful deletion of the 1000 txs
-        Future<Void> f = null;
+        Future<Void> f;
         for (long i = 0; i < 1000; i++) {
             f = client.completeTransaction(i);
             f.get();
@@ -175,7 +173,7 @@ public class TestHBaseCommitTable {
 
     }
 
-    @Test
+    @Test(timeOut = 30_000)
     public void testTransactionInvalidation() throws Throwable {
 
         // Prepare test
@@ -189,8 +187,8 @@ public class TestHBaseCommitTable {
         HBaseCommitTable commitTable = new HBaseCommitTable(hbaseConf, config);
 
         // Components under test
-        Writer writer = commitTable.getWriter().get();
-        Client client = commitTable.getClient().get();
+        Writer writer = commitTable.getWriter();
+        Client client = commitTable.getClient();
 
         // Test that initially the table is empty
         assertEquals("Rows should be 0!", 0, rowCount(TABLE_NAME, COMMIT_TABLE_FAMILY));
@@ -241,16 +239,14 @@ public class TestHBaseCommitTable {
 
     }
 
-    @Test
+    @Test(timeOut = 30_000)
     public void testClosingClientEmptyQueuesProperly() throws Throwable {
         HBaseCommitTableConfig config = new HBaseCommitTableConfig();
         config.setTableName(TEST_TABLE);
         HBaseCommitTable commitTable = new HBaseCommitTable(hbaseConf, config);
 
-        ListenableFuture<Writer> futureWriter = commitTable.getWriter();
-        Writer writer = futureWriter.get();
-        ListenableFuture<Client> futureClient = commitTable.getClient();
-        HBaseCommitTable.HBaseClient client = (HBaseClient) futureClient.get();
+        Writer writer = commitTable.getWriter();
+        HBaseCommitTable.HBaseClient client = (HBaseClient) commitTable.getClient();
 
         for (int i = 0; i < 1000; i++) {
             writer.addCommittedTransaction(i, i + 1);

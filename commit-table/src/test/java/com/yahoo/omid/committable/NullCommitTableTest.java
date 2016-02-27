@@ -13,13 +13,13 @@ public class NullCommitTableTest {
     private static final long TEST_CT = 2L;
     private static final long TEST_LWM = 1L;
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testClientAndWriter() throws Exception {
 
         CommitTable commitTable = new NullCommitTable();
 
-        try (CommitTable.Client commitTableClient = commitTable.getClient().get();
-             CommitTable.Writer commitTableWriter = commitTable.getWriter().get()) {
+        try (CommitTable.Client commitTableClient = commitTable.getClient();
+             CommitTable.Writer commitTableWriter = commitTable.getWriter()) {
 
             // Test client
             try {

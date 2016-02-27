@@ -37,18 +37,18 @@ public class TestFilters extends OmidTestBase {
     private byte[] col1 = Bytes.toBytes("foobar");
     private byte[] col2 = Bytes.toBytes("boofar");
 
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testGetWithColumnPrefixFilter(ITestContext context) throws Exception {
         testGet(context, new ColumnPrefixFilter(prefix));
     }
 
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testGetWithValueFilter(ITestContext context) throws Exception {
         testGet(context, new ValueFilter(CompareFilter.CompareOp.EQUAL, new BinaryComparator(col1)));
     }
 
     private void testGet(ITestContext context, Filter f) throws Exception {
-        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(getClientConfiguration(context))
                 .build();
@@ -81,18 +81,18 @@ public class TestFilters extends OmidTestBase {
         assertEquals("shouldn't exist in result", 0, r.getColumnCells(family, col2).size());
     }
 
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testScanWithColumnPrefixFilter(ITestContext context) throws Exception {
         testScan(context, new ColumnPrefixFilter(prefix));
     }
 
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testScanWithValueFilter(ITestContext context) throws Exception {
         testScan(context, new ValueFilter(CompareFilter.CompareOp.EQUAL, new BinaryComparator(col1)));
     }
 
     private void testScan(ITestContext context, Filter f) throws Exception {
-        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
         TSOClient client = TSOClient.newBuilder().withConfiguration(getClientConfiguration(context))
                 .build();
         TTable table = new TTable(hbaseConf, TEST_TABLE);

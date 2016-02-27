@@ -20,15 +20,15 @@ public class TestMockTSOClient {
     @Test(timeOut = 10000)
     public void testConflicts() throws Exception {
         CommitTable commitTable = new InMemoryCommitTable();
-        TSOProtocol client = new MockTSOClient(commitTable.getWriter().get());
+        TSOProtocol client = new MockTSOClient(commitTable.getWriter());
 
         long tr1 = client.getNewStartTimestamp().get();
         long tr2 = client.getNewStartTimestamp().get();
 
-        long cr1 = client.commit(tr1, Sets.newHashSet(c1)).get();
+        client.commit(tr1, Sets.newHashSet(c1)).get();
 
         try {
-            long cr2 = client.commit(tr2, Sets.newHashSet(c1, c2)).get();
+            client.commit(tr2, Sets.newHashSet(c1, c2)).get();
             Assert.fail("Shouldn't have committed");
         } catch (ExecutionException ee) {
             assertEquals("Should have aborted", ee.getCause().getClass(), AbortException.class);
@@ -38,8 +38,8 @@ public class TestMockTSOClient {
     @Test(timeOut = 10000)
     public void testWatermarkUpdate() throws Exception {
         CommitTable commitTable = new InMemoryCommitTable();
-        TSOProtocol client = new MockTSOClient(commitTable.getWriter().get());
-        CommitTable.Client commitTableClient = commitTable.getClient().get();
+        TSOProtocol client = new MockTSOClient(commitTable.getWriter());
+        CommitTable.Client commitTableClient = commitTable.getClient();
 
         long tr1 = client.getNewStartTimestamp().get();
         client.commit(tr1, Sets.newHashSet(c1)).get();

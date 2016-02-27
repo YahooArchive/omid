@@ -66,7 +66,7 @@ public class TestRetryProcessor {
         assertEquals("Captured timestamp should be the same as NON_EXISTING_ST_TX", NON_EXISTING_ST_TX, startTS);
 
         // Test we'll reply with a commit for a retry request when the start timestamp IS in the commit table
-        commitTable.getWriter().get().addCommittedTransaction(ST_TX_1, CT_TX_1); // Add a tx to commit table
+        commitTable.getWriter().addCommittedTransaction(ST_TX_1, CT_TX_1); // Add a tx to commit table
 
         retryProc.disambiguateRetryRequestHeuristically(ST_TX_1, channel, new MonitoringContext(metrics));
         ArgumentCaptor<Long> secondTScapture = ArgumentCaptor.forClass(Long.class);
@@ -83,11 +83,11 @@ public class TestRetryProcessor {
     public void testRetriedRequestForInvalidatedTransactionReturnsAnAbort() throws Exception {
 
         // Invalidate the transaction
-        commitTable.getClient().get().tryInvalidateTransaction(ST_TX_1);
+        commitTable.getClient().tryInvalidateTransaction(ST_TX_1);
 
         // Pre-start verification: Validate that the transaction is invalidated
         // NOTE: This test should be in the a test class for InMemoryCommitTable
-        Optional<CommitTimestamp> invalidTxMarker = commitTable.getClient().get().getCommitTimestamp(ST_TX_1).get();
+        Optional<CommitTimestamp> invalidTxMarker = commitTable.getClient().getCommitTimestamp(ST_TX_1).get();
         Assert.assertTrue(invalidTxMarker.isPresent());
         Assert.assertEquals(invalidTxMarker.get().getValue(), InMemoryCommitTable.INVALID_TRANSACTION_MARKER);
 

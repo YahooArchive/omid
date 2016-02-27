@@ -98,14 +98,10 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
                 try {
                     String commitTableName = conf.get(CommitTableConstants.COMMIT_TABLE_NAME_KEY, CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME);
                     HBaseCommitTableConfig config = new HBaseCommitTableConfig(commitTableName);
-                    CommitTable commitTable =
-                            new HBaseCommitTable(conf, config);
-                    commitTableClient = commitTable.getClient().get();
+                    CommitTable commitTable = new HBaseCommitTable(conf, config);
+                    commitTableClient = commitTable.getClient();
                     ownsCommitTableClient = true;
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new OmidInstantiationException("Interrupted whilst creating the HBase transaction manager", e);
-                } catch (ExecutionException e) {
+                } catch (IOException e) {
                     throw new OmidInstantiationException("Exception whilst getting the CommitTable client", e);
                 }
             }
@@ -211,7 +207,6 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
                     return false;
                 case CACHE: // cache was empty
                 default:
-                    assert (false);
                     return false;
             }
         } catch (IOException e) {

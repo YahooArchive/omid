@@ -360,7 +360,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
 
         long tx1ST = client.getNewStartTimestamp().get();
         // Invalidate the transaction
-        commitTable.getClient().get().tryInvalidateTransaction(tx1ST);
+        commitTable.getClient().tryInvalidateTransaction(tx1ST);
 
         clientOneShot.makeRequest(createRetryCommitRequest(tx1ST));
         TSOProto.Response response = clientOneShot.makeRequest(createRetryCommitRequest(tx1ST));
@@ -380,7 +380,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
         clientOneShot.makeRequest(createRetryCommitRequest(tx1ST));
 
         // Simulate remove entry from the commit table before exercise retry
-        commitTable.getClient().get().completeTransaction(tx1ST);
+        commitTable.getClient().completeTransaction(tx1ST);
 
         TSOProto.Response response = clientOneShot.makeRequest(createRetryCommitRequest(tx1ST));
         assertTrue(response.getCommitResponse().getAborted(), "Transaction should abort");

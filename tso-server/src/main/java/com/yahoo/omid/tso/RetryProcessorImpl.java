@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -43,8 +44,7 @@ import static com.codahale.metrics.MetricRegistry.name;
  * Manages the retry requests that clients can send when they did
  * not received the response in the specified timeout
  */
-class RetryProcessorImpl
-        implements EventHandler<RetryProcessorImpl.RetryEvent>, RetryProcessor {
+class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>, RetryProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(RetryProcessor.class);
 
@@ -59,22 +59,19 @@ class RetryProcessorImpl
     final Meter retriesMeter;
 
     @Inject
-    RetryProcessorImpl(MetricsRegistry metrics, CommitTable commitTable,
-                       ReplyProcessor replyProc, Panicker panicker)
-            throws InterruptedException, ExecutionException {
-        this.commitTableClient = commitTable.getClient().get();
-        this.writer = commitTable.getWriter().get();
+    RetryProcessorImpl(MetricsRegistry metrics, CommitTable commitTable, ReplyProcessor replyProc, Panicker panicker)
+            throws IOException
+    {
+
+        this.commitTableClient = commitTable.getClient();
+        this.writer = commitTable.getWriter();
         this.replyProc = replyProc;
 
         WaitStrategy strategy = new YieldingWaitStrategy();
 
-        retryRing = RingBuffer.<RetryEvent>createSingleProducer(
-                RetryEvent.EVENT_FACTORY, 1 << 12, strategy);
-        SequenceBarrier retrySequenceBarrier = retryRing.newBarrier();
-        BatchEventProcessor<RetryEvent> retryProcessor = new BatchEventProcessor<RetryEvent>(
-                retryRing,
-                retrySequenceBarrier,
-                this);
+        retryRing = RingBuffer.createSingleProducer(RetryEvent.EVENT_FACTORY, 1 << 12, strategy);
+        SequenceBarrier retrySeqBarrier = retryRing.newBarrier();
+        BatchEventProcessor<RetryEvent> retryProcessor = new BatchEventProcessor<>(retryRing, retrySeqBarrier, this);
         retryProcessor.setExceptionHandler(new FatalExceptionHandler(panicker));
 
         retryRing.addGatingSequences(retryProcessor.getSequence());

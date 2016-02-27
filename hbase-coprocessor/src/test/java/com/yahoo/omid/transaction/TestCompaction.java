@@ -179,7 +179,7 @@ public class TestCompaction {
     private TransactionManager newTransactionManager() throws Exception {
         return HBaseTransactionManager.newBuilder()
                 .withConfiguration(hbaseConf)
-                .withCommitTableClient(commitTable.getClient().get())
+                .withCommitTableClient(commitTable.getClient())
                 .withTSOClient(client)
                 .build();
     }
@@ -214,7 +214,7 @@ public class TestCompaction {
         OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).get(0)
                 .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
         CommitTable commitTable = injector.getInstance(CommitTable.class);
-        CommitTable.Client commitTableClient = spy(commitTable.getClient().get());
+        CommitTable.Client commitTableClient = spy(commitTable.getClient());
         SettableFuture<Long> f = SettableFuture.create();
         f.set(fakeAssignedLowWatermark);
         doReturn(f).when(commitTableClient).readLowWatermark();
@@ -271,7 +271,7 @@ public class TestCompaction {
         OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).get(0)
                 .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
         CommitTable commitTable = injector.getInstance(CommitTable.class);
-        CommitTable.Client commitTableClient = spy(commitTable.getClient().get());
+        CommitTable.Client commitTableClient = spy(commitTable.getClient());
         SettableFuture<Long> f = SettableFuture.create();
         f.set(Long.MAX_VALUE);
         doReturn(f).when(commitTableClient).readLowWatermark();
@@ -358,7 +358,7 @@ public class TestCompaction {
         OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).get(0)
                 .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
         CommitTable commitTable = injector.getInstance(CommitTable.class);
-        CommitTable.Client commitTableClient = spy(commitTable.getClient().get());
+        CommitTable.Client commitTableClient = spy(commitTable.getClient());
         SettableFuture<Long> f = SettableFuture.create();
         f.set(neverendingTxBelowLowWatermark.getStartTimestamp());
         doReturn(f).when(commitTableClient).readLowWatermark();
@@ -437,7 +437,7 @@ public class TestCompaction {
         OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(TEST_TABLE)).get(0)
                 .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
         CommitTable commitTable = injector.getInstance(CommitTable.class);
-        CommitTable.Client commitTableClient = spy(commitTable.getClient().get());
+        CommitTable.Client commitTableClient = spy(commitTable.getClient());
         SettableFuture<Long> f = SettableFuture.create();
         f.setException(new IOException("Unable to read"));
         doReturn(f).when(commitTableClient).readLowWatermark();
@@ -780,14 +780,14 @@ public class TestCompaction {
                 0, result.getColumnCells(fam, qual).size());
     }
 
-    // ************************************************************************
+    // ----------------------------------------------------------------------------------------------------------------
     // Tests on tombstones and non-transactional Deletes
-    // ************************************************************************
+    // ----------------------------------------------------------------------------------------------------------------
 
     /**
      * Test that when a major compaction runs, cells that were deleted non-transactionally dissapear
      */
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testACellDeletedNonTransactionallyDoesNotAppearWhenAMajorCompactionOccurs() throws Throwable {
         String TEST_TABLE = "testACellDeletedNonTransactionallyDoesNotAppearWhenAMajorCompactionOccurs";
         createTableIfNotExists(TEST_TABLE, Bytes.toBytes(TEST_FAMILY));
@@ -828,7 +828,7 @@ public class TestCompaction {
      * Test that when a minor compaction runs, cells that were deleted non-transactionally are preserved. This is to
      * allow users still access the cells when doing "improper" operations on a transactional table
      */
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testACellDeletedNonTransactionallyIsPreservedWhenMinorCompactionOccurs() throws Throwable {
         String TEST_TABLE = "testACellDeletedNonTransactionallyIsPreservedWhenMinorCompactionOccurs";
         createTableIfNotExists(TEST_TABLE, Bytes.toBytes(TEST_FAMILY));
@@ -906,7 +906,7 @@ public class TestCompaction {
     /**
      * Test that when a minor compaction runs, tombstones are not cleaned up
      */
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testTombstonesAreNotCleanedUpWhenMinorCompactionOccurs() throws Throwable {
         String TEST_TABLE = "testTombstonesAreNotCleanedUpWhenMinorCompactionOccurs";
         createTableIfNotExists(TEST_TABLE, Bytes.toBytes(TEST_FAMILY));
@@ -987,7 +987,7 @@ public class TestCompaction {
     /**
      * Test that when compaction runs, tombstones are cleaned up case1: 1 put (ts < lwm) then tombstone (ts > lwm)
      */
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testTombstonesAreCleanedUpCase1() throws Exception {
         String TEST_TABLE = "testTombstonesAreCleanedUpCase1";
         createTableIfNotExists(TEST_TABLE, Bytes.toBytes(TEST_FAMILY));
@@ -1027,7 +1027,7 @@ public class TestCompaction {
     /**
      * Test that when compaction runs, tombstones are cleaned up case2: 1 put (ts < lwm) then tombstone (ts < lwm)
      */
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testTombstonesAreCleanedUpCase2() throws Exception {
         String TEST_TABLE = "testTombstonesAreCleanedUpCase2";
         createTableIfNotExists(TEST_TABLE, Bytes.toBytes(TEST_FAMILY));
@@ -1068,7 +1068,7 @@ public class TestCompaction {
      * Test that when compaction runs, tombstones are cleaned up case3: 1 put (ts < lwm) then tombstone (ts < lwm) not
      * committed
      */
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testTombstonesAreCleanedUpCase3() throws Exception {
         String TEST_TABLE = "testTombstonesAreCleanedUpCase3";
         createTableIfNotExists(TEST_TABLE, Bytes.toBytes(TEST_FAMILY));
@@ -1108,7 +1108,7 @@ public class TestCompaction {
      * Test that when compaction runs, tombstones are cleaned up case4: 1 put (ts < lwm) then tombstone (ts > lwm) not
      * committed
      */
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testTombstonesAreCleanedUpCase4() throws Exception {
         String TEST_TABLE = "testTombstonesAreCleanedUpCase4";
         createTableIfNotExists(TEST_TABLE, Bytes.toBytes(TEST_FAMILY));
@@ -1147,7 +1147,7 @@ public class TestCompaction {
     /**
      * Test that when compaction runs, tombstones are cleaned up case5: tombstone (ts < lwm)
      */
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testTombstonesAreCleanedUpCase5() throws Exception {
         String TEST_TABLE = "testTombstonesAreCleanedUpCase5";
         createTableIfNotExists(TEST_TABLE, Bytes.toBytes(TEST_FAMILY));
@@ -1175,7 +1175,7 @@ public class TestCompaction {
     /**
      * Test that when compaction runs, tombstones are cleaned up case6: tombstone (ts < lwm), then put (ts < lwm)
      */
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testTombstonesAreCleanedUpCase6() throws Exception {
         String TEST_TABLE = "testTombstonesAreCleanedUpCase6";
         createTableIfNotExists(TEST_TABLE, Bytes.toBytes(TEST_FAMILY));
@@ -1216,7 +1216,7 @@ public class TestCompaction {
         OmidCompactor omidCompactor = (OmidCompactor) hbaseCluster.getRegions(Bytes.toBytes(tableName)).get(0)
                 .getCoprocessorHost().findCoprocessor(OmidCompactor.class.getName());
         CommitTable commitTable = injector.getInstance(CommitTable.class);
-        CommitTable.Client commitTableClient = spy(commitTable.getClient().get());
+        CommitTable.Client commitTableClient = spy(commitTable.getClient());
         SettableFuture<Long> f = SettableFuture.create();
         f.set(lwm);
         doReturn(f).when(commitTableClient).readLowWatermark();

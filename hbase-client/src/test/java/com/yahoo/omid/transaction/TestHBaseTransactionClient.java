@@ -35,7 +35,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
     private static final byte[] qualifier = Bytes.toBytes("testdata");
     private static final byte[] data1 = Bytes.toBytes("testWrite-1");
 
-    @Test
+    @Test(timeOut = 30_000)
     public void testIsCommitted(ITestContext context) throws Exception {
         TransactionManager tm = newTransactionManager(context);
         TTable table = new TTable(hbaseConf, TEST_TABLE);
@@ -70,7 +70,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
         assertTrue("row2 should be committed for kv3", hbaseTm.isCommitted(hBaseCellId3));
     }
 
-    @Test
+    @Test(timeOut = 30_000)
     public void testCrashAfterCommit(ITestContext context) throws Exception {
         AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context));
         // The following line emulates a crash after commit that is observed in (*) below
@@ -110,7 +110,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
         assertTrue("row1 should be committed", hbaseTm.isCommitted(hBaseCellId));
     }
 
-    @Test(timeOut = 30000)
+    @Test(timeOut = 30_000)
     public void testReadCommitTimestampFromCommitTable(ITestContext context) throws Exception {
 
         final long NON_EXISTING_CELL_TS = 1000L;
@@ -161,7 +161,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
         }
     }
 
-    @Test(timeOut = 30000)
+    @Test(timeOut = 30_000)
     public void testReadCommitTimestampFromShadowCell(ITestContext context) throws Exception {
 
         final long NON_EXISTING_CELL_TS = 1L;
@@ -198,7 +198,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
     }
 
     // Tests step 1 in AbstractTransactionManager.locateCellCommitTimestamp()
-    @Test(timeOut = 30000)
+    @Test(timeOut = 30_000)
     public void testCellCommitTimestampIsLocatedInCache(ITestContext context) throws Exception {
 
         final long CELL_ST = 1L;
@@ -209,7 +209,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
         // Pre-load the element to look for in the cache
         HTable table = new HTable(hbaseConf, TEST_TABLE);
         HBaseCellId hBaseCellId = new HBaseCellId(table, row1, family, qualifier, CELL_ST);
-        Map<Long, Long> fakeCache = Maps.<Long, Long>newHashMap();
+        Map<Long, Long> fakeCache = Maps.newHashMap();
         fakeCache.put(CELL_ST, CELL_CT);
 
         // Then test that locator finds it in the cache
@@ -224,7 +224,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
     // Tests step 2 in AbstractTransactionManager.locateCellCommitTimestamp()
     // Note: This test is very similar to testCrashAfterCommit() above so
     // maybe we should merge them in this test, adding the missing assertions
-    @Test(timeOut = 30000)
+    @Test(timeOut = 30_000)
     public void testCellCommitTimestampIsLocatedInCommitTable(ITestContext context) throws Exception {
 
         AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context));
@@ -260,7 +260,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
     }
 
     // Tests step 3 in AbstractTransactionManager.locateCellCommitTimestamp()
-    @Test(timeOut = 30000)
+    @Test(timeOut = 30_000)
     public void testCellCommitTimestampIsLocatedInShadowCells(ITestContext context) throws Exception {
 
         HBaseTransactionManager tm = (HBaseTransactionManager) newTransactionManager(context);
@@ -289,16 +289,16 @@ public class TestHBaseTransactionClient extends OmidTestBase {
     }
 
     // Tests step 4 in AbstractTransactionManager.locateCellCommitTimestamp()
-    @Test(timeOut = 30000)
+    @Test(timeOut = 30_000)
     public void testCellFromTransactionInPreviousEpochGetsInvalidComitTimestamp(ITestContext context) throws Exception {
 
         final long CURRENT_EPOCH_FAKE = 1000L;
 
-        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
         AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context, commitTableClient));
         // The following lines allow to reach step 4)
         // in AbstractTransactionManager.locateCellCommitTimestamp()
-        SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>>create();
+        SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.create();
         f.set(Optional.<CommitTimestamp>absent());
         doReturn(f).when(commitTableClient).getCommitTimestamp(any(Long.class));
         doReturn(Optional.<CommitTimestamp>absent()).when(tm).readCommitTimestampFromShadowCell(any(Long.class),
@@ -328,16 +328,16 @@ public class TestHBaseTransactionClient extends OmidTestBase {
     }
 
     // Tests step 5 in AbstractTransactionManager.locateCellCommitTimestamp()
-    @Test(timeOut = 30000)
+    @Test(timeOut = 30_000)
     public void testCellCommitTimestampIsLocatedInCommitTableAfterNotBeingInvalidated(ITestContext context) throws Exception {
 
-        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
         AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context, commitTableClient));
         // The following line emulates a crash after commit that is observed in (*) below
         doThrow(new RuntimeException()).when(tm).updateShadowCells(any(HBaseTransaction.class));
         // The next two lines avoid steps 2) and 3) and go directly to step 5)
         // in AbstractTransactionManager.locateCellCommitTimestamp()
-        SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>>create();
+        SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.create();
         f.set(Optional.<CommitTimestamp>absent());
         doReturn(f).doCallRealMethod().when(commitTableClient).getCommitTimestamp(any(Long.class));
         doReturn(Optional.<CommitTimestamp>absent()).when(tm).readCommitTimestampFromShadowCell(any(Long.class),
@@ -372,14 +372,14 @@ public class TestHBaseTransactionClient extends OmidTestBase {
     }
 
     // Tests step 6 in AbstractTransactionManager.locateCellCommitTimestamp()
-    @Test(timeOut = 30000)
+    @Test(timeOut = 30_000)
     public void testCellCommitTimestampIsLocatedInShadowCellsAfterNotBeingInvalidated(ITestContext context) throws Exception {
 
-        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
         AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context, commitTableClient));
         // The next two lines avoid steps 2), 3) and 5) and go directly to step 6)
         // in AbstractTransactionManager.locateCellCommitTimestamp()
-        SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>>create();
+        SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.create();
         f.set(Optional.<CommitTimestamp>absent());
         doReturn(f).when(commitTableClient).getCommitTimestamp(any(Long.class));
         doReturn(Optional.<CommitTimestamp>absent()).doCallRealMethod()
@@ -410,15 +410,15 @@ public class TestHBaseTransactionClient extends OmidTestBase {
     }
 
     // Tests last step in AbstractTransactionManager.locateCellCommitTimestamp()
-    @Test(timeOut = 30000)
+    @Test(timeOut = 30_000)
     public void testCTLocatorReturnsAValidCTWhenNotPresent(ITestContext context) throws Exception {
 
         final long CELL_TS = 1L;
 
-        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient().get());
+        CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
         AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context, commitTableClient));
         // The following lines allow to reach the last return statement
-        SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.<Optional<CommitTimestamp>>create();
+        SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.create();
         f.set(Optional.<CommitTimestamp>absent());
         doReturn(f).when(commitTableClient).getCommitTimestamp(any(Long.class));
         doReturn(Optional.<CommitTimestamp>absent()).when(tm).readCommitTimestampFromShadowCell(any(Long.class),

@@ -25,9 +25,9 @@ public interface CommitTable {
 
     long INVALID_TRANSACTION_MARKER = -1L;
 
-    ListenableFuture<Writer> getWriter();
+    Writer getWriter() throws IOException;
 
-    ListenableFuture<Client> getClient();
+    Client getClient() throws IOException;
 
     interface Writer extends Closeable {
 
@@ -70,9 +70,9 @@ public interface CommitTable {
         ListenableFuture<Boolean> tryInvalidateTransaction(long startTimeStamp);
     }
 
-    // ************************************************************************
+    // ----------------------------------------------------------------------------------------------------------------
     // Helper classes
-    // ************************************************************************
+    // ----------------------------------------------------------------------------------------------------------------
     class CommitTimestamp {
 
         public enum Location {
@@ -103,10 +103,7 @@ public interface CommitTable {
 
         @Override
         public String toString() {
-            return String.format("Is valid=%s, Location=%s, Value=%d)",
-                    isValid,
-                    location,
-                    value);
+            return String.format("Is valid=%s, Location=%s, Value=%d)", isValid, location, value);
         }
 
     }
