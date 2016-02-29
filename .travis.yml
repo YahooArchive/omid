@@ -18,16 +18,17 @@ cache:
   directories:
     - "~/.m2"
 
+install: true
+
 before_script:
   # This is required to avoid failures of HBase minicluster related to Hadoop 1.x releases
   - umask 022
   - git config --global user.email "omid-ci@yahoo-inc.com"
   - git config --global user.name "Omid CI"
-  - git checkout master
 
 script:
   - if [ "${TRAVIS_PULL_REQUEST}" = "false" ] ; then
-      mvn cobertura:cobertura
+      mvn clean cobertura:cobertura
       &&
       mkdir failedTests
       &&
@@ -35,7 +36,7 @@ script:
       &&
       [ ! -f failedTests/testng-failed.xml ]  ;
     else
-      mvn test ;
+      mvn clean test ;
     fi
 
 after_success:
