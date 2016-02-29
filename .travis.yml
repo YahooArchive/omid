@@ -25,6 +25,7 @@ before_script:
   - umask 022
   - git config --global user.email "omid-ci@yahoo-inc.com"
   - git config --global user.name "Omid CI"
+  - git co -b tmp-build-branch
 
 script:
   - if [ "${TRAVIS_PULL_REQUEST}" = "false" ] ; then
