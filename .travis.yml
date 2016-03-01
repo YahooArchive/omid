@@ -25,10 +25,12 @@ before_script:
   - umask 022
   - git config --global user.email "omid-ci@yahoo-inc.com"
   - git config --global user.name "Omid CI"
-  - git checkout -b tmp-build-branch
+
 
 script:
   - if [ "${TRAVIS_PULL_REQUEST}" = "false" ] ; then
+      git checkout master
+      &&
       mvn clean cobertura:cobertura
       &&
       mkdir failedTests
@@ -37,6 +39,8 @@ script:
       &&
       [ ! -f failedTests/testng-failed.xml ]  ;
     else
+      git checkout -b tmp-build-branch
+      &&
       mvn clean test ;
     fi
 
