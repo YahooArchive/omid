@@ -31,6 +31,7 @@ import com.yahoo.omid.committable.hbase.KeyGeneratorImplementations.BucketKeyGen
 import com.yahoo.omid.committable.hbase.KeyGeneratorImplementations.FullRandomKeyGenerator;
 import com.yahoo.omid.committable.hbase.KeyGeneratorImplementations.SeqKeyGenerator;
 import com.yahoo.omid.tools.hbase.HBaseLogin;
+import com.yahoo.omid.tools.hbase.SecureHBaseConfig;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 
@@ -62,7 +63,7 @@ public class HBaseCommitTableTester {
         String graphite = null;
 
         @ParametersDelegate
-        HBaseLogin.Config loginFlags = new HBaseLogin.Config();
+        SecureHBaseConfig loginFlags = new SecureHBaseConfig();
     }
 
     public static void main(String[] args) throws Exception {

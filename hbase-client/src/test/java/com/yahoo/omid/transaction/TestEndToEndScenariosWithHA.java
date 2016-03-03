@@ -131,9 +131,9 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
 
         // Configure HBase TM
         LOG.info("===================== Starting TM =====================");
-        HBaseOmidClientConfiguration hbaseOmidClientConf = HBaseOmidClientConfiguration.create();
-        hbaseOmidClientConf.setConnectionType(ZK);
-        hbaseOmidClientConf.setConnectionString(zkConnection);
+        HBaseOmidClientConfiguration hbaseOmidClientConf = new HBaseOmidClientConfiguration();
+        hbaseOmidClientConf.getOmidClientConfiguration().setConnectionType(ZK);
+        hbaseOmidClientConf.getOmidClientConfiguration().setConnectionString(zkConnection);
         hbaseOmidClientConf.setHBaseConfiguration(hbaseConf);
         hbaseConf.setInt(HBASE_CLIENT_RETRIES_NUMBER, 3);
         tm = HBaseTransactionManager.builder(hbaseOmidClientConf).build();
@@ -141,7 +141,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
     }
 
 
-    @AfterMethod(alwaysRun = true, timeOut = 30_000)
+    @AfterMethod(alwaysRun = true, timeOut = 60_000)
     public void cleanup() throws Exception {
         LOG.info("Cleanup");
         HBaseAdmin admin = hBaseUtils.getHBaseAdmin();
@@ -194,7 +194,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
 
             HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
             LOG.info("Starting Tx {} writing values for cells ({}, {}) ", tx1, Bytes.toString(data1_q1),
-                    Bytes.toString(data1_q2));
+                     Bytes.toString(data1_q2));
             Put putData1R1Q1 = new Put(row1);
             putData1R1Q1.add(TEST_FAMILY.getBytes(), qualifier1, data1_q1);
             txTable.put(tx1, putData1R1Q1);
@@ -219,8 +219,8 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
             getRow1.addColumn(TEST_FAMILY.getBytes(), qualifier1);
             Result r = txTable.get(interleavedReadTx, getRow1);
             assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier1), initialData,
-                    "Unexpected value for SI read R1Q1" + interleavedReadTx + ": "
-                            + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier1)));
+                         "Unexpected value for SI read R1Q1" + interleavedReadTx + ": "
+                                 + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier1)));
 
             // Try to commit, but it should abort due to the change in mastership
             try {
@@ -237,8 +237,8 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
             Get getRow2 = new Get(row2).setMaxVersions(1);
             r = txTable.get(interleavedReadTx, getRow2);
             assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier2), initialData,
-                    "Unexpected value for SI read R2Q2" + interleavedReadTx + ": "
-                            + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier2)));
+                         "Unexpected value for SI read R2Q2" + interleavedReadTx + ": "
+                                 + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier2)));
 
             // Should commit because its a read only tx does not have to contact the TSO
             tm.commit(interleavedReadTx);
@@ -288,7 +288,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
 
             HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
             LOG.info("Starting Tx {} writing values for cells ({}, {}) ", tx1, Bytes.toString(data1_q1),
-                    Bytes.toString(data1_q2));
+                     Bytes.toString(data1_q2));
             Put putData1R1Q1 = new Put(row1);
             putData1R1Q1.add(TEST_FAMILY.getBytes(), qualifier1, data1_q1);
             txTable.put(tx1, putData1R1Q1);
@@ -318,22 +318,22 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
             }
 
             LOG.info("Sleep some time till the client is informed about"
-                    + "the new TSO connection parameters and how can connect");
+                             + "the new TSO connection parameters and how can connect");
             TimeUnit.SECONDS.sleep(10 + 2);
 
             HBaseTransaction tx2 = (HBaseTransaction) tm.begin();
             LOG.info("Starting Tx {} writing values for cells ({}, {}) ", tx2, Bytes.toString(data1_q1),
-                    Bytes.toString(data1_q2));
+                     Bytes.toString(data1_q2));
             Get getData1R1Q1 = new Get(row1).setMaxVersions(1);
             Result r = txTable.get(tx2, getData1R1Q1);
             assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier1), initialData,
-                    "Unexpected value for SI read R1Q1" + tx2 + ": "
-                            + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier1)));
+                         "Unexpected value for SI read R1Q1" + tx2 + ": "
+                                 + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier1)));
             Get getData1R2Q2 = new Get(row2).setMaxVersions(1);
             r = txTable.get(tx2, getData1R2Q2);
             assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier2), initialData,
-                    "Unexpected value for SI read R1Q1" + tx2 + ": "
-                            + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier2)));
+                         "Unexpected value for SI read R1Q1" + tx2 + ": "
+                                 + Bytes.toString(r.getValue(TEST_FAMILY.getBytes(), qualifier2)));
 
             Put putData2R1Q1 = new Put(row1);
             putData2R1Q1.add(TEST_FAMILY.getBytes(), qualifier1, data2_q1);
@@ -360,13 +360,13 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         getRow1.addColumn(TEST_FAMILY.getBytes(), qualifier1);
         Result r = txTable.get(readTx, getRow1);
         assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier1), expectedDataR1Q1,
-                "Unexpected value for SI read R1Q1" + readTx + ": " + Bytes
-                        .toString(r.getValue(TEST_FAMILY.getBytes(), qualifier1)));
+                     "Unexpected value for SI read R1Q1" + readTx + ": " + Bytes
+                             .toString(r.getValue(TEST_FAMILY.getBytes(), qualifier1)));
         Get getRow2 = new Get(row2).setMaxVersions(1);
         r = txTable.get(readTx, getRow2);
         assertEquals(r.getValue(TEST_FAMILY.getBytes(), qualifier2), expectedDataR2Q2,
-                "Unexpected value for SI read R2Q2" + readTx + ": " + Bytes
-                        .toString(r.getValue(TEST_FAMILY.getBytes(), qualifier2)));
+                     "Unexpected value for SI read R2Q2" + readTx + ": " + Bytes
+                             .toString(r.getValue(TEST_FAMILY.getBytes(), qualifier2)));
         tm.commit(readTx);
     }
 

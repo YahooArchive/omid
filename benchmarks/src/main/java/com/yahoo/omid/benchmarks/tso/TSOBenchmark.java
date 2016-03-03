@@ -26,7 +26,7 @@ import com.yahoo.omid.benchmarks.utils.GeneratorUtils;
 import com.yahoo.omid.benchmarks.utils.GeneratorUtils.RowDistribution;
 import com.yahoo.omid.committable.hbase.CommitTableConstants;
 import com.yahoo.omid.metrics.CodahaleMetricsProvider;
-import com.yahoo.omid.tools.hbase.HBaseLogin;
+import com.yahoo.omid.tools.hbase.SecureHBaseConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -219,7 +219,7 @@ public class TSOBenchmark implements Closeable {
         MetricsConfig metricsConfig = new MetricsConfig("console", "", 10, TimeUnit.SECONDS);
 
         @ParametersDelegate
-        private HBaseLogin.Config loginFlags = new HBaseLogin.Config();
+        private SecureHBaseConfig loginFlags = new SecureHBaseConfig();
 
         boolean isHBase() {
             return hbase;
@@ -229,7 +229,7 @@ public class TSOBenchmark implements Closeable {
             return hbaseCommitTable;
         }
 
-        HBaseLogin.Config getLoginFlags() {
+        SecureHBaseConfig getLoginFlags() {
             return loginFlags;
         }
     }

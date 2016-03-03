@@ -23,6 +23,7 @@ import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
+import com.yahoo.omid.tools.hbase.HBaseLogin;
 import com.yahoo.omid.tsoclient.CellId;
 import com.yahoo.omid.tsoclient.TSOClient;
 import org.apache.hadoop.hbase.client.Get;
@@ -56,13 +57,13 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
     // ----------------------------------------------------------------------------------------------------------------
 
     public static TransactionManager newInstance() throws IOException {
-        return newInstance(HBaseOmidClientConfiguration.create());
+        return newInstance(new HBaseOmidClientConfiguration());
     }
 
-    public static TransactionManager newInstance(HBaseOmidClientConfiguration hBaseOmidClientConfiguration) throws IOException {
-
-        return builder(hBaseOmidClientConfiguration).build();
-
+    public static TransactionManager newInstance(HBaseOmidClientConfiguration configuration) throws IOException {
+        //Logging in to Secure HBase if required
+        HBaseLogin.loginIfNeeded(configuration);
+        return builder(configuration).build();
     }
 
     @VisibleForTesting
@@ -110,7 +111,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
 
     @VisibleForTesting
     static Builder builder() {
-        return builder(HBaseOmidClientConfiguration.create());
+        return builder(new HBaseOmidClientConfiguration());
     }
 
     @VisibleForTesting
@@ -123,10 +124,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
                                     CommitTable.Client commitTableClient,
                                     HBaseTransactionFactory hBaseTransactionFactory) {
 
-        super(hBaseOmidClientConfiguration.getOmidClientConfiguration(),
-              tsoClient,
-              commitTableClient,
-              hBaseTransactionFactory);
+        super(hBaseOmidClientConfiguration.getMetrics(), tsoClient, commitTableClient, hBaseTransactionFactory);
 
     }
 

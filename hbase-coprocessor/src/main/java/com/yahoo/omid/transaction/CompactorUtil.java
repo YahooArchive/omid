@@ -19,6 +19,7 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 import com.yahoo.omid.tools.hbase.HBaseLogin;
+import com.yahoo.omid.tools.hbase.SecureHBaseConfig;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -76,7 +77,7 @@ public class CompactorUtil {
         boolean disable = false;
 
         @ParametersDelegate
-        private HBaseLogin.Config loginFlags = new HBaseLogin.Config();
+        private SecureHBaseConfig loginFlags = new SecureHBaseConfig();
 
     }
 

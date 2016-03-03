@@ -15,52 +15,44 @@
  */
 package com.yahoo.omid.tsoclient;
 
-import com.yahoo.omid.metrics.MetricsRegistry;
-import com.yahoo.omid.metrics.NullMetricsProvider;
+import com.google.inject.Inject;
+import com.google.inject.name.Named;
+import com.yahoo.omid.YmlUtils;
+import org.apache.commons.beanutils.BeanUtils;
+import org.yaml.snakeyaml.Yaml;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * Configuration for Omid client side
  */
 public class OmidClientConfiguration {
-
-    public static final String DEFAULT_TSO_HOST = "localhost";
-    public static final int DEFAULT_TSO_PORT = 54758;
-    public static final String DEFAULT_ZK_CLUSTER = "localhost:2181";
-    public static final String DEFAULT_TSO_HOST_PORT_CONNECTION_STRING = DEFAULT_TSO_HOST + ":" + DEFAULT_TSO_PORT;
-    public static final int DEFAULT_ZK_CONNECTION_TIMEOUT_IN_SECS = 10;
-    public static final int DEFAULT_TSO_MAX_REQUEST_RETRIES = 5;
-    public static final int DEFAULT_REQUEST_TIMEOUT_MS = 5000; // 5 secs
-    public static final int DEFAULT_TSO_RECONNECTION_DELAY_SECS = 10;
-    public static final int DEFAULT_TSO_RETRY_DELAY_MS = 1000;
-    public static final int DEFAULT_TSO_EXECUTOR_THREAD_NUM = 3;
+    private static final String DEFAULT_CONFIG_FILE_NAME = "omid-client-config.yml";
 
     public enum ConnType {
         DIRECT, ZK
     }
 
     private ConnType connectionType = ConnType.DIRECT;
-    private String connectionString = DEFAULT_TSO_HOST_PORT_CONNECTION_STRING;
-    private int zkConnectionTimeoutSecs = DEFAULT_ZK_CONNECTION_TIMEOUT_IN_SECS;
-    private int requestMaxRetries = DEFAULT_TSO_MAX_REQUEST_RETRIES;
-    private int requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS;
-    private int reconnectionDelaySecs = DEFAULT_TSO_RECONNECTION_DELAY_SECS;
-    private int retryDelayMs = DEFAULT_TSO_RETRY_DELAY_MS;
-    private int executorThreads =  DEFAULT_TSO_EXECUTOR_THREAD_NUM;
-    private MetricsRegistry metrics = new NullMetricsProvider();
 
+    private String connectionString;
+    private int zkConnectionTimeoutSecs;
+    //TSO related
+    private int requestMaxRetries;
 
-    // ----------------------------------------------------------------------------------------------------------------
-    // Instantiation
-    // ----------------------------------------------------------------------------------------------------------------
+    private int requestTimeoutMs;
+    private int reconnectionDelaySecs;
+    private int retryDelayMs;
+    private int executorThreads;
 
-    public static OmidClientConfiguration create() {
-        // Do additional stuff if required
-        return new OmidClientConfiguration();
+    public OmidClientConfiguration() {
+        new YmlUtils<Map>().loadDefaultSettings(Collections.singletonList(DEFAULT_CONFIG_FILE_NAME), this);
     }
 
-    // Private constructor to avoid instantiation
-    private OmidClientConfiguration() {
-    }
 
     // ----------------------------------------------------------------------------------------------------------------
     // Getters and setters for config params
@@ -71,6 +63,8 @@ public class OmidClientConfiguration {
         return connectionType;
     }
 
+    @Inject(optional = true)
+    @Named("omid.client.connectionType")
     public void setConnectionType(ConnType connectionType) {
         this.connectionType = connectionType;
     }
@@ -79,6 +73,8 @@ public class OmidClientConfiguration {
         return connectionString;
     }
 
+    @Inject(optional = true)
+    @Named("omid.client.connectionString")
     public void setConnectionString(String connectionString) {
         this.connectionString = connectionString;
     }
@@ -87,6 +83,8 @@ public class OmidClientConfiguration {
         return zkConnectionTimeoutSecs;
     }
 
+    @Inject(optional = true)
+    @Named("omid.client.zkConnectionTimeoutSecs")
     public void setZkConnectionTimeoutSecs(int zkConnectionTimeoutSecs) {
         this.zkConnectionTimeoutSecs = zkConnectionTimeoutSecs;
     }
@@ -95,6 +93,8 @@ public class OmidClientConfiguration {
         return requestMaxRetries;
     }
 
+    @Inject(optional = true)
+    @Named("omid.client.requestMaxRetries")
     public void setRequestMaxRetries(int requestMaxRetries) {
         this.requestMaxRetries = requestMaxRetries;
     }
@@ -103,6 +103,8 @@ public class OmidClientConfiguration {
         return requestTimeoutMs;
     }
 
+    @Inject(optional = true)
+    @Named("omid.client.requestTimeoutMs")
     public void setRequestTimeoutMs(int requestTimeoutMs) {
         this.requestTimeoutMs = requestTimeoutMs;
     }
@@ -111,6 +113,8 @@ public class OmidClientConfiguration {
         return reconnectionDelaySecs;
     }
 
+    @Inject(optional = true)
+    @Named("omid.client.reconnectionDelaySecs")
     public void setReconnectionDelaySecs(int reconnectionDelaySecs) {
         this.reconnectionDelaySecs = reconnectionDelaySecs;
     }
@@ -119,6 +123,8 @@ public class OmidClientConfiguration {
         return retryDelayMs;
     }
 
+    @Inject(optional = true)
+    @Named("omid.client.retryDelayMs")
     public void setRetryDelayMs(int retryDelayMs) {
         this.retryDelayMs = retryDelayMs;
     }
@@ -127,16 +133,9 @@ public class OmidClientConfiguration {
         return executorThreads;
     }
 
+    @Inject(optional = true)
+    @Named("omid.client.executorThreads")
     public void setExecutorThreads(int executorThreads) {
         this.executorThreads = executorThreads;
     }
-
-    public MetricsRegistry getMetrics() {
-        return metrics;
-    }
-
-    public void setMetrics(MetricsRegistry metrics) {
-        this.metrics = metrics;
-    }
-
 }

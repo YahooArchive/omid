@@ -77,8 +77,8 @@ public abstract class AbstractTransactionManager implements TransactionManager {
     /**
      * Base constructor
      *
-     * @param omidClientConf
-     *            allows to configure this component with the required params
+     * @param metrics
+     *            instrumentation metrics
      * @param tsoClient
      *            a client for accessing functionality of the status oracle
      * @param commitTableClient
@@ -87,7 +87,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      *            a transaction factory to create the specific transaction
      *            objects required by the transaction manager being implemented.
      */
-    public AbstractTransactionManager(OmidClientConfiguration omidClientConf,
+    public AbstractTransactionManager(MetricsRegistry metrics,
                                       TSOClient tsoClient,
                                       CommitTable.Client commitTableClient,
                                       TransactionFactory<? extends CellId> transactionFactory) {
@@ -96,7 +96,6 @@ public abstract class AbstractTransactionManager implements TransactionManager {
         this.transactionFactory = transactionFactory;
 
         // Metrics configuration
-        MetricsRegistry metrics = omidClientConf.getMetrics();
         this.startTimestampTimer = metrics.timer(name("omid", "tm", "startTimestamp", "latency"));
         this.commitTimer = metrics.timer(name("omid", "tm", "commit", "latency"));
         this.commitTableUpdateTimer = metrics.timer(name("omid", "tm", "commitTableUpdate", "latency"));

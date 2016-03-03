@@ -74,7 +74,7 @@ public abstract class OmidTestBase {
         LOG.info("Finished loading TSO");
         context.setAttribute("tso", tso);
 
-        OmidClientConfiguration clientConf = OmidClientConfiguration.create();
+        OmidClientConfiguration clientConf = new OmidClientConfiguration();
         clientConf.setConnectionString("localhost:1234");
         context.setAttribute("clientConf", clientConf);
 
@@ -146,8 +146,8 @@ public abstract class OmidTestBase {
     }
 
     protected TransactionManager newTransactionManager(ITestContext context, TSOClient tsoClient) throws Exception {
-        HBaseOmidClientConfiguration clientConf = HBaseOmidClientConfiguration.create();
-        clientConf.setConnectionString("localhost:1234");
+        HBaseOmidClientConfiguration clientConf = new HBaseOmidClientConfiguration();
+        clientConf.getOmidClientConfiguration().setConnectionString("localhost:1234");
         clientConf.setHBaseConfiguration(hbaseConf);
         return HBaseTransactionManager.builder(clientConf)
                 .commitTableClient(getCommitTable(context).getClient())
@@ -156,8 +156,8 @@ public abstract class OmidTestBase {
 
     protected TransactionManager newTransactionManager(ITestContext context, CommitTable.Client commitTableClient)
             throws Exception {
-        HBaseOmidClientConfiguration clientConf = HBaseOmidClientConfiguration.create();
-        clientConf.setConnectionString("localhost:1234");
+        HBaseOmidClientConfiguration clientConf = new HBaseOmidClientConfiguration();
+        clientConf.getOmidClientConfiguration().setConnectionString("localhost:1234");
         clientConf.setHBaseConfiguration(hbaseConf);
         return HBaseTransactionManager.builder(clientConf)
                 .commitTableClient(commitTableClient)
@@ -176,7 +176,7 @@ public abstract class OmidTestBase {
         TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
     }
 
-    @AfterMethod(groups = "sharedHBase", timeOut = 30_000)
+    @AfterMethod(groups = "sharedHBase", timeOut = 60_000)
     public void afterMethod() {
         try {
             LOG.info("tearing Down");

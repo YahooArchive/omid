@@ -21,7 +21,7 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 import com.google.common.annotations.VisibleForTesting;
 import com.yahoo.omid.metrics.MetricsProvider;
-import com.yahoo.omid.tools.hbase.HBaseLogin;
+import com.yahoo.omid.tools.hbase.SecureHBaseConfig;
 import com.yahoo.omid.tsoclient.TSOClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -159,7 +159,7 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
     private long leasePeriodInMs = TSOServer.DEFAULT_LEASE_PERIOD_IN_MSECS;
 
     @ParametersDelegate
-    private HBaseLogin.Config loginFlags = new HBaseLogin.Config();
+    private SecureHBaseConfig loginFlags = new SecureHBaseConfig();
 
     @Override
     public int processVariableArity(String optionName,
@@ -231,7 +231,7 @@ public class TSOServerCommandLineConfig extends JCommander implements IVariableA
         return batchPersistTimeoutMS;
     }
 
-    public HBaseLogin.Config getLoginFlags() {
+    public SecureHBaseConfig getLoginFlags() {
         return loginFlags;
     }
 

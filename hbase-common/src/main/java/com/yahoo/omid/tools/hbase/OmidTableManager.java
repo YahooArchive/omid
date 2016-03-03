@@ -164,7 +164,7 @@ public class OmidTableManager {
     static class MainConfig {
 
         @ParametersDelegate
-        HBaseLogin.Config loginFlags = new HBaseLogin.Config();
+        SecureHBaseConfig loginFlags = new SecureHBaseConfig();
 
     }
 

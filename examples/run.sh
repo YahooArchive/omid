@@ -13,40 +13,29 @@ function show_help() {
     #
     # 1) basic -> Executes a transaction encompassing a multi-row modification in HBase
     # 2) si -> Shows how Omid preserves Snapshot Isolation guarantees when concurrent transactions access shared data
+    # 3) in -> basic + Instrumentation, see examples-hbase-omid-client-config-with-metrics.yml
     #
     # See the source-code to get more details about each example.
     #
     # The Omid examples can be executed with the following command pattern:
     #
-    # $ $0 <example> [ options ]
+    # $ $0 <example> [ tablename ] [column family name]
     #
     # where:
-    # - <example> can be [ basic | si ]
-    # - [ options ] is a list of configuration options for the example that can be shown with the -help parameter
+    # - <example> can be [ basic | si | in ]
     #
     # Example execution:
     # ------------------
-    #
-    # $0 basic -help
-    #
-    # will show all the options for running the basic example
     #
     # $0 basic
     #
     # will run the basic example with the default options
     #
-    # $ $0 basic -hbaseClientPrincipal foo0@bar.YAHOO.COM -hbaseClientKeytab /foo/bar.keytab -tsoPort 1234
+    # $ $0 basic myHBaseTable myCf
     #
-    # will run the basic example contacting a TSO in localhost:1234 for secure HBase specifying the required args:
-    #   -hbaseClientPrincipal <pincipal>@<domain>
-    #   -hbaseClientKeytab <full_path_to_*.keytab>
-    #   -tsoPort <omid_tso_port>
-    #
-    # $ $0 si -tsoHost a.remote.host -commitTableName MY_COMMIT_TABLE
-    #
-    # will run the snapshot isolation example for not secure HBase contacting a remote host and a specific commit table:
-    #   -tsoHost <omid_tso_host>
-    #   -commitTableName [<my_namespace>:]<my_commit_table_name>
+    # will run the basic example using 'myHBaseTable' as table name and 'myCf' as column family.
+    # All Omid related configuration setting assume their default values, see
+    # omid-client-config.yml and hbase-omid-client-config-default.yml in source code
     #
     ###################################################################################################################
     "
@@ -64,6 +53,7 @@ fileNotFound(){
 
 SCRIPTDIR=`dirname $0`
 cd $SCRIPTDIR;
+SCRIPTDIR=`pwd`
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Check if HADOOP_CONF_DIR and HBASE_CONF_DIR are set
@@ -98,6 +88,9 @@ case ${USER_OPTION} in
         ;;
     si)
         java -cp $KLASSPATH com.yahoo.omid.examples.SnapshotIsolationExample "$@"
+        ;;
+    in)
+        java -cp $KLASSPATH com.yahoo.omid.examples.InstrumentationExample "$@"
         ;;
     *)
         show_help

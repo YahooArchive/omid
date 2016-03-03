@@ -15,35 +15,44 @@
  */
 package com.yahoo.omid.transaction;
 
-import com.yahoo.omid.committable.hbase.CommitTableConstants;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.inject.Inject;
+import com.google.inject.name.Named;
+import com.yahoo.omid.YmlUtils;
 import com.yahoo.omid.metrics.MetricsRegistry;
+import com.yahoo.omid.tools.hbase.SecureHBaseConfig;
 import com.yahoo.omid.tsoclient.OmidClientConfiguration;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 
+import java.util.Arrays;
+import java.util.Map;
+
 /**
  * Configuration for HBase's Omid client side
  */
-public class HBaseOmidClientConfiguration {
-
+public class HBaseOmidClientConfiguration extends SecureHBaseConfig {
+    private static final String DEFAULT_CONFIG_FILE_NAME = "hbase-omid-client-config-default.yml";
+    private static final String CONFIG_FILE_NAME = "hbase-omid-client-config.yml";
     private Configuration hbaseConfiguration = HBaseConfiguration.create();
-    private String commitTableName = CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
+    private String commitTableName;
+    @Inject
+    private OmidClientConfiguration omidClientConfiguration;
+    private MetricsRegistry metrics;
 
-    // Delegated class
-    private OmidClientConfiguration omidClientConfiguration = OmidClientConfiguration.create();
 
     // ----------------------------------------------------------------------------------------------------------------
     // Instantiation
     // ----------------------------------------------------------------------------------------------------------------
-
-    public static HBaseOmidClientConfiguration create() {
-        // TODO Add additional stuff if required (e.g. read from config file)
-        return new HBaseOmidClientConfiguration();
+    public HBaseOmidClientConfiguration() {
+        this(CONFIG_FILE_NAME);
     }
 
-    // Private constructor to avoid instantiation
-    private HBaseOmidClientConfiguration() {
+    @VisibleForTesting
+    HBaseOmidClientConfiguration(String configFileName) {
+        new YmlUtils<Map>().loadDefaultSettings(Arrays.asList(configFileName, DEFAULT_CONFIG_FILE_NAME), this);
     }
+
 
     // ----------------------------------------------------------------------------------------------------------------
     // Getters and setters for config params
@@ -61,6 +70,8 @@ public class HBaseOmidClientConfiguration {
         return commitTableName;
     }
 
+    @Inject(optional = true)
+    @Named("omid.client.hbase.commitTableName")
     public void setCommitTableName(String commitTableName) {
         this.commitTableName = commitTableName;
     }
@@ -73,80 +84,79 @@ public class HBaseOmidClientConfiguration {
         this.omidClientConfiguration = omidClientConfiguration;
     }
 
-    // ----------------------------------------------------------------------------------------------------------------
-    // Getters and setters of the delegated class
-    // ----------------------------------------------------------------------------------------------------------------
-
-    public void setMetrics(MetricsRegistry metrics) {
-        omidClientConfiguration.setMetrics(metrics);
+    public MetricsRegistry getMetrics() {
+        return metrics;
     }
+
+    @Inject(optional = true)
+    @Named("omid.client.hbase.metrics")
+    public void setMetrics(MetricsRegistry metrics) {
+        this.metrics = metrics;
+    }
+
+    //delegation to make end-user life better
 
     public OmidClientConfiguration.ConnType getConnectionType() {
         return omidClientConfiguration.getConnectionType();
-    }
-
-    public void setConnectionString(String connectionString) {
-        omidClientConfiguration.setConnectionString(connectionString);
-    }
-
-    public void setExecutorThreads(int executorThreads) {
-        omidClientConfiguration.setExecutorThreads(executorThreads);
-    }
-
-    public int getReconnectionDelaySecs() {
-        return omidClientConfiguration.getReconnectionDelaySecs();
-    }
-
-    public int getRequestTimeoutMs() {
-        return omidClientConfiguration.getRequestTimeoutMs();
     }
 
     public void setReconnectionDelaySecs(int reconnectionDelaySecs) {
         omidClientConfiguration.setReconnectionDelaySecs(reconnectionDelaySecs);
     }
 
-    public void setConnectionType(OmidClientConfiguration.ConnType connectionType) {
-        omidClientConfiguration.setConnectionType(connectionType);
+    public void setExecutorThreads(int executorThreads) {
+        omidClientConfiguration.setExecutorThreads(executorThreads);
     }
 
-    public MetricsRegistry getMetrics() {
-        return omidClientConfiguration.getMetrics();
+    public int getRequestTimeoutMs() {
+        return omidClientConfiguration.getRequestTimeoutMs();
+    }
+
+    public void setConnectionString(String connectionString) {
+        omidClientConfiguration.setConnectionString(connectionString);
     }
 
     public void setRequestTimeoutMs(int requestTimeoutMs) {
         omidClientConfiguration.setRequestTimeoutMs(requestTimeoutMs);
     }
 
-    public String getConnectionString() {
-        return omidClientConfiguration.getConnectionString();
-    }
-
     public void setZkConnectionTimeoutSecs(int zkConnectionTimeoutSecs) {
         omidClientConfiguration.setZkConnectionTimeoutSecs(zkConnectionTimeoutSecs);
     }
 
-    public int getRetryDelayMs() {
-        return omidClientConfiguration.getRetryDelayMs();
-    }
-
-    public int getExecutorThreads() {
-        return omidClientConfiguration.getExecutorThreads();
+    public void setConnectionType(OmidClientConfiguration.ConnType connectionType) {
+        omidClientConfiguration.setConnectionType(connectionType);
     }
 
     public void setRequestMaxRetries(int requestMaxRetries) {
         omidClientConfiguration.setRequestMaxRetries(requestMaxRetries);
     }
 
+    public int getZkConnectionTimeoutSecs() {
+        return omidClientConfiguration.getZkConnectionTimeoutSecs();
+    }
+
     public void setRetryDelayMs(int retryDelayMs) {
         omidClientConfiguration.setRetryDelayMs(retryDelayMs);
     }
 
-    public int getZkConnectionTimeoutSecs() {
-        return omidClientConfiguration.getZkConnectionTimeoutSecs();
+    public int getExecutorThreads() {
+        return omidClientConfiguration.getExecutorThreads();
+    }
+
+    public int getRetryDelayMs() {
+        return omidClientConfiguration.getRetryDelayMs();
+    }
+
+    public String getConnectionString() {
+        return omidClientConfiguration.getConnectionString();
     }
 
     public int getRequestMaxRetries() {
         return omidClientConfiguration.getRequestMaxRetries();
     }
 
+    public int getReconnectionDelaySecs() {
+        return omidClientConfiguration.getReconnectionDelaySecs();
+    }
 }

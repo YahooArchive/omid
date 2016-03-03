@@ -86,7 +86,7 @@ public class TestTSOClientConnectionToTSO {
         // When no ZK node for TSOServer is found & no host:port config exists
         // we should get an exception when getting the client
         try {
-            TSOClient.newInstance();
+            TSOClient.newInstance(new OmidClientConfiguration());
         } catch (IllegalArgumentException e) {
             // Expected
         }
@@ -108,7 +108,7 @@ public class TestTSOClientConnectionToTSO {
 
         // When no ZK node for TSOServer is found we should get a connection
         // to the TSO through the host:port configured...
-        OmidClientConfiguration tsoClientConf = OmidClientConfiguration.create();
+        OmidClientConfiguration tsoClientConf = new OmidClientConfiguration();
         tsoClientConf.setConnectionString("localhost:" + tsoPortForTest);
         TSOClient tsoClient = TSOClient.newInstance(tsoClientConf);
 
@@ -145,7 +145,7 @@ public class TestTSOClientConnectionToTSO {
         waitTillTsoRegisters(injector.getInstance(CuratorFramework.class));
 
         // When a ZK node for TSOServer is found we should get a connection
-        OmidClientConfiguration tsoClientConf = OmidClientConfiguration.create();
+        OmidClientConfiguration tsoClientConf = new OmidClientConfiguration();
         tsoClientConf.setConnectionType(ZK);
         tsoClientConf.setConnectionString(zkClusterForTest);
         TSOClient tsoClient = TSOClient.newInstance(tsoClientConf);
@@ -183,7 +183,7 @@ public class TestTSOClientConnectionToTSO {
         waitTillTsoRegisters(injector.getInstance(CuratorFramework.class));
 
         // Then create the TSO Client under test...
-        OmidClientConfiguration tsoClientConf = OmidClientConfiguration.create();
+        OmidClientConfiguration tsoClientConf = new OmidClientConfiguration();
         tsoClientConf.setConnectionType(ZK);
         tsoClientConf.setConnectionString(zkClusterForTest);
         TSOClient tsoClient = TSOClient.newInstance(tsoClientConf);
@@ -209,8 +209,8 @@ public class TestTSOClientConnectionToTSO {
             FsmImpl fsm = (FsmImpl) tsoClient.fsm;
             assertEquals(e.getCause().getClass(), ConnectionException.class);
             assertTrue(fsm.getState().getClass().equals(TSOClient.ConnectionFailedState.class)
-                    ||
-                    fsm.getState().getClass().equals(TSOClient.DisconnectedState.class));
+                               ||
+                               fsm.getState().getClass().equals(TSOClient.DisconnectedState.class));
         }
 
         // After that, simulate that a new TSO has been launched...

@@ -26,7 +26,7 @@ public class TestTSOClientResponseHandling {
     @BeforeClass
     public void configureAndCreateClient() {
 
-        OmidClientConfiguration tsoClientConf = OmidClientConfiguration.create();
+        OmidClientConfiguration tsoClientConf = new OmidClientConfiguration();
         tsoClientConf.setConnectionString("localhost:" + TSO_PORT);
         tsoClient = TSOClient.newInstance(tsoClientConf);
     }

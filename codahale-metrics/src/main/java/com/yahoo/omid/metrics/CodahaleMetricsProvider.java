@@ -67,7 +67,7 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
                 switch (reporter) {
                     case "csv":
                         codahaleConfig.addReporter(Reporter.CSV);
-                        codahaleConfig.setCSVDir(reporterConfig);
+                        codahaleConfig.setCsvDir(reporterConfig);
                         break;
                     case "slf4j":
                         codahaleConfig.addReporter(Reporter.SLF4J);
@@ -93,7 +93,7 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
         return provider;
     }
 
-    CodahaleMetricsProvider(CodahaleMetricsConfig conf) {
+    public CodahaleMetricsProvider(CodahaleMetricsConfig conf) {
         metricsOutputFrequency = conf.getOutputFreq();
         timeUnit = conf.getOutputFreqTimeUnit();
         int reporterCount = 0;
@@ -109,7 +109,7 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
                     break;
                 case CSV:
                     codahaleReporter = createAndGetConfiguredCSVReporter(conf.getPrefix(),
-                                                                         conf.getCSVDir());
+                                                                         conf.getCsvDir());
                     break;
                 case SLF4J:
                     codahaleReporter = createAndGetConfiguredSlf4jReporter(conf.getSlf4jLogger());
@@ -123,6 +123,7 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
         if (reporterCount == 0) {
             LOG.warn("No metric reporters found, so metrics won't be available");
         }
+        startMetrics();
     }
 
     @Override

@@ -1,0 +1,11 @@
+#TSO/ZK connection
+connectionString: "localhost:54758"
+connectionType: !!com.yahoo.omid.tsoclient.OmidClientConfiguration$ConnType DIRECT
+zkConnectionTimeoutSecs: 10
+
+#TSO related
+requestMaxRetries: 5
+requestTimeoutMs: 5000
+reconnectionDelaySecs: 10
+retryDelayMs: 1000
+executorThreads: 3

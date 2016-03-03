@@ -26,6 +26,7 @@ import com.yahoo.omid.transaction.HBaseTransactionManager.CommitTimestampLocator
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
@@ -78,6 +79,10 @@ public class TTable implements Closeable {
 
     public TTable(Configuration conf, byte[] tableName) throws IOException {
         this(new HTable(conf, tableName));
+    }
+
+    public TTable(String tableName) throws IOException {
+        this(HBaseConfiguration.create(), Bytes.toBytes(tableName));
     }
 
     public TTable(Configuration conf, String tableName) throws IOException {

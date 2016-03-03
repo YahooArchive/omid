@@ -124,7 +124,7 @@ public class TxRunner implements Runnable {
 
         // TSO Client initialization
         LOG.info("TxRunner-{} [ Connected to TSO in {} ]", txRunnerId, expConfig.tsoHostPort);
-        OmidClientConfiguration tsoClientConf = OmidClientConfiguration.create();
+        OmidClientConfiguration tsoClientConf = new OmidClientConfiguration();
         tsoClientConf.setConnectionString(expConfig.tsoHostPort.toString());
         this.tsoClient = TSOClient.newInstance(tsoClientConf);
 

@@ -92,7 +92,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
 
     @BeforeMethod
     public void beforeMethod() {
-        OmidClientConfiguration tsoClientConf = OmidClientConfiguration.create();
+        OmidClientConfiguration tsoClientConf = new OmidClientConfiguration();
         tsoClientConf.setConnectionString(TSO_SERVER_HOST + ":" + TSO_SERVER_PORT);
 
         this.tsoClientConf = tsoClientConf;
@@ -145,7 +145,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
     @Test(timeOut = 30_000)
     public void testCommitGetsServiceUnavailableExceptionWhenCommunicationFails() throws Exception {
 
-        OmidClientConfiguration testTSOClientConf = OmidClientConfiguration.create();
+        OmidClientConfiguration testTSOClientConf = new OmidClientConfiguration();
         testTSOClientConf.setConnectionString(TSO_SERVER_HOST + ":" + TSO_SERVER_PORT);
         testTSOClientConf.setRequestMaxRetries(0);
         TSOClient client = TSOClient.newInstance(testTSOClientConf);
@@ -169,7 +169,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
                 fail("Shouldn't be able to complete");
             } catch (ExecutionException ee) {
                 assertTrue(ee.getCause() instanceof ServiceUnavailableException,
-                        "Should be a service unavailable exception");
+                           "Should be a service unavailable exception");
             }
         }
     }
@@ -251,8 +251,8 @@ public class TestTSOClientRequestAndResponseBehaviours {
         TSOProto.Response response1 = clientOneShot.makeRequest(createCommitRequest(ts1, false, testWriteSet));
         TSOProto.Response response2 = clientOneShot.makeRequest(createCommitRequest(ts1, true, testWriteSet));
         assertEquals(response2.getCommitResponse().getCommitTimestamp(),
-                response1.getCommitResponse().getCommitTimestamp(),
-                "Commit timestamp should be the same");
+                     response1.getCommitResponse().getCommitTimestamp(),
+                     "Commit timestamp should be the same");
     }
 
     // ----------------------------------------------------------------------------------------------------------------
@@ -276,7 +276,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
     @Test(timeOut = 30_000)
     public void testCommitCanSucceedWithMultipleTimeouts() throws Exception {
 
-        OmidClientConfiguration testTSOClientConf = OmidClientConfiguration.create();
+        OmidClientConfiguration testTSOClientConf = new OmidClientConfiguration();
         testTSOClientConf.setConnectionString(TSO_SERVER_HOST + ":" + TSO_SERVER_PORT);
         testTSOClientConf.setRequestTimeoutMs(100);
         testTSOClientConf.setRequestMaxRetries(10000);
@@ -293,7 +293,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
     @Test(timeOut = 30_000)
     public void testCommitFailWhenTSOIsDown() throws Exception {
 
-        OmidClientConfiguration testTSOClientConf = OmidClientConfiguration.create();
+        OmidClientConfiguration testTSOClientConf = new OmidClientConfiguration();
         testTSOClientConf.setConnectionString(TSO_SERVER_HOST + ":" + TSO_SERVER_PORT);
         testTSOClientConf.setRequestTimeoutMs(100);
         testTSOClientConf.setRequestMaxRetries(10);
@@ -306,7 +306,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
             future.get();
         } catch (ExecutionException e) {
             assertEquals(e.getCause().getClass(), ServiceUnavailableException.class,
-                    "Should be a ServiceUnavailableExeption");
+                         "Should be a ServiceUnavailableExeption");
         }
 
     }
@@ -314,7 +314,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
     @Test(timeOut = 30_000)
     public void testTimestampRequestSucceedWithMultipleTimeouts() throws Exception {
 
-        OmidClientConfiguration testTSOClientConf = OmidClientConfiguration.create();
+        OmidClientConfiguration testTSOClientConf = new OmidClientConfiguration();
         testTSOClientConf.setConnectionString(TSO_SERVER_HOST + ":" + TSO_SERVER_PORT);
         testTSOClientConf.setRequestTimeoutMs(100);
         testTSOClientConf.setRequestMaxRetries(10000);

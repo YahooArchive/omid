@@ -98,10 +98,6 @@ public class TSOClient implements TSOProtocol, NodeCacheListener {
     // Construction
     // ----------------------------------------------------------------------------------------------------------------
 
-    public static TSOClient newInstance() {
-        return newInstance(OmidClientConfiguration.create());
-    }
-
     public static TSOClient newInstance(OmidClientConfiguration tsoClientConf) {
         return new TSOClient(tsoClientConf);
     }
