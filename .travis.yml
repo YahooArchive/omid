@@ -37,15 +37,15 @@ script:
       &&
       find -name testng-failed.xml -exec cp -vf "{}" failedTests/ \;
       &&
-      [ ! -f failedTests/testng-failed.xml ]  ;
+      [ ! -f failedTests/testng-failed.xml ]
       &&
       mvn coveralls:report
       &&
-      mvn -B clean release:prepare release:perform -Prelease_profile,hbase-0 --settings bintray-settings.xml ;
+      mvn -B clean release:prepare release:perform -Prelease_profile,hbase-0 --settings bintray-settings.xml
     else
       git checkout -b tmp-build-branch
       &&
-      mvn clean test ;
+      mvn clean test
     fi
 
 after_success:
