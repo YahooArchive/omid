@@ -90,7 +90,7 @@ case ${USER_OPTION} in
         java -cp $KLASSPATH com.yahoo.omid.examples.SnapshotIsolationExample "$@"
         ;;
     instrumentation)
-        java -cp $KLASSPATH com.yahoo.omid.examples.InstrumentationExample "$@"
+        java -cp $KLASSPATH:${SCRIPTDIR}/config com.yahoo.omid.examples.InstrumentationExample "$@"
         ;;
     *)
         show_help

@@ -44,7 +44,7 @@
         </file>
         <file>
             <source>${basedir}/src/main/resources/hbase-omid-client-config.yml</source>
-            <outputDirectory>/</outputDirectory>
+            <outputDirectory>/config</outputDirectory>
             <destName>hbase-omid-client-config.yml</destName>
         </file>
     </files>
