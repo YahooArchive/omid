@@ -59,7 +59,7 @@ public class TSOBenchmark implements Closeable {
 
     private final CodahaleMetricsProvider metrics;
 
-    private TSOBenchmark(Config expConfig) {
+    private TSOBenchmark(Config expConfig) throws IOException {
 
         this.expConfig = expConfig;
 

@@ -27,10 +27,12 @@ import com.codahale.metrics.graphite.GraphiteReporter;
 import com.google.common.base.Strings;
 import com.google.common.net.HostAndPort;
 import com.yahoo.omid.metrics.CodahaleMetricsConfig.Reporter;
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,7 +53,8 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
     private final int metricsOutputFrequency;
     private final TimeUnit timeUnit;
 
-    public static CodahaleMetricsProvider createCodahaleMetricsProvider(List<String> metricsConfigs) {
+    public static CodahaleMetricsProvider createCodahaleMetricsProvider(
+            List<String> metricsConfigs) throws IOException {
 
         CodahaleMetricsConfig codahaleConfig = new CodahaleMetricsConfig();
 
@@ -93,7 +96,7 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
         return provider;
     }
 
-    public CodahaleMetricsProvider(CodahaleMetricsConfig conf) {
+    public CodahaleMetricsProvider(CodahaleMetricsConfig conf) throws IOException {
         metricsOutputFrequency = conf.getOutputFreq();
         timeUnit = conf.getOutputFreqTimeUnit();
         int reporterCount = 0;
@@ -196,7 +199,7 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
                 .build(graphite);
     }
 
-    private ScheduledReporter createAndGetConfiguredCSVReporter(String prefix, String csvDir) {
+    private ScheduledReporter createAndGetConfiguredCSVReporter(String prefix, String csvDir) throws IOException {
         // NOTE:
         // 1) metrics output files are exclusive to a given process
         // 2) the output directory must exist
@@ -207,6 +210,7 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
         } else {
             outputDir = new File(csvDir);
         }
+        FileUtils.forceMkdir(outputDir);
         LOG.info("Configuring stats with csv output to directory [{}]", outputDir.getAbsolutePath());
         return CsvReporter.forRegistry(metrics)
                 .convertRatesTo(TimeUnit.SECONDS)
