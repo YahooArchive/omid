@@ -41,7 +41,6 @@ public class HBaseOmidClientConfiguration extends SecureHBaseConfig {
     private OmidClientConfiguration omidClientConfiguration;
     private MetricsRegistry metrics;
 
-
     // ----------------------------------------------------------------------------------------------------------------
     // Instantiation
     // ----------------------------------------------------------------------------------------------------------------
@@ -51,9 +50,8 @@ public class HBaseOmidClientConfiguration extends SecureHBaseConfig {
 
     @VisibleForTesting
     HBaseOmidClientConfiguration(String configFileName) {
-        new YAMLUtils<Map>().loadDefaultSettings(Arrays.asList(configFileName, DEFAULT_CONFIG_FILE_NAME), this);
+        new YAMLUtils().loadSettings(configFileName, DEFAULT_CONFIG_FILE_NAME, this);
     }
-
 
     // ----------------------------------------------------------------------------------------------------------------
     // Getters and setters for config params

@@ -42,7 +42,7 @@ public class OmidClientConfiguration {
     private int executorThreads;
 
     public OmidClientConfiguration() {
-        new YAMLUtils<Map>().loadDefaultSettings(Collections.singletonList(DEFAULT_CONFIG_FILE_NAME), this);
+        new YAMLUtils().loadSettings(DEFAULT_CONFIG_FILE_NAME, this);
     }
 
     // ----------------------------------------------------------------------------------------------------------------

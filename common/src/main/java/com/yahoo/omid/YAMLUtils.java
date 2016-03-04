@@ -15,7 +15,6 @@
  */
 package com.yahoo.omid;
 
-import com.google.common.base.Joiner;
 import com.google.common.io.Resources;
 import org.apache.commons.beanutils.BeanUtils;
 import org.slf4j.Logger;
@@ -25,44 +24,47 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.Charset;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
-public class YAMLUtils<T> {
+public class YAMLUtils {
 
     private static final Logger LOG = LoggerFactory.getLogger(YAMLUtils.class);
 
-    private Joiner joiner = Joiner.on(", ");
-
-    public void loadDefaultSettings(List<String> fileNames, Object bean) {
-
+    public void loadSettings(String resourcePath, String defaultResourcePath, Object bean) {
         try {
-            BeanUtils.populate(bean, new YAMLUtils<Map>().loadDefaultSettings(fileNames));
+            Map properties = loadSettings(resourcePath, defaultResourcePath);
+            BeanUtils.populate(bean, properties);
         } catch (IllegalAccessException | InvocationTargetException | IOException e) {
             throw new IllegalStateException(e);
         }
-
     }
 
-    public T loadDefaultSettings(List<String> fileNames) throws IOException {
-
-        String content = loadResourceWithFallback(fileNames);
-        LOG.debug("Loaded config file:\n{}", content);
-        return (T) new Yaml().load(content);
-
-    }
-
-    private String loadResourceWithFallback(List<String> fileNames) throws IOException {
-
-        for (String fileName : fileNames) {
-            try {
-                return Resources.toString(Resources.getResource(fileName), Charset.forName("UTF-8"));
-            } catch (IllegalArgumentException e) {
-                LOG.debug("Resource {} not found, fallback to default", fileName);
-            }
+    public void loadSettings(String resourcePath, Object bean) {
+        try {
+            Map properties = loadSettings(null, resourcePath);
+            BeanUtils.populate(bean, properties);
+        } catch (IllegalAccessException | InvocationTargetException | IOException e) {
+            throw new IllegalStateException(e);
         }
-        throw new IOException(String.format("Not a single resource found: %s", joiner.join(fileNames)));
-
     }
 
+    private Map loadSettings(String resourcePath, String defaultResourcePath) throws IOException {
+        Map defaultSetting = loadAsMap(defaultResourcePath);
+        if (resourcePath != null) {
+            Map userSetting = loadAsMap(resourcePath);
+            defaultSetting.putAll(userSetting);
+        }
+        return defaultSetting;
+    }
+
+    private Map loadAsMap(String path) throws IOException {
+        try {
+            String content = Resources.toString(Resources.getResource(path), Charset.forName("UTF-8"));
+            LOG.debug("Loaded resource file '{}'\n{}", path, content);
+            return new Yaml().loadAs(content, Map.class);
+        } catch (IllegalArgumentException e) {
+            return new HashMap();
+        }
+    }
 }

@@ -11,20 +11,23 @@ import java.util.Map;
 public class YAMLUtilsTest {
 
     @Test
-    public void testLoadDefaultSettings() throws Exception {
-        Map map = new YAMLUtils<Map>().loadDefaultSettings(Collections.singletonList("test.yml"));
+    public void testLoadDefaultSettings_setToBean() throws Exception {
+        Map map = new HashMap();
+        new YAMLUtils().loadSettings("test.yml", "default-test.yml", map);
         Assert.assertNotNull(map);
-        Assert.assertEquals(map.get("prop1"), 1);
-        Assert.assertEquals(map.get("prop2"), "2");
+        Assert.assertEquals(map.get("prop1"), 11);
+        Assert.assertEquals(map.get("prop2"), "22");
+        Assert.assertEquals(map.get("prop3"), 3);
     }
 
     @Test
-    public void testLoadDefaultSettings_setToBean() throws Exception {
+    public void testLoadDefaultSettings_setToBean2() throws Exception {
         Map map = new HashMap();
-        new YAMLUtils<Map>().loadDefaultSettings(Collections.singletonList("test.yml"), map);
+        new YAMLUtils().loadSettings("test.yml", map);
         Assert.assertNotNull(map);
-        Assert.assertEquals(map.get("prop1"), 1);
-        Assert.assertEquals(map.get("prop2"), "2");
+        Assert.assertEquals(map.get("prop1"), 11);
+        Assert.assertEquals(map.get("prop2"), "22");
+        Assert.assertEquals(map.size(), 2);
     }
 
 }
