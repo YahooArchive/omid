@@ -90,14 +90,14 @@ public class BasicExample {
             Put row1 = new Put(exampleRow1);
             row1.add(family, qualifier, dataValue1);
             txTable.put(tx, row1);
-            LOG.info("Transaction {} writing value in [TABLE:ROW/CF/Q] => {}:{}/{}/{} = {} ",
+            LOG.info("Transaction {} trying to write a new value in [TABLE:ROW/CF/Q] => {}:{}/{}/{} = {} ",
                      tx, userTableName, Bytes.toString(exampleRow1), Bytes.toString(family),
                      Bytes.toString(qualifier), Bytes.toString(dataValue1));
 
             Put row2 = new Put(exampleRow2);
             row2.add(family, qualifier, dataValue2);
             txTable.put(tx, row2);
-            LOG.info("Transaction {} writing value in [TABLE:ROW/CF/Q] => {}:{}/{}/{} = {} ",
+            LOG.info("Transaction {} trying to write a new value in [TABLE:ROW/CF/Q] => {}:{}/{}/{} = {} ",
                      tx, userTableName, Bytes.toString(exampleRow2), Bytes.toString(family),
                      Bytes.toString(qualifier), Bytes.toString(dataValue2));
 

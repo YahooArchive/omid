@@ -13,7 +13,7 @@ function show_help() {
     #
     # 1) basic -> Executes a transaction encompassing a multi-row modification in HBase
     # 2) si -> Shows how Omid preserves Snapshot Isolation guarantees when concurrent transactions access shared data
-    # 3) instrumentation -> Basic example with client instrumentation, showing also Omid client configuration options
+    # 3) conf -> Basic example showing Omid client configuration options
     #
     # See the source-code to get more details about each example.
     #
@@ -22,7 +22,7 @@ function show_help() {
     # $ $0 <example> [ tablename ] [column family name]
     #
     # where:
-    # - <example> can be [ basic | si | instrumentation ]
+    # - <example> can be [ basic | si | conf ]
     #
     # Example execution:
     # ------------------
@@ -89,8 +89,8 @@ case ${USER_OPTION} in
     si)
         java -cp $KLASSPATH com.yahoo.omid.examples.SnapshotIsolationExample "$@"
         ;;
-    instrumentation)
-        java -cp $KLASSPATH:${SCRIPTDIR}/config com.yahoo.omid.examples.InstrumentationExample "$@"
+    conf)
+        java -cp $KLASSPATH:${SCRIPTDIR}/conf com.yahoo.omid.examples.ConfigurationExample "$@"
         ;;
     *)
         show_help

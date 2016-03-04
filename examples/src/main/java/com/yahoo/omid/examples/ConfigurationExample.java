@@ -1,5 +1,3 @@
-package com.yahoo.omid.examples;
-
 /**
  * Copyright 2011-2016 Yahoo Inc.
  *
@@ -15,7 +13,7 @@ package com.yahoo.omid.examples;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+package com.yahoo.omid.examples;
 
 import com.yahoo.omid.transaction.HBaseOmidClientConfiguration;
 import com.yahoo.omid.transaction.HBaseTransactionManager;
@@ -37,11 +35,12 @@ import static com.yahoo.omid.tsoclient.OmidClientConfiguration.ConnType.DIRECT;
 /**
  * ****************************************************************************************************************
  *
- *  This example code that demonstrates client configuration
+ *  This example code demonstrates different ways to configure the Omid client settings for HBase
  *
  * ****************************************************************************************************************
  *
  * Please @see{BasicExample} first on how to use with all default settings
+ *
  */
 public class ConfigurationExample {
     private static final Logger LOG = LoggerFactory.getLogger(ConfigurationExample.class);
@@ -59,30 +58,34 @@ public class ConfigurationExample {
         }
         LOG.info("Table '{}', column family '{}'", userTableName, Bytes.toString(family));
 
-        ConfigurationExample configurationExample = new ConfigurationExample();
+        ConfigurationExample example = new ConfigurationExample();
 
         // -----------------------------------------------------------------------------------------------------------
-        // Use a configuration file for Omid client user-specific settings
+        // Omid client settings configuration through the 'hbase-omid-client-config.yml' configuration file
         // -----------------------------------------------------------------------------------------------------------
-        // Place file 'hbase-omid-client-config.yml' with all your custom settins into application classpath.
         // The HBaseOmidClientConfiguration loads defaults from 'default-hbase-omid-client-config.yml'
-        // and then also applies settings from 'hbase-omid-client-config.yml' if it's available.
+        // and then also applies settings from 'hbase-omid-client-config.yml' if it's available in the classpath.
+        // In the code snippet below, the user settings are loaded from the 'hbase-omid-client-config.yml' file in
+        // the /conf directory that is included in the example classpath (See run.sh.) You can modify the Omid client
+        // settings there or you can place your own 'hbase-omid-client-config.yml' file with all your custom settings
+        // in the application classpath.
 
-        configurationExample.doWork(userTableName, family, new HBaseOmidClientConfiguration());
+        example.doWork(userTableName, family, new HBaseOmidClientConfiguration());
 
         // -----------------------------------------------------------------------------------------------------------
-        // Configure Omid client settings from application code
+        // Omid client settings configuration from application code
         // -----------------------------------------------------------------------------------------------------------
-        // You can also configure Omid programmatically from your code. This is useful for unit tests.
-        // The HBaseOmidClientConfiguration still loads defaults from 'default-hbase-omid-client-config.yml' first
-        // then applies settings from 'hbase-omid-client-config.yml' if it's available and then use explicit settings
-        // in the code.
+        // You can also configure Omid programmatically from your code. This is useful for example in unit tests.
+        // The HBaseOmidClientConfiguration still loads defaults from 'default-hbase-omid-client-config.yml' first,
+        // and then applies settings from 'hbase-omid-client-config.yml' if it's available and then use explicit
+        // settings in the code. An example of an explicit Omid client configuration in code is shown below.
 
         HBaseOmidClientConfiguration omidClientConfiguration = new HBaseOmidClientConfiguration();
-        omidClientConfiguration.setRetryDelayMs(3000);
         omidClientConfiguration.setConnectionType(DIRECT);
+        omidClientConfiguration.setConnectionString("localhost:54758");
+        omidClientConfiguration.setRetryDelayMs(3000);
 
-        configurationExample.doWork(userTableName, family, omidClientConfiguration);
+        example.doWork(userTableName, family, omidClientConfiguration);
     }
 
     private void doWork(String userTableName, byte[] family, HBaseOmidClientConfiguration configuration)
@@ -98,21 +101,21 @@ public class ConfigurationExample {
         try (TransactionManager tm = HBaseTransactionManager.newInstance(configuration);
              TTable txTable = new TTable(userTableName))
         {
-            for (int i = 0; i < 1000; i++) {
+            for (int i = 0; i < 100; i++) {
                 Transaction tx = tm.begin();
                 LOG.info("Transaction #{} {} STARTED", i, tx);
 
                 Put row1 = new Put(exampleRow1);
                 row1.add(family, qualifier, dataValue1);
                 txTable.put(tx, row1);
-                LOG.info("Transaction {} writing value in [TABLE:ROW/CF/Q] => {}:{}/{}/{} = {} ",
+                LOG.info("Transaction {} trying to write a new value in [TABLE:ROW/CF/Q] => {}:{}/{}/{} = {} ",
                          tx, userTableName, Bytes.toString(exampleRow1), Bytes.toString(family),
                          Bytes.toString(qualifier), Bytes.toString(dataValue1));
 
                 Put row2 = new Put(exampleRow2);
                 row2.add(family, qualifier, dataValue2);
                 txTable.put(tx, row2);
-                LOG.info("Transaction {} writing value in [TABLE:ROW/CF/Q] => {}:{}/{}/{} = {} ",
+                LOG.info("Transaction {} trying to write a new value in [TABLE:ROW/CF/Q] => {}:{}/{}/{} = {} ",
                          tx, userTableName, Bytes.toString(exampleRow2), Bytes.toString(family),
                          Bytes.toString(qualifier), Bytes.toString(dataValue2));
 

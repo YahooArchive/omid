@@ -164,6 +164,7 @@ public class SnapshotIsolationExample {
             } catch (RollbackException e) {
                 LOG.error("Concurrent Transaction {} ROLLED-BACK!!! : {}", tx2, e.getMessage());
             }
+
         }
 
     }
