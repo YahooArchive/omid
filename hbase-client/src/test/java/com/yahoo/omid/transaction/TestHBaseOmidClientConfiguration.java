@@ -25,4 +25,5 @@ public class TestHBaseOmidClientConfiguration {
         Assert.assertNotNull(configuration.getOmidClientConfiguration());
         Assert.assertTrue(configuration.getMetrics() instanceof CodahaleMetricsProvider);
     }
+
 }

@@ -19,8 +19,7 @@ import com.yahoo.omid.transaction.HBaseTransactionManager;
 import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
@@ -63,7 +62,8 @@ public class BasicExample {
     private static final Logger LOG = LoggerFactory.getLogger(BasicExample.class);
 
     public static void main(String[] args) throws Exception {
-        LOG.info("Parsing command line args...");
+
+        LOG.info("Parsing command line arguments");
         String userTableName = "MY_TX_TABLE";
         if (args != null && args.length > 0 && StringUtils.isNotEmpty(args[0])) {
             userTableName = args[0];
@@ -80,24 +80,23 @@ public class BasicExample {
         byte[] dataValue1 = Bytes.toBytes("val1");
         byte[] dataValue2 = Bytes.toBytes("val2");
 
-        LOG.info("Creating HBase Transaction Manager");
-        TransactionManager tm = HBaseTransactionManager.newInstance();
-
-        LOG.info("Creating access to Transactional Table '{}'", userTableName);
-        try (TTable tt = new TTable(userTableName)) {
+        LOG.info("Creating access to Omid Transaction Manager & Transactional Table '{}'", userTableName);
+        try (TransactionManager tm = HBaseTransactionManager.newInstance();
+             TTable txTable = new TTable(userTableName))
+        {
             Transaction tx = tm.begin();
-            LOG.info("Transaction  {} STARTED", tx);
+            LOG.info("Transaction {} STARTED", tx);
 
             Put row1 = new Put(exampleRow1);
             row1.add(family, qualifier, dataValue1);
-            tt.put(tx, row1);
+            txTable.put(tx, row1);
             LOG.info("Transaction {} writing value in [TABLE:ROW/CF/Q] => {}:{}/{}/{} = {} ",
                      tx, userTableName, Bytes.toString(exampleRow1), Bytes.toString(family),
                      Bytes.toString(qualifier), Bytes.toString(dataValue1));
 
             Put row2 = new Put(exampleRow2);
             row2.add(family, qualifier, dataValue2);
-            tt.put(tx, row2);
+            txTable.put(tx, row2);
             LOG.info("Transaction {} writing value in [TABLE:ROW/CF/Q] => {}:{}/{}/{} = {} ",
                      tx, userTableName, Bytes.toString(exampleRow2), Bytes.toString(family),
                      Bytes.toString(qualifier), Bytes.toString(dataValue2));
@@ -106,7 +105,6 @@ public class BasicExample {
             LOG.info("Transaction {} COMMITTED", tx);
         }
 
-        tm.close();
     }
 
 }

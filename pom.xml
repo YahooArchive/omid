@@ -81,6 +81,8 @@
         <hamcrest.version>1.3</hamcrest.version>
         <curator.version>2.6.0</curator.version>
         <zookeeper.version>3.4.3</zookeeper.version>
+        <snakeyaml.version>1.11</snakeyaml.version>
+        <beanutils.version>1.8.3</beanutils.version>
 
         <!-- Maven Plugin Versioning -->
         <maven-antrun-plugin.version>1.7</maven-antrun-plugin.version>

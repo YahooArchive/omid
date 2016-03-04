@@ -147,7 +147,7 @@ public abstract class OmidTestBase {
 
     protected TransactionManager newTransactionManager(ITestContext context, TSOClient tsoClient) throws Exception {
         HBaseOmidClientConfiguration clientConf = new HBaseOmidClientConfiguration();
-        clientConf.getOmidClientConfiguration().setConnectionString("localhost:1234");
+        clientConf.setConnectionString("localhost:1234");
         clientConf.setHBaseConfiguration(hbaseConf);
         return HBaseTransactionManager.builder(clientConf)
                 .commitTableClient(getCommitTable(context).getClient())
@@ -157,7 +157,7 @@ public abstract class OmidTestBase {
     protected TransactionManager newTransactionManager(ITestContext context, CommitTable.Client commitTableClient)
             throws Exception {
         HBaseOmidClientConfiguration clientConf = new HBaseOmidClientConfiguration();
-        clientConf.getOmidClientConfiguration().setConnectionString("localhost:1234");
+        clientConf.setConnectionString("localhost:1234");
         clientConf.setHBaseConfiguration(hbaseConf);
         return HBaseTransactionManager.builder(clientConf)
                 .commitTableClient(commitTableClient)

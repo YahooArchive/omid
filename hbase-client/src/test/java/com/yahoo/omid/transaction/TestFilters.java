@@ -49,7 +49,7 @@ public class TestFilters extends OmidTestBase {
         CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
 
         HBaseOmidClientConfiguration hbaseOmidClientConf = new HBaseOmidClientConfiguration();
-        hbaseOmidClientConf.getOmidClientConfiguration().setConnectionString("localhost:1234");
+        hbaseOmidClientConf.setConnectionString("localhost:1234");
         hbaseOmidClientConf.setHBaseConfiguration(hbaseConf);
 
         TTable table = new TTable(hbaseConf, TEST_TABLE);

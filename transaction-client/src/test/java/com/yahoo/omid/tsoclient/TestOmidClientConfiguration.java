@@ -11,4 +11,5 @@ public class TestOmidClientConfiguration {
         Assert.assertNotNull(configuration.getConnectionString());
         Assert.assertNotNull(configuration.getConnectionType());
     }
+
 }

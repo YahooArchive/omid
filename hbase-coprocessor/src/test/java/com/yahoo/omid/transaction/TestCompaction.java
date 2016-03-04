@@ -170,7 +170,7 @@ public class TestCompaction {
 
     private TransactionManager newTransactionManager() throws Exception {
         HBaseOmidClientConfiguration hbaseOmidClientConf = new HBaseOmidClientConfiguration();
-        hbaseOmidClientConf.getOmidClientConfiguration().setConnectionString("localhost:1234");
+        hbaseOmidClientConf.setConnectionString("localhost:1234");
         hbaseOmidClientConf.setHBaseConfiguration(hbaseConf);
         return HBaseTransactionManager.builder(hbaseOmidClientConf)
                 .commitTableClient(commitTable.getClient())

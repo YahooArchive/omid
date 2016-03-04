@@ -132,8 +132,8 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         // Configure HBase TM
         LOG.info("===================== Starting TM =====================");
         HBaseOmidClientConfiguration hbaseOmidClientConf = new HBaseOmidClientConfiguration();
-        hbaseOmidClientConf.getOmidClientConfiguration().setConnectionType(ZK);
-        hbaseOmidClientConf.getOmidClientConfiguration().setConnectionString(zkConnection);
+        hbaseOmidClientConf.setConnectionType(ZK);
+        hbaseOmidClientConf.setConnectionString(zkConnection);
         hbaseOmidClientConf.setHBaseConfiguration(hbaseConf);
         hbaseConf.setInt(HBASE_CLIENT_RETRIES_NUMBER, 3);
         tm = HBaseTransactionManager.builder(hbaseOmidClientConf).build();

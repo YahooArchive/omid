@@ -13,7 +13,7 @@ function show_help() {
     #
     # 1) basic -> Executes a transaction encompassing a multi-row modification in HBase
     # 2) si -> Shows how Omid preserves Snapshot Isolation guarantees when concurrent transactions access shared data
-    # 3) in -> basic + Instrumentation, see examples-hbase-omid-client-config-with-metrics.yml
+    # 3) instrumentation -> Basic example with client instrumentation, showing also Omid client configuration options
     #
     # See the source-code to get more details about each example.
     #
@@ -22,7 +22,7 @@ function show_help() {
     # $ $0 <example> [ tablename ] [column family name]
     #
     # where:
-    # - <example> can be [ basic | si | in ]
+    # - <example> can be [ basic | si | instrumentation ]
     #
     # Example execution:
     # ------------------
@@ -31,11 +31,11 @@ function show_help() {
     #
     # will run the basic example with the default options
     #
-    # $ $0 basic myHBaseTable myCf
+    # $ $0 basic myHBaseTable myCF
     #
-    # will run the basic example using 'myHBaseTable' as table name and 'myCf' as column family.
-    # All Omid related configuration setting assume their default values, see
-    # omid-client-config.yml and hbase-omid-client-config-default.yml in source code
+    # will run the basic example using 'myHBaseTable' as table name and 'myCF' as column family.
+    # All Omid client-related configuration settings assume their default values. The default values for the settings
+    # can be found in 'omid-client-config.yml' and 'default-hbase-omid-client-config.yml' files in the source code.
     #
     ###################################################################################################################
     "
@@ -89,7 +89,7 @@ case ${USER_OPTION} in
     si)
         java -cp $KLASSPATH com.yahoo.omid.examples.SnapshotIsolationExample "$@"
         ;;
-    in)
+    instrumentation)
         java -cp $KLASSPATH com.yahoo.omid.examples.InstrumentationExample "$@"
         ;;
     *)

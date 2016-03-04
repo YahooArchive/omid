@@ -17,13 +17,8 @@ package com.yahoo.omid.tsoclient;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import com.yahoo.omid.YmlUtils;
-import org.apache.commons.beanutils.BeanUtils;
-import org.yaml.snakeyaml.Yaml;
+import com.yahoo.omid.YAMLUtils;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
 import java.util.Map;
 
@@ -38,26 +33,21 @@ public class OmidClientConfiguration {
     }
 
     private ConnType connectionType = ConnType.DIRECT;
-
     private String connectionString;
     private int zkConnectionTimeoutSecs;
-    //TSO related
     private int requestMaxRetries;
-
     private int requestTimeoutMs;
     private int reconnectionDelaySecs;
     private int retryDelayMs;
     private int executorThreads;
 
     public OmidClientConfiguration() {
-        new YmlUtils<Map>().loadDefaultSettings(Collections.singletonList(DEFAULT_CONFIG_FILE_NAME), this);
+        new YAMLUtils<Map>().loadDefaultSettings(Collections.singletonList(DEFAULT_CONFIG_FILE_NAME), this);
     }
-
 
     // ----------------------------------------------------------------------------------------------------------------
     // Getters and setters for config params
     // ----------------------------------------------------------------------------------------------------------------
-
 
     public ConnType getConnectionType() {
         return connectionType;
@@ -138,4 +128,5 @@ public class OmidClientConfiguration {
     public void setExecutorThreads(int executorThreads) {
         this.executorThreads = executorThreads;
     }
+
 }

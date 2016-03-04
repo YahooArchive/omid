@@ -21,7 +21,6 @@ import com.google.inject.Provides;
 import javax.inject.Singleton;
 import java.util.List;
 
-
 //TODO:IK: convert it from command line to yml config
 // this is for server side only
 public class CodahaleModule extends AbstractModule {

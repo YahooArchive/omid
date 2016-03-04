@@ -20,8 +20,7 @@ import com.yahoo.omid.transaction.RollbackException;
 import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -75,7 +74,8 @@ public class SnapshotIsolationExample {
     private static final Logger LOG = LoggerFactory.getLogger(SnapshotIsolationExample.class);
 
     public static void main(String[] args) throws Exception {
-        LOG.info("Parsing command line args...");
+
+        LOG.info("Parsing the command line arguments");
         String userTableName = "MY_TX_TABLE";
         if (args != null && args.length > 0 && StringUtils.isNotEmpty(args[0])) {
             userTableName = args[0];
@@ -92,16 +92,15 @@ public class SnapshotIsolationExample {
         byte[] dataValue1 = Bytes.toBytes("val1");
         byte[] dataValue2 = Bytes.toBytes("val2");
 
-        LOG.info("Creating HBase transaction manager...");
-        TransactionManager tm = HBaseTransactionManager.newInstance();
-
         LOG.info("--------------------------------------------------------------------------------------------------");
         LOG.info("NOTE: All Transactions in the Example access column {}:{}/{}/{} [TABLE:ROW/CF/Q]",
                  userTableName, Bytes.toString(exampleRow), Bytes.toString(family), Bytes.toString(qualifier));
         LOG.info("--------------------------------------------------------------------------------------------------");
 
-        LOG.info("Creating access to Transactional Table '{}'", userTableName);
-        try (TTable txTable = new TTable(userTableName)) {
+        LOG.info("Creating access to Omid Transaction Manager & Transactional Table '{}'", userTableName);
+        try (TransactionManager tm = HBaseTransactionManager.newInstance();
+             TTable txTable = new TTable(userTableName))
+        {
 
             // A transaction Tx0 sets an initial value to a particular column in an specific row
             Transaction tx0 = tm.begin();
@@ -166,8 +165,6 @@ public class SnapshotIsolationExample {
                 LOG.error("Concurrent Transaction {} ROLLED-BACK!!! : {}", tx2, e.getMessage());
             }
         }
-
-        tm.close();
 
     }
 

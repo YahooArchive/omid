@@ -18,7 +18,7 @@ package com.yahoo.omid.transaction;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import com.yahoo.omid.YmlUtils;
+import com.yahoo.omid.YAMLUtils;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.tools.hbase.SecureHBaseConfig;
 import com.yahoo.omid.tsoclient.OmidClientConfiguration;
@@ -32,7 +32,8 @@ import java.util.Map;
  * Configuration for HBase's Omid client side
  */
 public class HBaseOmidClientConfiguration extends SecureHBaseConfig {
-    private static final String DEFAULT_CONFIG_FILE_NAME = "hbase-omid-client-config-default.yml";
+
+    private static final String DEFAULT_CONFIG_FILE_NAME = "default-hbase-omid-client-config.yml";
     private static final String CONFIG_FILE_NAME = "hbase-omid-client-config.yml";
     private Configuration hbaseConfiguration = HBaseConfiguration.create();
     private String commitTableName;
@@ -50,7 +51,7 @@ public class HBaseOmidClientConfiguration extends SecureHBaseConfig {
 
     @VisibleForTesting
     HBaseOmidClientConfiguration(String configFileName) {
-        new YmlUtils<Map>().loadDefaultSettings(Arrays.asList(configFileName, DEFAULT_CONFIG_FILE_NAME), this);
+        new YAMLUtils<Map>().loadDefaultSettings(Arrays.asList(configFileName, DEFAULT_CONFIG_FILE_NAME), this);
     }
 
 
@@ -94,7 +95,7 @@ public class HBaseOmidClientConfiguration extends SecureHBaseConfig {
         this.metrics = metrics;
     }
 
-    //delegation to make end-user life better
+    // Delegation to make end-user life better
 
     public OmidClientConfiguration.ConnType getConnectionType() {
         return omidClientConfiguration.getConnectionType();
@@ -159,4 +160,5 @@ public class HBaseOmidClientConfiguration extends SecureHBaseConfig {
     public int getReconnectionDelaySecs() {
         return omidClientConfiguration.getReconnectionDelaySecs();
     }
+
 }
