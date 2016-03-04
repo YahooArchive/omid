@@ -19,8 +19,11 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 
 import javax.inject.Singleton;
+import java.io.IOException;
 import java.util.List;
 
+//TODO:IK: convert it from command line to yml config
+// this is for server side only
 public class CodahaleModule extends AbstractModule {
 
     private final List<String> metricsConfigs;
@@ -36,7 +39,7 @@ public class CodahaleModule extends AbstractModule {
 
     @Provides
     @Singleton
-    MetricsRegistry provideMetricsRegistry() {
+    MetricsRegistry provideMetricsRegistry() throws IOException {
 
         return CodahaleMetricsProvider.createCodahaleMetricsProvider(metricsConfigs);
 

@@ -23,6 +23,11 @@
         </dependency>
 
         <!-- End of Dependencies on Omid modules -->
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>${commons-io.version}</version>
+        </dependency>
 
         <!-- core -->
 

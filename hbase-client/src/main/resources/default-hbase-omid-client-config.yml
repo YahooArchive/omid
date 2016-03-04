@@ -1,0 +1,8 @@
+#HBase related
+commitTableName: OMID_COMMIT_TABLE
+
+#TSO/ZK connection
+omidClientConfiguration: !!com.yahoo.omid.tsoclient.OmidClientConfiguration [ ]
+
+#Instrumentation
+metrics: !!com.yahoo.omid.metrics.NullMetricsProvider [ ]

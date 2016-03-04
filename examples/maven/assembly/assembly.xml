@@ -42,6 +42,11 @@
             <outputDirectory>/</outputDirectory>
             <destName>log4j.properties</destName>
         </file>
+        <file>
+            <source>${basedir}/src/main/resources/hbase-omid-client-config.yml</source>
+            <outputDirectory>/conf</outputDirectory>
+            <destName>hbase-omid-client-config.yml</destName>
+        </file>
     </files>
 
     <dependencySets>
