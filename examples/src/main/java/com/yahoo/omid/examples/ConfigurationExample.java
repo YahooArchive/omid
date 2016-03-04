@@ -37,15 +37,14 @@ import static com.yahoo.omid.tsoclient.OmidClientConfiguration.ConnType.DIRECT;
 /**
  * ****************************************************************************************************************
  *
- *  This example code that demonstrates client side instrumentation.
- *  It also shows the different options to configure the Omid client.
+ *  This example code that demonstrates client configuration
  *
  * ****************************************************************************************************************
  *
- * Please @see{BasicExample} first
+ * Please @see{BasicExample} first on how to use with all default settings
  */
-public class InstrumentationExample {
-    private static final Logger LOG = LoggerFactory.getLogger(InstrumentationExample.class);
+public class ConfigurationExample {
+    private static final Logger LOG = LoggerFactory.getLogger(ConfigurationExample.class);
 
     public static void main(String[] args) throws Exception {
 
@@ -60,31 +59,30 @@ public class InstrumentationExample {
         }
         LOG.info("Table '{}', column family '{}'", userTableName, Bytes.toString(family));
 
-        // -----------------------------------------------------------------------------------------------------------
-        // 1) Basic Omid Client configuration
-        // -----------------------------------------------------------------------------------------------------------
-        // This is an example of a how Omid is configured using the default options. The default settings are found in
-        // the 'default-hbase-omid-client-config.yml' and 'omid-client-config.yml' files.
-
-        new InstrumentationExample().doWork(userTableName, family, new HBaseOmidClientConfiguration());
+        ConfigurationExample configurationExample = new ConfigurationExample();
 
         // -----------------------------------------------------------------------------------------------------------
-        // 2) Use a configuration file for Omid client user-specific settings
+        // Use a configuration file for Omid client user-specific settings
         // -----------------------------------------------------------------------------------------------------------
-        // In order to configure Omid settings from your own config file, you have to include place a the settings in a
-        // file 'hbase-omid-client-config.yml' which must be accessible from the application classpath. The
-        // HBaseOmidClientConfiguration class first looks for a file called 'hbase-omid-client-config.yml'
-        // in the classpath and if not found, then fall-backs to the settings in 'default-hbase-omid-client-config.yml'
+        // Place file 'hbase-omid-client-config.yml' with all your custom settins into application classpath.
+        // The HBaseOmidClientConfiguration loads defaults from 'default-hbase-omid-client-config.yml'
+        // and then also applies settings from 'hbase-omid-client-config.yml' if it's available.
+
+        configurationExample.doWork(userTableName, family, new HBaseOmidClientConfiguration());
 
         // -----------------------------------------------------------------------------------------------------------
-        // 3) Configure Omid client settings from application code
+        // Configure Omid client settings from application code
         // -----------------------------------------------------------------------------------------------------------
-        // Finally you can configure Omid programmatically from your code. This is useful for example in tests.
+        // You can also configure Omid programmatically from your code. This is useful for unit tests.
+        // The HBaseOmidClientConfiguration still loads defaults from 'default-hbase-omid-client-config.yml' first
+        // then applies settings from 'hbase-omid-client-config.yml' if it's available and then use explicit settings
+        // in the code.
+
         HBaseOmidClientConfiguration omidClientConfiguration = new HBaseOmidClientConfiguration();
         omidClientConfiguration.setRetryDelayMs(3000);
         omidClientConfiguration.setConnectionType(DIRECT);
 
-        new InstrumentationExample().doWork(userTableName, family, omidClientConfiguration);
+        configurationExample.doWork(userTableName, family, omidClientConfiguration);
     }
 
     private void doWork(String userTableName, byte[] family, HBaseOmidClientConfiguration configuration)
