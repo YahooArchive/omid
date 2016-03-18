@@ -9,38 +9,31 @@ import com.yahoo.omid.metrics.NullMetricsProvider;
 import com.yahoo.omid.timestamp.storage.HBaseTimestampStorage;
 import com.yahoo.omid.timestamp.storage.TimestampStorage;
 import com.yahoo.omid.tso.DisruptorModule;
-import com.yahoo.omid.tso.LeaseManagement;
 import com.yahoo.omid.tso.MockPanicker;
+import com.yahoo.omid.tso.NetworkInterfaceUtils;
 import com.yahoo.omid.tso.Panicker;
-import com.yahoo.omid.tso.PausableLeaseManager;
 import com.yahoo.omid.tso.PausableTimestampOracle;
 import com.yahoo.omid.tso.TSOChannelHandler;
-import com.yahoo.omid.tso.TSOServerCommandLineConfig;
+import com.yahoo.omid.tso.TSOServerConfig;
 import com.yahoo.omid.tso.TSOStateManager;
 import com.yahoo.omid.tso.TSOStateManagerImpl;
 import com.yahoo.omid.tso.TimestampOracle;
-import com.yahoo.omid.tso.ZKModule;
-import org.apache.curator.framework.CuratorFramework;
 import org.apache.hadoop.conf.Configuration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Named;
 import javax.inject.Singleton;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 
-import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
-import static com.yahoo.omid.ZKConstants.TSO_LEASE_PATH;
 import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
 
-/**
- * @author fperez@
- */
-class TestTSOModule extends AbstractModule {
-    private static final Logger LOG = LoggerFactory.getLogger(TestTSOModule.class);
-    private final Configuration hBaseConfig;
-    private final TSOServerCommandLineConfig config;
 
-    TestTSOModule(Configuration hBaseConfig, TSOServerCommandLineConfig config) {
+class TestTSOModule extends AbstractModule {
+
+    private final Configuration hBaseConfig;
+    private final TSOServerConfig config;
+
+    TestTSOModule(Configuration hBaseConfig, TSOServerConfig config) {
         this.hBaseConfig = hBaseConfig;
         this.config = config;
     }
@@ -60,30 +53,8 @@ class TestTSOModule extends AbstractModule {
         // Disruptor setup
         install(new DisruptorModule());
 
-        // ZK Module
-        install(new ZKModule(config));
-
-    }
-
-    // LeaseManagement setup
-    @Provides
-    @Singleton
-    LeaseManagement provideLeaseManager(@Named(TSO_HOST_AND_PORT_KEY) String tsoHostAndPort,
-                                        TSOChannelHandler tsoChannelHandler,
-                                        TSOStateManager stateManager,
-                                        CuratorFramework zkClient,
-                                        Panicker panicker)
-            throws LeaseManagement.LeaseManagementException {
-
-        LOG.info("Connection to ZK cluster [{}]", zkClient.getState());
-        return new PausableLeaseManager(tsoHostAndPort,
-                tsoChannelHandler,
-                stateManager,
-                config.getLeasePeriodInMs(),
-                TSO_LEASE_PATH,
-                CURRENT_TSO_PATH,
-                zkClient,
-                panicker);
+        // LeaseManagement setup
+        install(config.getLeaseModule());
     }
 
     @Provides
@@ -92,7 +63,7 @@ class TestTSOModule extends AbstractModule {
     }
 
     @Provides
-    TSOServerCommandLineConfig provideTSOServerConfig() {
+    TSOServerConfig provideTSOServerConfig() {
         return config;
     }
 
@@ -102,4 +73,9 @@ class TestTSOModule extends AbstractModule {
         return new NullMetricsProvider();
     }
 
+    @Provides
+    @Named(TSO_HOST_AND_PORT_KEY)
+    String provideTSOHostAndPort() throws SocketException, UnknownHostException {
+        return NetworkInterfaceUtils.getTSOHostAndPort(config);
+    }
 }

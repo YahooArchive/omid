@@ -8,6 +8,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.concurrent.ExecutionException;
 
@@ -24,7 +25,7 @@ public class TestTSOClientResponseHandling {
     private TSOClient tsoClient;
 
     @BeforeClass
-    public void configureAndCreateClient() {
+    public void configureAndCreateClient() throws IOException, InterruptedException {
 
         OmidClientConfiguration tsoClientConf = new OmidClientConfiguration();
         tsoClientConf.setConnectionString("localhost:" + TSO_PORT);

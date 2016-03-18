@@ -14,16 +14,6 @@
 
     <dependencies>
 
-        <!-- Dependencies on Omid modules -->
-
-        <dependency>
-            <groupId>com.yahoo.omid</groupId>
-            <artifactId>timestamp-storage</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <!-- End of Dependencies on Omid modules -->
-
         <!-- storage related -->
 
         <dependency>
@@ -36,14 +26,12 @@
         <!-- utils -->
 
         <dependency>
-            <groupId>com.beust</groupId>
-            <artifactId>jcommander</artifactId>
-            <version>${jcommander.version}</version>
-            <type>jar</type>
+            <groupId>com.google.inject</groupId>
+            <artifactId>guice</artifactId>
+            <version>${guice.version}</version>
         </dependency>
 
         <!-- end utils -->
-
 
         <!-- logging -->
 

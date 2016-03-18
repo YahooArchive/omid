@@ -19,21 +19,18 @@ import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.yahoo.omid.YAMLUtils;
 
-import java.util.Collections;
-import java.util.Map;
-
 /**
  * Configuration for Omid client side
  */
 public class OmidClientConfiguration {
     private static final String DEFAULT_CONFIG_FILE_NAME = "omid-client-config.yml";
 
-    public enum ConnType {
-        DIRECT, ZK
-    }
+    public enum ConnType {DIRECT, HA}
 
     private ConnType connectionType = ConnType.DIRECT;
     private String connectionString;
+    private String zkCurrentTsoPath;
+    private String zkNamespace;
     private int zkConnectionTimeoutSecs;
     private int requestMaxRetries;
     private int requestTimeoutMs;
@@ -129,4 +126,23 @@ public class OmidClientConfiguration {
         this.executorThreads = executorThreads;
     }
 
+    public String getZkCurrentTsoPath() {
+        return zkCurrentTsoPath;
+    }
+
+    @Inject(optional = true)
+    @Named("omid.ha.zkCurrentTsoPath")
+    public void setZkCurrentTsoPath(String zkCurrentTsoPath) {
+        this.zkCurrentTsoPath = zkCurrentTsoPath;
+    }
+
+    public String getZkNamespace() {
+        return zkNamespace;
+    }
+
+    @Inject(optional = true)
+    @Named("omid.ha.zkNamespace")
+    public void setZkNamespace(String zkNamespace) {
+        this.zkNamespace = zkNamespace;
+    }
 }

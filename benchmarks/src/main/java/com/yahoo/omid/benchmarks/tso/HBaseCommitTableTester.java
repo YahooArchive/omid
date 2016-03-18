@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.yahoo.omid.committable.hbase;
+package com.yahoo.omid.benchmarks.tso;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -26,6 +26,9 @@ import com.codahale.metrics.Timer;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
 import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.hbase.HBaseCommitTable;
+import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
+import com.yahoo.omid.committable.hbase.KeyGenerator;
 import com.yahoo.omid.committable.hbase.KeyGeneratorImplementations.BadRandomKeyGenerator;
 import com.yahoo.omid.committable.hbase.KeyGeneratorImplementations.BucketKeyGenerator;
 import com.yahoo.omid.committable.hbase.KeyGeneratorImplementations.FullRandomKeyGenerator;
@@ -38,11 +41,9 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
-
 public class HBaseCommitTableTester {
 
-    static class Config {
+    private static class Config {
 
         @Parameter(names = "-fullRandomAlgo", description = "Full random algo")
         boolean fullRandomAlgo = false;
@@ -66,6 +67,7 @@ public class HBaseCommitTableTester {
         SecureHBaseConfig loginFlags = new SecureHBaseConfig();
     }
 
+    @SuppressWarnings("InfiniteLoopStatement")
     public static void main(String[] args) throws Exception {
         Config config = new Config();
         new JCommander(config, args);
@@ -82,12 +84,13 @@ public class HBaseCommitTableTester {
         } else if (config.seqAlgo) {
             keygen = new SeqKeyGenerator();
         } else {
-            keygen = null;
+            throw new IllegalArgumentException("Not supported keygen type");
         }
 
         HBaseLogin.loginIfNeeded(config.loginFlags);
 
-        CommitTable commitTable = new HBaseCommitTable(hbaseConfig, COMMIT_TABLE_DEFAULT_NAME, keygen);
+        HBaseCommitTableConfig commitTableConfig = new HBaseCommitTableConfig();
+        CommitTable commitTable = new HBaseCommitTable(hbaseConfig, commitTableConfig, keygen);
 
         CommitTable.Writer writer = commitTable.getWriter();
 
@@ -114,6 +117,7 @@ public class HBaseCommitTableTester {
 
         Timer flushTimer = metrics.timer("flush");
         Meter commitsMeter = metrics.meter("commits");
+
         int i = 0;
         long ts = 0;
         while (true) {

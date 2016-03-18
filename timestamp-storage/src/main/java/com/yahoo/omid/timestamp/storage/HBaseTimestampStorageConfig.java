@@ -18,23 +18,41 @@ package com.yahoo.omid.timestamp.storage;
 import com.google.inject.Inject;
 
 import javax.inject.Named;
-import javax.inject.Singleton;
 
-import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.timestamp.storage.TimestampStorage.TIMESTAMPSTORAGE_TABLE_NAME_KEY;
-
-@Singleton
 public class HBaseTimestampStorageConfig {
 
-    private String tableName = TIMESTAMP_TABLE_DEFAULT_NAME;
+    public static final String TIMESTAMP_STORAGE_TABLE_NAME_KEY = "omid.timestampstorage.tablename";
+    public static final String TIMESTAMP_STORAGE_CF_NAME_KEY = "omid.timestampstorage.cfname";
+
+    public static final String DEFAULT_TIMESTAMP_STORAGE_TABLE_NAME = "OMID_TIMESTAMP_TABLE";
+    public static final String DEFAULT_TIMESTAMP_STORAGE_CF_NAME = "MAX_TIMESTAMP_CF";
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // Configuration parameters
+    // ----------------------------------------------------------------------------------------------------------------
+
+    private String tableName = DEFAULT_TIMESTAMP_STORAGE_TABLE_NAME;
+    private String familyName = DEFAULT_TIMESTAMP_STORAGE_CF_NAME;
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // Getters and setters
+    // ----------------------------------------------------------------------------------------------------------------
 
     public String getTableName() {
         return tableName;
     }
 
     @Inject(optional = true)
-    public void setTableName(@Named(TIMESTAMPSTORAGE_TABLE_NAME_KEY) String tableName) {
+    public void setTableName(@Named(TIMESTAMP_STORAGE_TABLE_NAME_KEY) String tableName) {
         this.tableName = tableName;
     }
 
+    public String getFamilyName() {
+        return familyName;
+    }
+
+    @Inject(optional = true)
+    public void setFamilyName(@Named(TIMESTAMP_STORAGE_CF_NAME_KEY) String familyName) {
+        this.familyName = familyName;
+    }
 }

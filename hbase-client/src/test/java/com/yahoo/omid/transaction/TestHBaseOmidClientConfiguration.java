@@ -1,7 +1,5 @@
 package com.yahoo.omid.transaction;
 
-
-import com.yahoo.omid.metrics.CodahaleMetricsProvider;
 import org.junit.Assert;
 import org.testng.annotations.Test;
 
@@ -23,7 +21,6 @@ public class TestHBaseOmidClientConfiguration {
         Assert.assertNotNull(configuration.getHBaseConfiguration());
         Assert.assertNotNull(configuration.getMetrics());
         Assert.assertNotNull(configuration.getOmidClientConfiguration());
-        Assert.assertTrue(configuration.getMetrics() instanceof CodahaleMetricsProvider);
     }
 
 }

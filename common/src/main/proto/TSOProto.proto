@@ -1,0 +1,65 @@
+//
+// Copyright 2011-2016 Yahoo Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//         http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+option java_package = "com.yahoo.omid.proto";
+
+option optimize_for = SPEED;
+
+message Request {
+    optional TimestampRequest timestampRequest = 1;
+    optional CommitRequest commitRequest = 2;
+    optional HandshakeRequest handshakeRequest = 3;
+}
+
+message TimestampRequest {
+}
+
+message CommitRequest {
+    optional int64 startTimestamp = 1;
+    optional bool isRetry = 2 [default = false];
+    repeated int64 cellId = 3;
+}
+
+message Response {
+    optional TimestampResponse timestampResponse = 1;
+    optional CommitResponse commitResponse = 2;
+    optional HandshakeResponse handshakeResponse = 3;
+}
+
+message TimestampResponse {
+    optional int64 startTimestamp = 1;
+}
+
+message CommitResponse {
+    optional bool aborted = 1;
+    optional int64 startTimestamp = 2;
+    optional int64 commitTimestamp = 3;
+    optional bool makeHeuristicDecision = 4 [default = false];
+}
+
+message Capabilities {
+    // place here the capabilities a client has to have
+    // to pass the handshake
+}
+
+message HandshakeRequest {
+    optional Capabilities clientCapabilities = 1;
+}
+
+message HandshakeResponse {
+    optional bool clientCompatible = 1;
+    optional Capabilities serverCapabilities = 2;
+}

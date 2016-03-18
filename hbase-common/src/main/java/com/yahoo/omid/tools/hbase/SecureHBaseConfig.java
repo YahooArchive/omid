@@ -15,20 +15,28 @@
  */
 package com.yahoo.omid.tools.hbase;
 
-import com.beust.jcommander.Parameter;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 
 public class SecureHBaseConfig {
+    public static final String HBASE_CLIENT_PRINCIPAL_KEY = "hbase.client.principal";
+    public static final String HBASE_CLIENT_KEYTAB_KEY = "hbase.client.keytab";
 
-    @Parameter(names = "-hbaseClientPrincipal", description = "The kerberos principal for HBase clients")
     private String principal = "not set";
-
-    @Parameter(names = "-hbaseClientKeytab", description = "Path to HBase client keytab")
     private String keytab = "not set";
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // WARNING: Do not remove getters/setters, needed by snake_yaml!
+    // ----------------------------------------------------------------------------------------------------------------
 
     public String getPrincipal() {
         return principal;
+    }
+
+    @Inject(optional = true)
+    @Named(HBASE_CLIENT_PRINCIPAL_KEY)
+    public void setPrincipal(String principal) {
+        this.principal = principal;
     }
 
     public String getKeytab() {
@@ -36,13 +44,7 @@ public class SecureHBaseConfig {
     }
 
     @Inject(optional = true)
-    @Named("hbase.client.principal")
-    public void setPrincipal(String principal) {
-        this.principal = principal;
-    }
-
-    @Inject(optional = true)
-    @Named("hbase.client.keytab")
+    @Named(HBASE_CLIENT_KEYTAB_KEY)
     public void setKeytab(String keytab) {
         this.keytab = keytab;
     }

@@ -17,12 +17,12 @@ package com.yahoo.omid.tso;
 
 import java.io.IOException;
 
-public class NonHALeaseManager implements LeaseManagement {
+public class VoidLeaseManager implements LeaseManagement {
 
     private final TSOChannelHandler tsoChannelHandler;
     private TSOStateManager stateManager;
 
-    public NonHALeaseManager(TSOChannelHandler tsoChannelHandler, TSOStateManager stateManager) {
+    public VoidLeaseManager(TSOChannelHandler tsoChannelHandler, TSOStateManager stateManager) {
         this.tsoChannelHandler = tsoChannelHandler;
         this.stateManager = stateManager;
     }

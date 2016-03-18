@@ -89,7 +89,7 @@ public class ConfigurationExample {
     }
 
     private void doWork(String userTableName, byte[] family, HBaseOmidClientConfiguration configuration)
-            throws IOException, TransactionException, RollbackException {
+            throws IOException, TransactionException, RollbackException, InterruptedException {
 
         byte[] exampleRow1 = Bytes.toBytes("EXAMPLE_ROW1");
         byte[] exampleRow2 = Bytes.toBytes("EXAMPLE_ROW2");

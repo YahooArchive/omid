@@ -17,7 +17,7 @@ package com.yahoo.omid.metrics;
 
 public class MetricsUtils {
 
-    public static final char DEFAULT_SEPARATOR = '.';
+    private static final char DEFAULT_SEPARATOR = '.';
 
     public static String name(String name, String... otherNames) {
         return name(name, DEFAULT_SEPARATOR, otherNames);

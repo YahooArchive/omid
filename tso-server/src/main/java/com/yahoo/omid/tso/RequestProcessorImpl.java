@@ -35,14 +35,9 @@ import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestEvent>,
-        RequestProcessor
-
-{
+public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestEvent>, RequestProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(RequestProcessorImpl.class);
-
-    static final int DEFAULT_MAX_ITEMS = 1_000_000;
 
     private final TimestampOracle timestampOracle;
     public final CommitHashMap hashmap;
@@ -53,11 +48,12 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
     private long epoch = -1L;
 
     @Inject
-    RequestProcessorImpl(MetricsRegistry metrics,
+    RequestProcessorImpl(TSOServerConfig config,
+                         MetricsRegistry metrics,
                          TimestampOracle timestampOracle,
                          PersistenceProcessor persistProc,
-                         Panicker panicker,
-                         TSOServerCommandLineConfig config) throws IOException {
+                         Panicker panicker) throws IOException {
+
         this.metrics = metrics;
 
         this.persistProc = persistProc;
@@ -305,4 +301,5 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
             }
         };
     }
-};
+
+}

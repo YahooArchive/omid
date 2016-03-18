@@ -9,13 +9,18 @@ import com.yahoo.omid.metrics.NullMetricsProvider;
 import com.yahoo.omid.timestamp.storage.TimestampStorage;
 import com.yahoo.omid.tso.TimestampOracleImpl.InMemoryTimestampStorage;
 
+import javax.inject.Named;
 import javax.inject.Singleton;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+
+import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
 
 public class TSOMockModule extends AbstractModule {
 
-    private final TSOServerCommandLineConfig config;
+    private final TSOServerConfig config;
 
-    public TSOMockModule(TSOServerCommandLineConfig config) {
+    public TSOMockModule(TSOServerConfig config) {
         this.config = config;
     }
 
@@ -31,19 +36,12 @@ public class TSOMockModule extends AbstractModule {
         bind(TimestampOracle.class).to(PausableTimestampOracle.class).in(Singleton.class);
         bind(Panicker.class).to(MockPanicker.class).in(Singleton.class);
 
-        // Disruptor setup
+        install(config.getLeaseModule());
         install(new DisruptorModule());
-
-        // LeaseManagement setup
-        install(new LeaseManagementModule(config));
-
-        // ZK Module
-        install(new ZKModule(config));
-
     }
 
     @Provides
-    TSOServerCommandLineConfig provideTSOServerConfig() {
+    TSOServerConfig provideTSOServerConfig() {
         return config;
     }
 
@@ -51,6 +49,12 @@ public class TSOMockModule extends AbstractModule {
     @Singleton
     MetricsRegistry provideMetricsRegistry() {
         return new NullMetricsProvider();
+    }
+
+    @Provides
+    @Named(TSO_HOST_AND_PORT_KEY)
+    String provideTSOHostAndPort() throws SocketException, UnknownHostException {
+        return NetworkInterfaceUtils.getTSOHostAndPort(config);
     }
 
 }

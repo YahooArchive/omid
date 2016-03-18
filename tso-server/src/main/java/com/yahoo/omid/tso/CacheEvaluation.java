@@ -13,10 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.yahoo.omid.tso.util;
-
-import com.yahoo.omid.tso.Cache;
-import com.yahoo.omid.tso.LongCache;
+package com.yahoo.omid.tso;
 
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
@@ -25,13 +22,23 @@ import java.util.Random;
 
 public class CacheEvaluation {
 
-    final static int ENTRIES = 1000000;
-    final static int WARMUP_ROUNDS = 2;
-    final static int ROUNDS = 4;
-    final static double HOT_PERC = 1;
-//    Histogram hist = new Histogram(2 * ENTRIES);
+    private final static int ENTRIES = 1000000;
+    private final static int WARMUP_ROUNDS = 2;
+    private final static int ROUNDS = 4;
+    private final static double HOT_PERC = 1;
 
-    public void testEntriesAge(Cache cache, PrintWriter writer) {
+    public static void main(String[] args) throws FileNotFoundException, UnsupportedEncodingException {
+        int[] asoc = new int[]{8, 16, 32};
+        for (int anAsoc : asoc) {
+            PrintWriter writer = new PrintWriter(anAsoc + ".out", "UTF-8");
+            new CacheEvaluation().testEntriesAge(new LongCache(ENTRIES, anAsoc), writer);
+            writer.close();
+        }
+        PrintWriter writer = new PrintWriter("guava.out", "UTF-8");
+        writer.close();
+    }
+
+    private void testEntriesAge(Cache cache, PrintWriter writer) {
         Random random = new Random();
 
         long seed = random.nextLong();
@@ -75,7 +82,6 @@ public class CacheEvaluation {
             double oldAvg = tempAvg;
             tempAvg += (gap - tempAvg) / removals;
             tempStdDev += (gap - oldAvg) * (gap - tempAvg);
-//            hist.add(gap);
             if (i % ENTRIES == 0) {
                 int round = i / ENTRIES - WARMUP_ROUNDS + 1;
                 System.err.format("Progress [%d/%d]\n", round, ROUNDS);
@@ -92,21 +98,6 @@ public class CacheEvaluation {
         writer.println("# Ops per s : " + (totalOps / elapsedSeconds));
         writer.println("# Avg gap: " + (tempAvg));
         writer.println("# Std dev gap: " + Math.sqrt((tempStdDev / ENTRIES)));
-//        hist.print(writer);
     }
 
-    public static void main(String[] args) throws FileNotFoundException, UnsupportedEncodingException {
-        int[] asoc = new int[]{8, 16, 32};
-        for (int i = 0; i < asoc.length; ++i) {
-            PrintWriter writer = new PrintWriter(asoc[i] + ".out", "UTF-8");
-            new CacheEvaluation().testEntriesAge(new LongCache(ENTRIES, asoc[i]), writer);
-            writer.close();
-        }
-        {
-            PrintWriter writer = new PrintWriter("guava.out", "UTF-8");
-
-            writer.close();
-        }
-
-    }
 }

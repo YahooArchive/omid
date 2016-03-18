@@ -44,21 +44,23 @@ import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 
+@SuppressWarnings({"UnusedDeclaration", "StatementWithEmptyBody"})
 public class TestTSOChannelHandlerNetty {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestTSOChannelHandlerNetty.class);
 
     @Mock
+    private
     RequestProcessor requestProcessor;
 
     // Component under test
-    TSOChannelHandler channelHandler;
+    private TSOChannelHandler channelHandler;
 
     @BeforeMethod
     public void beforeTestMethod() {
         MockitoAnnotations.initMocks(this);
-        String[] confString = {"-port", "1434"};
-        TSOServerCommandLineConfig config = TSOServerCommandLineConfig.parseConfig(confString);
+        TSOServerConfig config = new TSOServerConfig();
+        config.setPort(1434);
         channelHandler = new TSOChannelHandler(config, requestProcessor, new NullMetricsProvider());
     }
 
@@ -121,23 +123,23 @@ public class TestTSOChannelHandlerNetty {
 
         ChannelFuture channelF = nettyClient.connect(new InetSocketAddress("localhost", 1434));
 
-        // ////////////////////////////////////////////////////////////////////
+        // ------------------------------------------------------------------------------------------------------------
         // Test the client can't connect cause the server is not there
-        // ////////////////////////////////////////////////////////////////////
+        // ------------------------------------------------------------------------------------------------------------
         while (!channelF.isDone()) /** do nothing */ ;
         assertFalse(channelF.isSuccess());
 
-        // ////////////////////////////////////////////////////////////////////
+        // ------------------------------------------------------------------------------------------------------------
         // Test creation of a server connection
-        // ////////////////////////////////////////////////////////////////////
+        // ------------------------------------------------------------------------------------------------------------
         channelHandler.reconnect();
         assertTrue(channelHandler.listeningChannel.isOpen());
         // Eventually the channel group of the server should contain the listening channel
         assertEquals(channelHandler.channelGroup.size(), 1);
 
-        // ////////////////////////////////////////////////////////////////////
+        // ------------------------------------------------------------------------------------------------------------
         // Test that a client can connect now
-        // ////////////////////////////////////////////////////////////////////
+        // ------------------------------------------------------------------------------------------------------------
         channelF = nettyClient.connect(new InetSocketAddress("localhost", 1434));
         while (!channelF.isDone()) /** do nothing */ ;
         assertTrue(channelF.isSuccess());
@@ -145,18 +147,16 @@ public class TestTSOChannelHandlerNetty {
         // Eventually the channel group of the server should have 2 elements
         while (channelHandler.channelGroup.size() != 2) /** do nothing */ ;
 
-        // ////////////////////////////////////////////////////////////////////
-        // Close the channel on the client side and test we have one element
-        // less in the channel group
-        // ////////////////////////////////////////////////////////////////////
+        // ------------------------------------------------------------------------------------------------------------
+        // Close the channel on the client side and test we have one element less in the channel group
+        // ------------------------------------------------------------------------------------------------------------
         channelF.getChannel().close().await();
         // Eventually the channel group of the server should have only one element
         while (channelHandler.channelGroup.size() != 1) /** do nothing */ ;
 
-        // ////////////////////////////////////////////////////////////////////
-        // Open a new channel and test the connection closing on the server side
-        // through the channel handler
-        // ////////////////////////////////////////////////////////////////////
+        // ------------------------------------------------------------------------------------------------------------
+        // Open a new channel and test the connection closing on the server side through the channel handler
+        // ------------------------------------------------------------------------------------------------------------
         channelF = nettyClient.connect(new InetSocketAddress("localhost", 1434));
         while (!channelF.isDone()) /** do nothing */ ;
         assertTrue(channelF.isSuccess());
@@ -169,9 +169,9 @@ public class TestTSOChannelHandlerNetty {
         TimeUnit.SECONDS.sleep(1);
         assertFalse(channelF.getChannel().isOpen());
 
-        // ////////////////////////////////////////////////////////////////////
+        // ------------------------------------------------------------------------------------------------------------
         // Test server re-connections with connected clients
-        // ////////////////////////////////////////////////////////////////////
+        // ------------------------------------------------------------------------------------------------------------
         // Connect first time
         channelHandler.reconnect();
         assertTrue(channelHandler.listeningChannel.isOpen());
@@ -192,9 +192,9 @@ public class TestTSOChannelHandlerNetty {
         TimeUnit.SECONDS.sleep(1);
         assertFalse(channelF.getChannel().isOpen());
 
-        // ////////////////////////////////////////////////////////////////////
+        // ------------------------------------------------------------------------------------------------------------
         // Test closeable interface with re-connection trial
-        // ////////////////////////////////////////////////////////////////////
+        // ------------------------------------------------------------------------------------------------------------
         channelHandler.close();
         assertFalse(channelHandler.listeningChannel.isOpen());
         assertEquals(channelHandler.channelGroup.size(), 0);
@@ -203,9 +203,9 @@ public class TestTSOChannelHandlerNetty {
     @Test(timeOut = 10_000)
     public void testNettyChannelWriting() throws Exception {
 
-        // ////////////////////////////////////////////////////////////////////
+        // ------------------------------------------------------------------------------------------------------------
         // Prepare test
-        // ////////////////////////////////////////////////////////////////////
+        // ------------------------------------------------------------------------------------------------------------
 
         // Connect channel handler
         channelHandler.reconnect();
@@ -223,12 +223,11 @@ public class TestTSOChannelHandlerNetty {
         TSOProto.HandshakeRequest.Builder handshake = TSOProto.HandshakeRequest.newBuilder();
         // NOTE: Add here the required handshake capabilities when necessary
         handshake.setClientCapabilities(TSOProto.Capabilities.newBuilder().build());
-        channelF.getChannel().write(TSOProto.Request.newBuilder()
-                .setHandshakeRequest(handshake.build()).build());
+        channelF.getChannel().write(TSOProto.Request.newBuilder().setHandshakeRequest(handshake.build()).build());
 
-        // ////////////////////////////////////////////////////////////////////
+        // ------------------------------------------------------------------------------------------------------------
         // Test channel writing
-        // ////////////////////////////////////////////////////////////////////
+        // ------------------------------------------------------------------------------------------------------------
         testWritingTimestampRequest(channel);
 
         testWritingCommitRequest(channel);
@@ -264,9 +263,9 @@ public class TestTSOChannelHandlerNetty {
                 .commitRequest(eq(666L), anyCollectionOf(Long.class), eq(false), any(Channel.class), any(MonitoringContext.class));
     }
 
-    // ////////////////////////////////////////////////////////////////////////
+    // ----------------------------------------------------------------------------------------------------------------
     // Helper methods
-    // ////////////////////////////////////////////////////////////////////////
+    // ----------------------------------------------------------------------------------------------------------------
 
     private ClientBootstrap createNettyClientBootstrap() {
 
@@ -282,11 +281,9 @@ public class TestTSOChannelHandlerNetty {
         bootstrap.setOption("reuseAddress", true);
         bootstrap.setOption("connectTimeoutMillis", 100);
         ChannelPipeline pipeline = bootstrap.getPipeline();
-        pipeline.addLast("lengthbaseddecoder",
-                new LengthFieldBasedFrameDecoder(8 * 1024, 0, 4, 0, 4));
+        pipeline.addLast("lengthbaseddecoder", new LengthFieldBasedFrameDecoder(8 * 1024, 0, 4, 0, 4));
         pipeline.addLast("lengthprepender", new LengthFieldPrepender(4));
-        pipeline.addLast("protobufdecoder",
-                new ProtobufDecoder(TSOProto.Response.getDefaultInstance()));
+        pipeline.addLast("protobufdecoder", new ProtobufDecoder(TSOProto.Response.getDefaultInstance()));
         pipeline.addLast("protobufencoder", new ProtobufEncoder());
         pipeline.addLast("handler", new SimpleChannelHandler() {
 

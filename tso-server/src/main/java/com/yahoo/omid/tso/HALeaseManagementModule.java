@@ -17,6 +17,7 @@ package com.yahoo.omid.tso;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import com.yahoo.omid.timestamp.storage.ZKModule;
 import com.yahoo.omid.tso.LeaseManagement.LeaseManagementException;
 import org.apache.curator.framework.CuratorFramework;
 import org.slf4j.Logger;
@@ -27,18 +28,31 @@ import javax.inject.Singleton;
 
 import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
 
-class LeaseManagementModule extends AbstractModule {
+public class HALeaseManagementModule extends AbstractModule {
 
-    private static final Logger LOG = LoggerFactory.getLogger(LeaseManagementModule.class);
+    private static final Logger LOG = LoggerFactory.getLogger(HALeaseManagementModule.class);
+    private final long leasePeriodInMs;
+    private final String tsoLeasePath;
+    private final String currentTsoPath;
+    private final String zkCluster;
+    private final String zkNamespace;
 
-    private final TSOServerCommandLineConfig config;
+    public HALeaseManagementModule(long leasePeriodInMs, String tsoLeasePath, String currentTsoPath,
+                                   String zkCluster, String zkNamespace) {
 
-    LeaseManagementModule(TSOServerCommandLineConfig config) {
-        this.config = config;
+        this.leasePeriodInMs = leasePeriodInMs;
+        this.tsoLeasePath = tsoLeasePath;
+        this.currentTsoPath = currentTsoPath;
+        this.zkCluster = zkCluster;
+        this.zkNamespace = zkNamespace;
+
     }
 
     @Override
     protected void configure() {
+
+        install(new ZKModule(zkCluster, zkNamespace));
+
     }
 
     @Provides
@@ -47,20 +61,18 @@ class LeaseManagementModule extends AbstractModule {
                                         TSOChannelHandler tsoChannelHandler,
                                         TSOStateManager stateManager,
                                         CuratorFramework zkClient,
-                                        Panicker panicker)
-            throws LeaseManagementException {
+                                        Panicker panicker) throws LeaseManagementException {
 
-        if (config.shouldHostAndPortBePublishedInZK) {
-            LOG.info("Connection to ZK cluster [{}]", zkClient.getState());
-            return new LeaseManager(tsoHostAndPort,
-                    tsoChannelHandler,
-                    stateManager,
-                    config.getLeasePeriodInMs(),
-                    zkClient,
-                    panicker);
-        } else {
-            return new NonHALeaseManager(tsoChannelHandler, stateManager);
-        }
+        LOG.info("Connection to HA cluster [{}]", zkClient.getState());
+
+        return new LeaseManager(tsoHostAndPort,
+                                tsoChannelHandler,
+                                stateManager,
+                                leasePeriodInMs,
+                                tsoLeasePath,
+                                currentTsoPath,
+                                zkClient,
+                                panicker);
 
     }
 

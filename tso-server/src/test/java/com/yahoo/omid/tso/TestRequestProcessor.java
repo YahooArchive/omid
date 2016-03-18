@@ -5,8 +5,6 @@ import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.metrics.NullMetricsProvider;
 import org.jboss.netty.channel.Channel;
 import org.mockito.ArgumentCaptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -24,7 +22,6 @@ import static org.testng.AssertJUnit.assertTrue;
 
 public class TestRequestProcessor {
 
-    private static final Logger LOG = LoggerFactory.getLogger(TestRequestProcessor.class);
     private MetricsRegistry metrics = new NullMetricsProvider();
 
     private PersistenceProcessor persist;
@@ -40,29 +37,27 @@ public class TestRequestProcessor {
         // Build the required scaffolding for the test
         MetricsRegistry metrics = new NullMetricsProvider();
 
-        TimestampOracleImpl timestampOracle = new TimestampOracleImpl(metrics,
-                new TimestampOracleImpl.InMemoryTimestampStorage(), new MockPanicker());
+        TimestampOracleImpl timestampOracle =
+                new TimestampOracleImpl(metrics, new TimestampOracleImpl.InMemoryTimestampStorage(), new MockPanicker());
 
         stateManager = new TSOStateManagerImpl(timestampOracle);
 
         persist = mock(PersistenceProcessor.class);
 
-        String[] configArgs = new String[]{"-maxItems", "1000"};
-        TSOServerCommandLineConfig config = TSOServerCommandLineConfig.parseConfig(configArgs);
+        TSOServerConfig config = new TSOServerConfig();
+        config.setMaxItems(1000);
 
-        requestProc = new RequestProcessorImpl(metrics,
-                timestampOracle,
-                persist,
-                new MockPanicker(),
-                config);
+        requestProc = new RequestProcessorImpl(config, metrics, timestampOracle, persist, new MockPanicker());
 
         // Initialize the state for the experiment
         stateManager.register(requestProc);
         stateManager.reset();
+
     }
 
-    @Test(timeOut = 30000)
+    @Test(timeOut = 30_000)
     public void testTimestamp() throws Exception {
+
         requestProc.timestampRequest(null, new MonitoringContext(metrics));
         ArgumentCaptor<Long> firstTScapture = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(1)).persistTimestamp(
@@ -74,9 +69,10 @@ public class TestRequestProcessor {
             requestProc.timestampRequest(null, new MonitoringContext(metrics));
             verify(persist, timeout(100).times(1)).persistTimestamp(eq(firstTS++), any(Channel.class), any(MonitoringContext.class));
         }
+
     }
 
-    @Test(timeOut = 30000)
+    @Test(timeOut = 30_000)
     public void testCommit() throws Exception {
 
         requestProc.timestampRequest(null, new MonitoringContext(metrics));
@@ -114,17 +110,17 @@ public class TestRequestProcessor {
         verify(persist, timeout(100).times(1)).persistAbort(eq(secondTS), anyBoolean(), any(Channel.class), any(MonitoringContext.class));
     }
 
-    @Test(timeOut = 30000)
+    @Test(timeOut = 30_000)
     public void testCommitRequestAbortsWhenResettingRequestProcessorState() throws Exception {
 
-        List<Long> writeSet = Collections.<Long>emptyList();
+        List<Long> writeSet = Collections.emptyList();
 
         // Start a transaction...
         requestProc.timestampRequest(null, new MonitoringContext(metrics));
         ArgumentCaptor<Long> capturedTS = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(1)).persistTimestamp(capturedTS.capture(),
-                any(Channel.class),
-                any(MonitoringContext.class));
+                                                                any(Channel.class),
+                                                                any(MonitoringContext.class));
         long startTS = capturedTS.getValue();
 
         // ... simulate the reset of the RequestProcessor state (e.g. due to

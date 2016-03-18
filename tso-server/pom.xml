@@ -19,28 +19,27 @@
 
         <dependency>
             <groupId>com.yahoo.omid</groupId>
-            <artifactId>common</artifactId>
+            <artifactId>commit-table</artifactId>
             <version>${project.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>timestamp-storage</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.yahoo.omid</groupId>
             <artifactId>metrics</artifactId>
             <version>${project.version}</version>
         </dependency>
-
+        <!-- The hbase-related dependency is added here just to include the jar in the final tar.gz package assembled.
+        The hbase tools are handy to create the required Omid tables from the same script that starts the TSO server -->
         <dependency>
             <groupId>com.yahoo.omid</groupId>
-            <artifactId>transaction-client</artifactId>
+            <artifactId>hbase-tools</artifactId>
             <version>${project.version}</version>
+            <scope>provided</scope>
         </dependency>
-
-        <dependency>
-            <groupId>com.yahoo.omid</groupId>
-            <artifactId>commit-table</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
         <dependency>
             <groupId>com.yahoo.omid</groupId>
             <artifactId>commit-table</artifactId>
@@ -48,23 +47,11 @@
             <scope>test</scope>
             <classifier>tests</classifier>
         </dependency>
-
         <dependency>
             <groupId>com.yahoo.omid</groupId>
-            <artifactId>timestamp-storage</artifactId>
+            <artifactId>transaction-client</artifactId>
             <version>${project.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.yahoo.omid</groupId>
-            <artifactId>hbase-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.yahoo.omid</groupId>
-            <artifactId>codahale-metrics</artifactId>
-            <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
 
         <!-- End of Dependencies on Omid modules -->
@@ -121,12 +108,6 @@
 
         <!-- utils -->
 
-        <dependency>
-            <groupId>com.beust</groupId>
-            <artifactId>jcommander</artifactId>
-            <version>${jcommander.version}</version>
-            <type>jar</type>
-        </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>

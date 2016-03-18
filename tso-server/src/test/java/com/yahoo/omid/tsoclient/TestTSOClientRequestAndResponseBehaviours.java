@@ -10,10 +10,9 @@ import com.yahoo.omid.proto.TSOProto;
 import com.yahoo.omid.tso.PausableTimestampOracle;
 import com.yahoo.omid.tso.TSOMockModule;
 import com.yahoo.omid.tso.TSOServer;
-import com.yahoo.omid.tso.TSOServerCommandLineConfig;
+import com.yahoo.omid.tso.TSOServerConfig;
 import com.yahoo.omid.tso.TimestampOracle;
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
-import org.apache.curator.test.TestingServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterClass;
@@ -38,7 +37,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestTSOClientRequestAndResponseBehaviours.class);
 
-    public static final String TSO_SERVER_HOST = "localhost";
+    private static final String TSO_SERVER_HOST = "localhost";
     private static final int TSO_SERVER_PORT = 1234;
 
     private final static CellId c1 = new DummyCellIdImpl(0xdeadbeefL);
@@ -46,10 +45,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
 
     private final static Set<CellId> testWriteSet = Sets.newHashSet(c1, c2);
 
-    protected OmidClientConfiguration tsoClientConf;
-
-    // The ZK server instance is only needed to avoid waiting for timeout connections from the tsoClient
-    private static TestingServer zkServer;
+    private OmidClientConfiguration tsoClientConf;
 
     // Required infrastructure for TSOClient test
     private TSOServer tsoServer;
@@ -59,8 +55,9 @@ public class TestTSOClientRequestAndResponseBehaviours {
     @BeforeClass
     public void setup() throws Exception {
 
-        String[] configArgs = new String[]{"-port", Integer.toString(TSO_SERVER_PORT), "-maxItems", "1000"};
-        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.parseConfig(configArgs);
+        TSOServerConfig tsoConfig = new TSOServerConfig();
+        tsoConfig.setMaxItems(1000);
+        tsoConfig.setPort(TSO_SERVER_PORT);
         Module tsoServerMockModule = new TSOMockModule(tsoConfig);
         Injector injector = Guice.createInjector(tsoServerMockModule);
 

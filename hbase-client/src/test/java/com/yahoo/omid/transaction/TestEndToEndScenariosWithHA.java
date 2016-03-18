@@ -7,7 +7,7 @@ import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.tso.LeaseManagement;
 import com.yahoo.omid.tso.PausableLeaseManager;
 import com.yahoo.omid.tso.TSOServer;
-import com.yahoo.omid.tso.TSOServerCommandLineConfig;
+import com.yahoo.omid.tso.TSOServerConfig;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -30,12 +30,9 @@ import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
-import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
-import static com.yahoo.omid.ZKConstants.TSO_LEASE_PATH;
-import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TSO_FAMILY;
-import static com.yahoo.omid.tsoclient.OmidClientConfiguration.ConnType.ZK;
+import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorageConfig.DEFAULT_TIMESTAMP_STORAGE_TABLE_NAME;
+import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorageConfig.DEFAULT_TIMESTAMP_STORAGE_CF_NAME;
+import static com.yahoo.omid.tsoclient.OmidClientConfiguration.ConnType.HA;
 import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
@@ -45,6 +42,9 @@ import static org.testng.Assert.fail;
 public class TestEndToEndScenariosWithHA extends OmidTestBase {
 
     private static final int TEST_LEASE_PERIOD_MS = 1000;
+    private static final String CURRENT_TSO_PATH = "/CURRENT_TSO_PATH";
+    private static final String TSO_LEASE_PATH = "/TSO_LEASE_PATH";
+    private static final String NAMESPACE = "omid";
 
     private static final Logger LOG = LoggerFactory.getLogger(TestEndToEndScenariosWithHA.class);
 
@@ -62,14 +62,12 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
 
     private CountDownLatch barrierTillTSOAddressPublication;
 
-
     private CuratorFramework zkClient;
 
     private TSOServer tso1;
     private TSOServer tso2;
 
     private PausableLeaseManager leaseManager1;
-
 
     private TransactionManager tm;
 
@@ -97,12 +95,12 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         });
         currentTSOZNode.start(true);
 
+
         // Configure TSO 1
-        String[] configArgs = new String[]{"-port", Integer.toString(TSO1_PORT), "-maxItems", "1000"};
-        TSOServerCommandLineConfig config1 = TSOServerCommandLineConfig.parseConfig(configArgs);
-        config1.shouldHostAndPortBePublishedInZK = true;
-        config1.setZKCluster(zkConnection);
-        config1.setLeasePeriodInMs(TEST_LEASE_PERIOD_MS);
+        TSOServerConfig config1 = new TSOServerConfig();
+        config1.setPort(TSO1_PORT);
+        config1.setMaxItems(1000);
+        config1.setLeaseModule(new TestHALeaseManagementModule(TEST_LEASE_PERIOD_MS, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkConnection, NAMESPACE));
         Injector injector1 = Guice.createInjector(new TestTSOModule(hbaseConf, config1));
         LOG.info("===================== Starting TSO 1 =====================");
         tso1 = injector1.getInstance(TSOServer.class);
@@ -111,16 +109,16 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         TestUtils.waitForSocketListening("localhost", TSO1_PORT, 100);
         LOG.info("================ Finished loading TSO 1 ==================");
 
+
         // Configure TSO 2
-        configArgs = new String[]{"-port", Integer.toString(TSO2_PORT), "-maxItems", "1000"};
-        TSOServerCommandLineConfig config2 = TSOServerCommandLineConfig.parseConfig(configArgs);
-        config2.shouldHostAndPortBePublishedInZK = true;
-        config2.setZKCluster(zkConnection);
-        config2.setLeasePeriodInMs(TEST_LEASE_PERIOD_MS);
+        TSOServerConfig config2 = new TSOServerConfig();
+        config2.setPort(TSO2_PORT);
+        config2.setMaxItems(1000);
+        config2.setLeaseModule(new TestHALeaseManagementModule(TEST_LEASE_PERIOD_MS, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkConnection, NAMESPACE));
         Injector injector2 = Guice.createInjector(new TestTSOModule(hbaseConf, config2));
         LOG.info("===================== Starting TSO 2 =====================");
         tso2 = injector2.getInstance(TSOServer.class);
-        PausableLeaseManager leaseManager2 = (PausableLeaseManager) injector2.getInstance(LeaseManagement.class);
+        injector2.getInstance(LeaseManagement.class);
         tso2.startAndWait();
         // Don't do this here: TestUtils.waitForSocketListening("localhost", 4321, 100);
         LOG.info("================ Finished loading TSO 2 ==================");
@@ -132,8 +130,10 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         // Configure HBase TM
         LOG.info("===================== Starting TM =====================");
         HBaseOmidClientConfiguration hbaseOmidClientConf = new HBaseOmidClientConfiguration();
-        hbaseOmidClientConf.setConnectionType(ZK);
+        hbaseOmidClientConf.setConnectionType(HA);
         hbaseOmidClientConf.setConnectionString(zkConnection);
+        hbaseOmidClientConf.getOmidClientConfiguration().setZkCurrentTsoPath(CURRENT_TSO_PATH);
+        hbaseOmidClientConf.getOmidClientConfiguration().setZkNamespace(NAMESPACE);
         hbaseOmidClientConf.setHBaseConfiguration(hbaseConf);
         hbaseConf.setInt(HBASE_CLIENT_RETRIES_NUMBER, 3);
         tm = HBaseTransactionManager.builder(hbaseOmidClientConf).build();
@@ -145,9 +145,10 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
     public void cleanup() throws Exception {
         LOG.info("Cleanup");
         HBaseAdmin admin = hBaseUtils.getHBaseAdmin();
-        deleteTable(admin, TableName.valueOf(TIMESTAMP_TABLE_DEFAULT_NAME));
-        hBaseUtils
-                .createTable(Bytes.toBytes(TIMESTAMP_TABLE_DEFAULT_NAME), new byte[][]{TSO_FAMILY}, Integer.MAX_VALUE);
+        deleteTable(admin, TableName.valueOf(DEFAULT_TIMESTAMP_STORAGE_TABLE_NAME));
+        hBaseUtils.createTable(Bytes.toBytes(DEFAULT_TIMESTAMP_STORAGE_TABLE_NAME),
+                               new byte[][]{DEFAULT_TIMESTAMP_STORAGE_CF_NAME.getBytes()},
+                               Integer.MAX_VALUE);
         tso1.stopAndWait();
         TestUtils.waitForSocketNotListening("localhost", TSO1_PORT, 100);
         tso2.stopAndWait();
@@ -381,7 +382,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
         CuratorFramework zkClient = CuratorFrameworkFactory
                 .builder()
-                .namespace(OMID_NAMESPACE)
+                .namespace(NAMESPACE)
                 .connectString(zkConnection)
                 .retryPolicy(retryPolicy).build();
 

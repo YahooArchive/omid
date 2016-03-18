@@ -22,36 +22,34 @@ import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 public class ZKUtils {
 
     private static final Logger LOG = LoggerFactory.getLogger(ZKUtils.class);
 
-    public static CuratorFramework provideZookeeperClient(String zkCluster) {
+    public static CuratorFramework initZKClient(String zkCluster, String namespace, int zkConnectionTimeoutInSec)
+            throws IOException, InterruptedException {
 
         LOG.info("Creating Zookeeper Client connecting to {}", zkCluster);
 
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
-        return CuratorFrameworkFactory.builder()
-                .namespace(OMID_NAMESPACE)
+        CuratorFramework zkClient = CuratorFrameworkFactory.builder()
+                .namespace(namespace)
                 .connectString(zkCluster)
                 .retryPolicy(retryPolicy)
                 .build();
-    }
 
-    /**
-     * Thrown when a problem with ZK is found
-     */
-    public static class ZKException extends Exception {
-
-        private static final long serialVersionUID = -4680106966051809489L;
-
-        public ZKException(String message) {
-            super(message);
+        zkClient.start();
+        if (zkClient.blockUntilConnected(zkConnectionTimeoutInSec, TimeUnit.SECONDS)) {
+            LOG.info("Connected to ZK cluster '{}', client in state: [{}]", zkCluster, zkClient.getState());
+        } else {
+            throw new IOException(String.format("Can't contact ZK cluster '%s' after 10 seconds", zkCluster));
         }
 
-    }
+        return zkClient;
 
+    }
 
 }
