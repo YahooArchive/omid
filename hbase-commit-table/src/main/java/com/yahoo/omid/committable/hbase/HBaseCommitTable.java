@@ -173,8 +173,7 @@ public class HBaseCommitTable implements CommitTable {
                 if (containsATimestamp(result)) {
                     long commitTSValue =
                             decodeCommitTimestamp(startTimestamp, result.getValue(commitTableConfig.getCommitTableFamily(), COMMIT_TABLE_QUALIFIER));
-                    CommitTimestamp validCT =
-                            new CommitTimestamp(Location.COMMIT_TABLE, commitTSValue, true);
+                    CommitTimestamp validCT = new CommitTimestamp(Location.COMMIT_TABLE, commitTSValue, true);
                     f.set(Optional.of(validCT));
                 } else {
                     f.set(Optional.<CommitTimestamp>absent());

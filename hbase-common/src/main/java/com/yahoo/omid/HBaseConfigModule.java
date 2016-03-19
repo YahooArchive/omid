@@ -25,6 +25,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import java.io.IOException;
 
 public class HBaseConfigModule extends AbstractModule {
+
     private String principal;
     private String keytab;
 
@@ -48,12 +49,17 @@ public class HBaseConfigModule extends AbstractModule {
 
     }
 
-    // Allow this module to be installed multiple times
-
+    // ----------------------------------------------------------------------------------------------------------------
+    // IMPORTANT NOTE
+    // Overriding equals() and hashCode() is necessary here to allow this module to be installed multiple times.
+    // As example, this module can be installed in a configuration using both the HBase Timestamp & Commit Table stores.
+    // ----------------------------------------------------------------------------------------------------------------
 
     @Override
     public boolean equals(Object o) {
+
         if (this == o) return true;
+
         if (o == null || getClass() != o.getClass()) return false;
 
         HBaseConfigModule that = (HBaseConfigModule) o;
@@ -65,9 +71,11 @@ public class HBaseConfigModule extends AbstractModule {
 
     @Override
     public int hashCode() {
+
         int result = principal != null ? principal.hashCode() : 0;
         result = 31 * result + (keytab != null ? keytab.hashCode() : 0);
         return result;
+
     }
 
 }

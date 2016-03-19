@@ -24,9 +24,10 @@ import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorageConfig.DEFAU
 
 /**
  * This class is instantiated by the yaml parser.
- * Snake_yaml needs POJO style class to work properly with all the setters and getters.
+ * Snake_yaml needs a public POJO style class to work properly with all the setters and getters.
  */
 public class DefaultHBaseTimestampStorageModule extends AbstractModule {
+
     private String tableName = DEFAULT_TIMESTAMP_STORAGE_TABLE_NAME;
     private String familyName = DEFAULT_TIMESTAMP_STORAGE_CF_NAME;
     private String keytab;

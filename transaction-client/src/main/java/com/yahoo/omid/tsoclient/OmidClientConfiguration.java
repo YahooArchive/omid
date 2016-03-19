@@ -145,4 +145,5 @@ public class OmidClientConfiguration {
     public void setZkNamespace(String zkNamespace) {
         this.zkNamespace = zkNamespace;
     }
+
 }

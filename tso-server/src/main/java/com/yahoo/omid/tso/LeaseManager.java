@@ -95,9 +95,9 @@ class LeaseManager extends AbstractScheduledService implements LeaseManagement {
 
     }
 
-    // ------------------------------------------------------------------------
-    // ----------------- LeaseManagement implementation -----------------------
-    // ------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------------------------------------
+    // LeaseManagement implementation
+    // ----------------------------------------------------------------------------------------------------------------
 
     @Override
     public void startService() throws LeaseManagementException {
@@ -116,9 +116,9 @@ class LeaseManager extends AbstractScheduledService implements LeaseManagement {
         return System.currentTimeMillis() <= getEndLeaseInMs();
     }
 
-    // ------------------------------------------------------------------------
-    // ------------------ End LeaseManagement implementation ------------------
-    // ------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------------------------------------
+    // End LeaseManagement implementation
+    // ----------------------------------------------------------------------------------------------------------------
 
     void tryToGetInitialLeasePeriod() throws Exception {
         baseTimeInMs.set(System.currentTimeMillis());
@@ -195,9 +195,9 @@ class LeaseManager extends AbstractScheduledService implements LeaseManagement {
         return true;
     }
 
-    // ------------------------------------------------------------------------
-    // --------------- AbstractScheduledService implementation ----------------
-    // ------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------------------------------------
+    // AbstractScheduledService implementation
+    // ----------------------------------------------------------------------------------------------------------------
 
     @Override
     protected void startUp() {
@@ -252,7 +252,9 @@ class LeaseManager extends AbstractScheduledService implements LeaseManagement {
 
     }
 
-    // ************************* Helper methods *******************************
+    // ----------------------------------------------------------------------------------------------------------------
+    // Helper methods
+    // ----------------------------------------------------------------------------------------------------------------
 
     @Override
     public String toString() {

@@ -95,7 +95,6 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         });
         currentTSOZNode.start(true);
 
-
         // Configure TSO 1
         TSOServerConfig config1 = new TSOServerConfig();
         config1.setPort(TSO1_PORT);
@@ -108,7 +107,6 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         tso1.startAndWait();
         TestUtils.waitForSocketListening("localhost", TSO1_PORT, 100);
         LOG.info("================ Finished loading TSO 1 ==================");
-
 
         // Configure TSO 2
         TSOServerConfig config2 = new TSOServerConfig();

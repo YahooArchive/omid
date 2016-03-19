@@ -19,7 +19,7 @@ import com.google.inject.AbstractModule;
 
 /**
  * This class is instantiated by the yaml parser.
- * Snake_yaml needs POJO style class to work properly with all the setters and getters.
+ * Snake_yaml needs a public POJO style class to work properly with all the setters and getters.
  */
 public class DefaultZKTimestampStorageModule extends AbstractModule {
 

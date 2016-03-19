@@ -161,6 +161,7 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
     }
 
     public final static class ReplyEvent {
+
         enum Type {
             TIMESTAMP, COMMIT, HEURISTIC_COMMIT, ABORT
         }

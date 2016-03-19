@@ -8,4 +8,5 @@ public class TSOServerConfigTest {
     public void testParsesOK() throws Exception {
         new TSOServerConfig("test-omid.yml");
     }
+
 }

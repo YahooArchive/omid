@@ -76,4 +76,5 @@ public class HBaseCommitTableConfig {
     public void setLowWatermarkFamily(@Named(COMMIT_TABLE_LWM_CF_NAME_KEY) String lowWatermarkFamily) {
         this.lowWatermarkFamily = lowWatermarkFamily.getBytes(UTF_8);
     }
+
 }

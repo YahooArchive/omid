@@ -17,6 +17,7 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
 public class TestOmidTableManager {
+
     private HBaseTestingUtility hBaseTestUtil;
     private Configuration hbaseConf;
     private HBaseAdmin hBaseAdmin;

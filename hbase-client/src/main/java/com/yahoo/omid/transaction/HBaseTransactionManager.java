@@ -65,7 +65,6 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
     }
 
     @VisibleForTesting
-    //TODO:IK: remove optional from fields
     static class Builder {
 
         // Required parameters
@@ -226,8 +225,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
     // Helper methods
     // ----------------------------------------------------------------------------------------------------------------
 
-    private HBaseTransaction
-    enforceHBaseTransactionAsParam(AbstractTransaction<? extends CellId> tx) {
+    private HBaseTransaction enforceHBaseTransactionAsParam(AbstractTransaction<? extends CellId> tx) {
 
         if (tx instanceof HBaseTransaction) {
             return (HBaseTransaction) tx;
@@ -239,6 +237,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
     }
 
     static class CommitTimestampLocatorImpl implements CommitTimestampLocator {
+
         private HBaseCellId hBaseCellId;
         private final Map<Long, Long> commitCache;
 

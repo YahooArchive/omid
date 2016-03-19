@@ -28,9 +28,7 @@ public class TSOMockModule extends AbstractModule {
     protected void configure() {
 
         bind(TSOChannelHandler.class).in(Singleton.class);
-
         bind(TSOStateManager.class).to(TSOStateManagerImpl.class).in(Singleton.class);
-
         bind(CommitTable.class).to(InMemoryCommitTable.class).in(Singleton.class);
         bind(TimestampStorage.class).to(InMemoryTimestampStorage.class).in(Singleton.class);
         bind(TimestampOracle.class).to(PausableTimestampOracle.class).in(Singleton.class);
@@ -38,6 +36,7 @@ public class TSOMockModule extends AbstractModule {
 
         install(config.getLeaseModule());
         install(new DisruptorModule());
+
     }
 
     @Provides

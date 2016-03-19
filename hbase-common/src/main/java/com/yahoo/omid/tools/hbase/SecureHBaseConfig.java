@@ -19,6 +19,7 @@ import com.google.inject.Inject;
 import com.google.inject.name.Named;
 
 public class SecureHBaseConfig {
+
     public static final String HBASE_CLIENT_PRINCIPAL_KEY = "hbase.client.principal";
     public static final String HBASE_CLIENT_KEYTAB_KEY = "hbase.client.keytab";
 

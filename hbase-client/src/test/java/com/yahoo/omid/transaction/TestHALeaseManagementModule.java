@@ -64,7 +64,7 @@ class TestHALeaseManagementModule extends AbstractModule {
                                         Panicker panicker)
             throws LeaseManagement.LeaseManagementException {
 
-        LOG.info("Connection to HA cluster [{}]", zkClient.getState());
+        LOG.info("Connection to ZK cluster [{}]", zkClient.getState());
         return new PausableLeaseManager(tsoHostAndPort, tsoChannelHandler, stateManager, leasePeriodInMs,
                                         tsoLeasePath, currentTsoPath, zkClient, panicker);
 

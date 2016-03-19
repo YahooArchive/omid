@@ -27,7 +27,6 @@ import java.net.UnknownHostException;
 
 import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
 
-
 class TestTSOModule extends AbstractModule {
 
     private final Configuration hBaseConfig;
@@ -78,4 +77,5 @@ class TestTSOModule extends AbstractModule {
     String provideTSOHostAndPort() throws SocketException, UnknownHostException {
         return NetworkInterfaceUtils.getTSOHostAndPort(config);
     }
+
 }

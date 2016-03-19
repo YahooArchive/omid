@@ -21,15 +21,15 @@ import com.yahoo.omid.HBaseConfigModule;
 
 /**
  * This class is instantiated by the yaml parser.
- * Snake_yaml needs POJO style class to work properly with all the setters and getters.
+ * Snake_yaml needs a public POJO style class to work properly with all the setters and getters.
  */
 public class DefaultHBaseCommitTableStorageModule extends AbstractModule {
+
     private String tableName = HBaseCommitTableConfig.DEFAULT_COMMIT_TABLE_NAME;
     private String familyName = HBaseCommitTableConfig.DEFAULT_COMMIT_TABLE_CF_NAME;
     private String lowWatermarkFamily = HBaseCommitTableConfig.DEFAULT_COMMIT_TABLE_LWM_CF_NAME;
     private String keytab;
     private String principal;
-
 
     @Override
     protected void configure() {
@@ -83,4 +83,5 @@ public class DefaultHBaseCommitTableStorageModule extends AbstractModule {
     public void setKeytab(String keytab) {
         this.keytab = keytab;
     }
+
 }
