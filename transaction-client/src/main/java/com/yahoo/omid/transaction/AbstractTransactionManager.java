@@ -22,12 +22,12 @@ import com.yahoo.omid.metrics.Counter;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.metrics.Timer;
 import com.yahoo.omid.transaction.Transaction.Status;
-import com.yahoo.omid.tsoclient.CellId;
-import com.yahoo.omid.tsoclient.TSOClient;
 import com.yahoo.omid.tsoclient.AbortException;
+import com.yahoo.omid.tsoclient.CellId;
 import com.yahoo.omid.tsoclient.ConnectionException;
 import com.yahoo.omid.tsoclient.NewTSOException;
 import com.yahoo.omid.tsoclient.ServiceUnavailableException;
+import com.yahoo.omid.tsoclient.TSOClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,9 +60,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
     }
 
     protected final TSOClient tsoClient;
-    private final boolean ownsTSOClient;
     protected final CommitTable.Client commitTableClient;
-    private final boolean ownsCommitTableClient;
     private final TransactionFactory<? extends CellId> transactionFactory;
 
     // Metrics
@@ -79,43 +77,32 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      * Base constructor
      *
      * @param metrics
-     *            allows to add metrics to this component
+     *            instrumentation metrics
      * @param tsoClient
      *            a client for accessing functionality of the status oracle
-     * @param ownsTSOClient
-     *            whether this transaction manager owns or not the TSO client
-     *            instance passed. This is used to close the resources properly.
      * @param commitTableClient
      *            a client for accessing functionality of the commit table
-     * @param ownsCommitTableClient
-     *            whether this transaction manager owns or not the commit table
-     *            client instance passed. This is used to close the resources
-     *            properly.
      * @param transactionFactory
      *            a transaction factory to create the specific transaction
      *            objects required by the transaction manager being implemented.
      */
     public AbstractTransactionManager(MetricsRegistry metrics,
                                       TSOClient tsoClient,
-                                      boolean ownsTSOClient,
                                       CommitTable.Client commitTableClient,
-                                      boolean ownsCommitTableClient,
                                       TransactionFactory<? extends CellId> transactionFactory) {
         this.tsoClient = tsoClient;
-        this.ownsTSOClient = ownsTSOClient;
         this.commitTableClient = commitTableClient;
-        this.ownsCommitTableClient = ownsCommitTableClient;
         this.transactionFactory = transactionFactory;
 
         // Metrics configuration
-        this.startTimestampTimer = metrics.timer(name("omid", "tm", "hbase", "startTimestamp", "latency"));
-        this.commitTimer = metrics.timer(name("omid", "tm", "hbase", "commit", "latency"));
-        this.commitTableUpdateTimer = metrics.timer(name("omid", "tm", "hbase", "commitTableUpdate", "latency"));
-        this.shadowCellsUpdateTimer = metrics.timer(name("omid", "tm", "hbase", "shadowCellsUpdate", "latency"));
-        this.committedTxsCounter = metrics.counter(name("omid", "tm", "hbase", "committedTxs"));
-        this.rolledbackTxsCounter = metrics.counter(name("omid", "tm", "hbase", "rolledbackTxs"));
-        this.errorTxsCounter = metrics.counter(name("omid", "tm", "hbase", "erroredTxs"));
-        this.invalidatedTxsCounter = metrics.counter(name("omid", "tm", "hbase", "invalidatedTxs"));
+        this.startTimestampTimer = metrics.timer(name("omid", "tm", "startTimestamp", "latency"));
+        this.commitTimer = metrics.timer(name("omid", "tm", "commit", "latency"));
+        this.commitTableUpdateTimer = metrics.timer(name("omid", "tm", "commitTableUpdate", "latency"));
+        this.shadowCellsUpdateTimer = metrics.timer(name("omid", "tm", "shadowCellsUpdate", "latency"));
+        this.committedTxsCounter = metrics.counter(name("omid", "tm", "committedTxs"));
+        this.rolledbackTxsCounter = metrics.counter(name("omid", "tm", "rolledbackTxs"));
+        this.errorTxsCounter = metrics.counter(name("omid", "tm", "erroredTxs"));
+        this.invalidatedTxsCounter = metrics.counter(name("omid", "tm", "invalidatedTxs"));
     }
 
     /**
@@ -378,12 +365,8 @@ public abstract class AbstractTransactionManager implements TransactionManager {
     @Override
     public final void close() throws IOException {
 
-        if (ownsTSOClient) {
-            tsoClient.close();
-        }
-        if (ownsCommitTableClient) {
-            commitTableClient.close();
-        }
+        tsoClient.close();
+        commitTableClient.close();
 
     }
 

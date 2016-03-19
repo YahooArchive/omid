@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.yahoo.omid</groupId>
         <artifactId>omid</artifactId>
-        <version>0.8.1.21-SNAPSHOT</version>
+        <version>0.8.1.25-SNAPSHOT</version>
     </parent>
 
     <artifactId>common</artifactId>
@@ -32,8 +32,66 @@
             <version>${curator.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>${protobuf.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
         <!-- end distributed comm -->
 
+        <!-- utils -->
+
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>${snakeyaml.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-beanutils</groupId>
+            <artifactId>commons-beanutils</artifactId>
+            <version>${beanutils.version}</version>
+        </dependency>
+
+        <!-- end utils -->
+
+        <!-- testing -->
+
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+        </dependency>
+
+        <!-- end testing -->
+
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>${maven-antrun-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <id>default-cli</id>
+                        <configuration>
+                            <target>
+                                <exec executable="protoc" failonerror="true">
+                                    <arg value="--java_out=src/main/java" />
+                                    <arg value="src/main/proto/TSOProto.proto" />
+                                </exec>
+                            </target>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

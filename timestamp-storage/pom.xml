@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.yahoo.omid</groupId>
         <artifactId>omid</artifactId>
-        <version>0.8.1.21-SNAPSHOT</version>
+        <version>0.8.1.25-SNAPSHOT</version>
     </parent>
 
     <artifactId>timestamp-storage</artifactId>
@@ -13,6 +13,21 @@
     <packaging>jar</packaging>
 
     <dependencies>
+
+        <!-- Dependencies on Omid modules -->
+
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>hbase-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- End of Dependencies on Omid modules -->
 
         <!-- distributed comm -->
 
@@ -49,12 +64,6 @@
             <groupId>com.google.inject</groupId>
             <artifactId>guice</artifactId>
             <version>${guice.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.beust</groupId>
-            <artifactId>jcommander</artifactId>
-            <version>${jcommander.version}</version>
-            <type>jar</type>
         </dependency>
 
         <!-- end utils -->

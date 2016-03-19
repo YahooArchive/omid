@@ -32,7 +32,8 @@ public class KeyGeneratorImplementations {
     /**
      * This is the used implementation
      */
-    static class BucketKeyGenerator implements KeyGenerator {
+    public static class BucketKeyGenerator implements KeyGenerator {
+
         @Override
         public byte[] startTimestampToKey(long startTimestamp) throws IOException {
             byte[] bytes = new byte[9];
@@ -63,10 +64,11 @@ public class KeyGeneratorImplementations {
 
     }
 
-    static class FullRandomKeyGenerator implements KeyGenerator {
+    public static class FullRandomKeyGenerator implements KeyGenerator {
+
         @Override
         public byte[] startTimestampToKey(long startTimestamp) {
-            assert (startTimestamp >= 0 && startTimestamp <= Long.MAX_VALUE);
+            assert startTimestamp >= 0;
             // 1) Reverse the timestamp to better spread
             long reversedStartTimestamp = Long.reverse(startTimestamp | Long.MIN_VALUE);
             // 2) Convert to a byte array with big endian format
@@ -99,7 +101,8 @@ public class KeyGeneratorImplementations {
         }
     }
 
-    static class BadRandomKeyGenerator implements KeyGenerator {
+    public static class BadRandomKeyGenerator implements KeyGenerator {
+
         @Override
         public byte[] startTimestampToKey(long startTimestamp) throws IOException {
             long reversedStartTimestamp = Long.reverse(startTimestamp);
@@ -118,7 +121,8 @@ public class KeyGeneratorImplementations {
 
     }
 
-    static class SeqKeyGenerator implements KeyGenerator {
+    public static class SeqKeyGenerator implements KeyGenerator {
+
         @Override
         public byte[] startTimestampToKey(long startTimestamp) throws IOException {
             // Convert to a byte array with big endian format
@@ -150,4 +154,5 @@ public class KeyGeneratorImplementations {
         }
 
     }
+
 }

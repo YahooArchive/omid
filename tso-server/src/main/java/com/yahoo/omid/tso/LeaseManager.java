@@ -35,9 +35,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
-import static com.yahoo.omid.ZKConstants.TSO_LEASE_PATH;
-
 /**
  * Encompasses all the required elements to control the leases required for
  * identifying the master instance when running multiple TSO instances for HA
@@ -45,7 +42,7 @@ import static com.yahoo.omid.ZKConstants.TSO_LEASE_PATH;
  * the instance information when getting the lease to an asynchronous task to
  * continue managing the leases without interruptions.
  */
-public class LeaseManager extends AbstractScheduledService implements LeaseManagement {
+class LeaseManager extends AbstractScheduledService implements LeaseManagement {
 
     private static final Logger LOG = LoggerFactory.getLogger(LeaseManager.class);
 
@@ -81,20 +78,11 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
                  TSOChannelHandler tsoChannelHandler,
                  TSOStateManager stateManager,
                  long leasePeriodInMs,
-                 CuratorFramework zkClient,
-                 Panicker panicker) {
-        this(tsoHostAndPort, tsoChannelHandler, stateManager, leasePeriodInMs, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkClient, panicker);
-    }
-
-    @VisibleForTesting
-    LeaseManager(String tsoHostAndPort,
-                 TSOChannelHandler tsoChannelHandler,
-                 TSOStateManager stateManager,
-                 long leasePeriodInMs,
                  String leasePath,
                  String currentTSOPath,
                  CuratorFramework zkClient,
                  Panicker panicker) {
+
         this.tsoHostAndPort = tsoHostAndPort;
         this.tsoChannelHandler = tsoChannelHandler;
         this.stateManager = stateManager;
@@ -104,11 +92,12 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
         this.zkClient = zkClient;
         this.panicker = panicker;
         LOG.info("LeaseManager {} initialized. Lease period {}ms", toString(), leasePeriodInMs);
+
     }
 
-    // ------------------------------------------------------------------------
-    // ----------------- LeaseManagement implementation -----------------------
-    // ------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------------------------------------
+    // LeaseManagement implementation
+    // ----------------------------------------------------------------------------------------------------------------
 
     @Override
     public void startService() throws LeaseManagementException {
@@ -127,9 +116,9 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
         return System.currentTimeMillis() <= getEndLeaseInMs();
     }
 
-    // ------------------------------------------------------------------------
-    // ------------------ End LeaseManagement implementation ------------------
-    // ------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------------------------------------
+    // End LeaseManagement implementation
+    // ----------------------------------------------------------------------------------------------------------------
 
     void tryToGetInitialLeasePeriod() throws Exception {
         baseTimeInMs.set(System.currentTimeMillis());
@@ -206,9 +195,9 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
         return true;
     }
 
-    // ------------------------------------------------------------------------
-    // --------------- AbstractScheduledService implementation ----------------
-    // ------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------------------------------------
+    // AbstractScheduledService implementation
+    // ----------------------------------------------------------------------------------------------------------------
 
     @Override
     protected void startUp() {
@@ -263,7 +252,9 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
 
     }
 
-    // ************************* Helper methods *******************************
+    // ----------------------------------------------------------------------------------------------------------------
+    // Helper methods
+    // ----------------------------------------------------------------------------------------------------------------
 
     @Override
     public String toString() {
@@ -271,30 +262,27 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
     }
 
     private void createLeaseManagementZNode() throws LeaseManagementException {
-
         try {
-            EnsurePath path = zkClient.newNamespaceAwareEnsurePath(leasePath);
-            path.ensure(zkClient.getZookeeperClient());
-            Stat stat = zkClient.checkExists().forPath(leasePath);
-            Preconditions.checkNotNull(stat);
-            LOG.info("Path {} ensured", path.getPath());
+            validateZKPath(leasePath);
         } catch (Exception e) {
             throw new LeaseManagementException("Error creating Lease Management ZNode", e);
         }
     }
 
     private void createCurrentTSOZNode() throws LeaseManagementException {
-
         try {
-            EnsurePath path = zkClient.newNamespaceAwareEnsurePath(currentTSOPath);
-            path.ensure(zkClient.getZookeeperClient());
-            Stat stat = zkClient.checkExists().forPath(currentTSOPath);
-            Preconditions.checkNotNull(stat);
-            LOG.info("Path {} ensured", path.getPath());
+            validateZKPath(currentTSOPath);
         } catch (Exception e) {
             throw new LeaseManagementException("Error creating TSO ZNode", e);
         }
+    }
 
+    private void validateZKPath(String zkPath) throws Exception {
+        EnsurePath path = zkClient.newNamespaceAwareEnsurePath(zkPath);
+        path.ensure(zkClient.getZookeeperClient());
+        Stat stat = zkClient.checkExists().forPath(zkPath);
+        Preconditions.checkNotNull(stat);
+        LOG.info("Path {} ensured", path.getPath());
     }
 
     private void advertiseTSOServerInfoThroughZK(long epoch) throws Exception {
@@ -314,6 +302,7 @@ public class LeaseManager extends AbstractScheduledService implements LeaseManag
         byte[] tsoInfoAsBytes = tsoInfoAsString.getBytes(Charsets.UTF_8);
         zkClient.setData().withVersion(previousTSOZNodeStat.getVersion()).forPath(currentTSOPath, tsoInfoAsBytes);
         LOG.info("TSO instance {} (Epoch {}) advertised through ZK", tsoHostAndPort, epoch);
+
     }
 
 }

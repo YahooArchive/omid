@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.yahoo.omid</groupId>
         <artifactId>omid</artifactId>
-        <version>0.8.1.21-SNAPSHOT</version>
+        <version>0.8.1.25-SNAPSHOT</version>
     </parent>
 
     <artifactId>benchmarks</artifactId>
@@ -27,16 +27,21 @@
         </dependency>
         <dependency>
             <groupId>com.yahoo.omid</groupId>
-            <artifactId>tso-server</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.yahoo.omid</groupId>
             <artifactId>codahale-metrics</artifactId>
             <version>${project.version}</version>
         </dependency>
 
         <!-- End of Dependencies on Omid modules -->
+
+        <!-- utils -->
+
+        <dependency>
+            <groupId>com.beust</groupId>
+            <artifactId>jcommander</artifactId>
+            <version>${jcommander.version}</version>
+        </dependency>
+
+        <!-- end utils -->
 
         <!-- testing -->
 

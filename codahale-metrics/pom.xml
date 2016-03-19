@@ -4,7 +4,7 @@
     <parent>
         <artifactId>omid</artifactId>
         <groupId>com.yahoo.omid</groupId>
-        <version>0.8.1.21-SNAPSHOT</version>
+        <version>0.8.1.25-SNAPSHOT</version>
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
@@ -23,6 +23,11 @@
         </dependency>
 
         <!-- End of Dependencies on Omid modules -->
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>${commons-io.version}</version>
+        </dependency>
 
         <!-- core -->
 

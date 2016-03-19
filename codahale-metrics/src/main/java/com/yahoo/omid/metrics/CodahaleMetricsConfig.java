@@ -30,7 +30,7 @@ public class CodahaleMetricsConfig extends AbstractMetricsConfig {
     }
 
     private static final String DEFAULT_PREFIX = "omid";
-    private static final String DEFAULT_GRAPHITE_HOST_CONFIG = "localhost:2003";
+    private static final String DEFAULT_GRAPHITE_HOST = "localhost:2003";
     private static final String DEFAULT_CSV_DIR = ".";
     private static final String DEFAULT_SLF4J_LOGGER = "metrics";
 
@@ -42,7 +42,7 @@ public class CodahaleMetricsConfig extends AbstractMetricsConfig {
 
     private String prefix = DEFAULT_PREFIX;
     private Set<Reporter> reporters = new HashSet<Reporter>();
-    private String graphiteHostConfig = DEFAULT_GRAPHITE_HOST_CONFIG;
+    private String graphiteHostConfig = DEFAULT_GRAPHITE_HOST;
     private String csvDir = DEFAULT_CSV_DIR;
     private String slf4jLogger = DEFAULT_SLF4J_LOGGER;
 
@@ -77,12 +77,12 @@ public class CodahaleMetricsConfig extends AbstractMetricsConfig {
         this.graphiteHostConfig = graphiteHostConfig;
     }
 
-    public String getCSVDir() {
+    public String getCsvDir() {
         return csvDir;
     }
 
     @Inject(optional = true)
-    public void setCSVDir(@Named(METRICS_CODAHALE_CSV_DIR) String csvDir) {
+    public void setCsvDir(@Named(METRICS_CODAHALE_CSV_DIR) String csvDir) {
         this.csvDir = csvDir;
     }
 

@@ -24,9 +24,9 @@ import com.google.common.net.HostAndPort;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.benchmarks.utils.GeneratorUtils;
 import com.yahoo.omid.benchmarks.utils.GeneratorUtils.RowDistribution;
-import com.yahoo.omid.committable.hbase.CommitTableConstants;
+import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
 import com.yahoo.omid.metrics.CodahaleMetricsProvider;
-import com.yahoo.omid.tools.hbase.HBaseLogin;
+import com.yahoo.omid.tools.hbase.SecureHBaseConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +59,7 @@ public class TSOBenchmark implements Closeable {
 
     private final CodahaleMetricsProvider metrics;
 
-    private TSOBenchmark(Config expConfig) {
+    private TSOBenchmark(Config expConfig) throws IOException {
 
         this.expConfig = expConfig;
 
@@ -211,7 +211,7 @@ public class TSOBenchmark implements Closeable {
         private boolean hbase = false;
 
         @Parameter(names = "-commitTableNameHBase", description = "HBase commit table name")
-        private String hbaseCommitTable = CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
+        private String hbaseCommitTable = HBaseCommitTableConfig.DEFAULT_COMMIT_TABLE_NAME;
 
         @Parameter(names = "-metricsConfig",
                    converter = MetricsConfigConverter.class,
@@ -219,7 +219,7 @@ public class TSOBenchmark implements Closeable {
         MetricsConfig metricsConfig = new MetricsConfig("console", "", 10, TimeUnit.SECONDS);
 
         @ParametersDelegate
-        private HBaseLogin.Config loginFlags = new HBaseLogin.Config();
+        private SecureHBaseConfig loginFlags = new SecureHBaseConfig();
 
         boolean isHBase() {
             return hbase;
@@ -229,7 +229,7 @@ public class TSOBenchmark implements Closeable {
             return hbaseCommitTable;
         }
 
-        HBaseLogin.Config getLoginFlags() {
+        SecureHBaseConfig getLoginFlags() {
             return loginFlags;
         }
     }

@@ -1,0 +1,31 @@
+# =====================================================================================================================
+# Omid Client Configuration
+# =====================================================================================================================
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Basic connection parameters to TSO Server
+# ---------------------------------------------------------------------------------------------------------------------
+
+# Direct connection to host:port
+connectionType: !!com.yahoo.omid.tsoclient.OmidClientConfiguration$ConnType DIRECT
+connectionString: "localhost:54758"
+
+# When Omid is working in High Availability mode, two or more replicas of the TSO server are running in primary/backup
+# mode. When a TSO server replica is elected as master, it publishes its address through ZK. In order to configure
+# the Omid client to access the TSO server in HA mode:
+#     1) set 'connectionType' to !!com.yahoo.omid.tsoclient.OmidClientConfiguration$ConnType HA
+#     2) set 'connectionString' to the ZK cluster connection string where the server is publishing its address
+zkConnectionTimeoutSecs: 10
+# In HA mode, make sure that the next settings match same settings on the TSO server side
+zkNamespace: "omid"
+zkCurrentTsoPath: "/current-tso"
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Communication protocol parameters
+# ---------------------------------------------------------------------------------------------------------------------
+# TODO: describe these parameters
+requestMaxRetries: 5
+requestTimeoutMs: 5000
+reconnectionDelaySecs: 10
+retryDelayMs: 1000
+executorThreads: 3

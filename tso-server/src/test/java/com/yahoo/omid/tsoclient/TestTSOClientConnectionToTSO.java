@@ -3,12 +3,12 @@ package com.yahoo.omid.tsoclient;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.yahoo.omid.TestUtils;
+import com.yahoo.omid.tso.HALeaseManagementModule;
 import com.yahoo.omid.tso.TSOMockModule;
 import com.yahoo.omid.tso.TSOServer;
-import com.yahoo.omid.tso.TSOServerCommandLineConfig;
+import com.yahoo.omid.tso.TSOServerConfig;
+import com.yahoo.omid.tso.VoidLeaseManagementModule;
 import com.yahoo.statemachine.StateMachine.FsmImpl;
-import org.apache.commons.configuration.BaseConfiguration;
-import org.apache.commons.configuration.Configuration;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.test.TestingServer;
 import org.apache.curator.utils.CloseableUtils;
@@ -22,10 +22,7 @@ import org.testng.annotations.Test;
 
 import java.util.concurrent.ExecutionException;
 
-import static com.yahoo.omid.ZKConstants.CURRENT_TSO_PATH;
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_ZK_CLUSTER_CONFKEY;
+import static com.yahoo.omid.tsoclient.OmidClientConfiguration.ConnType.HA;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
@@ -38,8 +35,10 @@ public class TestTSOClientConnectionToTSO {
 
     // Constants and variables for component connectivity
     private static final String TSO_HOST = "localhost";
+    private static final String CURRENT_TSO_PATH = "/current_tso_path";
+    private static final String TSO_LEASE_PATH = "/tso_lease_path";
+
     private int tsoPortForTest;
-    private int zkPortForTest;
     private String zkClusterForTest;
 
     private Injector injector = null;
@@ -54,7 +53,7 @@ public class TestTSOClientConnectionToTSO {
 
         tsoPortForTest = TestUtils.getFreeLocalPort();
 
-        zkPortForTest = TestUtils.getFreeLocalPort();
+        int zkPortForTest = TestUtils.getFreeLocalPort();
         zkClusterForTest = TSO_HOST + ":" + zkPortForTest;
         LOG.info("Starting ZK Server in port {}", zkPortForTest);
         zkServer = TestUtils.provideTestingZKServer(zkPortForTest);
@@ -87,12 +86,10 @@ public class TestTSOClientConnectionToTSO {
     @Test(timeOut = 30_000)
     public void testUnsuccessfulConnectionToTSO() throws Exception {
 
-        Configuration clientConf = new BaseConfiguration();
-
-        // When no ZK node for TSOServer is found & no host:port config exists
+        // When no HA node for TSOServer is found & no host:port config exists
         // we should get an exception when getting the client
         try {
-            TSOClient.newBuilder().withConfiguration(clientConf).build();
+            TSOClient.newInstance(new OmidClientConfiguration());
         } catch (IllegalArgumentException e) {
             // Expected
         }
@@ -102,13 +99,11 @@ public class TestTSOClientConnectionToTSO {
     @Test(timeOut = 30_000)
     public void testSuccessfulConnectionToTSOWithHostAndPort() throws Exception {
 
-        Configuration clientConf = new BaseConfiguration();
-        clientConf.setProperty(TSO_HOST_CONFKEY, TSO_HOST);
-        clientConf.setProperty(TSO_PORT_CONFKEY, tsoPortForTest);
-
-        // Launch a TSO WITHOUT publishing the address in ZK...
-        String[] configArgs = new String[]{"-port", Integer.toString(tsoPortForTest), "-maxItems", "1000"};
-        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.parseConfig(configArgs);
+        // Launch a TSO WITHOUT publishing the address in HA...
+        TSOServerConfig tsoConfig = new TSOServerConfig();
+        tsoConfig.setMaxItems(1000);
+        tsoConfig.setPort(tsoPortForTest);
+        tsoConfig.setLeaseModule(new VoidLeaseManagementModule());
         injector = Guice.createInjector(new TSOMockModule(tsoConfig));
         LOG.info("Starting TSO");
         tsoServer = injector.getInstance(TSOServer.class);
@@ -116,9 +111,12 @@ public class TestTSOClientConnectionToTSO {
         TestUtils.waitForSocketListening(TSO_HOST, tsoPortForTest, 100);
         LOG.info("Finished loading TSO");
 
-        // When no ZK node for TSOServer is found we should get a connection
+        // When no HA node for TSOServer is found we should get a connection
         // to the TSO through the host:port configured...
-        TSOClient tsoClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
+        OmidClientConfiguration tsoClientConf = new OmidClientConfiguration();
+        tsoClientConf.setConnectionString("localhost:" + tsoPortForTest);
+        tsoClientConf.setZkCurrentTsoPath(CURRENT_TSO_PATH);
+        TSOClient tsoClient = TSOClient.newInstance(tsoClientConf);
 
         // ... so we should get responses from the methods
         Long startTS = tsoClient.getNewStartTimestamp().get();
@@ -137,15 +135,11 @@ public class TestTSOClientConnectionToTSO {
     @Test(timeOut = 30_000)
     public void testSuccessfulConnectionToTSOThroughZK() throws Exception {
 
-        Configuration clientConf = new BaseConfiguration();
-        clientConf.setProperty(TSO_ZK_CLUSTER_CONFKEY, zkClusterForTest);
-
-        // Launch a TSO publishing the address in ZK...
-        String[] configArgs = new String[]{"-port", Integer.toString(tsoPortForTest), "-maxItems", "1000"};
-        TSOServerCommandLineConfig config = TSOServerCommandLineConfig.parseConfig(configArgs);
-        config.shouldHostAndPortBePublishedInZK = true;
-        config.setLeasePeriodInMs(1000);
-        config.setZKCluster(zkClusterForTest);
+        // Launch a TSO publishing the address in HA...
+        TSOServerConfig config = new TSOServerConfig();
+        config.setMaxItems(1000);
+        config.setPort(tsoPortForTest);
+        config.setLeaseModule(new HALeaseManagementModule(1000, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkClusterForTest, "omid"));
         injector = Guice.createInjector(new TSOMockModule(config));
         LOG.info("Starting TSO");
         tsoServer = injector.getInstance(TSOServer.class);
@@ -155,8 +149,12 @@ public class TestTSOClientConnectionToTSO {
 
         waitTillTsoRegisters(injector.getInstance(CuratorFramework.class));
 
-        // When a ZK node for TSOServer is found we should get a connection
-        TSOClient tsoClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
+        // When a HA node for TSOServer is found we should get a connection
+        OmidClientConfiguration tsoClientConf = new OmidClientConfiguration();
+        tsoClientConf.setConnectionType(HA);
+        tsoClientConf.setConnectionString(zkClusterForTest);
+        tsoClientConf.setZkCurrentTsoPath(CURRENT_TSO_PATH);
+        TSOClient tsoClient = TSOClient.newInstance(tsoClientConf);
 
         // ... so we should get responses from the methods
         Long startTS = tsoClient.getNewStartTimestamp().get();
@@ -175,13 +173,12 @@ public class TestTSOClientConnectionToTSO {
     @Test(timeOut = 30_000)
     public void testSuccessOfTSOClientReconnectionsToARestartedTSOWithZKPublishing() throws Exception {
 
-        // Start a TSO with ZK...
-        String[] configArgs = new String[]{"-port", Integer.toString(tsoPortForTest), "-maxItems", "1000"};
-        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.parseConfig(configArgs);
-        tsoConfig.shouldHostAndPortBePublishedInZK = true;
-        tsoConfig.setLeasePeriodInMs(1000);
-        tsoConfig.setZKCluster(zkClusterForTest);
-        injector = Guice.createInjector(new TSOMockModule(tsoConfig));
+        // Start a TSO with HA...
+        TSOServerConfig config = new TSOServerConfig();
+        config.setMaxItems(1000);
+        config.setPort(tsoPortForTest);
+        config.setLeaseModule(new HALeaseManagementModule(1000, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkClusterForTest, "omid"));
+        injector = Guice.createInjector(new TSOMockModule(config));
         LOG.info("Starting Initial TSO");
         tsoServer = injector.getInstance(TSOServer.class);
         tsoServer.startAndWait();
@@ -191,10 +188,11 @@ public class TestTSOClientConnectionToTSO {
         waitTillTsoRegisters(injector.getInstance(CuratorFramework.class));
 
         // Then create the TSO Client under test...
-        Configuration clientConf = new BaseConfiguration();
-        clientConf.setProperty(TSO_ZK_CLUSTER_CONFKEY, zkClusterForTest);
-
-        TSOClient tsoClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
+        OmidClientConfiguration tsoClientConf = new OmidClientConfiguration();
+        tsoClientConf.setConnectionType(HA);
+        tsoClientConf.setConnectionString(zkClusterForTest);
+        tsoClientConf.setZkCurrentTsoPath(CURRENT_TSO_PATH);
+        TSOClient tsoClient = TSOClient.newInstance(tsoClientConf);
 
         // ... and check that initially we get responses from the methods
         Long startTS = tsoClient.getNewStartTimestamp().get();
@@ -218,12 +216,12 @@ public class TestTSOClientConnectionToTSO {
             FsmImpl fsm = (FsmImpl) tsoClient.fsm;
             assertEquals(e.getCause().getClass(), ConnectionException.class);
             assertTrue(fsm.getState().getClass().equals(TSOClient.ConnectionFailedState.class)
-                    ||
-                    fsm.getState().getClass().equals(TSOClient.DisconnectedState.class));
+                               ||
+                               fsm.getState().getClass().equals(TSOClient.DisconnectedState.class));
         }
 
         // After that, simulate that a new TSO has been launched...
-        Injector newInjector = Guice.createInjector(new TSOMockModule(tsoConfig));
+        Injector newInjector = Guice.createInjector(new TSOMockModule(config));
         LOG.info("Re-Starting again the TSO");
         tsoServer = newInjector.getInstance(TSOServer.class);
         tsoServer.startAndWait();
@@ -255,7 +253,7 @@ public class TestTSOClientConnectionToTSO {
                 if (stat == null) {
                     continue;
                 }
-                LOG.info("TSO registered in ZK with path {}={}", CURRENT_TSO_PATH, stat.toString());
+                LOG.info("TSO registered in HA with path {}={}", CURRENT_TSO_PATH, stat.toString());
                 if (stat.toString().length() == 0) {
                     continue;
                 }
