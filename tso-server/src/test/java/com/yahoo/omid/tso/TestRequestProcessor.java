@@ -5,6 +5,8 @@ import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.metrics.NullMetricsProvider;
 import org.jboss.netty.channel.Channel;
 import org.mockito.ArgumentCaptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -21,6 +23,11 @@ import static org.mockito.Mockito.verify;
 import static org.testng.AssertJUnit.assertTrue;
 
 public class TestRequestProcessor {
+
+    private static final Logger LOG = LoggerFactory.getLogger(TestRequestProcessor.class);
+
+    private static final int CONFLICT_MAP_SIZE = 1000;
+    private static final int CONFLICT_MAP_ASSOCIATIVITY = 32;
 
     private MetricsRegistry metrics = new NullMetricsProvider();
 
@@ -45,7 +52,7 @@ public class TestRequestProcessor {
         persist = mock(PersistenceProcessor.class);
 
         TSOServerConfig config = new TSOServerConfig();
-        config.setMaxItems(1000);
+        config.setMaxItems(CONFLICT_MAP_SIZE);
 
         requestProc = new RequestProcessorImpl(config, metrics, timestampOracle, persist, new MockPanicker());
 
@@ -108,6 +115,7 @@ public class TestRequestProcessor {
         verify(persist, timeout(100).times(1)).persistCommit(eq(thirdTS), anyLong(), any(Channel.class), any(MonitoringContext.class));
         requestProc.commitRequest(secondTS, writeSet, false, null, new MonitoringContext(metrics));
         verify(persist, timeout(100).times(1)).persistAbort(eq(secondTS), anyBoolean(), any(Channel.class), any(MonitoringContext.class));
+
     }
 
     @Test(timeOut = 30_000)
@@ -130,6 +138,31 @@ public class TestRequestProcessor {
         // ...check that the transaction is aborted when trying to commit
         requestProc.commitRequest(startTS, writeSet, false, null, new MonitoringContext(metrics));
         verify(persist, timeout(100).times(1)).persistAbort(eq(startTS), anyBoolean(), any(Channel.class), any(MonitoringContext.class));
+
+    }
+
+    @Test(timeOut = 5_000)
+    public void testLowWatermarkIsStoredOnlyWhenACacheElementIsEvicted() throws Exception {
+
+        final int ANY_START_TS = 1;
+        final long FIRST_COMMIT_TS_EVICTED = 1L;
+        final long NEXT_COMMIT_TS_THAT_SHOULD_BE_EVICTED = 2L;
+
+        // Fill the cache to provoke a cache eviction
+        for (long i = 0; i < CONFLICT_MAP_SIZE + CONFLICT_MAP_ASSOCIATIVITY; i++) {
+            long writeSetElementHash = i + 1; // This is to match the assigned CT: K/V in cache = WS Element Hash/CT
+            List<Long> writeSet = Lists.newArrayList(writeSetElementHash);
+            requestProc.commitRequest(ANY_START_TS, writeSet, false, null, new MonitoringContext(metrics));
+        }
+
+        Thread.currentThread().sleep(3000); // Allow the Request processor to finish the request processing
+
+        // Check that first time its called is on init
+        verify(persist, timeout(100).times(1)).persistLowWatermark(0L);
+        // Then, check it is called when cache is full and the first element is evicted (should be a 1)
+        verify(persist, timeout(100).times(1)).persistLowWatermark(FIRST_COMMIT_TS_EVICTED);
+        // Finally it should never be called with the next element
+        verify(persist, timeout(100).never()).persistLowWatermark(NEXT_COMMIT_TS_THAT_SHOULD_BE_EVICTED);
 
     }
 
