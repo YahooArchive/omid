@@ -67,15 +67,13 @@ public class TTable implements Closeable {
 
     private static Logger LOG = LoggerFactory.getLogger(TTable.class);
 
-    public static byte[] DELETE_TOMBSTONE = Bytes.toBytes("__OMID_TOMBSTONE__");
-
     private final HTableInterface healerTable;
 
     private HTableInterface table;
 
-    // ////////////////////////////////////////////////////////////////////////
-    // Instantiation
-    // ////////////////////////////////////////////////////////////////////////
+    // ----------------------------------------------------------------------------------------------------------------
+    // Construction
+    // ----------------------------------------------------------------------------------------------------------------
 
     public TTable(Configuration conf, byte[] tableName) throws IOException {
         this(new HTable(conf, tableName));
@@ -99,9 +97,9 @@ public class TTable implements Closeable {
         this.healerTable = healerTable;
     }
 
-    // ////////////////////////////////////////////////////////////////////////
+    // ----------------------------------------------------------------------------------------------------------------
     // Closeable implementation
-    // ////////////////////////////////////////////////////////////////////////
+    // ----------------------------------------------------------------------------------------------------------------
 
     /**
      * Releases any resources held or pending changes in internal buffers.
@@ -115,9 +113,9 @@ public class TTable implements Closeable {
         healerTable.close();
     }
 
-    // ////////////////////////////////////////////////////////////////////////
+    // ----------------------------------------------------------------------------------------------------------------
     // Transactional operations
-    // ////////////////////////////////////////////////////////////////////////
+    // ----------------------------------------------------------------------------------------------------------------
 
     /**
      * Transactional version of {@link HTableInterface#get(Get get)}
@@ -184,9 +182,9 @@ public class TTable implements Closeable {
                 switch (KeyValue.Type.codeToType(cell.getTypeByte())) {
                     case DeleteColumn:
                         deleteP.add(CellUtil.cloneFamily(cell),
-                                CellUtil.cloneQualifier(cell),
-                                startTimestamp,
-                                DELETE_TOMBSTONE);
+                                    CellUtil.cloneQualifier(cell),
+                                    startTimestamp,
+                                    CellUtils.DELETE_TOMBSTONE);
                         transaction.addWriteSetElement(
                                 new HBaseCellId(table,
                                         delete.getRow(),
@@ -201,9 +199,9 @@ public class TTable implements Closeable {
                     case Delete:
                         if (cell.getTimestamp() == HConstants.LATEST_TIMESTAMP) {
                             deleteP.add(CellUtil.cloneFamily(cell),
-                                    CellUtil.cloneQualifier(cell),
-                                    startTimestamp,
-                                    DELETE_TOMBSTONE);
+                                        CellUtil.cloneQualifier(cell),
+                                        startTimestamp,
+                                        CellUtils.DELETE_TOMBSTONE);
                             transaction.addWriteSetElement(
                                     new HBaseCellId(table,
                                             delete.getRow(),
@@ -230,7 +228,7 @@ public class TTable implements Closeable {
                     byte[] family = entryF.getKey();
                     for (Entry<byte[], NavigableMap<Long, byte[]>> entryQ : entryF.getValue().entrySet()) {
                         byte[] qualifier = entryQ.getKey();
-                        deleteP.add(family, qualifier, DELETE_TOMBSTONE);
+                        deleteP.add(family, qualifier, CellUtils.DELETE_TOMBSTONE);
                         transaction.addWriteSetElement(new HBaseCellId(table, delete.getRow(), family, qualifier, transaction.getStartTimestamp()));
                     }
                 }
@@ -339,7 +337,7 @@ public class TTable implements Closeable {
             Cell oldestCell = null;
             for (Cell cell : columnCells) {
                 if (isCellInSnapshot(cell, transaction, commitCache)) {
-                    if (!CellUtil.matchingValue(cell, DELETE_TOMBSTONE)) {
+                    if (!CellUtil.matchingValue(cell, CellUtils.DELETE_TOMBSTONE)) {
                         keyValuesInSnapshot.add(cell);
                     }
                     snapshotValueFound = true;
@@ -403,8 +401,8 @@ public class TTable implements Closeable {
         Get pendingGet = new Get(CellUtil.cloneRow(cell));
         pendingGet.addColumn(CellUtil.cloneFamily(cell), CellUtil.cloneQualifier(cell));
         pendingGet.addColumn(CellUtil.cloneFamily(cell), CellUtils.addShadowCellSuffix(cell.getQualifierArray(),
-                cell.getQualifierOffset(),
-                cell.getQualifierLength()));
+                                                                                       cell.getQualifierOffset(),
+                                                                                       cell.getQualifierLength()));
         pendingGet.setMaxVersions(versionCount);
         pendingGet.setTimeRange(0, cell.getTimestamp());
 
@@ -457,8 +455,8 @@ public class TTable implements Closeable {
         Put put = new Put(CellUtil.cloneRow(cell));
         byte[] family = CellUtil.cloneFamily(cell);
         byte[] shadowCellQualifier = CellUtils.addShadowCellSuffix(cell.getQualifierArray(),
-                cell.getQualifierOffset(),
-                cell.getQualifierLength());
+                                                                   cell.getQualifierOffset(),
+                                                                   cell.getQualifierLength());
         put.add(family, shadowCellQualifier, cell.getTimestamp(), Bytes.toBytes(commitTimestamp));
         try {
             healerTable.put(put);
@@ -705,9 +703,9 @@ public class TTable implements Closeable {
         table.flushCommits();
     }
 
-    // ****************************************************************************************************************
+    // ----------------------------------------------------------------------------------------------------------------
     // Helper methods
-    // ****************************************************************************************************************
+    // ----------------------------------------------------------------------------------------------------------------
 
     private void throwExceptionIfOpSetsTimerange(Get getOperation) {
         TimeRange tr = getOperation.getTimeRange();

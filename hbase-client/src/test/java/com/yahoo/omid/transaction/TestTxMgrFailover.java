@@ -72,7 +72,7 @@ public class TestTxMgrFailover extends OmidTestBase {
     }
 
     @BeforeMethod(alwaysRun = true, timeOut = 30_000)
-    public void beforeMethod() throws IOException {
+    public void beforeMethod() throws IOException, InterruptedException {
 
         commitTable = new InMemoryCommitTable(); // Use an in-memory commit table to speed up tests
         commitTableClient = spy(commitTable.getClient());
@@ -170,32 +170,7 @@ public class TestTxMgrFailover extends OmidTestBase {
         commitTableClient.tryInvalidateTransaction(TX1_ST);
         assertEquals(commitTable.countElements(), 1, "Rows should be 1!");
 
-        try (TTable txTable = new TTable(hbaseConf, TEST_TABLE)) {
-            HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
-            assertEquals(tx1.getStartTimestamp(), TX1_ST);
-            Put put = new Put(row1);
-            put.add(TEST_FAMILY.getBytes(), qualifier, data1);
-            txTable.put(tx1, put);
-            try {
-                tm.commit(tx1);
-                fail();
-            } catch (RollbackException e) {
-                // Exception
-            }
-
-            // Check transaction status
-            assertEquals(tx1.getStatus(), Status.ROLLEDBACK);
-            assertEquals(tx1.getCommitTimestamp(), 0);
-            // Check the cleanup process did its job and the uncommitted data is NOT there
-            assertEquals(commitTable.countElements(), 1, "Rows should be 1! Dirty data should be there");
-            Optional<CommitTimestamp>
-                    optionalCT =
-                    tm.commitTableClient.getCommitTimestamp(TX1_ST).get();
-            assertTrue(optionalCT.isPresent());
-            assertFalse(optionalCT.get().isValid());
-            checkOperationSuccessOnCell(KeyValue.Type.Delete, null, TEST_TABLE.getBytes(), row1, TEST_FAMILY.getBytes(),
-                    qualifier);
-        }
+        executeTxAndCheckRollback();
 
     }
 
@@ -208,6 +183,11 @@ public class TestTxMgrFailover extends OmidTestBase {
 
         assertEquals(commitTable.countElements(), 0, "Rows should be 0!");
 
+        executeTxAndCheckRollback();
+
+    }
+
+    private void executeTxAndCheckRollback() throws IOException, TransactionException, InterruptedException, java.util.concurrent.ExecutionException {
         try (TTable txTable = new TTable(hbaseConf, TEST_TABLE)) {
             HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
             assertEquals(tx1.getStartTimestamp(), TX1_ST);
@@ -224,8 +204,7 @@ public class TestTxMgrFailover extends OmidTestBase {
             // Check transaction status
             assertEquals(tx1.getStatus(), Status.ROLLEDBACK);
             assertEquals(tx1.getCommitTimestamp(), 0);
-            // Check the cleanup process did its job and the transaction was invalidated
-            // Uncommitted data should NOT be there
+            // Check the cleanup process did its job and the uncommitted data is NOT there
             assertEquals(commitTable.countElements(), 1, "Rows should be 1! Dirty data should be there");
             Optional<CommitTimestamp>
                     optionalCT =
@@ -233,9 +212,8 @@ public class TestTxMgrFailover extends OmidTestBase {
             assertTrue(optionalCT.isPresent());
             assertFalse(optionalCT.get().isValid());
             checkOperationSuccessOnCell(KeyValue.Type.Delete, null, TEST_TABLE.getBytes(), row1, TEST_FAMILY.getBytes(),
-                    qualifier);
+                                        qualifier);
         }
-
     }
 
     @Test(timeOut = 30_000)

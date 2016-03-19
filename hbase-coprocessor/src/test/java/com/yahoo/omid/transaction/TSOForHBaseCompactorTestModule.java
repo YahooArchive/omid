@@ -11,32 +11,33 @@ import com.yahoo.omid.timestamp.storage.TimestampStorage;
 import com.yahoo.omid.tso.DisruptorModule;
 import com.yahoo.omid.tso.LeaseManagement;
 import com.yahoo.omid.tso.MockPanicker;
-import com.yahoo.omid.tso.NonHALeaseManager;
+import com.yahoo.omid.tso.NetworkInterfaceUtils;
 import com.yahoo.omid.tso.Panicker;
 import com.yahoo.omid.tso.TSOChannelHandler;
-import com.yahoo.omid.tso.TSOServerCommandLineConfig;
+import com.yahoo.omid.tso.TSOServerConfig;
 import com.yahoo.omid.tso.TSOStateManager;
 import com.yahoo.omid.tso.TSOStateManagerImpl;
 import com.yahoo.omid.tso.TimestampOracle;
 import com.yahoo.omid.tso.TimestampOracleImpl;
-import com.yahoo.omid.tso.ZKModule;
+import com.yahoo.omid.tso.VoidLeaseManager;
+import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import javax.inject.Named;
 import javax.inject.Singleton;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 
-public class TSOForHBaseCompactorTestModule extends AbstractModule {
+import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
 
-    private static final Logger LOG = LoggerFactory.getLogger(TSOForHBaseCompactorTestModule.class);
+class TSOForHBaseCompactorTestModule extends AbstractModule {
 
-    private final TSOServerCommandLineConfig config;
+    private final TSOServerConfig config;
 
-    public TSOForHBaseCompactorTestModule(TSOServerCommandLineConfig config) {
+    TSOForHBaseCompactorTestModule(TSOServerConfig config) {
         this.config = config;
     }
 
@@ -57,9 +58,6 @@ public class TSOForHBaseCompactorTestModule extends AbstractModule {
         // DisruptorConfig
         install(new DisruptorModule());
 
-        // ZK Module
-        install(new ZKModule(config));
-
     }
 
     @Provides
@@ -73,15 +71,13 @@ public class TSOForHBaseCompactorTestModule extends AbstractModule {
         hbaseConf.set("hbase.coprocessor.region.classes", "com.yahoo.omid.transaction.OmidCompactor");
         final String rootdir = "/tmp/hbase.test.dir/";
         File rootdirFile = new File(rootdir);
-        if (rootdirFile.exists()) {
-            delete(rootdirFile);
-        }
+        FileUtils.deleteDirectory(rootdirFile);
         hbaseConf.set("hbase.rootdir", rootdir);
         return hbaseConf;
     }
 
     @Provides
-    TSOServerCommandLineConfig provideTSOServerConfig() {
+    TSOServerConfig provideTSOServerConfig() {
         return config;
     }
 
@@ -91,19 +87,17 @@ public class TSOForHBaseCompactorTestModule extends AbstractModule {
         return new NullMetricsProvider();
     }
 
-    private static void delete(File f) throws IOException {
-        if (f.isDirectory()) {
-            for (File c : f.listFiles())
-                delete(c);
-        }
-        if (!f.delete())
-            throw new FileNotFoundException("Failed to delete file: " + f);
+    @Provides
+    @Singleton
+    LeaseManagement provideLeaseManager(TSOChannelHandler tsoChannelHandler,
+                                        TSOStateManager stateManager) throws IOException {
+        return new VoidLeaseManager(tsoChannelHandler, stateManager);
     }
 
     @Provides
-    @Singleton
-    LeaseManagement provideLeaseManager(TSOChannelHandler tsoChannelHandler, TSOStateManager stateManager) throws IOException {
-        return new NonHALeaseManager(tsoChannelHandler, stateManager);
-    }
+    @Named(TSO_HOST_AND_PORT_KEY)
+    String provideTSOHostAndPort() throws SocketException, UnknownHostException {
+        return NetworkInterfaceUtils.getTSOHostAndPort(config);
 
+    }
 }

@@ -25,7 +25,11 @@ before_script:
   - umask 022
   - git config --global user.email "omid-ci@yahoo-inc.com"
   - git config --global user.name "Omid CI"
-
+  # Install protobuf to genearte TSO client-server protocol in each compilation
+  - wget https://protobuf.googlecode.com/files/protobuf-2.5.0.tar.gz
+  - tar -xzvf protobuf-2.5.0.tar.gz
+  - cd protobuf-2.5.0 && ./configure --prefix=/usr && make && sudo make install
+  - cd ..
 
 script:
   - if [ "${TRAVIS_PULL_REQUEST}" = "false" ] ; then
@@ -54,9 +58,9 @@ after_success:
   - echo ******************************************************************************************
 
 after_failure:
-  - echo **************************************************************************************************************
+  - echo ******************************************************************************************
   - echo Omid failed during the release/pull-request process
-  - echo **************************************************************************************************************
+  - echo ******************************************************************************************
   - VERSION_SUFFIX=`date +%s`
     VERSION=`mvn org.apache.maven.plugins:maven-help-plugin:2.1.1:evaluate -Dexpression=project.version | grep -v '\[' | grep SNAPSHOT`
     &&

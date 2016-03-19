@@ -15,6 +15,7 @@
  */
 package com.yahoo.omid.tso;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.metrics.Gauge;
 import com.yahoo.omid.metrics.MetricsRegistry;
@@ -28,7 +29,7 @@ import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-import static com.codahale.metrics.MetricRegistry.name;
+import static com.yahoo.omid.metrics.MetricsUtils.name;
 
 /**
  * The Timestamp Oracle that gives monotonically increasing timestamps
@@ -38,10 +39,8 @@ public class TimestampOracleImpl implements TimestampOracle {
 
     private static final Logger LOG = LoggerFactory.getLogger(TimestampOracleImpl.class);
 
-    /**
-     * Used for testing
-     */
-    public static class InMemoryTimestampStorage implements TimestampStorage {
+    @VisibleForTesting
+    static class InMemoryTimestampStorage implements TimestampStorage {
 
         long maxTimestamp = 0;
 
@@ -61,7 +60,7 @@ public class TimestampOracleImpl implements TimestampOracle {
     private class AllocateTimestampBatchTask implements Runnable {
         long previousMaxTimestamp;
 
-        public AllocateTimestampBatchTask(long previousMaxTimestamp) {
+        AllocateTimestampBatchTask(long previousMaxTimestamp) {
             this.previousMaxTimestamp = previousMaxTimestamp;
         }
 
@@ -79,14 +78,13 @@ public class TimestampOracleImpl implements TimestampOracle {
 
     }
 
-    static final long TIMESTAMP_BATCH = 10 * 1000 * 1000; // 10 million
-    static final long TIMESTAMP_REMAINING_THRESHOLD = 1 * 1000 * 1000; // 1 million
+    static final long TIMESTAMP_BATCH = 10_000_000; // 10 million
+    private static final long TIMESTAMP_REMAINING_THRESHOLD = 1_000_000; // 1 million
 
     private long lastTimestamp;
 
     private long maxTimestamp;
 
-    private MetricsRegistry metrics;
     private TimestampStorage storage;
     private Panicker panicker;
 
@@ -103,7 +101,6 @@ public class TimestampOracleImpl implements TimestampOracle {
                                TimestampStorage tsStorage,
                                Panicker panicker) throws IOException {
 
-        this.metrics = metrics;
         this.storage = tsStorage;
         this.panicker = panicker;
 
@@ -133,6 +130,7 @@ public class TimestampOracleImpl implements TimestampOracle {
      * Returns the next timestamp if available. Otherwise spins till the
      * ts-persist thread performs the new timestamp allocation
      */
+    @SuppressWarnings("StatementWithEmptyBody")
     @Override
     public long next() throws IOException {
         lastTimestamp++;

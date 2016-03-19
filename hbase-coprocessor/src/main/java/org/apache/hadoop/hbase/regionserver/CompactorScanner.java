@@ -24,7 +24,7 @@ import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.Client;
 import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
 import com.yahoo.omid.transaction.CellUtils;
-import com.yahoo.omid.transaction.CellUtils.CellInfo;
+import com.yahoo.omid.transaction.CellInfo;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.KeyValue;
@@ -97,8 +97,7 @@ public class CompactorScanner implements InternalScanner {
             List<Cell> scanResult = new ArrayList<Cell>();
             hasMoreRows = internalScanner.next(scanResult);
             if (LOG.isTraceEnabled()) {
-                LOG.trace("Row: Result {} limit {} more rows? {}",
-                        new Object[]{scanResult, limit, hasMoreRows});
+                LOG.trace("Row: Result {} limit {} more rows? {}", new Object[]{scanResult, limit, hasMoreRows});
             }
             // 2) Traverse result list separating normal cells from shadow
             // cells and building a map to access easily the shadow cells.
@@ -184,11 +183,9 @@ public class CompactorScanner implements InternalScanner {
         commitTableClientQueue.add(commitTableClient);
     }
 
-    // ********************************************************************
-    // *
-    // * (Package) Private methods
-    // *
-    // ********************************************************************
+    // ----------------------------------------------------------------------------------------------------------------
+    // Helper methods
+    // ----------------------------------------------------------------------------------------------------------------
 
     @VisibleForTesting
     public boolean shouldRetainNonTransactionallyDeletedCell(Cell cell) {
@@ -270,9 +267,7 @@ public class CompactorScanner implements InternalScanner {
 
     private void retainLastTimestampedCellsSaved(List<Cell> result, Map<String, CellInfo> lastTimestampedCellsInRow) {
         for (CellInfo cellInfo : lastTimestampedCellsInRow.values()) {
-            LOG.trace("Retaining last cell {} with shadow cell {}",
-                    cellInfo.getCell(),
-                    cellInfo.getShadowCell());
+            LOG.trace("Retaining last cell {} with shadow cell {}", cellInfo.getCell(), cellInfo.getShadowCell());
             result.add(cellInfo.getCell());
             result.add(cellInfo.getShadowCell());
         }

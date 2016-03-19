@@ -56,13 +56,6 @@
             <artifactId>guice</artifactId>
             <version>${guice.version}</version>
         </dependency>
-        <dependency>
-            <groupId>com.beust</groupId>
-            <artifactId>jcommander</artifactId>
-            <version>${jcommander.version}</version>
-            <type>jar</type>
-            <scope>compile</scope>
-        </dependency>
 
         <!-- end utils -->
 

@@ -47,6 +47,12 @@
             <scope>test</scope>
             <classifier>tests</classifier>
         </dependency>
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>hbase-tools</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
 
         <!-- End of Dependencies on Omid modules -->
 

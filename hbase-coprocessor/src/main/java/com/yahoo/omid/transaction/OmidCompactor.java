@@ -39,7 +39,7 @@ import java.io.IOException;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_NAME_KEY;
+import static com.yahoo.omid.committable.hbase.HBaseCommitTableConfig.COMMIT_TABLE_NAME_KEY;
 
 /**
  * Garbage collector for stale data: triggered upon HBase
@@ -59,7 +59,7 @@ public class OmidCompactor extends BaseRegionObserver {
     private HBaseCommitTableConfig commitTableConf = null;
     private Configuration conf = null;
     @VisibleForTesting
-    protected Queue<CommitTable.Client> commitTableClientQueue = new ConcurrentLinkedQueue<>();
+    Queue<CommitTable.Client> commitTableClientQueue = new ConcurrentLinkedQueue<>();
 
     // When compacting, if a cell which has been marked by HBase as Delete or
     // Delete Family (that is, non-transactionally deleted), we allow the user

@@ -1,11 +1,11 @@
 #HBase related
 commitTableName: OMID_COMMIT_TABLE1
 
-#TSO/ZK connection
+#TSO/HA connection
 omidClientConfiguration: !!com.yahoo.omid.tsoclient.OmidClientConfiguration
-      #TSO/ZK connection
+      #TSO/HA connection
       connectionString: "somehost:54758"
-      connectionType: !!com.yahoo.omid.tsoclient.OmidClientConfiguration$ConnType ZK
+      connectionType: !!com.yahoo.omid.tsoclient.OmidClientConfiguration$ConnType HA
       zkConnectionTimeoutSecs: 11
 
       #TSO related
@@ -18,8 +18,8 @@ omidClientConfiguration: !!com.yahoo.omid.tsoclient.OmidClientConfiguration
 #Instrumentation
 metrics: !!com.yahoo.omid.metrics.CodahaleMetricsProvider [
     !!com.yahoo.omid.metrics.CodahaleMetricsConfig {
-        outputFreqTimeUnit: !!java.util.concurrent.TimeUnit SECONDS,
         outputFreq: 1,
+        outputFreqTimeUnit: !!java.util.concurrent.TimeUnit SECONDS,
         reporters: !!set {
             !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CSV,
             !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter SLF4J,

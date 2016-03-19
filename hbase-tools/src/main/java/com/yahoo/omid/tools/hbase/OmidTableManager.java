@@ -22,9 +22,11 @@ import com.beust.jcommander.ParameterException;
 import com.beust.jcommander.Parameters;
 import com.beust.jcommander.ParametersDelegate;
 import com.yahoo.omid.HBaseShims;
+import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
 import com.yahoo.omid.committable.hbase.KeyGenerator;
 import com.yahoo.omid.committable.hbase.KeyGeneratorImplementations;
 import com.yahoo.omid.committable.hbase.RegionSplitter;
+import com.yahoo.omid.timestamp.storage.HBaseTimestampStorageConfig;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -37,12 +39,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_FAMILY;
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.LOW_WATERMARK_FAMILY;
-import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TSO_FAMILY;
-
 /**
  * Helper class to create required HBase tables by Omid
  */
@@ -51,10 +47,13 @@ public class OmidTableManager {
     private static final Logger LOG = LoggerFactory.getLogger(OmidTableManager.class);
 
     public static final String COMMIT_TABLE_COMMAND_NAME = "commit-table";
-    public static final String TIMESTAMP_TABLE_COMMAND_NAME = "timestamp-table";
+    static final String TIMESTAMP_TABLE_COMMAND_NAME = "timestamp-table";
 
-    private static final byte[][] commitTableFamilies = new byte[][]{COMMIT_TABLE_FAMILY, LOW_WATERMARK_FAMILY};
-    private static final byte[][] timestampTableFamilies = new byte[][]{TSO_FAMILY};
+    private static final byte[][] commitTableFamilies = new byte[][]{
+            HBaseCommitTableConfig.DEFAULT_COMMIT_TABLE_CF_NAME.getBytes(),
+            HBaseCommitTableConfig.DEFAULT_COMMIT_TABLE_LWM_CF_NAME.getBytes()};
+    private static final byte[][] timestampTableFamilies = new byte[][]{
+            HBaseTimestampStorageConfig.DEFAULT_TIMESTAMP_STORAGE_CF_NAME.getBytes()};
 
     private JCommander commandLine;
     private MainConfig mainConfig = new MainConfig();
@@ -120,11 +119,11 @@ public class OmidTableManager {
     // Helper methods and classes
     // ----------------------------------------------------------------------------------------------------------------
 
-    static byte[][] splitInUniformRegions(Configuration hBaseConf, int numRegions) throws IOException {
+    private static byte[][] splitInUniformRegions(Configuration hBaseConf, int numRegions) throws IOException {
 
         KeyGenerator keyGen = KeyGeneratorImplementations.defaultKeyGenerator();
-        RegionSplitter.SplitAlgorithm algo = RegionSplitter.newSplitAlgoInstance(hBaseConf,
-                RegionSplitter.UniformSplit.class.getName());
+        RegionSplitter.SplitAlgorithm algo =
+                RegionSplitter.newSplitAlgoInstance(hBaseConf, RegionSplitter.UniformSplit.class.getName());
         algo.setFirstRow(algo.rowToStr(keyGen.startTimestampToKey(0)));
         algo.setLastRow(algo.rowToStr(keyGen.startTimestampToKey(Long.MAX_VALUE)));
 
@@ -133,7 +132,8 @@ public class OmidTableManager {
 
     }
 
-    static void createTable(HBaseAdmin admin, String tableName, byte[][] families, byte[][] splitKeys, int maxVersions)
+    private static void createTable(HBaseAdmin admin, String tableName, byte[][] families, byte[][] splitKeys,
+                                    int maxVersions)
             throws IOException {
 
         LOG.info("About to create Table named {} with {} splits", tableName, splitKeys.length);
@@ -145,8 +145,7 @@ public class OmidTableManager {
 
         HTableDescriptor tableDescriptor = new HTableDescriptor(TableName.valueOf(tableName));
 
-        for (int familyIdx = 0; familyIdx < families.length; ++familyIdx) {
-            byte[] family = families[familyIdx];
+        for (byte[] family : families) {
             HColumnDescriptor colDescriptor = new HColumnDescriptor(family);
             colDescriptor.setMaxVersions(maxVersions);
             HBaseShims.addFamilyToHTableDescriptor(tableDescriptor, colDescriptor);
@@ -172,10 +171,10 @@ public class OmidTableManager {
     static class CommitTableCommand {
 
         @Parameter(names = "-tableName", description = "Table name where to stores the commits", required = false)
-        String tableName = COMMIT_TABLE_DEFAULT_NAME;
+        String tableName = HBaseCommitTableConfig.DEFAULT_COMMIT_TABLE_NAME;
 
         @Parameter(names = "-numRegions", description = "Number of splits (to pre-split tableName)", required = false,
-                validateWith = IntegerGreaterThanZero.class)
+                   validateWith = IntegerGreaterThanZero.class)
         int numRegions = 16;
 
     }
@@ -183,8 +182,8 @@ public class OmidTableManager {
     @Parameters(commandDescription = "Specifies configuration for the Timestamp Table")
     static class TimestampTableCommand {
 
-        @Parameter(names = "-tableName", description = "Table name where to store timestamps", required = false)
-        String tableName = TIMESTAMP_TABLE_DEFAULT_NAME;
+        @Parameter(names = "-tableName", description = "Table name where to store timestamps")
+        String tableName = HBaseTimestampStorageConfig.DEFAULT_TIMESTAMP_STORAGE_TABLE_NAME;
 
     }
 

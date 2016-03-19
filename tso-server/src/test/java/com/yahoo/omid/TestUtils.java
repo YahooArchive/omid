@@ -1,5 +1,6 @@
 package com.yahoo.omid;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -8,13 +9,9 @@ import org.apache.curator.test.TestingServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-
-import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
 
 /**
  * This class contains functionality that is useful for the Omid tests.
@@ -51,7 +48,7 @@ public class TestUtils {
         LOG.info("Creating Zookeeper Client connecting to {}", zkCluster);
 
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
-        CuratorFramework zkClient = CuratorFrameworkFactory.builder().namespace(OMID_NAMESPACE)
+        CuratorFramework zkClient = CuratorFrameworkFactory.builder().namespace("omid")
                 .connectString(zkCluster).retryPolicy(retryPolicy).build();
 
         LOG.info("Connecting to ZK cluster {}", zkClient.getState());
@@ -73,9 +70,7 @@ public class TestUtils {
                 Thread.sleep(sleepTimeMillis);
                 continue;
             } finally {
-                if (sock != null) {
-                    sock.close();
-                }
+                IOUtils.closeQuietly(sock);
             }
             LOG.info("Host " + host + ":" + port + " is up...");
             break;
@@ -92,22 +87,11 @@ public class TestUtils {
                 // ignore as this is expected
                 break;
             } finally {
-                if (sock != null) {
-                    sock.close();
-                }
+                IOUtils.closeQuietly(sock);
             }
             Thread.sleep(sleepTimeMillis);
             LOG.info("Host " + host + ":" + port + " is still up...");
         }
-    }
-
-    public static void delete(File f) throws IOException {
-        if (f.isDirectory()) {
-            for (File c : f.listFiles())
-                delete(c);
-        }
-        if (!f.delete())
-            throw new FileNotFoundException("Failed to delete file: " + f);
     }
 
 }

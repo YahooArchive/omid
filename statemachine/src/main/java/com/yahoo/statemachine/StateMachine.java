@@ -30,13 +30,19 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class StateMachine {
-    static final Logger LOG = LoggerFactory.getLogger(StateMachine.class);
-    static final String HANDLER_METHOD_NAME = "handleEvent";
 
-    private static ConcurrentHashMap<Class<?>, ConcurrentHashMap<Class<?>, Method>> stateCaches
-            = new ConcurrentHashMap<Class<?>, ConcurrentHashMap<Class<?>, Method>>();
+    private static final Logger LOG = LoggerFactory.getLogger(StateMachine.class);
+
+    private static final String HANDLER_METHOD_NAME = "handleEvent";
+
+    private static ConcurrentHashMap<Class<?>, ConcurrentHashMap<Class<?>, Method>> stateCaches;
+
+    static {
+        stateCaches = new ConcurrentHashMap<>();
+    }
 
     public static abstract class State {
+
         protected final Fsm fsm;
         private final ConcurrentHashMap<Class<?>, Method> handlerCache;
 
@@ -45,9 +51,8 @@ public class StateMachine {
 
             ConcurrentHashMap<Class<?>, Method> handlerCache = stateCaches.get(getClass());
             if (handlerCache == null) {
-                handlerCache = new ConcurrentHashMap<Class<?>, Method>();
-                ConcurrentHashMap<Class<?>, Method> old = stateCaches.putIfAbsent(getClass(),
-                        handlerCache);
+                handlerCache = new ConcurrentHashMap<>();
+                ConcurrentHashMap<Class<?>, Method> old = stateCaches.putIfAbsent(getClass(), handlerCache);
                 if (old != null) {
                     handlerCache = old;
                 }
@@ -55,10 +60,9 @@ public class StateMachine {
             this.handlerCache = handlerCache;
         }
 
-        private Method findHandlerInternal(Class<?> state, Class<?> e)
-                throws NoSuchMethodException {
+        private Method findHandlerInternal(Class<?> state, Class<?> e) throws NoSuchMethodException {
             Method[] methods = state.getMethods();
-            List<Method> candidates = new ArrayList<Method>();
+            List<Method> candidates = new ArrayList<>();
             for (Method m : methods) {
                 if (m.getName().equals(HANDLER_METHOD_NAME)
                         && State.class.isAssignableFrom(m.getReturnType())
@@ -67,10 +71,9 @@ public class StateMachine {
                 }
             }
 
-            Class<?> eventType = e;
             Method best = null;
             for (Method m : candidates) {
-                if (m.getParameterTypes()[0].isAssignableFrom(eventType)) {
+                if (m.getParameterTypes()[0].isAssignableFrom(e)) {
                     if (best == null) {
                         best = m;
                     } else if (best.getParameterTypes()[0]
@@ -86,8 +89,7 @@ public class StateMachine {
             throw new NoSuchMethodException("Handler doesn't exist");
         }
 
-        private Method findHandler(Class<?> event)
-                throws NoSuchMethodException {
+        private Method findHandler(Class<?> event) throws NoSuchMethodException {
             Method m = handlerCache.get(event);
             if (m == null) {
                 m = findHandlerInternal(getClass(), event);
@@ -99,10 +101,10 @@ public class StateMachine {
             return m;
         }
 
-        State dispatch(Event e)
-                throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+        State dispatch(Event e) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
             return (State) findHandler(e.getClass()).invoke(this, e);
         }
+
     }
 
     public interface Event {
@@ -128,12 +130,12 @@ public class StateMachine {
         public FsmImpl(ScheduledExecutorService executor) {
             this.executor = executor;
             state = null;
-            deferred = new ArrayDeque<DeferrableEvent>();
+            deferred = new ArrayDeque<>();
         }
 
         private void errorDeferredEvents(Throwable t) {
             Queue<DeferrableEvent> oldDeferred = deferred;
-            deferred = new ArrayDeque<DeferrableEvent>();
+            deferred = new ArrayDeque<>();
 
             for (DeferrableEvent e : oldDeferred) {
                 e.error(new IllegalStateException(t));
@@ -155,27 +157,26 @@ public class StateMachine {
             return state;
         }
 
-        protected void setState(final State curState, final State newState) {
+        void setState(final State curState, final State newState) {
             if (curState != state) {
                 LOG.error("FSM-{}: Tried to transition from {} to {}, but current state is {}",
-                        new Object[]{getFsmId(), state, newState, curState});
+                          getFsmId(), state, newState, curState);
                 throw new IllegalArgumentException();
             }
             state = newState;
 
             if (LOG.isDebugEnabled()) {
-                LOG.debug("FSM-{}: State transition {} -> {}",
-                        new Object[]{getFsmId(), curState, newState});
+                LOG.debug("FSM-{}: State transition {} -> {}", getFsmId(), curState, newState);
             }
         }
 
-        protected boolean processEvent(Event e) {
+        boolean processEvent(Event e) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("FSM-{}: Received event {}@{} in state {}@{}",
-                        new Object[]{getFsmId(), e.getClass().getSimpleName(),
-                                System.identityHashCode(e),
-                                state.getClass().getSimpleName(),
-                                System.identityHashCode(state)});
+                          getFsmId(), e.getClass().getSimpleName(),
+                          System.identityHashCode(e),
+                          state.getClass().getSimpleName(),
+                          System.identityHashCode(state));
             }
             try {
                 State newState = state.dispatch(e);
@@ -204,7 +205,7 @@ public class StateMachine {
                 while (stateChanged) {
                     stateChanged = false;
                     Queue<DeferrableEvent> prevDeferred = deferred;
-                    deferred = new ArrayDeque<DeferrableEvent>();
+                    deferred = new ArrayDeque<>();
                     for (DeferrableEvent d : prevDeferred) {
                         if (stateChanged) {
                             deferred.add(d);
@@ -230,8 +231,7 @@ public class StateMachine {
         public void deferEvent(DeferrableEvent e) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("FSM-{}: deferred {}@{}",
-                        new Object[]{getFsmId(), e.getClass().getSimpleName(),
-                                System.identityHashCode(e)});
+                          getFsmId(), e.getClass().getSimpleName(), System.identityHashCode(e));
             }
             deferred.add(e);
         }
@@ -241,12 +241,14 @@ public class StateMachine {
         }
 
         @Override
-        public void finalize() {
+        public void finalize() throws Throwable {
+            super.finalize();
             LOG.debug("FSM-{}: Finalizing", getFsmId());
         }
     }
 
-    public static interface DeferrableEvent extends Event {
-        public void error(Throwable exception);
+    public interface DeferrableEvent extends Event {
+        void error(Throwable exception);
     }
+
 }

@@ -1,7 +1,7 @@
 #HBase related
 commitTableName: OMID_COMMIT_TABLE
 
-#TSO/ZK connection
+#TSO/HA connection
 omidClientConfiguration: !!com.yahoo.omid.tsoclient.OmidClientConfiguration [ ]
 
 #Instrumentation

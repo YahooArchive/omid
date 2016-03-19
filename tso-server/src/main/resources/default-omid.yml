@@ -1,0 +1,148 @@
+# =====================================================================================================================
+# Omid TSO Server Configuration
+# =====================================================================================================================
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Basic configuration parameters
+# ---------------------------------------------------------------------------------------------------------------------
+# TODO Explain rest of the parameters and/or rename properly
+
+# Network interface for TSO server communication. Uncomment the following line to use a specific interface
+# networkIfaceName: eth0
+# If a network interface in the configuration, the TSO will attempt to guess default network interface.
+# See com.yahoo.omid.tso.TSOServerConfig.getDefaultNetworkInterface for more information.
+
+# Port reserved by the Status Oracle
+port: 54758
+maxItems: 100000000
+maxBatchSize: 10000
+batchPersistTimeoutMS: 100
+
+# Default module configuration (No TSO High Availability & in-memory storage for timestamp and commit tables)
+timestampStoreModule: !!com.yahoo.omid.tso.InMemoryTimestampStorageModule [ ]
+commitTableStoreModule: !!com.yahoo.omid.tso.InMemoryCommitTableStorageModule [ ]
+leaseModule: !!com.yahoo.omid.tso.VoidLeaseManagementModule [ ]
+
+# Default stats/metrics configuration (
+metrics: !!com.yahoo.omid.metrics.NullMetricsProvider [ ]
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Timestamp storage configuration options
+# ---------------------------------------------------------------------------------------------------------------------
+# Could be any guava module that binds com.yahoo.omid.timestamp.storage.TimestampStorage
+# Current available Timestamp stores:
+#     com.yahoo.omid.tso.InMemoryTimestampStorageModule
+#     com.yahoo.omid.timestamp.storage.HBaseTimestampStorageModule
+#     com.yahoo.omid.timestamp.storage.ZKTimestampStorageModule
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Commit Table storage configuration options
+# ---------------------------------------------------------------------------------------------------------------------
+# Could be any guava module that binds com.yahoo.omid.committable.CommitTable
+# Available CommitTable stores:
+#     com.yahoo.omid.committable.hbase.HBaseCommitTableStorageModule
+#     com.yahoo.omid.tso.InMemoryCommitTableStorageModule
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Metrics configuration options
+# ---------------------------------------------------------------------------------------------------------------------
+# Metrics could be anything that is com.yahoo.omid.metrics.MetricsRegistry
+# There are 4 built-in reporters: CSV, SLF4J, GRAPHITE, CONSOLE
+# Please see com.yahoo.omid.metrics.CodahaleMetricsConfig for details.
+
+# Example configuration for reporting statistics to the console every minute:
+#
+# metrics: !!com.yahoo.omid.metrics.CodahaleMetricsProvider [
+#     !!com.yahoo.omid.metrics.CodahaleMetricsConfig {
+#         outputFreqTimeUnit: !!java.util.concurrent.TimeUnit SECONDS,
+#         outputFreq: 60,
+#         reporters: !!set {
+#             !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CONSOLE
+#         },
+#     }
+# ]
+
+
+# Example of multiple reporter configuration (to CSV files and console)
+#
+# metrics: !!com.yahoo.omid.metrics.CodahaleMetricsProvider [
+#     !!com.yahoo.omid.metrics.CodahaleMetricsConfig {
+#         outputFreqTimeUnit: !!java.util.concurrent.TimeUnit SECONDS,
+#         outputFreq: 60,
+#         reporters: !!set {
+#             !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CSV,
+#             !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CONSOLE
+#         },
+#         csvDir: "csvMetrics",
+#         prefix: "somePrefix",
+#     }
+# ]
+
+# =====================================================================================================================
+# Some example configurations
+# =====================================================================================================================
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Configuration WITHOUT High Availability using HBase for all required storage & reporting metrics to CSV files
+# ---------------------------------------------------------------------------------------------------------------------
+#
+# commitTableStoreModule: !!com.yahoo.omid.tso.DefaultHBaseCommitTableStorageModule [ ]
+#     See optional params
+#         - tableName
+#         - familyName
+#         - principal
+#         - keytab
+# timestampStoreModule: !!com.yahoo.omid.tso.DefaultHBaseTimestampStorageModule [ ]
+#     See optional params
+#         - tableName
+#         - familyName
+#         - principal
+#         - keytab
+# leaseModule: !!com.yahoo.omid.tso.VoidLeaseManagementModule [ ]
+# metrics: !!com.yahoo.omid.metrics.CodahaleMetricsProvider [
+#     !!com.yahoo.omid.metrics.CodahaleMetricsConfig {
+#         reporters: !!set {
+#             !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CSV
+#         },
+#         csvDir: "myCSVMetricsDir",
+#         prefix: "myAppPrefixForMetrics",
+#     }
+# ]
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Configuration WITHOUT High Availability using ZK to store the timestamps & reporting metrics to console every 30 secs
+# ---------------------------------------------------------------------------------------------------------------------
+#
+# commitTableStoreModule: !!com.yahoo.omid.tso.DefaultHBaseCommitTableStorageModule [ ]
+# timestampStoreModule: !!com.yahoo.omid.tso.DefaultZKTimestampStorageModule
+#         zkCluster: "localhost:2181"
+#         namespace: "omid"
+# leaseModule: !!com.yahoo.omid.tso.VoidLeaseManagementModule [ ]
+# metrics: !!com.yahoo.omid.metrics.CodahaleMetricsProvider [
+#     !!com.yahoo.omid.metrics.CodahaleMetricsConfig {
+#         outputFreqTimeUnit: !!java.util.concurrent.TimeUnit SECONDS,
+#         outputFreq: 30,
+#         reporters: !!set {
+#             !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CONSOLE
+#         },
+#     }
+# ]
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Configuration WITH High Availability using HBase for all required storage and no metrics reports
+# ---------------------------------------------------------------------------------------------------------------------
+#
+# commitTableStoreModule: !!com.yahoo.omid.tso.DefaultHBaseCommitTableStorageModule [ ]
+# timestampStoreModule: !!com.yahoo.omid.tso.DefaultHBaseTimestampStorageModule [ ]
+# leaseModule: !!com.yahoo.omid.tso.HALeaseManagementModule [
+#     leasePeriodInMs: 10000,
+#     tsoLeasePath: "/tso-lease",
+#     zkCurrentTsoPath: "/current-tso",
+#     zkCluster: "localhost:2181",
+#     namespace: "omid"
+# ]
+# metrics: !!com.yahoo.omid.metrics.NullMetricsProvider [ ]
+
+
+

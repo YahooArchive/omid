@@ -13,35 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.yahoo.omid.metrics;
+package com.yahoo.omid.tso;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import com.yahoo.omid.tso.LeaseManagement.LeaseManagementException;
 
 import javax.inject.Singleton;
-import java.io.IOException;
-import java.util.List;
 
-//TODO:IK: convert it from command line to yml config
-// this is for server side only
-public class CodahaleModule extends AbstractModule {
-
-    private final List<String> metricsConfigs;
-
-    public CodahaleModule(List<String> config) {
-        this.metricsConfigs = config;
-    }
+public class VoidLeaseManagementModule extends AbstractModule {
 
     @Override
     protected void configure() {
-
     }
 
     @Provides
     @Singleton
-    MetricsRegistry provideMetricsRegistry() throws IOException {
+    LeaseManagement provideLeaseManager(TSOChannelHandler tsoChannelHandler, TSOStateManager stateManager)
+            throws LeaseManagementException {
 
-        return CodahaleMetricsProvider.createCodahaleMetricsProvider(metricsConfigs);
+        return new VoidLeaseManager(tsoChannelHandler, stateManager);
 
     }
 

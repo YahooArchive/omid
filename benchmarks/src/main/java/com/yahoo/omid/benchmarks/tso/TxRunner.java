@@ -49,7 +49,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
-public class TxRunner implements Runnable {
+class TxRunner implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(TxRunner.class);
 
@@ -68,7 +68,7 @@ public class TxRunner implements Runnable {
     /**
      * Maximum number of modified rows in each transaction
      */
-    public static final int DEFAULT_WRITESET_SIZE = 20;
+    static final int DEFAULT_WRITESET_SIZE = 20;
 
     private volatile boolean isRunning = false;
 
@@ -89,7 +89,7 @@ public class TxRunner implements Runnable {
     private final Timer abortTimer;
     private final Counter errorCounter;
 
-    public TxRunner(MetricsRegistry metrics, Config expConfig) throws IOException {
+    TxRunner(MetricsRegistry metrics, Config expConfig) throws IOException, InterruptedException {
 
         // Tx Runner config
         this.outstandingTxs = new Semaphore(expConfig.maxInFlight);
@@ -156,7 +156,7 @@ public class TxRunner implements Runnable {
         }
     }
 
-    public void stop() {
+    void stop() {
         isRunning = false;
     }
 
@@ -179,7 +179,7 @@ public class TxRunner implements Runnable {
         }
     }
 
-    class TimestampListener implements Runnable {
+    private class TimestampListener implements Runnable {
         TSOFuture<Long> tsFuture;
         final long tsRequestTime;
 
@@ -207,7 +207,7 @@ public class TxRunner implements Runnable {
         }
     }
 
-    class DeferredCommitterListener implements Runnable {
+    private class DeferredCommitterListener implements Runnable {
         final long txId;
 
         DeferredCommitterListener(long txId) {
@@ -229,7 +229,7 @@ public class TxRunner implements Runnable {
         }
     }
 
-    class CommitListener implements Runnable {
+    private class CommitListener implements Runnable {
         final long txId;
         final long commitRequestTime;
         TSOFuture<Long> commitFuture;

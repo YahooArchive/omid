@@ -15,6 +15,7 @@
  */
 package com.yahoo.omid.transaction;
 
+import com.google.common.base.Charsets;
 import com.google.common.base.Objects;
 import com.google.common.base.Objects.ToStringHelper;
 import com.google.common.base.Optional;
@@ -40,26 +41,22 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import static com.yahoo.omid.transaction.HBaseTransactionManager.SHADOW_CELL_SUFFIX;
-
-public class CellUtils {
+@SuppressWarnings("all")
+public final class CellUtils {
 
     private static final Logger LOG = LoggerFactory.getLogger(CellUtils.class);
+    static final byte[] SHADOW_CELL_SUFFIX = "\u0080".getBytes(Charsets.UTF_8); // Non printable char (128 ASCII)
+    static byte[] DELETE_TOMBSTONE = Bytes.toBytes("__OMID_TOMBSTONE__");
 
     /**
      * Utility interface to get rid of the dependency on HBase server package
      */
-    public interface CellGetter {
-        public Result get(Get get) throws IOException;
+    interface CellGetter {
+        Result get(Get get) throws IOException;
     }
 
     /**
      * Returns true if the particular cell passed exists in the datastore.
-     * @param row
-     * @param family
-     * @param qualifier
-     * @param version
-     * @param cellGetter
      * @return true if the cell specified exists. false otherwise
      * @throws IOException
      */
@@ -80,11 +77,6 @@ public class CellUtils {
 
     /**
      * Returns true if the particular cell passed has a corresponding shadow cell in the datastore.
-     * @param row
-     * @param family
-     * @param qualifier
-     * @param version
-     * @param cellGetter
      * @return true if it has a shadow cell. false otherwise.
      * @throws IOException
      */
@@ -98,8 +90,7 @@ public class CellUtils {
     }
 
     /**
-     * Builds a new qualifier composed of the HBase qualifier
-     * passed suffixed with the shadow cell suffix.
+     * Builds a new qualifier composed of the HBase qualifier passed + the shadow cell suffix.
      * @param qualifierArray
      *            the qualifier to be suffixed
      * @param qualOffset
@@ -116,8 +107,7 @@ public class CellUtils {
     }
 
     /**
-     * Builds a new qualifier composed of the HBase qualifier passed suffixed
-     * with the shadow cell suffix.
+     * Builds a new qualifier composed of the HBase qualifier passed + the shadow cell suffix.
      * Contains a reduced signature to avoid boilerplate code in client side.
      * @param qualifier
      *            the qualifier to be suffixed
@@ -152,9 +142,8 @@ public class CellUtils {
     }
 
     /**
-     * Returns the qualifier length removing the shadow cell suffix. In case
-     * that que suffix is not found, just returns the length of the qualifier
-     * passed.
+     * Returns the qualifier length removing the shadow cell suffix. In case that que suffix is not found,
+     * just returns the length of the qualifier passed.
      * @param qualifier
      *            the qualifier to remove the suffix from
      * @param qualOffset
@@ -191,12 +180,9 @@ public class CellUtils {
     }
 
     /**
-     * Check that the cell passed meets the requirements for a valid cell
-     * identifier with Omid. Basically, users can't:
+     * Check that the cell passed meets the requirements for a valid cell identifier with Omid. Basically, users can't:
      * 1) specify a timestamp
      * 2) use a particular suffix in the qualifier
-     * @param cell
-     * @param startTimestamp
      */
     public static void validateCell(Cell cell, long startTimestamp) {
         // Throw exception if timestamp is set by the user
@@ -235,7 +221,7 @@ public class CellUtils {
         int suffixOffset = offset + length - suffix.length;
         int result = Bytes.compareTo(value, suffixOffset, suffix.length,
                 suffix, 0, suffix.length);
-        return result == 0 ? true : false;
+        return result == 0;
     }
 
     /**
@@ -245,7 +231,7 @@ public class CellUtils {
      * @return whether the cell is marked as a tombstone or not
      */
     public static boolean isTombstone(Cell cell) {
-        return CellUtil.matchingValue(cell, TTable.DELETE_TOMBSTONE);
+        return CellUtil.matchingValue(cell, DELETE_TOMBSTONE);
     }
 
     /**
@@ -289,7 +275,7 @@ public class CellUtils {
                     Cell storedCell = cellIdToCellMap.get(key);
                     if (CellUtil.matchingValue(cell, storedCell)) {
                         // TODO: Should we check also here the MVCC and swap if its greater???
-                        continue; // Values are the same, ignore
+                        // Values are the same, ignore
                     } else {
                         if (cell.getMvccVersion() > storedCell.getMvccVersion()) { // Swap values
                             Optional<Cell> previousValue = cellToShadowCellMap.remove(storedCell);
@@ -298,7 +284,6 @@ public class CellUtils {
                             cellToShadowCellMap.put(cell, previousValue);
                         } else {
                             LOG.warn("Cell {} with an earlier MVCC found. Ignoring...", cell);
-                            continue;
                         }
                     }
                 } else {
@@ -326,7 +311,7 @@ public class CellUtils {
         private final Cell cell;
         private final boolean isShadowCell;
 
-        public CellId(Cell cell, boolean isShadowCell) {
+        CellId(Cell cell, boolean isShadowCell) {
 
             this.cell = cell;
             this.isShadowCell = isShadowCell;
@@ -376,11 +361,7 @@ public class CellUtils {
             }
 
             // Timestamp comparison
-            if (otherCell.getTimestamp() != cell.getTimestamp()) {
-                return false;
-            }
-
-            return true;
+            return otherCell.getTimestamp() == cell.getTimestamp();
 
         }
 
@@ -418,43 +399,6 @@ public class CellUtils {
             helper.add("ts", cell.getTimestamp());
             return helper.toString();
         }
-    }
-
-    public static class CellInfo {
-
-        private final Cell cell;
-        private final Cell shadowCell;
-        private final long timestamp;
-
-        public CellInfo(Cell cell, Cell shadowCell) {
-            assert (cell != null && shadowCell != null);
-            assert (cell.getTimestamp() == shadowCell.getTimestamp());
-            this.cell = cell;
-            this.shadowCell = shadowCell;
-            this.timestamp = cell.getTimestamp();
-        }
-
-        public Cell getCell() {
-            return cell;
-        }
-
-        public Cell getShadowCell() {
-            return shadowCell;
-        }
-
-        public long getTimestamp() {
-            return timestamp;
-        }
-
-        @Override
-        public String toString() {
-            return Objects.toStringHelper(this)
-                    .add("ts", timestamp)
-                    .add("cell", cell)
-                    .add("shadow cell", shadowCell)
-                    .toString();
-        }
-
     }
 
 }

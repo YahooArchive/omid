@@ -40,17 +40,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static com.codahale.metrics.MetricRegistry.name;
+import static com.yahoo.omid.metrics.MetricsUtils.name;
 import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
 
 class PersistenceProcessorImpl
-        implements EventHandler<PersistenceProcessorImpl.PersistEvent>,
-        PersistenceProcessor, TimeoutHandler {
+        implements EventHandler<PersistenceProcessorImpl.PersistEvent>, PersistenceProcessor, TimeoutHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(PersistenceProcessor.class);
 
-    static final int DEFAULT_MAX_BATCH_SIZE = 10_000;
-    static final int DEFAULT_BATCH_PERSIST_TIMEOUT_MS = 100;
+    final static int BATCH_TIMEOUT_MS = 100;
 
     private final String tsoHostAndPort;
     private final LeaseManagement leaseManager;
@@ -60,48 +58,46 @@ class PersistenceProcessorImpl
     final CommitTable.Writer writer;
     final Panicker panicker;
     final RingBuffer<PersistEvent> persistRing;
-
-
     final Batch batch;
-
     final Timer flushTimer;
     final Histogram batchSizeHistogram;
     final Meter timeoutMeter;
+
     long lastFlush = System.nanoTime();
 
-    final static int BATCH_TIMEOUT_MS = 100;
-
     @Inject
-    PersistenceProcessorImpl(MetricsRegistry metrics,
+    PersistenceProcessorImpl(TSOServerConfig config,
+                             MetricsRegistry metrics,
                              @Named(TSO_HOST_AND_PORT_KEY) String tsoHostAndPort,
                              LeaseManagement leaseManager,
                              CommitTable commitTable,
                              ReplyProcessor reply,
                              RetryProcessor retryProc,
-                             Panicker panicker,
-                             TSOServerCommandLineConfig config)
+                             Panicker panicker)
             throws IOException {
-        this(metrics,
-                tsoHostAndPort,
-                new Batch(config.getMaxBatchSize()),
-                leaseManager,
-                commitTable,
-                reply,
-                retryProc,
-                panicker,
-                config);
+
+        this(config,
+             metrics,
+             tsoHostAndPort,
+             new Batch(config.getMaxBatchSize()),
+             leaseManager,
+             commitTable,
+             reply,
+             retryProc,
+             panicker);
+
     }
 
     @VisibleForTesting
-    PersistenceProcessorImpl(MetricsRegistry metrics,
+    PersistenceProcessorImpl(TSOServerConfig config,
+                             MetricsRegistry metrics,
                              String tsoHostAndPort,
                              Batch batch,
                              LeaseManagement leaseManager,
                              CommitTable commitTable,
                              ReplyProcessor reply,
                              RetryProcessor retryProc,
-                             Panicker panicker,
-                             TSOServerCommandLineConfig config)
+                             Panicker panicker)
             throws IOException {
 
         this.tsoHostAndPort = tsoHostAndPort;
@@ -138,10 +134,12 @@ class PersistenceProcessorImpl
         ExecutorService persistExec = Executors.newSingleThreadExecutor(
                 new ThreadFactoryBuilder().setNameFormat("persist-%d").build());
         persistExec.submit(persistProcessor);
+
     }
 
     @Override
     public void onEvent(PersistEvent event, long sequence, boolean endOfBatch) throws Exception {
+
         switch (event.getType()) {
             case COMMIT:
                 event.getMonCtx().timerStart("commitPersistProcessor");
@@ -166,6 +164,7 @@ class PersistenceProcessorImpl
         if (batch.isFull() || endOfBatch) {
             maybeFlushBatch();
         }
+
     }
 
     private void sendAbortOrIdentifyFalsePositive(long startTimestamp, boolean isRetry, Channel channel,
@@ -216,7 +215,7 @@ class PersistenceProcessorImpl
             areWeStillMaster = false;
             // We need also to clear the data in the buffer
             writer.clearWriteBuffer();
-            LOG.trace("Replica {} lost mastership before flushig data", tsoHostAndPort);
+            LOG.trace("Replica {} lost mastership before flushing data", tsoHostAndPort);
         } else {
             try {
                 writer.flush();
@@ -228,7 +227,7 @@ class PersistenceProcessorImpl
                 // If after flushing this TSO server is not the master
                 // replica we need inform the client about it
                 areWeStillMaster = false;
-                LOG.warn("Replica {} lost mastership after flushig data", tsoHostAndPort);
+                LOG.warn("Replica {} lost mastership after flushing data", tsoHostAndPort);
             }
         }
         flushTimer.update((System.nanoTime() - lastFlush));

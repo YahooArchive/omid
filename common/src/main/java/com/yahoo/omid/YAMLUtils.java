@@ -49,6 +49,7 @@ public class YAMLUtils {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private Map loadSettings(String resourcePath, String defaultResourcePath) throws IOException {
         Map defaultSetting = loadAsMap(defaultResourcePath);
         if (resourcePath != null) {
@@ -67,4 +68,5 @@ public class YAMLUtils {
             return new HashMap();
         }
     }
+
 }

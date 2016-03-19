@@ -1,0 +1,21 @@
+# Non High Availability configuration with HBase for everything
+
+principal: sieve_omid0@YGRID.YAHOO.COM
+keytab: /home/sieve_omid0/sieve_omid0.prod.headless.keytab
+
+port: 54758
+maxItems: 100000000
+maxBatchSize: 500
+batchPersistTimeoutMS: 100
+networkIfaceName: eth1
+
+commitTableStoreModule: !!com.yahoo.omid.committable.hbase.DefaultHBaseCommitTableStorageModule
+                     tableName: "sieve_omid:OMID_TIMESTAMP_F"
+
+timestampStoreModule: !!com.yahoo.omid.timestamp.storage.DefaultHBaseTimestampStorageModule
+                    tableName: "sieve_omid:OMID_COMMIT_TABLE_F"
+                    familyName: "MAX_TIMESTAMP_F"
+
+leaseModule: !!com.yahoo.omid.tso.VoidLeaseManagementModule [ ]
+
+metrics: !!com.yahoo.omid.metrics.NullMetricsProvider [ ]

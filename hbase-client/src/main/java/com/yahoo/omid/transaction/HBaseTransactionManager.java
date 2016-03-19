@@ -16,7 +16,6 @@
 package com.yahoo.omid.transaction;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Charsets;
 import com.google.common.base.Optional;
 import com.google.common.collect.Maps;
 import com.yahoo.omid.committable.CommitTable;
@@ -39,8 +38,6 @@ import java.util.concurrent.ExecutionException;
 
 public class HBaseTransactionManager extends AbstractTransactionManager implements HBaseTransactionClient {
 
-    static final byte[] SHADOW_CELL_SUFFIX = "\u0080".getBytes(Charsets.UTF_8); // Non printable char (128 ASCII)
-
     private static class HBaseTransactionFactory implements TransactionFactory<HBaseCellId> {
 
         @Override
@@ -56,11 +53,12 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
     // Construction
     // ----------------------------------------------------------------------------------------------------------------
 
-    public static TransactionManager newInstance() throws IOException {
+    public static TransactionManager newInstance() throws IOException, InterruptedException {
         return newInstance(new HBaseOmidClientConfiguration());
     }
 
-    public static TransactionManager newInstance(HBaseOmidClientConfiguration configuration) throws IOException {
+    public static TransactionManager newInstance(HBaseOmidClientConfiguration configuration)
+            throws IOException, InterruptedException {
         //Logging in to Secure HBase if required
         HBaseLogin.loginIfNeeded(configuration);
         return builder(configuration).build();
@@ -90,28 +88,24 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
             return this;
         }
 
-        HBaseTransactionManager build() throws IOException{
+        HBaseTransactionManager build() throws IOException, InterruptedException {
             return new HBaseTransactionManager(hbaseOmidClientConf,
                                                tsoClient.or(buildTSOClient()).get(),
                                                commitTableClient.or(buildCommitTableClient().get()),
                                                new HBaseTransactionFactory());
         }
 
-        private Optional<TSOClient> buildTSOClient(){
+        private Optional<TSOClient> buildTSOClient() throws IOException, InterruptedException {
             return Optional.of(TSOClient.newInstance(hbaseOmidClientConf.getOmidClientConfiguration()));
         }
 
 
         private Optional<CommitTable.Client> buildCommitTableClient() throws IOException {
-            HBaseCommitTableConfig commitTableConf = new HBaseCommitTableConfig(hbaseOmidClientConf.getCommitTableName());
+            HBaseCommitTableConfig commitTableConf = new HBaseCommitTableConfig();
+            commitTableConf.setTableName(hbaseOmidClientConf.getCommitTableName());
             CommitTable commitTable = new HBaseCommitTable(hbaseOmidClientConf.getHBaseConfiguration(), commitTableConf);
-                return Optional.of(commitTable.getClient());
+            return Optional.of(commitTable.getClient());
         }
-    }
-
-    @VisibleForTesting
-    static Builder builder() {
-        return builder(new HBaseOmidClientConfiguration());
     }
 
     @VisibleForTesting
@@ -231,8 +225,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
     // Helper methods
     // ----------------------------------------------------------------------------------------------------------------
 
-    private HBaseTransaction
-    enforceHBaseTransactionAsParam(AbstractTransaction<? extends CellId> tx) {
+    private HBaseTransaction enforceHBaseTransactionAsParam(AbstractTransaction<? extends CellId> tx) {
 
         if (tx instanceof HBaseTransaction) {
             return (HBaseTransaction) tx;
@@ -244,10 +237,11 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
     }
 
     static class CommitTimestampLocatorImpl implements CommitTimestampLocator {
+
         private HBaseCellId hBaseCellId;
         private final Map<Long, Long> commitCache;
 
-        public CommitTimestampLocatorImpl(HBaseCellId hBaseCellId, Map<Long, Long> commitCache) {
+        CommitTimestampLocatorImpl(HBaseCellId hBaseCellId, Map<Long, Long> commitCache) {
             this.hBaseCellId = hBaseCellId;
             this.commitCache = commitCache;
         }

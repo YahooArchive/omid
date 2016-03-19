@@ -1,19 +1,16 @@
 package com.yahoo.omid.tools.hbase;
 
+import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
+import com.yahoo.omid.timestamp.storage.HBaseTimestampStorageConfig;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
 import static com.yahoo.omid.tools.hbase.OmidTableManager.COMMIT_TABLE_COMMAND_NAME;
 import static com.yahoo.omid.tools.hbase.OmidTableManager.TIMESTAMP_TABLE_COMMAND_NAME;
 import static org.testng.Assert.assertEquals;
@@ -21,10 +18,7 @@ import static org.testng.Assert.assertTrue;
 
 public class TestOmidTableManager {
 
-    private static final Logger LOG = LoggerFactory.getLogger(TestOmidTableManager.class);
-
     private HBaseTestingUtility hBaseTestUtil;
-    private MiniHBaseCluster hBaseCluster;
     private Configuration hbaseConf;
     private HBaseAdmin hBaseAdmin;
 
@@ -34,7 +28,7 @@ public class TestOmidTableManager {
         hbaseConf = HBaseConfiguration.create();
 
         hBaseTestUtil = new HBaseTestingUtility(hbaseConf);
-        hBaseCluster = hBaseTestUtil.startMiniCluster(1);
+        hBaseTestUtil.startMiniCluster(1);
 
         hBaseAdmin = hBaseTestUtil.getHBaseAdmin();
     }
@@ -56,7 +50,7 @@ public class TestOmidTableManager {
         OmidTableManager omidTableManager = new OmidTableManager(args);
         omidTableManager.executeActionsOnHBase(hbaseConf);
 
-        TableName tableName = TableName.valueOf(TIMESTAMP_TABLE_DEFAULT_NAME);
+        TableName tableName = TableName.valueOf(HBaseTimestampStorageConfig.DEFAULT_TIMESTAMP_STORAGE_TABLE_NAME);
 
         assertTrue(hBaseAdmin.tableExists(tableName));
         int numRegions = hBaseAdmin.getTableRegions(tableName).size();
@@ -72,7 +66,7 @@ public class TestOmidTableManager {
         OmidTableManager omidTableManager = new OmidTableManager(args);
         omidTableManager.executeActionsOnHBase(hbaseConf);
 
-        TableName tableName = TableName.valueOf(COMMIT_TABLE_DEFAULT_NAME);
+        TableName tableName = TableName.valueOf(HBaseCommitTableConfig.DEFAULT_COMMIT_TABLE_NAME);
 
         assertTrue(hBaseAdmin.tableExists(tableName));
         int numRegions = hBaseAdmin.getTableRegions(tableName).size();

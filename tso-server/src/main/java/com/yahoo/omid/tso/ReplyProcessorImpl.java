@@ -33,9 +33,10 @@ import javax.inject.Inject;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.codahale.metrics.MetricRegistry.name;
+import static com.yahoo.omid.metrics.MetricsUtils.name;
 
 class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>, ReplyProcessor {
+
     private static final Logger LOG = LoggerFactory.getLogger(ReplyProcessorImpl.class);
 
     final RingBuffer<ReplyEvent> replyRing;
@@ -160,6 +161,7 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
     }
 
     public final static class ReplyEvent {
+
         enum Type {
             TIMESTAMP, COMMIT, HEURISTIC_COMMIT, ABORT
         }
@@ -225,6 +227,8 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
                 return new ReplyEvent();
             }
         };
+
     }
+
 }
 

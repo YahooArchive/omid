@@ -8,7 +8,7 @@ import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.tso.TSOMockModule;
 import com.yahoo.omid.tso.TSOServer;
-import com.yahoo.omid.tso.TSOServerCommandLineConfig;
+import com.yahoo.omid.tso.TSOServerConfig;
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,8 +48,9 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
 
         tsoServerPortForTest = TestUtils.getFreeLocalPort();
 
-        String[] configArgs = new String[]{"-port", Integer.toString(tsoServerPortForTest), "-maxItems", "1000"};
-        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.parseConfig(configArgs);
+        TSOServerConfig tsoConfig = new TSOServerConfig();
+        tsoConfig.setMaxItems(1000);
+        tsoConfig.setPort(tsoServerPortForTest);
         Module tsoServerMockModule = new TSOMockModule(tsoConfig);
         Injector injector = Guice.createInjector(tsoServerMockModule);
 

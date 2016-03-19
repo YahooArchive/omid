@@ -16,94 +16,18 @@
 package com.yahoo.omid.tso;
 
 import com.google.common.net.HostAndPort;
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.yahoo.omid.tso.TSOServerCommandLineConfig.TimestampStore;
-import com.yahoo.omid.zk.ZKUtils;
-import org.apache.curator.RetryPolicy;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Named;
-import javax.inject.Singleton;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Enumeration;
-import java.util.concurrent.TimeUnit;
 
-import static com.yahoo.omid.ZKConstants.OMID_NAMESPACE;
-import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
+final public class NetworkInterfaceUtils {
 
-public class ZKModule extends AbstractModule {
-
-    private static final Logger LOG = LoggerFactory.getLogger(ZKModule.class);
-
-    private final TSOServerCommandLineConfig config;
-
-    public ZKModule(TSOServerCommandLineConfig config) {
-        this.config = config;
-    }
-
-    @Override
-    public void configure() {
-    }
-
-    @Provides
-    @Singleton
-    CuratorFramework provideInitializedZookeeperClient() throws Exception {
-
-        LOG.info("Creating Zookeeper Client connecting to {}", config.getZKCluster());
-
-        RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
-        CuratorFramework zkClient = CuratorFrameworkFactory.builder()
-                .namespace(OMID_NAMESPACE)
-                .connectString(config.getZKCluster())
-                .retryPolicy(retryPolicy)
-                .build();
-
-        if (config.shouldHostAndPortBePublishedInZK || config.getTimestampStore().equals(TimestampStore.ZK)) {
-            try {
-                LOG.info("Connecting to ZK cluster [{}]", zkClient.getState());
-                zkClient.start();
-                if (zkClient.blockUntilConnected(10, TimeUnit.SECONDS)) {
-                    LOG.info("Connection to ZK cluster [{}]", zkClient.getState());
-                } else {
-                    throw new ZKUtils.ZKException("Can't contact ZK after 10 seconds");
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new ZKUtils.ZKException("Interrupted whilst creating LeaseManager");
-            }
-        } else {
-            LOG.info("ZK Connection not necessary in this configuration");
-        }
-        return zkClient;
-    }
-
-    @Provides
-    @Singleton
-    @Named(TSO_HOST_AND_PORT_KEY)
-    String provideTSOHostAndPort() throws SocketException,
-            UnknownHostException {
-        // Build TSO host:port string and validate it
-        final String tsoNetIfaceName = config.getNetworkIface();
-        InetAddress addr = getIPAddressFromNetworkInterface(tsoNetIfaceName);
-        final int tsoPort = config.getPort();
-
-        String tsoHostAndPortAsString = "N/A";
-        try {
-            tsoHostAndPortAsString = HostAndPort.fromParts(addr.getHostAddress(), tsoPort).toString();
-        } catch (IllegalArgumentException e) {
-            LOG.error("Cannot parse TSO host:port string {}", tsoHostAndPortAsString);
-            throw e;
-        }
-        return tsoHostAndPortAsString;
-    }
+    private static final Logger LOG = LoggerFactory.getLogger(NetworkInterfaceUtils.class);
 
     /**
      * Returns an <code>InetAddress</code> object encapsulating what is most
@@ -139,7 +63,7 @@ public class ZKModule extends AbstractModule {
      * @throws UnknownHostException
      *             If the LAN address of the machine cannot be found.
      */
-    private static InetAddress getIPAddressFromNetworkInterface(String ifaceName)
+    static InetAddress getIPAddressFromNetworkInterface(String ifaceName)
             throws SocketException, UnknownHostException {
 
         NetworkInterface iface = NetworkInterface.getByName(ifaceName);
@@ -177,6 +101,24 @@ public class ZKModule extends AbstractModule {
                     "InetAddress.getLocalHost() unexpectedly returned null.");
         }
         return jdkSuppliedAddress;
+    }
+
+    public static String getTSOHostAndPort(TSOServerConfig config) throws SocketException, UnknownHostException {
+
+        // Build TSO host:port string and validate it
+        final String tsoNetIfaceName = config.getNetworkIfaceName();
+        InetAddress addr = getIPAddressFromNetworkInterface(tsoNetIfaceName);
+        final int tsoPort = config.getPort();
+
+        String tsoHostAndPortAsString = "N/A";
+        try {
+            tsoHostAndPortAsString = HostAndPort.fromParts(addr.getHostAddress(), tsoPort).toString();
+        } catch (IllegalArgumentException e) {
+            LOG.error("Cannot parse TSO host:port string {}", tsoHostAndPortAsString);
+            throw e;
+        }
+        return tsoHostAndPortAsString;
+
     }
 
 }

@@ -71,7 +71,9 @@ public class PausableLeaseManager extends LeaseManager {
         return super.stillInLeasePeriod();
     }
 
-    // **************** Helper Methods to pause functionality *****************
+    // ----------------------------------------------------------------------------------------------------------------
+    // Helper Methods to pause functionality
+    // ----------------------------------------------------------------------------------------------------------------
 
     public synchronized void pausedInTryToGetInitialLeasePeriod() {
         pausedInTryToGetInitialLeasePeriod = true;

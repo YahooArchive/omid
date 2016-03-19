@@ -32,6 +32,13 @@
             <version>${curator.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>${protobuf.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
         <!-- end distributed comm -->
 
         <!-- utils -->
@@ -60,5 +67,31 @@
         <!-- end testing -->
 
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>${maven-antrun-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <id>default-cli</id>
+                        <configuration>
+                            <target>
+                                <exec executable="protoc" failonerror="true">
+                                    <arg value="--java_out=src/main/java"/>
+                                    <arg value="src/main/proto/TSOProto.proto"/>
+                                </exec>
+                            </target>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
