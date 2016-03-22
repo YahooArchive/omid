@@ -46,6 +46,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.mockito.Matchers.any;
@@ -514,9 +515,10 @@ public class TestCompaction {
     // flushing like this prevents compaction running
     // directly after the flush, which we want to avoid.
     private void manualFlush(String tableName) throws Throwable {
-        LOG.info("Manually flushing all regions");
+        LOG.info("Manually flushing all regions and waiting 2 secs");
         HBaseShims.flushAllOnlineRegions(hbaseTestUtil.getHBaseCluster().getRegionServer(0),
                                          TableName.valueOf(tableName));
+        TimeUnit.SECONDS.sleep(2);
     }
 
     @Test
@@ -853,12 +855,22 @@ public class TestCompaction {
         // create the second hfile
         manualFlush(TEST_TABLE);
 
+        // Write yet another value transactionally
+        HBaseTransaction tx2 = (HBaseTransaction) tm.begin();
+        Put p2 = new Put(rowId);
+        p2.add(fam, qual, Bytes.toBytes("testValue-2"));
+        txTable.put(tx2, p2);
+        tm.commit(tx2);
+
+        // create a third hfile
+        manualFlush(TEST_TABLE);
+
         // Then perform a non-transactional Delete
         Delete d = new Delete(rowId);
         d.deleteColumn(fam, qual);
         table.delete(d);
 
-        // create the third hfile
+        // create the fourth hfile
         manualFlush(TEST_TABLE);
 
         // Trigger the minor compaction
