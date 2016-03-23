@@ -18,21 +18,19 @@
 package org.apache.omid.tso;
 
 import com.google.inject.AbstractModule;
+import com.google.inject.Provider;
 import com.google.inject.Provides;
-import com.google.inject.name.Names;
-import org.apache.omid.committable.CommitTable;
-import org.apache.omid.committable.hbase.HBaseCommitTableConfig;
-import org.apache.omid.timestamp.storage.TimestampStorage;
-import org.apache.omid.tools.hbase.SecureHBaseConfig;
 
 import javax.inject.Named;
 import javax.inject.Singleton;
+
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
 import static org.apache.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
 
 class TSOModule extends AbstractModule {
+
     private final TSOServerConfig config;
 
     TSOModule(TSOServerConfig config) {
@@ -62,6 +60,15 @@ class TSOModule extends AbstractModule {
     String provideTSOHostAndPort() throws SocketException, UnknownHostException {
         return NetworkInterfaceUtils.getTSOHostAndPort(config);
 
+    }
+
+    @Provides
+    PersistenceProcessorHandler[] getPersistenceProcessorHandler(Provider<PersistenceProcessorHandler> provider) {
+        PersistenceProcessorHandler[] persistenceProcessorHandlers = new PersistenceProcessorHandler[config.getPersistHandlerNum()];
+        for (int i = 0; i < persistenceProcessorHandlers.length; i++) {
+            persistenceProcessorHandlers[i] = provider.get();
+        }
+        return persistenceProcessorHandlers;
     }
 
 }

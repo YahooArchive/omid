@@ -19,11 +19,12 @@ package org.apache.omid.tso;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BatchEventProcessor;
-import com.lmax.disruptor.BusySpinWaitStrategy;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
+import com.lmax.disruptor.TimeoutBlockingWaitStrategy;
+import com.lmax.disruptor.TimeoutHandler;
 import org.apache.omid.metrics.MetricsRegistry;
 import org.apache.omid.tso.TSOStateManager.TSOState;
 import org.jboss.netty.channel.Channel;
@@ -37,25 +38,26 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
-public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestEvent>, RequestProcessor {
+class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestEvent>, RequestProcessor, TimeoutHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(RequestProcessorImpl.class);
 
     private final TimestampOracle timestampOracle;
-    public final CommitHashMap hashmap;
+    private final CommitHashMap hashmap;
     private final MetricsRegistry metrics;
     private final PersistenceProcessor persistProc;
     private final RingBuffer<RequestEvent> requestRing;
     private long lowWatermark = -1L;
-    private long epoch = -1L;
 
     @Inject
-    RequestProcessorImpl(TSOServerConfig config,
-                         MetricsRegistry metrics,
+    RequestProcessorImpl(MetricsRegistry metrics,
                          TimestampOracle timestampOracle,
                          PersistenceProcessor persistProc,
-                         Panicker panicker) throws IOException {
+                         Panicker panicker,
+                         TSOServerConfig config)
+            throws IOException {
 
         this.metrics = metrics;
 
@@ -64,11 +66,14 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
 
         this.hashmap = new CommitHashMap(config.getMaxItems());
 
+        final TimeoutBlockingWaitStrategy timeoutStrategy
+                = new TimeoutBlockingWaitStrategy(config.getBatchPersistTimeoutInMs(), TimeUnit.MILLISECONDS);
+
         // Set up the disruptor thread
-        requestRing = RingBuffer.createMultiProducer(RequestEvent.EVENT_FACTORY, 1 << 12, new BusySpinWaitStrategy());
+        requestRing = RingBuffer.createMultiProducer(RequestEvent.EVENT_FACTORY, 1 << 12, timeoutStrategy);
         SequenceBarrier requestSequenceBarrier = requestRing.newBarrier();
         BatchEventProcessor<RequestEvent> requestProcessor =
-                new BatchEventProcessor<RequestEvent>(requestRing, requestSequenceBarrier, this);
+                new BatchEventProcessor<>(requestRing, requestSequenceBarrier, this);
         requestRing.addGatingSequences(requestProcessor.getSequence());
         requestProcessor.setExceptionHandler(new FatalExceptionHandler(panicker));
 
@@ -83,16 +88,17 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
      * This should be called when the TSO gets leadership
      */
     @Override
-    public void update(TSOState state) {
+    public void update(TSOState state) throws InterruptedException {
         LOG.info("Initializing RequestProcessor...");
         this.lowWatermark = state.getLowWatermark();
-        persistProc.persistLowWatermark(lowWatermark);
-        this.epoch = state.getEpoch();
-        LOG.info("RequestProcessor initialized with LWMs {} and Epoch {}", lowWatermark, epoch);
+        persistProc.persistLowWatermark(lowWatermark, new MonitoringContext(metrics));
+        persistProc.reset();
+        LOG.info("RequestProcessor initialized with LWMs {} and Epoch {}", lowWatermark, state.getEpoch());
     }
 
     @Override
     public void onEvent(RequestEvent event, long sequence, boolean endOfBatch) throws Exception {
+
         String name = null;
         try {
             if (event.getType() == RequestEvent.Type.TIMESTAMP) {
@@ -110,25 +116,42 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
             }
         }
 
+        if (endOfBatch) {
+            persistProc.persistFlush();
+        }
+
+    }
+
+    @Override
+    public void onTimeout(long sequence) throws Exception {
+
+        persistProc.persistFlush();
+
     }
 
     @Override
     public void timestampRequest(Channel c, MonitoringContext monCtx) {
+
         long seq = requestRing.next();
         RequestEvent e = requestRing.get(seq);
         RequestEvent.makeTimestampRequest(e, c, monCtx);
         requestRing.publish(seq);
+
     }
 
     @Override
-    public void commitRequest(long startTimestamp, Collection<Long> writeSet, boolean isRetry, Channel c, MonitoringContext monCtx) {
+    public void commitRequest(long startTimestamp, Collection<Long> writeSet, boolean isRetry, Channel c,
+                              MonitoringContext monCtx) {
+
         long seq = requestRing.next();
         RequestEvent e = requestRing.get(seq);
         RequestEvent.makeCommitRequest(e, startTimestamp, monCtx, writeSet, isRetry, c);
         requestRing.publish(seq);
+
     }
 
-    public void handleTimestamp(RequestEvent requestEvent) {
+    private void handleTimestamp(RequestEvent requestEvent) throws InterruptedException {
+
         long timestamp;
 
         try {
@@ -139,15 +162,17 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
         }
 
         persistProc.persistTimestamp(timestamp, requestEvent.getChannel(), requestEvent.getMonCtx());
+
     }
 
-    public long handleCommit(RequestEvent event) {
+    private long handleCommit(RequestEvent event) throws InterruptedException {
+
         long startTimestamp = event.getStartTimestamp();
         Iterable<Long> writeSet = event.writeSet();
         boolean isRetry = event.isRetry();
         Channel c = event.getChannel();
 
-        boolean committed = false;
+        boolean committed;
         long commitTimestamp = 0L;
 
         int numCellsInWriteset = 0;
@@ -183,7 +208,7 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
                     if (newLowWatermark != lowWatermark) {
                         LOG.trace("Setting new low Watermark to {}", newLowWatermark);
                         lowWatermark = newLowWatermark;
-                        persistProc.persistLowWatermark(newLowWatermark);
+                        persistProc.persistLowWatermark(newLowWatermark, event.getMonCtx());
                     }
                 }
                 persistProc.persistCommit(startTimestamp, commitTimestamp, c, event.getMonCtx());
@@ -195,6 +220,7 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
         }
 
         return commitTimestamp;
+
     }
 
     final static class RequestEvent implements Iterable<Long> {
@@ -222,8 +248,11 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
         }
 
         static void makeCommitRequest(RequestEvent e,
-                                      long startTimestamp, MonitoringContext monCtx, Collection<Long> writeSet,
-                                      boolean isRetry, Channel c) {
+                                      long startTimestamp,
+                                      MonitoringContext monCtx,
+                                      Collection<Long> writeSet,
+                                      boolean isRetry,
+                                      Channel c) {
             e.monCtx = monCtx;
             e.type = Type.COMMIT;
             e.channel = c;
@@ -241,6 +270,7 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
                     i++;
                 }
             }
+
         }
 
         MonitoringContext getMonCtx() {
@@ -261,9 +291,11 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
 
         @Override
         public Iterator<Long> iterator() {
+
             if (writeSetAsCollection != null) {
                 return writeSetAsCollection.iterator();
             }
+
             return new Iterator<Long>() {
                 int i = 0;
 
@@ -285,23 +317,26 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
                     throw new UnsupportedOperationException();
                 }
             };
+
         }
 
         Iterable<Long> writeSet() {
+
             return this;
+
         }
 
         boolean isRetry() {
             return isRetry;
         }
 
-        public final static EventFactory<RequestEvent> EVENT_FACTORY
-                = new EventFactory<RequestEvent>() {
+        final static EventFactory<RequestEvent> EVENT_FACTORY = new EventFactory<RequestEvent>() {
             @Override
             public RequestEvent newInstance() {
                 return new RequestEvent();
             }
         };
+
     }
 
 }

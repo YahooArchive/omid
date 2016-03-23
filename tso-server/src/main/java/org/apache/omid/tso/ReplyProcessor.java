@@ -20,9 +20,17 @@ package org.apache.omid.tso;
 import org.jboss.netty.channel.Channel;
 
 interface ReplyProcessor {
+
+    // TODO This documentation does not corresponds to the method below anymore. Put in the right place or remove
     /**
      * Informs the client about the outcome of the Tx it was trying to commit.
      *
+     * @param batch
+     *            the batch of operations
+     * @param batchID
+     *            the id of the batch, used to enforce order between replies
+     * @param makeHeuristicDecision
+     *            informs about whether heuristic actions are needed or not
      * @param startTimestamp
      *            the start timestamp of the transaction (a.k.a. tx id)
      * @param commitTimestamp
@@ -30,10 +38,13 @@ interface ReplyProcessor {
      * @param channel
      *            the communication channed with the client
      */
-    void commitResponse(long startTimestamp, long commitTimestamp, Channel channel, MonitoringContext monCtx);
+    void batchResponse(Batch batch, long batchID, boolean makeHeuristicDecision);
 
-    void abortResponse(long startTimestamp, Channel c, MonitoringContext monCtx);
+    void addAbort(Batch batch, long startTimestamp, Channel c, MonitoringContext context);
 
-    void timestampResponse(long startTimestamp, Channel c, MonitoringContext monCtx);
+    void addCommit(Batch batch, long startTimestamp, long commitTimestamp, Channel c, MonitoringContext context);
+
+    void reset();
+
 }
 

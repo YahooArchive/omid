@@ -18,6 +18,7 @@
 package org.apache.omid.tso;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.inject.Inject;
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.BusySpinWaitStrategy;
 import com.lmax.disruptor.EventFactory;
@@ -27,102 +28,181 @@ import com.lmax.disruptor.SequenceBarrier;
 import org.apache.omid.metrics.Meter;
 import org.apache.omid.metrics.MetricsRegistry;
 import org.apache.omid.proto.TSOProto;
+
 import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
+import java.util.Comparator;
+import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicLong;
 
-import static org.apache.omid.metrics.MetricsUtils.name;
+import static com.codahale.metrics.MetricRegistry.name;
 
-class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>, ReplyProcessor {
+class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEvent>, ReplyProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(ReplyProcessorImpl.class);
 
-    final RingBuffer<ReplyEvent> replyRing;
-    final Meter abortMeter;
-    final Meter commitMeter;
-    final Meter timestampMeter;
+    private static final int NO_ORDER = (-1);
+
+    private final RingBuffer<ReplyBatchEvent> replyRing;
+
+    private AtomicLong nextIDToHandle = new AtomicLong();
+
+    private PriorityQueue<ReplyBatchEvent> futureEvents;
+
+    // Metrics
+    private final Meter abortMeter;
+    private final Meter commitMeter;
+    private final Meter timestampMeter;
 
     @Inject
     ReplyProcessorImpl(MetricsRegistry metrics, Panicker panicker) {
-        replyRing = RingBuffer.createMultiProducer(ReplyEvent.EVENT_FACTORY, 1 << 12, new BusySpinWaitStrategy());
+
+        this.nextIDToHandle.set(0);
+
+        this.replyRing = RingBuffer.createMultiProducer(ReplyBatchEvent.EVENT_FACTORY, 1 << 12, new BusySpinWaitStrategy());
+
         SequenceBarrier replySequenceBarrier = replyRing.newBarrier();
-        BatchEventProcessor<ReplyEvent> replyProcessor = new BatchEventProcessor<ReplyEvent>(
-                replyRing, replySequenceBarrier, this);
+        BatchEventProcessor<ReplyBatchEvent> replyProcessor = new BatchEventProcessor<>(replyRing, replySequenceBarrier, this);
         replyProcessor.setExceptionHandler(new FatalExceptionHandler(panicker));
 
         replyRing.addGatingSequences(replyProcessor.getSequence());
 
-        ExecutorService replyExec = Executors.newSingleThreadExecutor(
-                new ThreadFactoryBuilder().setNameFormat("reply-%d").build());
+        ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("reply-%d").build();
+        ExecutorService replyExec = Executors.newSingleThreadExecutor(threadFactory);
         replyExec.submit(replyProcessor);
 
-        abortMeter = metrics.meter(name("tso", "aborts"));
-        commitMeter = metrics.meter(name("tso", "commits"));
-        timestampMeter = metrics.meter(name("tso", "timestampAllocation"));
+        this.futureEvents = new PriorityQueue<>(10, new Comparator<ReplyBatchEvent>() {
+            public int compare(ReplyBatchEvent replyBatchEvent1, ReplyBatchEvent replyBatchEvent2) {
+                return Long.compare(replyBatchEvent1.getBatchID(), replyBatchEvent2.getBatchID());
+            }
+        });
+
+        this.abortMeter = metrics.meter(name("tso", "aborts"));
+        this.commitMeter = metrics.meter(name("tso", "commits"));
+        this.timestampMeter = metrics.meter(name("tso", "timestampAllocation"));
+
     }
 
-    public void onEvent(ReplyEvent event, long sequence, boolean endOfBatch) throws Exception {
-        String name = null;
-        try {
-            switch (event.getType()) {
-                case COMMIT:
-                    name = "commitReplyProcessor";
-                    event.getMonCtx().timerStart(name);
-                    handleCommitResponse(event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel());
-                    break;
-                case ABORT:
-                    name = "abortReplyProcessor";
-                    event.getMonCtx().timerStart(name);
-                    handleAbortResponse(event.getStartTimestamp(), event.getChannel());
-                    break;
-                case TIMESTAMP:
-                    name = "timestampReplyProcessor";
-                    event.getMonCtx().timerStart(name);
-                    handleTimestampResponse(event.getStartTimestamp(), event.getChannel());
-                    break;
-                default:
-                    LOG.error("Unknown event {}", event.getType());
-                    break;
+    public void reset() {
+        nextIDToHandle.set(0);
+    }
+
+    private void handleReplyBatchEvent(ReplyBatchEvent event) {
+
+        String name;
+        Batch batch = event.getBatch();
+        for (int i=0; batch != null && i < batch.getNumEvents(); ++i) {
+            PersistEvent localEvent = batch.getEvent(i);
+
+            switch (localEvent.getType()) {
+            case COMMIT:
+                name = "commitReplyProcessor";
+                localEvent.getMonCtx().timerStart(name);
+                handleCommitResponse(localEvent.getStartTimestamp(), localEvent.getCommitTimestamp(), localEvent.getChannel(), event.getMakeHeuristicDecision());
+                localEvent.getMonCtx().timerStop(name);
+                 break;
+            case ABORT:
+                name = "abortReplyProcessor";
+                localEvent.getMonCtx().timerStart(name);
+                handleAbortResponse(localEvent.getStartTimestamp(), localEvent.getChannel());
+                localEvent.getMonCtx().timerStop(name);
+                break;
+            case TIMESTAMP:
+                name = "timestampReplyProcessor";
+                localEvent.getMonCtx().timerStart(name);
+                handleTimestampResponse(localEvent.getStartTimestamp(), localEvent.getChannel());
+                localEvent.getMonCtx().timerStop(name);
+                break;
+            case LOW_WATERMARK:
+                break;
+            default:
+                LOG.error("Unknown event {}", localEvent.getType());
+                break;
             }
-        } finally {
-            if (name != null) {
-                event.getMonCtx().timerStop(name);
-            }
+            localEvent.getMonCtx().publish();
         }
-        event.getMonCtx().publish();
+
+        if (batch != null) {
+            batch.clear();
+        }
+
+    }
+
+    private void processWaitingEvents() {
+
+        while (!futureEvents.isEmpty() && futureEvents.peek().getBatchID() == nextIDToHandle.get()) {
+            ReplyBatchEvent e = futureEvents.poll();
+            handleReplyBatchEvent(e);
+            nextIDToHandle.incrementAndGet();
+        }
+
+    }
+
+    public void onEvent(ReplyBatchEvent event, long sequence, boolean endOfBatch) throws Exception {
+
+        // Order of event's reply need to be guaranteed in order to preserve snapshot isolation.
+        // This is done in order to present a scenario where a start id of N is returned
+        // while commit smaller than still does not appear in the commit table.
+
+        // If previous events were not processed yet (events contain smaller id)
+        if (event.getBatchID() > nextIDToHandle.get()) {
+            futureEvents.add(event);
+            return;
+         }
+
+        handleReplyBatchEvent(event);
+
+        if (event.getBatchID() == NO_ORDER) {
+            return;
+        }
+
+        nextIDToHandle.incrementAndGet();
+
+        // Process events that arrived before and kept in futureEvents.
+        processWaitingEvents();
+
     }
 
     @Override
-    public void commitResponse(long startTimestamp, long commitTimestamp, Channel c, MonitoringContext monCtx) {
+    public void batchResponse(Batch batch, long batchID, boolean makeHeuristicDecision) {
+
         long seq = replyRing.next();
-        ReplyEvent e = replyRing.get(seq);
-        ReplyEvent.makeCommitResponse(e, startTimestamp, commitTimestamp, c, monCtx);
+        ReplyBatchEvent e = replyRing.get(seq);
+        ReplyBatchEvent.makeReplyBatch(e, batch, batchID, makeHeuristicDecision);
         replyRing.publish(seq);
+
     }
 
     @Override
-    public void abortResponse(long startTimestamp, Channel c, MonitoringContext monCtx) {
-        long seq = replyRing.next();
-        ReplyEvent e = replyRing.get(seq);
-        ReplyEvent.makeAbortResponse(e, startTimestamp, c, monCtx);
-        replyRing.publish(seq);
+    public void addAbort(Batch batch, long startTimestamp, Channel c, MonitoringContext context) {
+
+        batch.addAbort(startTimestamp, true, c, context);
+        batchResponse(batch, NO_ORDER, false);
+
     }
 
     @Override
-    public void timestampResponse(long startTimestamp, Channel c, MonitoringContext monCtx) {
-        long seq = replyRing.next();
-        ReplyEvent e = replyRing.get(seq);
-        ReplyEvent.makeTimestampReponse(e, startTimestamp, c, monCtx);
-        replyRing.publish(seq);
+    public void addCommit(Batch batch, long startTimestamp, long commitTimestamp, Channel c, MonitoringContext context) {
+
+        batch.addCommit(startTimestamp, commitTimestamp, c, context);
+        batchResponse(batch, NO_ORDER, false);
+
     }
 
-    void handleCommitResponse(long startTimestamp, long commitTimestamp, Channel c) {
+    private void handleCommitResponse(long startTimestamp, long commitTimestamp, Channel c,
+                                      boolean makeHeuristicDecision) {
+
         TSOProto.Response.Builder builder = TSOProto.Response.newBuilder();
         TSOProto.CommitResponse.Builder commitBuilder = TSOProto.CommitResponse.newBuilder();
+        // TODO Remove heuristic decissions as is not in the protocol anymore
+        if (makeHeuristicDecision) { // If the commit is ambiguous is due to a new master TSO
+//            commitBuilder.setMakeHeuristicDecision(true);
+        }
         commitBuilder.setAborted(false)
                 .setStartTimestamp(startTimestamp)
                 .setCommitTimestamp(commitTimestamp);
@@ -130,20 +210,24 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
         c.write(builder.build());
 
         commitMeter.mark();
+
     }
 
-    void handleAbortResponse(long startTimestamp, Channel c) {
+    private void handleAbortResponse(long startTimestamp, Channel c) {
+
         TSOProto.Response.Builder builder = TSOProto.Response.newBuilder();
         TSOProto.CommitResponse.Builder commitBuilder = TSOProto.CommitResponse.newBuilder();
-        commitBuilder.setAborted(true)
-                .setStartTimestamp(startTimestamp);
+        commitBuilder.setAborted(true);
+        commitBuilder.setStartTimestamp(startTimestamp);
         builder.setCommitResponse(commitBuilder.build());
         c.write(builder.build());
 
         abortMeter.mark();
+
     }
 
-    void handleTimestampResponse(long startTimestamp, Channel c) {
+    private void handleTimestampResponse(long startTimestamp, Channel c) {
+
         TSOProto.Response.Builder builder = TSOProto.Response.newBuilder();
         TSOProto.TimestampResponse.Builder respBuilder = TSOProto.TimestampResponse.newBuilder();
         respBuilder.setStartTimestamp(startTimestamp);
@@ -151,69 +235,36 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
         c.write(builder.build());
 
         timestampMeter.mark();
+
     }
 
-    public final static class ReplyEvent {
+    final static class ReplyBatchEvent {
 
-        enum Type {
-            TIMESTAMP, COMMIT, ABORT
+        private Batch batch;
+        private long batchID;
+        private boolean makeHeuristicDecision;
+
+        static void makeReplyBatch(ReplyBatchEvent e, Batch batch, long batchID, boolean makeHeuristicDecision) {
+            e.batch = batch;
+            e.batchID = batchID;
+            e.makeHeuristicDecision = makeHeuristicDecision;
         }
 
-        private Type type = null;
-        private Channel channel = null;
-
-        private long startTimestamp = 0;
-        private long commitTimestamp = 0;
-        private MonitoringContext monCtx;
-
-        Type getType() {
-            return type;
+        Batch getBatch() {
+            return batch;
         }
 
-        Channel getChannel() {
-            return channel;
+        long getBatchID() {
+            return batchID;
         }
 
-        long getStartTimestamp() {
-            return startTimestamp;
+        boolean getMakeHeuristicDecision() {
+            return makeHeuristicDecision;
         }
 
-        long getCommitTimestamp() {
-            return commitTimestamp;
-        }
-
-        MonitoringContext getMonCtx() {
-            return monCtx;
-        }
-
-        static void makeTimestampReponse(ReplyEvent e, long startTimestamp, Channel c, MonitoringContext monCtx) {
-            e.type = Type.TIMESTAMP;
-            e.startTimestamp = startTimestamp;
-            e.channel = c;
-            e.monCtx = monCtx;
-        }
-
-        static void makeCommitResponse(ReplyEvent e, long startTimestamp,
-                                       long commitTimestamp, Channel c, MonitoringContext monCtx) {
-
-            e.type = Type.COMMIT;
-            e.startTimestamp = startTimestamp;
-            e.commitTimestamp = commitTimestamp;
-            e.channel = c;
-            e.monCtx = monCtx;
-        }
-
-        static void makeAbortResponse(ReplyEvent e, long startTimestamp, Channel c, MonitoringContext monCtx) {
-            e.type = Type.ABORT;
-            e.startTimestamp = startTimestamp;
-            e.channel = c;
-            e.monCtx = monCtx;
-        }
-
-        public final static EventFactory<ReplyEvent> EVENT_FACTORY = new EventFactory<ReplyEvent>() {
-            @Override
-            public ReplyEvent newInstance() {
-                return new ReplyEvent();
+        final static EventFactory<ReplyBatchEvent> EVENT_FACTORY = new EventFactory<ReplyBatchEvent>() {
+            public ReplyBatchEvent newInstance() {
+                return new ReplyBatchEvent();
             }
         };
 

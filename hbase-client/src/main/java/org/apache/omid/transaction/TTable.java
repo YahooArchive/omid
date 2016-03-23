@@ -23,8 +23,6 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimaps;
-import org.apache.omid.committable.CommitTable.CommitTimestamp;
-import org.apache.omid.transaction.HBaseTransactionManager.CommitTimestampLocatorImpl;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
@@ -44,6 +42,8 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.omid.committable.CommitTable.CommitTimestamp;
+import org.apache.omid.transaction.HBaseTransactionManager.CommitTimestampLocatorImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -189,10 +189,10 @@ public class TTable implements Closeable {
                                     CellUtils.DELETE_TOMBSTONE);
                         transaction.addWriteSetElement(
                                 new HBaseCellId(table,
-                                        delete.getRow(),
-                                        CellUtil.cloneFamily(cell),
-                                        CellUtil.cloneQualifier(cell),
-                                        cell.getTimestamp()));
+                                                delete.getRow(),
+                                                CellUtil.cloneFamily(cell),
+                                                CellUtil.cloneQualifier(cell),
+                                                cell.getTimestamp()));
                         break;
                     case DeleteFamily:
                         deleteG.addFamily(CellUtil.cloneFamily(cell));
@@ -206,10 +206,10 @@ public class TTable implements Closeable {
                                         CellUtils.DELETE_TOMBSTONE);
                             transaction.addWriteSetElement(
                                     new HBaseCellId(table,
-                                            delete.getRow(),
-                                            CellUtil.cloneFamily(cell),
-                                            CellUtil.cloneQualifier(cell),
-                                            cell.getTimestamp()));
+                                                    delete.getRow(),
+                                                    CellUtil.cloneFamily(cell),
+                                                    CellUtil.cloneQualifier(cell),
+                                                    cell.getTimestamp()));
                             break;
                         } else {
                             throw new UnsupportedOperationException(
@@ -268,10 +268,10 @@ public class TTable implements Closeable {
 
                 transaction.addWriteSetElement(
                         new HBaseCellId(table,
-                                CellUtil.cloneRow(kv),
-                                CellUtil.cloneFamily(kv),
-                                CellUtil.cloneQualifier(kv),
-                                kv.getTimestamp()));
+                                        CellUtil.cloneRow(kv),
+                                        CellUtil.cloneFamily(kv),
+                                        CellUtil.cloneQualifier(kv),
+                                        kv.getTimestamp()));
             }
         }
 
@@ -423,10 +423,10 @@ public class TTable implements Closeable {
                         epoch,
                         new CommitTimestampLocatorImpl(
                                 new HBaseCellId(table,
-                                        CellUtil.cloneRow(cell),
-                                        CellUtil.cloneFamily(cell),
-                                        CellUtil.cloneQualifier(cell),
-                                        cell.getTimestamp()),
+                                                CellUtil.cloneRow(cell),
+                                                CellUtil.cloneFamily(cell),
+                                                CellUtil.cloneQualifier(cell),
+                                                cell.getTimestamp()),
                                 commitCache));
 
         // If transaction that added the cell was invalidated
@@ -740,7 +740,7 @@ public class TTable implements Closeable {
         } else {
             throw new IllegalArgumentException(
                     String.format("The transaction object passed %s is not an instance of HBaseTransaction",
-                            tx.getClass().getName()));
+                                  tx.getClass().getName()));
         }
     }
 

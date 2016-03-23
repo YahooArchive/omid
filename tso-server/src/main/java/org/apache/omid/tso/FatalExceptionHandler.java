@@ -21,7 +21,8 @@ import com.lmax.disruptor.ExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FatalExceptionHandler implements ExceptionHandler {
+class FatalExceptionHandler implements ExceptionHandler {
+
     private static final Logger LOG = LoggerFactory.getLogger(FatalExceptionHandler.class);
 
     Panicker panicker;
@@ -47,4 +48,5 @@ public class FatalExceptionHandler implements ExceptionHandler {
     public void handleOnStartException(Throwable ex) {
         panicker.panic("Uncaught exception starting up", ex);
     }
+
 }

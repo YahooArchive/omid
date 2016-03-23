@@ -25,17 +25,15 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyLong;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
 
 public class TestBatch {
 
@@ -52,14 +50,15 @@ public class TestBatch {
     private ReplyProcessor replyProcessor;
 
     // The batch element to test
-    private PersistenceProcessorImpl.Batch batch;
+    private Batch batch;
 
     @BeforeMethod(alwaysRun = true, timeOut = 30_000)
     public void initMocksAndComponents() {
         MockitoAnnotations.initMocks(this);
-        batch = new PersistenceProcessorImpl.Batch(BATCH_SIZE);
+        batch = new Batch(BATCH_SIZE);
     }
 
+    // TODO. Check this test with the contents of the master branch. See commented asserts below
     @Test
     public void testBatchFunctionality() {
 
@@ -69,7 +68,7 @@ public class TestBatch {
         RetryProcessor retryProcessor = Mockito.mock(RetryProcessor.class);
 
         // The batch element to test
-        PersistenceProcessorImpl.Batch batch = new PersistenceProcessorImpl.Batch(BATCH_SIZE);
+        Batch batch = new Batch(BATCH_SIZE);
 
         // Test initial state is OK
         assertFalse(batch.isFull(), "Batch shouldn't be full");
@@ -102,21 +101,59 @@ public class TestBatch {
             monCtx = new MonitoringContext(metrics);
             monCtx.timerStart("commitPersistProcessor");
             batch.addCommit(0, 1, channel, new MonitoringContext(metrics));
-            Assert.fail("Should throw an IllegalStateException");
+            fail("Should throw an IllegalStateException");
         } catch (IllegalStateException e) {
-            assertEquals(e.getMessage(), "batch full", "message returned doesn't match");
+            assertEquals(e.getMessage(), "batch is full", "message returned doesn't match");
             LOG.debug("IllegalStateException catched properly");
         }
 
         // Test that sending replies empties the batch
-        batch.sendRepliesAndReset(replyProcessor, retryProcessor);
-        verify(replyProcessor, timeout(100).times(BATCH_SIZE / 2))
-                .timestampResponse(anyLong(), any(Channel.class), any(MonitoringContext.class));
-        verify(replyProcessor, timeout(100).times(BATCH_SIZE / 2))
-                .commitResponse(anyLong(), anyLong(), any(Channel.class), any(MonitoringContext.class));
-        assertFalse(batch.isFull(), "Batch shouldn't be full");
-        assertEquals(batch.getNumEvents(), 0, "Num events should be 0");
+// TODO. Fix these asserts in new code
+//<<<<<<< HEAD
+//        batch.sendRepliesAndReset(replyProcessor, retryProcessor);
+//        verify(replyProcessor, timeout(100).times(BATCH_SIZE / 2))
+//                .timestampResponse(anyLong(), any(Channel.class), any(MonitoringContext.class));
+//        verify(replyProcessor, timeout(100).times(BATCH_SIZE / 2))
+//                .commitResponse(anyLong(), anyLong(), any(Channel.class), any(MonitoringContext.class));
+//        assertFalse(batch.isFull(), "Batch shouldn't be full");
+//        assertEquals(batch.getNumEvents(), 0, "Num events should be 0");
+//=======
+        final boolean MASTER_INSTANCE = true;
 
+        final boolean SHOULD_MAKE_HEURISTIC_DECISION = true;
+        batch.sendReply(replyProcessor, retryProcessor, (-1), MASTER_INSTANCE);
+        verify(replyProcessor, timeout(100).times(1))
+               .batchResponse(batch, (-1), !SHOULD_MAKE_HEURISTIC_DECISION);
+        assertTrue(batch.isFull(), "Batch shouldn't be empty");
+    }
+
+    // TODO Check this test with the contents of the master branch
+    @Test
+    public void testBatchFunctionalityWhenMastershipIsLost() {
+        Channel channel = Mockito.mock(Channel.class);
+
+        // Fill the batch with events till full
+        for (int i = 0; i < BATCH_SIZE; i++) {
+            if (i % 2 == 0) {
+                MonitoringContext monCtx = new MonitoringContext(metrics);
+                monCtx.timerStart("timestampPersistProcessor");
+                batch.addTimestamp(i, channel, monCtx);
+            } else {
+                MonitoringContext monCtx = new MonitoringContext(metrics);
+                monCtx.timerStart("commitPersistProcessor");
+                batch.addCommit(i, i + 1, channel, monCtx);
+            }
+        }
+
+        // Test that sending replies empties the batch also when the replica
+        // is NOT master and calls the ambiguousCommitResponse() method on the
+        // reply processor
+        final boolean MASTER_INSTANCE = true;
+        final boolean SHOULD_MAKE_HEURISTIC_DECISION = true;
+        batch.sendReply(replyProcessor, retryProcessor, (-1), !MASTER_INSTANCE);
+        verify(replyProcessor, timeout(100).times(1))
+               .batchResponse(batch, (-1), SHOULD_MAKE_HEURISTIC_DECISION);
+        assertTrue(batch.isFull(), "Batch should be full");
     }
 
 }

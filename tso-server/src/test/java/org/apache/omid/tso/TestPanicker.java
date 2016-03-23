@@ -41,7 +41,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
-@SuppressWarnings({"UnusedDeclaration"})
 public class TestPanicker {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestPanicker.class);
@@ -66,6 +65,7 @@ public class TestPanicker {
     // Please, remove me in a future commit
     @Test
     public void testTimestampOraclePanic() throws Exception {
+
         TimestampStorage storage = spy(new TimestampOracleImpl.InMemoryTimestampStorage());
         Panicker panicker = spy(new MockPanicker());
 
@@ -88,6 +88,7 @@ public class TestPanicker {
         allocThread.start();
 
         verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
+
     }
 
     // Note this test has been moved and refactored to TestPersistenceProcessor because
@@ -95,6 +96,7 @@ public class TestPanicker {
     // Please, remove me in a future commit
     @Test
     public void testCommitTablePanic() throws Exception {
+
         Panicker panicker = spy(new MockPanicker());
 
         doThrow(new IOException("Unable to write@TestPanicker")).when(mockWriter).flush();
@@ -114,16 +116,32 @@ public class TestPanicker {
 
         LeaseManager leaseManager = mock(LeaseManager.class);
         doReturn(true).when(leaseManager).stillInLeasePeriod();
-        PersistenceProcessor proc = new PersistenceProcessorImpl(new TSOServerConfig(),
-                                                                 metrics,
-                                                                 "localhost:1234",
-                                                                 leaseManager,
-                                                                 commitTable,
+        TSOServerConfig config = new TSOServerConfig();
+        BatchPool batchPool = new BatchPool(config);
+
+        PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[config.getPersistHandlerNum()];
+        for (int i = 0; i < config.getPersistHandlerNum(); i++) {
+            handlers[i] = new PersistenceProcessorHandler(metrics,
+                                                          "localhost:1234",
+                                                          leaseManager,
+                                                          commitTable,
+                                                          mock(ReplyProcessor.class),
+                                                          mock(RetryProcessor.class),
+                                                          panicker);
+        }
+
+        PersistenceProcessor proc = new PersistenceProcessorImpl(config,
+                                                                 batchPool,
                                                                  mock(ReplyProcessor.class),
-                                                                 mock(RetryProcessor.class),
-                                                                 panicker);
+                                                                 panicker,
+                                                                 handlers);
+
         proc.persistCommit(1, 2, null, new MonitoringContext(metrics));
+
+        new RequestProcessorImpl(metrics, mock(TimestampOracle.class), proc, panicker, mock(TSOServerConfig.class));
+
         verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
+
     }
 
     // Note this test has been moved and refactored to TestPersistenceProcessor because
@@ -131,6 +149,7 @@ public class TestPanicker {
     // Please, remove me in a future commit
     @Test
     public void testRuntimeExceptionTakesDownDaemon() throws Exception {
+
         Panicker panicker = spy(new MockPanicker());
 
         final CommitTable.Writer mockWriter = mock(CommitTable.Writer.class);
@@ -148,16 +167,31 @@ public class TestPanicker {
                 return mockClient;
             }
         };
-        PersistenceProcessor proc = new PersistenceProcessorImpl(new TSOServerConfig(),
-                                                                 metrics,
-                                                                 "localhost:1234",
-                                                                 mock(LeaseManager.class),
-                                                                 commitTable,
+        TSOServerConfig config = new TSOServerConfig();
+        BatchPool batchPool = new BatchPool(config);
+
+        PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[config.getPersistHandlerNum()];
+        for (int i = 0; i < config.getPersistHandlerNum(); i++) {
+            handlers[i] = new PersistenceProcessorHandler(metrics,
+                                                          "localhost:1234",
+                                                          mock(LeaseManager.class),
+                                                          commitTable,
+                                                          mock(ReplyProcessor.class),
+                                                          mock(RetryProcessor.class),
+                                                          panicker);
+        }
+
+        PersistenceProcessor proc = new PersistenceProcessorImpl(config,
+                                                                 batchPool,
                                                                  mock(ReplyProcessor.class),
-                                                                 mock(RetryProcessor.class),
-                                                                 panicker);
+                                                                 panicker,
+                                                                 handlers);
         proc.persistCommit(1, 2, null, new MonitoringContext(metrics));
+
+        new RequestProcessorImpl(metrics, mock(TimestampOracle.class), proc, panicker, mock(TSOServerConfig.class));
+
         verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
+
     }
 
 }
