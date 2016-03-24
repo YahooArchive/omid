@@ -45,37 +45,36 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static com.google.common.base.Charsets.UTF_8;
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_FAMILY;
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.LOW_WATERMARK_FAMILY;
+import static com.yahoo.omid.committable.hbase.HBaseCommitTableConfig.COMMIT_TABLE_QUALIFIER;
+import static com.yahoo.omid.committable.hbase.HBaseCommitTableConfig.INVALID_TX_QUALIFIER;
+import static com.yahoo.omid.committable.hbase.HBaseCommitTableConfig.LOW_WATERMARK_QUALIFIER;
+import static com.yahoo.omid.committable.hbase.HBaseCommitTableConfig.LOW_WATERMARK_ROW;
 
 public class HBaseCommitTable implements CommitTable {
 
     private static final Logger LOG = LoggerFactory.getLogger(HBaseCommitTable.class);
 
-    static final byte[] COMMIT_TABLE_QUALIFIER = "C".getBytes(UTF_8);
-    private static final byte[] INVALID_TX_QUALIFIER = "IT".getBytes(UTF_8);
-    static final byte[] LOW_WATERMARK_ROW = "LOW_WATERMARK".getBytes(UTF_8);
-    static final byte[] LOW_WATERMARK_QUALIFIER = "LWC".getBytes(UTF_8);
-
-    private final String tableName;
     private final Configuration hbaseConfig;
+    private final String tableName;
+    private final byte[] commitTableFamily;
+    private final byte[] lowWatermarkFamily;
     private final KeyGenerator keygen;
 
     /**
      * Create a hbase commit table.
-     * Note that we do not take ownership of the passed htable,
-     * it is just used to construct the writer and client.
+     * Note that we do not take ownership of the passed htable, it is just used to construct the writer and client.
      */
     @Inject
     public HBaseCommitTable(Configuration hbaseConfig, HBaseCommitTableConfig config) {
-        this(hbaseConfig, config.getTableName(), KeyGeneratorImplementations.defaultKeyGenerator());
+        this(hbaseConfig, config, KeyGeneratorImplementations.defaultKeyGenerator());
     }
 
-    protected HBaseCommitTable(Configuration hbaseConfig, String tableName, KeyGenerator keygen) {
+    public HBaseCommitTable(Configuration hbaseConfig, HBaseCommitTableConfig config, KeyGenerator keygen) {
 
         this.hbaseConfig = hbaseConfig;
-        this.tableName = tableName;
+        this.tableName = config.getTableName();
+        this.commitTableFamily = config.getCommitTableFamily();
+        this.lowWatermarkFamily = config.getLowWatermarkFamily();
         this.keygen = keygen;
 
     }
@@ -84,36 +83,36 @@ public class HBaseCommitTable implements CommitTable {
     // Reader and Writer
     // ----------------------------------------------------------------------------------------------------------------
 
-    public class HBaseWriter implements Writer {
+    private class HBaseWriter implements Writer {
 
+        private static final long INITIAL_LWM_VALUE = -1L;
         final HTable table;
         // Our own buffer for operations
         final List<Put> writeBuffer = new LinkedList<>();
+        volatile long lowWatermarkToStore = INITIAL_LWM_VALUE;
 
-        HBaseWriter(Configuration hbaseConfig, String tableName) throws IOException {
+        HBaseWriter() throws IOException {
             table = new HTable(hbaseConfig, tableName);
         }
-
-        // Writer Implementation
 
         @Override
         public void addCommittedTransaction(long startTimestamp, long commitTimestamp) throws IOException {
             assert (startTimestamp < commitTimestamp);
             Put put = new Put(startTimestampToKey(startTimestamp), startTimestamp);
-            put.add(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER, encodeCommitTimestamp(startTimestamp, commitTimestamp));
+            byte[] value = encodeCommitTimestamp(startTimestamp, commitTimestamp);
+            put.add(commitTableFamily, COMMIT_TABLE_QUALIFIER, value);
             writeBuffer.add(put);
         }
 
         @Override
         public void updateLowWatermark(long lowWatermark) throws IOException {
-            Put put = new Put(LOW_WATERMARK_ROW);
-            put.add(LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER, Bytes.toBytes(lowWatermark));
-            writeBuffer.add(put);
+            lowWatermarkToStore = lowWatermark;
         }
 
         @Override
         public void flush() throws IOException {
             try {
+                addLowWatermarkToStoreToWriteBuffer();
                 table.put(writeBuffer);
                 writeBuffer.clear();
             } catch (IOException e) {
@@ -133,9 +132,19 @@ public class HBaseCommitTable implements CommitTable {
             table.close();
         }
 
+        private void addLowWatermarkToStoreToWriteBuffer() {
+            long lowWatermark = lowWatermarkToStore;
+            if(lowWatermark != INITIAL_LWM_VALUE) {
+                Put put = new Put(LOW_WATERMARK_ROW);
+                put.add(lowWatermarkFamily, LOW_WATERMARK_QUALIFIER, Bytes.toBytes(lowWatermark));
+                writeBuffer.add(put);
+            }
+        }
+
     }
 
-    public class HBaseClient implements Client, Runnable {
+    class HBaseClient implements Client, Runnable {
+
         final HTable table;
         final HTable deleteTable;
         final ExecutorService deleteBatchExecutor;
@@ -143,7 +152,7 @@ public class HBaseCommitTable implements CommitTable {
         boolean isClosed = false; // @GuardedBy("this")
         final static int DELETE_BATCH_SIZE = 1024;
 
-        HBaseClient(Configuration hbaseConfig, String tableName) throws IOException {
+        HBaseClient() throws IOException {
             table = new HTable(hbaseConfig, tableName);
             table.setAutoFlush(false, true);
             deleteTable = new HTable(hbaseConfig, tableName);
@@ -161,8 +170,8 @@ public class HBaseCommitTable implements CommitTable {
             SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.create();
             try {
                 Get get = new Get(startTimestampToKey(startTimestamp));
-                get.addColumn(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER);
-                get.addColumn(COMMIT_TABLE_FAMILY, INVALID_TX_QUALIFIER);
+                get.addColumn(commitTableFamily, COMMIT_TABLE_QUALIFIER);
+                get.addColumn(commitTableFamily, INVALID_TX_QUALIFIER);
 
                 Result result = table.get(get);
 
@@ -174,10 +183,9 @@ public class HBaseCommitTable implements CommitTable {
                 }
 
                 if (containsATimestamp(result)) {
-                    long commitTSValue = decodeCommitTimestamp(startTimestamp,
-                            result.getValue(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER));
-                    CommitTimestamp validCT =
-                            new CommitTimestamp(Location.COMMIT_TABLE, commitTSValue, true);
+                    long commitTSValue =
+                            decodeCommitTimestamp(startTimestamp, result.getValue(commitTableFamily, COMMIT_TABLE_QUALIFIER));
+                    CommitTimestamp validCT = new CommitTimestamp(Location.COMMIT_TABLE, commitTSValue, true);
                     f.set(Optional.of(validCT));
                 } else {
                     f.set(Optional.<CommitTimestamp>absent());
@@ -194,10 +202,10 @@ public class HBaseCommitTable implements CommitTable {
             SettableFuture<Long> f = SettableFuture.create();
             try {
                 Get get = new Get(LOW_WATERMARK_ROW);
-                get.addColumn(LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER);
+                get.addColumn(lowWatermarkFamily, LOW_WATERMARK_QUALIFIER);
                 Result result = table.get(get);
                 if (containsLowWatermark(result)) {
-                    long lowWatermark = Bytes.toLong(result.getValue(LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER));
+                    long lowWatermark = Bytes.toLong(result.getValue(lowWatermarkFamily, LOW_WATERMARK_QUALIFIER));
                     f.set(lowWatermark);
                 } else {
                     f.set(0L);
@@ -244,7 +252,7 @@ public class HBaseCommitTable implements CommitTable {
             try {
                 byte[] row = startTimestampToKey(startTimestamp);
                 Put invalidationPut = new Put(row, startTimestamp);
-                invalidationPut.add(COMMIT_TABLE_FAMILY, INVALID_TX_QUALIFIER, null);
+                invalidationPut.add(commitTableFamily, INVALID_TX_QUALIFIER, null);
 
                 // We need to write to the invalid column only if the commit timestamp
                 // is empty. This has to be done atomically. Otherwise, if we first
@@ -252,7 +260,7 @@ public class HBaseCommitTable implements CommitTable {
                 // timestamp is added and read by a transaction, then snapshot isolation
                 // might not be hold (due to the invalidation)
                 // TODO: Decide what we should we do if we can not contact the commit table. loop till succeed???
-                boolean result = table.checkAndPut(row, COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER, null, invalidationPut);
+                boolean result = table.checkAndPut(row, commitTableFamily, COMMIT_TABLE_QUALIFIER, null, invalidationPut);
                 f.set(result);
             } catch (IOException ioe) {
                 f.setException(ioe);
@@ -261,6 +269,7 @@ public class HBaseCommitTable implements CommitTable {
         }
 
         @Override
+        @SuppressWarnings("InfiniteLoopStatement")
         public void run() {
             List<DeleteRequest> reqbatch = new ArrayList<>();
             try {
@@ -337,15 +346,15 @@ public class HBaseCommitTable implements CommitTable {
         }
 
         private boolean containsATimestamp(Result result) {
-            return (result != null && result.containsColumn(COMMIT_TABLE_FAMILY, COMMIT_TABLE_QUALIFIER));
+            return (result != null && result.containsColumn(commitTableFamily, COMMIT_TABLE_QUALIFIER));
         }
 
         private boolean containsInvalidTransaction(Result result) {
-            return (result != null && result.containsColumn(COMMIT_TABLE_FAMILY, INVALID_TX_QUALIFIER));
+            return (result != null && result.containsColumn(commitTableFamily, INVALID_TX_QUALIFIER));
         }
 
         private boolean containsLowWatermark(Result result) {
-            return (result != null && result.containsColumn(LOW_WATERMARK_FAMILY, LOW_WATERMARK_QUALIFIER));
+            return (result != null && result.containsColumn(lowWatermarkFamily, LOW_WATERMARK_QUALIFIER));
         }
 
         private class DeleteRequest extends AbstractFuture<Void> {
@@ -375,19 +384,19 @@ public class HBaseCommitTable implements CommitTable {
 
     @Override
     public Writer getWriter() throws IOException {
-        return new HBaseWriter(hbaseConfig, tableName);
+        return new HBaseWriter();
     }
 
     @Override
     public Client getClient() throws IOException {
-        return new HBaseClient(hbaseConfig, tableName);
+        return new HBaseClient();
     }
 
     // ----------------------------------------------------------------------------------------------------------------
     // Helper methods
     // ----------------------------------------------------------------------------------------------------------------
 
-    protected byte[] startTimestampToKey(long startTimestamp) throws IOException {
+    private byte[] startTimestampToKey(long startTimestamp) throws IOException {
         return keygen.startTimestampToKey(startTimestamp);
     }
 

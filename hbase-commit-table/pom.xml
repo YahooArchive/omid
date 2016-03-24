@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.yahoo.omid</groupId>
         <artifactId>omid</artifactId>
-        <version>0.8.1.21-SNAPSHOT</version>
+        <version>0.8.1.27-SNAPSHOT</version>
     </parent>
 
     <artifactId>hbase-commit-table</artifactId>
@@ -55,13 +55,6 @@
             <groupId>com.google.inject</groupId>
             <artifactId>guice</artifactId>
             <version>${guice.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.beust</groupId>
-            <artifactId>jcommander</artifactId>
-            <version>${jcommander.version}</version>
-            <type>jar</type>
-            <scope>compile</scope>
         </dependency>
 
         <!-- end utils -->

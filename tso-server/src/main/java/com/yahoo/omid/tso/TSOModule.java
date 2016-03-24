@@ -18,17 +18,22 @@ package com.yahoo.omid.tso;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.name.Names;
+import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
 import com.yahoo.omid.timestamp.storage.TimestampStorage;
+import com.yahoo.omid.tools.hbase.SecureHBaseConfig;
 
+import javax.inject.Named;
 import javax.inject.Singleton;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_NAME_KEY;
+import static com.yahoo.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
 
 class TSOModule extends AbstractModule {
+    private final TSOServerConfig config;
 
-    private final TSOServerCommandLineConfig config;
-
-    TSOModule(TSOServerCommandLineConfig config) {
+    TSOModule(TSOServerConfig config) {
         this.config = config;
     }
 
@@ -36,31 +41,25 @@ class TSOModule extends AbstractModule {
     protected void configure() {
 
         bind(TSOChannelHandler.class).in(Singleton.class);
-
         bind(TSOStateManager.class).to(TSOStateManagerImpl.class).in(Singleton.class);
-
         bind(TimestampOracle.class).to(TimestampOracleImpl.class).in(Singleton.class);
         bind(Panicker.class).to(SystemExitPanicker.class).in(Singleton.class);
-
-        bindConstant().annotatedWith(Names.named(COMMIT_TABLE_NAME_KEY))
-                .to(config.getCommitTable());
-
-        bindConstant().annotatedWith(Names.named(TimestampStorage.TIMESTAMPSTORAGE_TABLE_NAME_KEY))
-                .to(config.getTimestampTable());
 
         // Disruptor setup
         install(new DisruptorModule());
 
-        // LeaseManagement setup
-        install(new LeaseManagementModule(config));
-
-        // ZK Module
-        install(new ZKModule(config));
     }
 
     @Provides
-    TSOServerCommandLineConfig provideTSOServerConfig() {
+    TSOServerConfig provideTSOServerConfig() {
         return config;
+    }
+
+    @Provides
+    @Named(TSO_HOST_AND_PORT_KEY)
+    String provideTSOHostAndPort() throws SocketException, UnknownHostException {
+        return NetworkInterfaceUtils.getTSOHostAndPort(config);
+
     }
 
 }

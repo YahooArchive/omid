@@ -19,15 +19,14 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 
+import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorageConfig.*;
 import static org.testng.AssertJUnit.assertEquals;
 
 public class TestHBaseTimestampStorage {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestHBaseTimestampStorage.class);
 
-    private static final String TEST_TABLE = "TEST";
-
-    private static final TableName TABLE_NAME = TableName.valueOf(TEST_TABLE);
+    private static final TableName TABLE_NAME = TableName.valueOf(DEFAULT_TIMESTAMP_STORAGE_TABLE_NAME);
 
     private static HBaseTestingUtility testutil;
     private static MiniHBaseCluster hbasecluster;
@@ -56,17 +55,17 @@ public class TestHBaseTimestampStorage {
     public void setUp() throws Exception {
         HBaseAdmin admin = testutil.getHBaseAdmin();
 
-        if (!admin.tableExists(TEST_TABLE)) {
+        if (!admin.tableExists(DEFAULT_TIMESTAMP_STORAGE_TABLE_NAME)) {
             HTableDescriptor desc = new HTableDescriptor(TABLE_NAME);
-            HColumnDescriptor datafam = new HColumnDescriptor(HBaseTimestampStorage.TSO_FAMILY);
+            HColumnDescriptor datafam = new HColumnDescriptor(DEFAULT_TIMESTAMP_STORAGE_CF_NAME);
             datafam.setMaxVersions(Integer.MAX_VALUE);
             desc.addFamily(datafam);
 
             admin.createTable(desc);
         }
 
-        if (admin.isTableDisabled(TEST_TABLE)) {
-            admin.enableTable(TEST_TABLE);
+        if (admin.isTableDisabled(DEFAULT_TIMESTAMP_STORAGE_TABLE_NAME)) {
+            admin.enableTable(DEFAULT_TIMESTAMP_STORAGE_TABLE_NAME);
         }
         HTableDescriptor[] tables = admin.listTables();
         for (HTableDescriptor t : tables) {
@@ -79,8 +78,8 @@ public class TestHBaseTimestampStorage {
         try {
             LOG.info("tearing Down");
             HBaseAdmin admin = testutil.getHBaseAdmin();
-            admin.disableTable(TEST_TABLE);
-            admin.deleteTable(TEST_TABLE);
+            admin.disableTable(DEFAULT_TIMESTAMP_STORAGE_TABLE_NAME);
+            admin.deleteTable(DEFAULT_TIMESTAMP_STORAGE_TABLE_NAME);
 
         } catch (Exception e) {
             LOG.error("Error tearing down", e);
@@ -92,7 +91,6 @@ public class TestHBaseTimestampStorage {
 
         final long INITIAL_TS_VALUE = 0;
         HBaseTimestampStorageConfig config = new HBaseTimestampStorageConfig();
-        config.setTableName(TEST_TABLE);
         HBaseTimestampStorage tsStorage = new HBaseTimestampStorage(hbaseConf, config);
 
         // Test that the first time we get the timestamp is the initial value

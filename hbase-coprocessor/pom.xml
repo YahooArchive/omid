@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.yahoo.omid</groupId>
         <artifactId>omid</artifactId>
-        <version>0.8.1.21-SNAPSHOT</version>
+        <version>0.8.1.27-SNAPSHOT</version>
     </parent>
 
     <artifactId>hbase-coprocessor</artifactId>
@@ -18,20 +18,20 @@
 
         <dependency>
             <groupId>com.yahoo.omid</groupId>
-            <artifactId>hbase-client</artifactId>
+            <artifactId>hbase-commit-table</artifactId>
             <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.yahoo.omid</groupId>
-            <artifactId>hbase-client</artifactId>
-            <version>${project.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.yahoo.omid</groupId>
             <artifactId>tso-server</artifactId>
             <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>hbase-client</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.yahoo.omid</groupId>
@@ -62,6 +62,12 @@
             <groupId>com.google.inject</groupId>
             <artifactId>guice</artifactId>
             <version>${guice.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.beust</groupId>
+            <artifactId>jcommander</artifactId>
+            <version>${jcommander.version}</version>
         </dependency>
 
         <!-- end utils -->
@@ -156,6 +162,5 @@
         </profile>
 
     </profiles>
-
 
 </project>

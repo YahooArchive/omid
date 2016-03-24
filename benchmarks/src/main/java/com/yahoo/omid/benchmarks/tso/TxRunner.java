@@ -29,10 +29,9 @@ import com.yahoo.omid.metrics.Timer;
 import com.yahoo.omid.tools.hbase.HBaseLogin;
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
 import com.yahoo.omid.tsoclient.CellId;
+import com.yahoo.omid.tsoclient.OmidClientConfiguration;
 import com.yahoo.omid.tsoclient.TSOClient;
 import com.yahoo.omid.tsoclient.TSOFuture;
-import org.apache.commons.configuration.BaseConfiguration;
-import org.apache.commons.configuration.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,10 +48,8 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import static com.codahale.metrics.MetricRegistry.name;
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
 
-public class TxRunner implements Runnable {
+class TxRunner implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(TxRunner.class);
 
@@ -71,7 +68,7 @@ public class TxRunner implements Runnable {
     /**
      * Maximum number of modified rows in each transaction
      */
-    public static final int DEFAULT_WRITESET_SIZE = 20;
+    static final int DEFAULT_WRITESET_SIZE = 20;
 
     private volatile boolean isRunning = false;
 
@@ -92,7 +89,7 @@ public class TxRunner implements Runnable {
     private final Timer abortTimer;
     private final Counter errorCounter;
 
-    public TxRunner(MetricsRegistry metrics, Config expConfig) throws IOException {
+    TxRunner(MetricsRegistry metrics, Config expConfig) throws IOException, InterruptedException {
 
         // Tx Runner config
         this.outstandingTxs = new Semaphore(expConfig.maxInFlight);
@@ -126,13 +123,10 @@ public class TxRunner implements Runnable {
         this.commitTableClient = commitTable.getClient();
 
         // TSO Client initialization
-        Configuration tsoConfig = new BaseConfiguration();
-        tsoConfig.setProperty(TSO_HOST_CONFKEY, expConfig.tsoHostPort.getHostText());
-        tsoConfig.setProperty(TSO_PORT_CONFKEY, expConfig.tsoHostPort.getPortOrDefault(1234));
-        tsoConfig.setProperty("request.timeout-ms", -1); // TODO ???
         LOG.info("TxRunner-{} [ Connected to TSO in {} ]", txRunnerId, expConfig.tsoHostPort);
-
-        this.tsoClient = TSOClient.newBuilder().withConfiguration(tsoConfig).build();
+        OmidClientConfiguration tsoClientConf = new OmidClientConfiguration();
+        tsoClientConf.setConnectionString(expConfig.tsoHostPort.toString());
+        this.tsoClient = TSOClient.newInstance(tsoClientConf);
 
         // Stat initialization
         String hostName = InetAddress.getLocalHost().getHostName();
@@ -162,7 +156,7 @@ public class TxRunner implements Runnable {
         }
     }
 
-    public void stop() {
+    void stop() {
         isRunning = false;
     }
 
@@ -185,7 +179,7 @@ public class TxRunner implements Runnable {
         }
     }
 
-    class TimestampListener implements Runnable {
+    private class TimestampListener implements Runnable {
         TSOFuture<Long> tsFuture;
         final long tsRequestTime;
 
@@ -213,7 +207,7 @@ public class TxRunner implements Runnable {
         }
     }
 
-    class DeferredCommitterListener implements Runnable {
+    private class DeferredCommitterListener implements Runnable {
         final long txId;
 
         DeferredCommitterListener(long txId) {
@@ -235,7 +229,7 @@ public class TxRunner implements Runnable {
         }
     }
 
-    class CommitListener implements Runnable {
+    private class CommitListener implements Runnable {
         final long txId;
         final long commitRequestTime;
         TSOFuture<Long> commitFuture;

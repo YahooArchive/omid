@@ -68,13 +68,13 @@ public class TSOChannelHandler extends SimpleChannelHandler implements Closeable
 
     private RequestProcessor requestProcessor;
 
-    private TSOServerCommandLineConfig config;
+    private TSOServerConfig config;
 
     private MetricsRegistry metrics;
 
     @Inject
-    public TSOChannelHandler(TSOServerCommandLineConfig config, RequestProcessor requestProcessor,
-                             MetricsRegistry metrics) {
+    public TSOChannelHandler(TSOServerConfig config, RequestProcessor requestProcessor, MetricsRegistry metrics) {
+
         this.config = config;
         this.metrics = metrics;
         this.requestProcessor = requestProcessor;
@@ -86,12 +86,13 @@ public class TSOChannelHandler extends SimpleChannelHandler implements Closeable
 
         this.bootstrap = new ServerBootstrap(factory);
         bootstrap.setPipelineFactory(new TSOPipelineFactory(this));
+
     }
 
     /**
      * Allows to create and connect the communication channel closing the previous one if existed
      */
-    public void reconnect() {
+    void reconnect() {
         if (listeningChannel == null && channelGroup == null) {
             LOG.debug("Creating communication channel...");
         } else {
@@ -109,7 +110,7 @@ public class TSOChannelHandler extends SimpleChannelHandler implements Closeable
     /**
      * Allows to close the communication channel
      */
-    public void closeConnection() {
+    void closeConnection() {
         LOG.debug("Closing communication channel...");
         if (listeningChannel != null) {
             LOG.debug("\tUnbinding listening channel {}", listeningChannel);
@@ -123,9 +124,9 @@ public class TSOChannelHandler extends SimpleChannelHandler implements Closeable
         }
     }
 
-    // ------------------------------------------------------------------------
-    // ------------- Netty SimpleChannelHandler implementation ----------------
-    // ------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------------------------------------
+    // Netty SimpleChannelHandler implementation
+    // ----------------------------------------------------------------------------------------------------------------
 
     @Override
     public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
@@ -162,15 +163,14 @@ public class TSOChannelHandler extends SimpleChannelHandler implements Closeable
             }
 
             if (request.hasTimestampRequest()) {
-                requestProcessor.timestampRequest(ctx.getChannel(),
-                        new MonitoringContext(metrics));
+                requestProcessor.timestampRequest(ctx.getChannel(), new MonitoringContext(metrics));
             } else if (request.hasCommitRequest()) {
                 TSOProto.CommitRequest cr = request.getCommitRequest();
                 requestProcessor.commitRequest(cr.getStartTimestamp(),
-                        cr.getCellIdList(),
-                        cr.getIsRetry(),
-                        ctx.getChannel(),
-                        new MonitoringContext(metrics));
+                                               cr.getCellIdList(),
+                                               cr.getIsRetry(),
+                                               ctx.getChannel(),
+                                               new MonitoringContext(metrics));
             } else {
                 LOG.error("Invalid request {}. Closing channel {}", request, ctx.getChannel());
                 ctx.getChannel().close();
@@ -180,6 +180,7 @@ public class TSOChannelHandler extends SimpleChannelHandler implements Closeable
         }
     }
 
+    @SuppressWarnings("ThrowableResultOfMethodCallIgnored")
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) {
         if (e.getCause() instanceof ClosedChannelException) {
@@ -190,23 +191,23 @@ public class TSOChannelHandler extends SimpleChannelHandler implements Closeable
         ctx.getChannel().close();
     }
 
-    // ------------------------------------------------------------------------
-    // ----------------------- Closeable implementation -----------------------
-    // ------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------------------------------------
+    // Closeable implementation
+    // ----------------------------------------------------------------------------------------------------------------
     @Override
     public void close() throws IOException {
         closeConnection();
         factory.releaseExternalResources();
     }
 
-    // ------------------------------------------------------------------------
-    // -------------------- Helper methods and classes ------------------------
-    // ------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------------------------------------
+    // Helper methods and classes
+    // ----------------------------------------------------------------------------------------------------------------
 
     /**
      * Contains the required context for handshake
      */
-    static class TSOChannelContext {
+    private static class TSOChannelContext {
 
         boolean handshakeComplete;
 
@@ -224,8 +225,8 @@ public class TSOChannelHandler extends SimpleChannelHandler implements Closeable
 
     }
 
-    private void checkHandshake(final ChannelHandlerContext ctx,
-                                TSOProto.HandshakeRequest request) {
+    private void checkHandshake(final ChannelHandlerContext ctx, TSOProto.HandshakeRequest request) {
+
         TSOProto.HandshakeResponse.Builder response = TSOProto.HandshakeResponse.newBuilder();
         if (request.hasClientCapabilities()) {
 
@@ -237,17 +238,19 @@ public class TSOChannelHandler extends SimpleChannelHandler implements Closeable
         } else {
             response.setClientCompatible(false);
         }
-        ctx.getChannel().write(TSOProto.Response.newBuilder()
-                .setHandshakeResponse(response.build()).build());
+        ctx.getChannel().write(TSOProto.Response.newBuilder().setHandshakeResponse(response.build()).build());
+
     }
 
     private boolean handshakeCompleted(ChannelHandlerContext ctx) {
+
         Object o = ctx.getAttachment();
         if (o instanceof TSOChannelContext) {
             TSOChannelContext tsoCtx = (TSOChannelContext) o;
             return tsoCtx.getHandshakeComplete();
         }
         return false;
+
     }
 
     /**
@@ -257,7 +260,7 @@ public class TSOChannelHandler extends SimpleChannelHandler implements Closeable
 
         private final ChannelHandler handler;
 
-        public TSOPipelineFactory(ChannelHandler handler) {
+        TSOPipelineFactory(ChannelHandler handler) {
             this.handler = handler;
         }
 
@@ -267,14 +270,10 @@ public class TSOChannelHandler extends SimpleChannelHandler implements Closeable
             // Max packet length is 10MB. Transactions with so many cells
             // that the packet is rejected will receive a ServiceUnavailableException.
             // 10MB is enough for 2 million cells in a transaction though.
-            pipeline.addLast("lengthbaseddecoder",
-                    new LengthFieldBasedFrameDecoder(10 * 1024 * 1024, 0, 4, 0, 4));
+            pipeline.addLast("lengthbaseddecoder", new LengthFieldBasedFrameDecoder(10 * 1024 * 1024, 0, 4, 0, 4));
             pipeline.addLast("lengthprepender", new LengthFieldPrepender(4));
-
-            pipeline.addLast("protobufdecoder",
-                    new ProtobufDecoder(TSOProto.Request.getDefaultInstance()));
+            pipeline.addLast("protobufdecoder", new ProtobufDecoder(TSOProto.Request.getDefaultInstance()));
             pipeline.addLast("protobufencoder", new ProtobufEncoder());
-
             pipeline.addLast("handler", handler);
 
             return pipeline;

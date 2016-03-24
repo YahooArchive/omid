@@ -38,11 +38,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.codahale.metrics.MetricRegistry.name;
+import static com.yahoo.omid.metrics.MetricsUtils.name;
 
 /**
- * Manages the retry requests that clients can send when they did
- * not received the response in the specified timeout
+ * Manages the retry requests that clients can send when they did  not received the response in the specified timeout
  */
 class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>, RetryProcessor {
 

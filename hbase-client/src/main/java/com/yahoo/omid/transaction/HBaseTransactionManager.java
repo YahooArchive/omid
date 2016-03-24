@@ -15,7 +15,7 @@
  */
 package com.yahoo.omid.transaction;
 
-import com.google.common.base.Charsets;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ListeningExecutorService;
@@ -25,11 +25,9 @@ import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
 import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
-import com.yahoo.omid.metrics.MetricsRegistry;
-import com.yahoo.omid.metrics.NullMetricsProvider;
+import com.yahoo.omid.tools.hbase.HBaseLogin;
 import com.yahoo.omid.tsoclient.CellId;
 import com.yahoo.omid.tsoclient.TSOClient;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -42,18 +40,9 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_NAME_KEY;
-
 public class HBaseTransactionManager extends AbstractTransactionManager implements HBaseTransactionClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(HBaseTransactionManager.class);
-
-    static final byte[] SHADOW_CELL_SUFFIX = "\u0080".getBytes(Charsets.UTF_8); // Non printable char (128 ASCII)
-
-    public enum PostCommitMode {
-        SYNC, ASYNC
-    }
 
     private static class HBaseTransactionFactory implements TransactionFactory<HBaseCellId> {
 
@@ -66,128 +55,121 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
 
     }
 
-    public static class Builder {
-        Configuration conf = new Configuration();
-        MetricsRegistry metricsRegistry = new NullMetricsProvider();
-        PostCommitMode postCommitMode = PostCommitMode.SYNC;
-        TSOClient tsoClient;
-        CommitTable.Client commitTableClient;
-        PostCommitActions postCommitter;
+    // ----------------------------------------------------------------------------------------------------------------
+    // Construction
+    // ----------------------------------------------------------------------------------------------------------------
 
-        private Builder() {
+    public static TransactionManager newInstance() throws IOException, InterruptedException {
+        return newInstance(new HBaseOmidClientConfiguration());
+    }
+
+    public static TransactionManager newInstance(HBaseOmidClientConfiguration configuration)
+            throws IOException, InterruptedException {
+        //Logging in to Secure HBase if required
+        HBaseLogin.loginIfNeeded(configuration);
+        return builder(configuration).build();
+    }
+
+    @VisibleForTesting
+    static class Builder {
+
+        // Required parameters
+        private final HBaseOmidClientConfiguration hbaseOmidClientConf;
+
+        // Optional parameters - initialized to default values
+        private Optional<TSOClient> tsoClient = Optional.absent();
+        private Optional<CommitTable.Client> commitTableClient = Optional.absent();
+        private Optional<PostCommitActions> postCommitter = Optional.absent();
+
+        private Builder(HBaseOmidClientConfiguration hbaseOmidClientConf) {
+            this.hbaseOmidClientConf = hbaseOmidClientConf;
         }
 
-        public Builder withConfiguration(Configuration conf) {
-            this.conf = conf;
+        Builder tsoClient(TSOClient tsoClient) {
+            this.tsoClient = Optional.of(tsoClient);
             return this;
         }
 
-        public Builder withMetrics(MetricsRegistry metricsRegistry) {
-            this.metricsRegistry = metricsRegistry;
+        Builder commitTableClient(CommitTable.Client client) {
+            this.commitTableClient = Optional.of(client);
             return this;
         }
 
-        public Builder withTSOClient(TSOClient tsoClient) {
-            this.tsoClient = tsoClient;
+        Builder postCommitter(PostCommitActions postCommitter) {
+            this.postCommitter = Optional.of(postCommitter);
             return this;
         }
 
-        public Builder withCommitTableClient(CommitTable.Client client) {
-            this.commitTableClient = client;
-            return this;
-        }
+        HBaseTransactionManager build() throws IOException, InterruptedException {
 
-        public Builder postCommitter(PostCommitActions postCommitter) {
-            this.postCommitter = postCommitter;
-            return this;
-        }
+            CommitTable.Client commitTableClient = this.commitTableClient.or(buildCommitTableClient()).get();
+            PostCommitActions postCommitter = this.postCommitter.or(buildPostCommitter(commitTableClient)).get();
+            TSOClient tsoClient = this.tsoClient.or(buildTSOClient()).get();
 
-        public Builder postCommitMode(PostCommitMode postCommitMode) {
-            this.postCommitMode = postCommitMode;
-            return this;
-        }
-
-        public HBaseTransactionManager build() throws OmidInstantiationException {
-
-            boolean ownsTsoClient = false;
-            if (tsoClient == null) {
-                tsoClient = TSOClient.newBuilder()
-                        .withConfiguration(convertToCommonsConf(conf))
-                        .build();
-                ownsTsoClient = true;
-            }
-
-            boolean ownsCommitTableClient = false;
-            if (commitTableClient == null) {
-                try {
-                    String commitTableName = conf.get(COMMIT_TABLE_NAME_KEY, COMMIT_TABLE_DEFAULT_NAME);
-                    HBaseCommitTableConfig config = new HBaseCommitTableConfig(commitTableName);
-                    CommitTable commitTable = new HBaseCommitTable(conf, config);
-                    commitTableClient = commitTable.getClient();
-                    ownsCommitTableClient = true;
-                } catch (IOException e) {
-                    throw new OmidInstantiationException("Exception whilst getting the CommitTable client", e);
-                }
-            }
-
-            if (postCommitter == null) {
-                PostCommitActions syncPostCommitter = new HBaseSyncPostCommitter(metricsRegistry, commitTableClient);
-                switch(postCommitMode) {
-                    case ASYNC:
-                        ListeningExecutorService postCommitExecutor =
-                                MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor(
-                                        new ThreadFactoryBuilder().setNameFormat("postCommit-%d").build()));
-                        postCommitter = new HBaseAsyncPostCommitter(syncPostCommitter, postCommitExecutor);
-                        break;
-                    case SYNC:
-                    default:
-                        postCommitter = syncPostCommitter;
-                        break;
-                }
-            }
-
-            return new HBaseTransactionManager(metricsRegistry,
+            return new HBaseTransactionManager(hbaseOmidClientConf,
                                                postCommitter,
                                                tsoClient,
-                                               ownsTsoClient,
                                                commitTableClient,
-                                               ownsCommitTableClient,
                                                new HBaseTransactionFactory());
         }
 
-        private org.apache.commons.configuration.Configuration convertToCommonsConf(Configuration hconf) {
-            org.apache.commons.configuration.Configuration conf =
-                    new org.apache.commons.configuration.BaseConfiguration();
-            for (Map.Entry<String, String> e : hconf) {
-                conf.addProperty(e.getKey(), e.getValue());
+        private Optional<TSOClient> buildTSOClient() throws IOException, InterruptedException {
+            return Optional.of(TSOClient.newInstance(hbaseOmidClientConf.getOmidClientConfiguration()));
+        }
+
+
+        private Optional<CommitTable.Client> buildCommitTableClient() throws IOException {
+            HBaseCommitTableConfig commitTableConf = new HBaseCommitTableConfig();
+            commitTableConf.setTableName(hbaseOmidClientConf.getCommitTableName());
+            CommitTable commitTable = new HBaseCommitTable(hbaseOmidClientConf.getHBaseConfiguration(), commitTableConf);
+            return Optional.of(commitTable.getClient());
+        }
+
+        private Optional<PostCommitActions> buildPostCommitter(CommitTable.Client commitTableClient ) {
+
+            PostCommitActions postCommitter;
+            PostCommitActions syncPostCommitter = new HBaseSyncPostCommitter(hbaseOmidClientConf.getMetrics(),
+                                                                             commitTableClient);
+            switch(hbaseOmidClientConf.getPostCommitMode()) {
+                case ASYNC:
+                    ListeningExecutorService postCommitExecutor =
+                            MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor(
+                                    new ThreadFactoryBuilder().setNameFormat("postCommit-%d").build()));
+                    postCommitter = new HBaseAsyncPostCommitter(syncPostCommitter, postCommitExecutor);
+                    break;
+                case SYNC:
+                default:
+                    postCommitter = syncPostCommitter;
+                    break;
             }
-            return conf;
+
+            return Optional.of(postCommitter);
         }
 
     }
 
-    public static Builder newBuilder() {
-        return new Builder();
+    @VisibleForTesting
+    static Builder builder(HBaseOmidClientConfiguration hbaseOmidClientConf) {
+        return new Builder(hbaseOmidClientConf);
     }
 
-    private HBaseTransactionManager(MetricsRegistry metrics,
+    private HBaseTransactionManager(HBaseOmidClientConfiguration hBaseOmidClientConfiguration,
                                     PostCommitActions postCommitter,
                                     TSOClient tsoClient,
-                                    boolean ownsTSOClient,
                                     CommitTable.Client commitTableClient,
-                                    boolean ownsCommitTableClient,
-                                    HBaseTransactionFactory hBaseTransactionFactory)
-    {
+                                    HBaseTransactionFactory hBaseTransactionFactory) {
 
-        super(metrics,
+        super(hBaseOmidClientConfiguration.getMetrics(),
               postCommitter,
               tsoClient,
-              ownsTSOClient,
               commitTableClient,
-              ownsCommitTableClient,
               hBaseTransactionFactory);
 
     }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // AbstractTransactionManager overwritten methods
+    // ----------------------------------------------------------------------------------------------------------------
 
     @Override
     public void preCommit(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {
@@ -210,6 +192,10 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
             throw new TransactionManagerException("Exception while flushing writes", e);
         }
     }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // HBaseTransactionClient method implementations
+    // ----------------------------------------------------------------------------------------------------------------
 
     @Override
     public boolean isCommitted(HBaseCellId hBaseCellId) throws TransactionException {
@@ -254,7 +240,6 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
     // Helper methods
     // ----------------------------------------------------------------------------------------------------------------
 
-    // TODO: move to hbase commons package
     static HBaseTransaction enforceHBaseTransactionAsParam(AbstractTransaction<? extends CellId> tx) {
 
         if (tx instanceof HBaseTransaction) {
@@ -271,7 +256,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
         private HBaseCellId hBaseCellId;
         private final Map<Long, Long> commitCache;
 
-        public CommitTimestampLocatorImpl(HBaseCellId hBaseCellId, Map<Long, Long> commitCache) {
+        CommitTimestampLocatorImpl(HBaseCellId hBaseCellId, Map<Long, Long> commitCache) {
             this.hBaseCellId = hBaseCellId;
             this.commitCache = commitCache;
         }
@@ -285,8 +270,7 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
         }
 
         @Override
-        public Optional<Long> readCommitTimestampFromShadowCell(long startTimestamp)
-                throws IOException {
+        public Optional<Long> readCommitTimestampFromShadowCell(long startTimestamp) throws IOException {
 
             Get get = new Get(hBaseCellId.getRow());
             byte[] family = hBaseCellId.getFamily();

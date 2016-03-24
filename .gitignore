@@ -17,3 +17,4 @@ lib/
 
 # TestNG
 */test-output/
+common/src/main/java/com/yahoo/omid/proto/

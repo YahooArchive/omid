@@ -25,6 +25,10 @@ import static org.testng.AssertJUnit.assertTrue;
 public class TestRequestProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestRequestProcessor.class);
+
+    private static final int CONFLICT_MAP_SIZE = 1000;
+    private static final int CONFLICT_MAP_ASSOCIATIVITY = 32;
+
     private MetricsRegistry metrics = new NullMetricsProvider();
 
     private PersistenceProcessor persist;
@@ -40,29 +44,27 @@ public class TestRequestProcessor {
         // Build the required scaffolding for the test
         MetricsRegistry metrics = new NullMetricsProvider();
 
-        TimestampOracleImpl timestampOracle = new TimestampOracleImpl(metrics,
-                new TimestampOracleImpl.InMemoryTimestampStorage(), new MockPanicker());
+        TimestampOracleImpl timestampOracle =
+                new TimestampOracleImpl(metrics, new TimestampOracleImpl.InMemoryTimestampStorage(), new MockPanicker());
 
         stateManager = new TSOStateManagerImpl(timestampOracle);
 
         persist = mock(PersistenceProcessor.class);
 
-        String[] configArgs = new String[]{"-maxItems", "1000"};
-        TSOServerCommandLineConfig config = TSOServerCommandLineConfig.parseConfig(configArgs);
+        TSOServerConfig config = new TSOServerConfig();
+        config.setMaxItems(CONFLICT_MAP_SIZE);
 
-        requestProc = new RequestProcessorImpl(metrics,
-                timestampOracle,
-                persist,
-                new MockPanicker(),
-                config);
+        requestProc = new RequestProcessorImpl(config, metrics, timestampOracle, persist, new MockPanicker());
 
         // Initialize the state for the experiment
         stateManager.register(requestProc);
         stateManager.reset();
+
     }
 
-    @Test(timeOut = 30000)
+    @Test(timeOut = 30_000)
     public void testTimestamp() throws Exception {
+
         requestProc.timestampRequest(null, new MonitoringContext(metrics));
         ArgumentCaptor<Long> firstTScapture = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(1)).persistTimestamp(
@@ -74,9 +76,10 @@ public class TestRequestProcessor {
             requestProc.timestampRequest(null, new MonitoringContext(metrics));
             verify(persist, timeout(100).times(1)).persistTimestamp(eq(firstTS++), any(Channel.class), any(MonitoringContext.class));
         }
+
     }
 
-    @Test(timeOut = 30000)
+    @Test(timeOut = 30_000)
     public void testCommit() throws Exception {
 
         requestProc.timestampRequest(null, new MonitoringContext(metrics));
@@ -112,19 +115,20 @@ public class TestRequestProcessor {
         verify(persist, timeout(100).times(1)).persistCommit(eq(thirdTS), anyLong(), any(Channel.class), any(MonitoringContext.class));
         requestProc.commitRequest(secondTS, writeSet, false, null, new MonitoringContext(metrics));
         verify(persist, timeout(100).times(1)).persistAbort(eq(secondTS), anyBoolean(), any(Channel.class), any(MonitoringContext.class));
+
     }
 
-    @Test(timeOut = 30000)
+    @Test(timeOut = 30_000)
     public void testCommitRequestAbortsWhenResettingRequestProcessorState() throws Exception {
 
-        List<Long> writeSet = Collections.<Long>emptyList();
+        List<Long> writeSet = Collections.emptyList();
 
         // Start a transaction...
         requestProc.timestampRequest(null, new MonitoringContext(metrics));
         ArgumentCaptor<Long> capturedTS = ArgumentCaptor.forClass(Long.class);
         verify(persist, timeout(100).times(1)).persistTimestamp(capturedTS.capture(),
-                any(Channel.class),
-                any(MonitoringContext.class));
+                                                                any(Channel.class),
+                                                                any(MonitoringContext.class));
         long startTS = capturedTS.getValue();
 
         // ... simulate the reset of the RequestProcessor state (e.g. due to
@@ -134,6 +138,31 @@ public class TestRequestProcessor {
         // ...check that the transaction is aborted when trying to commit
         requestProc.commitRequest(startTS, writeSet, false, null, new MonitoringContext(metrics));
         verify(persist, timeout(100).times(1)).persistAbort(eq(startTS), anyBoolean(), any(Channel.class), any(MonitoringContext.class));
+
+    }
+
+    @Test(timeOut = 5_000)
+    public void testLowWatermarkIsStoredOnlyWhenACacheElementIsEvicted() throws Exception {
+
+        final int ANY_START_TS = 1;
+        final long FIRST_COMMIT_TS_EVICTED = 1L;
+        final long NEXT_COMMIT_TS_THAT_SHOULD_BE_EVICTED = 2L;
+
+        // Fill the cache to provoke a cache eviction
+        for (long i = 0; i < CONFLICT_MAP_SIZE + CONFLICT_MAP_ASSOCIATIVITY; i++) {
+            long writeSetElementHash = i + 1; // This is to match the assigned CT: K/V in cache = WS Element Hash/CT
+            List<Long> writeSet = Lists.newArrayList(writeSetElementHash);
+            requestProc.commitRequest(ANY_START_TS, writeSet, false, null, new MonitoringContext(metrics));
+        }
+
+        Thread.currentThread().sleep(3000); // Allow the Request processor to finish the request processing
+
+        // Check that first time its called is on init
+        verify(persist, timeout(100).times(1)).persistLowWatermark(0L);
+        // Then, check it is called when cache is full and the first element is evicted (should be a 1)
+        verify(persist, timeout(100).times(1)).persistLowWatermark(FIRST_COMMIT_TS_EVICTED);
+        // Finally it should never be called with the next element
+        verify(persist, timeout(100).never()).persistLowWatermark(NEXT_COMMIT_TS_THAT_SHOULD_BE_EVICTED);
 
     }
 

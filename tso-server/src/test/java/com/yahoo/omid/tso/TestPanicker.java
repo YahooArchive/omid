@@ -24,6 +24,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
+@SuppressWarnings({"UnusedDeclaration"})
 public class TestPanicker {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestPanicker.class);
@@ -96,14 +97,14 @@ public class TestPanicker {
 
         LeaseManager leaseManager = mock(LeaseManager.class);
         doReturn(true).when(leaseManager).stillInLeasePeriod();
-        PersistenceProcessor proc = new PersistenceProcessorImpl(metrics,
-                "localhost:1234",
-                leaseManager,
-                commitTable,
-                mock(ReplyProcessor.class),
-                mock(RetryProcessor.class),
-                panicker,
-                TSOServerCommandLineConfig.defaultConfig());
+        PersistenceProcessor proc = new PersistenceProcessorImpl(new TSOServerConfig(),
+                                                                 metrics,
+                                                                 "localhost:1234",
+                                                                 leaseManager,
+                                                                 commitTable,
+                                                                 mock(ReplyProcessor.class),
+                                                                 mock(RetryProcessor.class),
+                                                                 panicker);
         proc.persistCommit(1, 2, null, new MonitoringContext(metrics));
         verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
     }
@@ -130,15 +131,16 @@ public class TestPanicker {
                 return mockClient;
             }
         };
-        PersistenceProcessor proc = new PersistenceProcessorImpl(metrics,
-                "localhost:1234",
-                mock(LeaseManager.class),
-                commitTable,
-                mock(ReplyProcessor.class),
-                mock(RetryProcessor.class),
-                panicker,
-                TSOServerCommandLineConfig.defaultConfig());
+        PersistenceProcessor proc = new PersistenceProcessorImpl(new TSOServerConfig(),
+                                                                 metrics,
+                                                                 "localhost:1234",
+                                                                 mock(LeaseManager.class),
+                                                                 commitTable,
+                                                                 mock(ReplyProcessor.class),
+                                                                 mock(RetryProcessor.class),
+                                                                 panicker);
         proc.persistCommit(1, 2, null, new MonitoringContext(metrics));
         verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
     }
+
 }

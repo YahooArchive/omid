@@ -27,21 +27,16 @@ import java.io.IOException;
 
 import static com.yahoo.omid.timestamp.storage.ZKTimestampPaths.TIMESTAMP_ZNODE;
 
-public class ZKTimestampStorage implements TimestampStorage {
+class ZKTimestampStorage implements TimestampStorage {
 
     private static final Logger LOG = LoggerFactory.getLogger(ZKTimestampStorage.class);
 
-    public static final String DEFAULT_ZK_CLUSTER = "localhost:2181";
-
     static final long INITIAL_MAX_TS_VALUE = 0;
-
-    private final CuratorFramework zkClient;
 
     private final DistributedAtomicLong timestamp;
 
     @Inject
     public ZKTimestampStorage(CuratorFramework zkClient) throws Exception {
-        this.zkClient = zkClient;
         LOG.info("ZK Client state {}", zkClient.getState());
         timestamp = new DistributedAtomicLong(zkClient, TIMESTAMP_ZNODE, new RetryNTimes(3, 1000)); // TODO Configure
         // this?
@@ -88,11 +83,6 @@ public class ZKTimestampStorage implements TimestampStorage {
         }
         return atomicValue.postValue();
 
-    }
-
-    // For testing
-    CuratorFramework getZKClient() {
-        return zkClient;
     }
 
 }

@@ -6,7 +6,7 @@
     <parent>
         <artifactId>omid</artifactId>
         <groupId>com.yahoo.omid</groupId>
-        <version>0.8.1.21-SNAPSHOT</version>
+        <version>0.8.1.27-SNAPSHOT</version>
     </parent>
 
     <artifactId>examples</artifactId>
@@ -36,11 +36,6 @@
             <version>${slf4j.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>com.beust</groupId>
-            <artifactId>jcommander</artifactId>
-            <version>${jcommander.version}</version>
-        </dependency>
     </dependencies>
 
     <build>
@@ -69,6 +64,7 @@
                 <configuration>
                     <excludes>
                         <exclude>**/log4j.properties</exclude>
+                        <exclude>**/*.yml</exclude>
                     </excludes>
                 </configuration>
             </plugin>

@@ -5,13 +5,14 @@ import com.google.inject.Injector;
 import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.InMemoryCommitTable;
-import com.yahoo.omid.committable.hbase.CommitTableConstants;
+import com.yahoo.omid.committable.hbase.HBaseCommitTableConfig;
+import com.yahoo.omid.timestamp.storage.HBaseTimestampStorageConfig;
 import com.yahoo.omid.tools.hbase.OmidTableManager;
 import com.yahoo.omid.tso.TSOMockModule;
 import com.yahoo.omid.tso.TSOServer;
-import com.yahoo.omid.tso.TSOServerCommandLineConfig;
+import com.yahoo.omid.tso.TSOServerConfig;
+import com.yahoo.omid.tsoclient.OmidClientConfiguration;
 import com.yahoo.omid.tsoclient.TSOClient;
-import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
@@ -38,10 +39,6 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
 
-import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TIMESTAMP_TABLE_DEFAULT_NAME;
-import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorage.TSO_FAMILY;
-import static com.yahoo.omid.tools.hbase.OmidTableManager.COMMIT_TABLE_COMMAND_NAME;
-import static com.yahoo.omid.tsoclient.TSOClient.ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY;
 import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
 
 public abstract class OmidTestBase {
@@ -55,6 +52,7 @@ public abstract class OmidTestBase {
     protected static final String TEST_TABLE = "test";
     protected static final String TEST_FAMILY = "data";
     static final String TEST_FAMILY2 = "data2";
+    private HBaseCommitTableConfig hBaseCommitTableConfig;
 
     @BeforeMethod(alwaysRun = true)
     public void beforeClass(Method method) throws Exception {
@@ -65,27 +63,28 @@ public abstract class OmidTestBase {
     @BeforeGroups(groups = "sharedHBase")
     public void beforeGroups(ITestContext context) throws Exception {
         // TSO Setup
-        String[] configArgs = new String[]{"-port", Integer.toString(1234), "-maxItems", "1000"};
-        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.parseConfig(configArgs);
+        TSOServerConfig tsoConfig = new TSOServerConfig();
+        tsoConfig.setPort(1234);
+        tsoConfig.setMaxItems(1000);
         Injector injector = Guice.createInjector(new TSOMockModule(tsoConfig));
         LOG.info("Starting TSO");
         TSOServer tso = injector.getInstance(TSOServer.class);
+        hBaseCommitTableConfig = injector.getInstance(HBaseCommitTableConfig.class);
+        HBaseTimestampStorageConfig hBaseTimestampStorageConfig = injector.getInstance(HBaseTimestampStorageConfig.class);
         tso.startAndWait();
         TestUtils.waitForSocketListening("localhost", 1234, 100);
         LOG.info("Finished loading TSO");
         context.setAttribute("tso", tso);
 
-        org.apache.commons.configuration.Configuration clientConf = new BaseConfiguration();
-        clientConf.setProperty("tso.host", "localhost");
-        clientConf.setProperty("tso.port", 1234);
-        clientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, 0);
+        OmidClientConfiguration clientConf = new OmidClientConfiguration();
+        clientConf.setConnectionString("localhost:1234");
         context.setAttribute("clientConf", clientConf);
 
         InMemoryCommitTable commitTable = (InMemoryCommitTable) injector.getInstance(CommitTable.class);
         context.setAttribute("commitTable", commitTable);
 
         // Create the associated Handler
-        TSOClient client = TSOClient.newBuilder().withConfiguration(clientConf).build();
+        TSOClient client = TSOClient.newInstance(clientConf);
         context.setAttribute("client", client);
 
         // ------------------------------------------------------------------------------------------------------------
@@ -103,8 +102,9 @@ public abstract class OmidTestBase {
 
         hBaseUtils = new HBaseTestingUtility(hbaseConf);
         hbaseCluster = hBaseUtils.startMiniCluster(1);
-        hBaseUtils
-                .createTable(Bytes.toBytes(TIMESTAMP_TABLE_DEFAULT_NAME), new byte[][]{TSO_FAMILY}, Integer.MAX_VALUE);
+        hBaseUtils.createTable(Bytes.toBytes(hBaseTimestampStorageConfig.getTableName()),
+                               new byte[][]{hBaseTimestampStorageConfig.getFamilyName().getBytes()},
+                               Integer.MAX_VALUE);
 
         createTestTable();
         createCommitTable();
@@ -125,7 +125,7 @@ public abstract class OmidTestBase {
     }
 
     private void createCommitTable() throws IOException {
-        String[] args = new String[]{COMMIT_TABLE_COMMAND_NAME, "-numRegions", "1"};
+        String[] args = new String[]{OmidTableManager.COMMIT_TABLE_COMMAND_NAME, "-numRegions", "1"};
         OmidTableManager omidTableManager = new OmidTableManager(args);
         omidTableManager.executeActionsOnHBase(hbaseConf);
     }
@@ -140,10 +140,6 @@ public abstract class OmidTestBase {
         return (TSOClient) context.getAttribute("client");
     }
 
-    org.apache.commons.configuration.Configuration getClientConfiguration(ITestContext context) {
-        return (org.apache.commons.configuration.Configuration) context.getAttribute("clientConf");
-    }
-
     InMemoryCommitTable getCommitTable(ITestContext context) {
         return (InMemoryCommitTable) context.getAttribute("commitTable");
     }
@@ -153,27 +149,32 @@ public abstract class OmidTestBase {
     }
 
     protected TransactionManager newTransactionManager(ITestContext context, PostCommitActions postCommitActions) throws Exception {
-        return HBaseTransactionManager.newBuilder()
-                .withConfiguration(hbaseConf)
-                .withCommitTableClient(getCommitTable(context).getClient())
-                .withTSOClient(getClient(context))
+        HBaseOmidClientConfiguration clientConf = new HBaseOmidClientConfiguration();
+        clientConf.setConnectionString("localhost:1234");
+        clientConf.setHBaseConfiguration(hbaseConf);
+        return HBaseTransactionManager.builder(clientConf)
                 .postCommitter(postCommitActions)
-                .build();
+                .commitTableClient(getCommitTable(context).getClient())
+                .tsoClient(getClient(context)).build();
     }
 
     protected TransactionManager newTransactionManager(ITestContext context, TSOClient tsoClient) throws Exception {
-        return HBaseTransactionManager.newBuilder()
-                .withConfiguration(hbaseConf)
-                .withCommitTableClient(getCommitTable(context).getClient())
-                .withTSOClient(tsoClient).build();
+        HBaseOmidClientConfiguration clientConf = new HBaseOmidClientConfiguration();
+        clientConf.setConnectionString("localhost:1234");
+        clientConf.setHBaseConfiguration(hbaseConf);
+        return HBaseTransactionManager.builder(clientConf)
+                .commitTableClient(getCommitTable(context).getClient())
+                .tsoClient(tsoClient).build();
     }
 
     protected TransactionManager newTransactionManager(ITestContext context, CommitTable.Client commitTableClient)
             throws Exception {
-        return HBaseTransactionManager.newBuilder()
-                .withConfiguration(hbaseConf)
-                .withCommitTableClient(commitTableClient)
-                .withTSOClient(getClient(context)).build();
+        HBaseOmidClientConfiguration clientConf = new HBaseOmidClientConfiguration();
+        clientConf.setConnectionString("localhost:1234");
+        clientConf.setHBaseConfiguration(hbaseConf);
+        return HBaseTransactionManager.builder(clientConf)
+                .commitTableClient(commitTableClient)
+                .tsoClient(getClient(context)).build();
     }
 
     @AfterGroups(groups = "sharedHBase")
@@ -188,14 +189,14 @@ public abstract class OmidTestBase {
         TestUtils.waitForSocketNotListening("localhost", 1234, 1000);
     }
 
-    @AfterMethod(groups = "sharedHBase", timeOut = 30_000)
+    @AfterMethod(groups = "sharedHBase", timeOut = 60_000)
     public void afterMethod() {
         try {
             LOG.info("tearing Down");
             HBaseAdmin admin = hBaseUtils.getHBaseAdmin();
             deleteTable(admin, TableName.valueOf(TEST_TABLE));
             createTestTable();
-            deleteTable(admin, TableName.valueOf(CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME));
+            deleteTable(admin, TableName.valueOf(hBaseCommitTableConfig.getTableName()));
             createCommitTable();
         } catch (Exception e) {
             LOG.error("Error tearing down", e);
@@ -223,16 +224,16 @@ public abstract class OmidTestBase {
 
             if (LOG.isTraceEnabled()) {
                 LOG.trace("Value for " + Bytes.toString(tableName) + ":"
-                        + Bytes.toString(row) + ":" + Bytes.toString(fam)
-                        + Bytes.toString(col) + "=>" + Bytes.toString(CellUtil.cloneValue(cell))
-                        + " (" + Bytes.toString(value) + " expected)");
+                                  + Bytes.toString(row) + ":" + Bytes.toString(fam)
+                                  + Bytes.toString(col) + "=>" + Bytes.toString(CellUtil.cloneValue(cell))
+                                  + " (" + Bytes.toString(value) + " expected)");
             }
 
             return Bytes.equals(CellUtil.cloneValue(cell), value);
         } catch (IOException e) {
             LOG.error("Error reading row " + Bytes.toString(tableName) + ":"
-                    + Bytes.toString(row) + ":" + Bytes.toString(fam)
-                    + Bytes.toString(col), e);
+                              + Bytes.toString(row) + ":" + Bytes.toString(fam)
+                              + Bytes.toString(col), e);
             return false;
         }
     }

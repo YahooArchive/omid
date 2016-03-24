@@ -15,12 +15,12 @@
  */
 package com.yahoo.omid.examples;
 
-import com.yahoo.omid.tools.hbase.HBaseLogin;
 import com.yahoo.omid.transaction.HBaseTransactionManager;
 import com.yahoo.omid.transaction.RollbackException;
 import com.yahoo.omid.transaction.TTable;
 import com.yahoo.omid.transaction.Transaction;
 import com.yahoo.omid.transaction.TransactionManager;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -33,7 +33,7 @@ import java.util.Arrays;
 /**
  * ****************************************************************************************************************
  *
- *  Example code demonstrates preservation of Snapshot Isolation guarantees when writing shared data concurrently
+ *  Example code which demonstrates the preservation of Snapshot Isolation when writing shared data concurrently
  *
  * ****************************************************************************************************************
  *
@@ -76,17 +76,16 @@ public class SnapshotIsolationExample {
     public static void main(String[] args) throws Exception {
 
         LOG.info("Parsing the command line arguments");
-        Configuration exampleConfiguration = Configuration.parse(args);
+        String userTableName = "MY_TX_TABLE";
+        if (args != null && args.length > 0 && StringUtils.isNotEmpty(args[0])) {
+            userTableName = args[0];
+        }
+        byte[] family = Bytes.toBytes("MY_CF");
+        if (args != null && args.length > 1 && StringUtils.isNotEmpty(args[1])) {
+            family = Bytes.toBytes(args[1]);
+        }
+        LOG.info("Table '{}', column family '{}'", userTableName, Bytes.toString(family));
 
-        //Logging in to Secure HBase if required"
-        HBaseLogin.loginIfNeeded(exampleConfiguration);
-        org.apache.hadoop.conf.Configuration hbaseConfig = exampleConfiguration.toOmidConfig();
-
-        LOG.info("Creating HBase transaction manager...");
-        TransactionManager tm = HBaseTransactionManager.newBuilder().withConfiguration(hbaseConfig).build();
-
-        String userTableName = exampleConfiguration.userTableName;
-        byte[] family = Bytes.toBytes(exampleConfiguration.cfName);
         byte[] exampleRow = Bytes.toBytes("EXAMPLE_ROW");
         byte[] qualifier = Bytes.toBytes("MY_Q");
         byte[] initialData = Bytes.toBytes("initialVal");
@@ -98,8 +97,10 @@ public class SnapshotIsolationExample {
                  userTableName, Bytes.toString(exampleRow), Bytes.toString(family), Bytes.toString(qualifier));
         LOG.info("--------------------------------------------------------------------------------------------------");
 
-        LOG.info("Creating access to Transactional Table '{}'", userTableName);
-        try (TTable txTable = new TTable(hbaseConfig, userTableName)) {
+        LOG.info("Creating access to Omid Transaction Manager & Transactional Table '{}'", userTableName);
+        try (TransactionManager tm = HBaseTransactionManager.newInstance();
+             TTable txTable = new TTable(userTableName))
+        {
 
             // A transaction Tx0 sets an initial value to a particular column in an specific row
             Transaction tx0 = tm.begin();
@@ -163,9 +164,8 @@ public class SnapshotIsolationExample {
             } catch (RollbackException e) {
                 LOG.error("Concurrent Transaction {} ROLLED-BACK!!! : {}", tx2, e.getMessage());
             }
-        }
 
-        tm.close();
+        }
 
     }
 

@@ -27,11 +27,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-import static com.codahale.metrics.MetricRegistry.name;
+import static com.yahoo.omid.metrics.MetricsUtils.name;
 
 @NotThreadSafe
 public class MonitoringContext {
+
     private static final Logger LOG = LoggerFactory.getLogger(MonitoringContext.class);
+
     private volatile boolean flag;
     private Map<String, Long> elapsedTimeMsMap = new HashMap<>();
     private Map<String, Stopwatch> timers = new ConcurrentHashMap<>();
@@ -69,4 +71,5 @@ public class MonitoringContext {
             metrics.timer(name("tso", name)).update(durationInNs);
         }
     }
+
 }

@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedMap;
 
-import static com.yahoo.omid.transaction.HBaseTransactionManager.SHADOW_CELL_SUFFIX;
+import static com.yahoo.omid.transaction.CellUtils.SHADOW_CELL_SUFFIX;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertTrue;

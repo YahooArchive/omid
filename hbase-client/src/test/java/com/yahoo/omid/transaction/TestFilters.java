@@ -1,11 +1,9 @@
 package com.yahoo.omid.transaction;
 
-
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.metrics.NullMetricsProvider;
-import com.yahoo.omid.tsoclient.TSOClient;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -55,16 +53,15 @@ public class TestFilters extends OmidTestBase {
     private void testGet(ITestContext context, Filter f) throws Exception {
         CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
 
-        TSOClient client = TSOClient.newBuilder().withConfiguration(getClientConfiguration(context))
-                .build();
+        HBaseOmidClientConfiguration hbaseOmidClientConf = new HBaseOmidClientConfiguration();
+        hbaseOmidClientConf.setConnectionString("localhost:1234");
+        hbaseOmidClientConf.setHBaseConfiguration(hbaseConf);
 
         TTable table = new TTable(hbaseConf, TEST_TABLE);
         PostCommitActions syncPostCommitter = spy(
                 new HBaseSyncPostCommitter(new NullMetricsProvider(), commitTableClient));
-        AbstractTransactionManager tm = HBaseTransactionManager.newBuilder()
-                .withConfiguration(hbaseConf)
-                .withCommitTableClient(commitTableClient)
-                .withTSOClient(client)
+        AbstractTransactionManager tm = HBaseTransactionManager.builder(hbaseOmidClientConf)
+                .commitTableClient(commitTableClient)
                 .postCommitter(syncPostCommitter)
                 .build();
 
@@ -102,15 +99,15 @@ public class TestFilters extends OmidTestBase {
 
     private void testScan(ITestContext context, Filter f) throws Exception {
         CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
-        TSOClient client = TSOClient.newBuilder().withConfiguration(getClientConfiguration(context))
-                .build();
+
+        HBaseOmidClientConfiguration hbaseOmidClientConf = new HBaseOmidClientConfiguration();
+        hbaseOmidClientConf.getOmidClientConfiguration().setConnectionString("localhost:1234");
+        hbaseOmidClientConf.setHBaseConfiguration(hbaseConf);
         TTable table = new TTable(hbaseConf, TEST_TABLE);
         PostCommitActions syncPostCommitter = spy(
                 new HBaseSyncPostCommitter(new NullMetricsProvider(), commitTableClient));
-        AbstractTransactionManager tm = HBaseTransactionManager.newBuilder()
-                .withConfiguration(hbaseConf)
-                .withCommitTableClient(commitTableClient)
-                .withTSOClient(client)
+        AbstractTransactionManager tm = HBaseTransactionManager.builder(hbaseOmidClientConf)
+                .commitTableClient(commitTableClient)
                 .postCommitter(syncPostCommitter)
                 .build();
 

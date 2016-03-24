@@ -9,7 +9,6 @@ import com.yahoo.omid.committable.InMemoryCommitTable;
 import com.yahoo.omid.transaction.Transaction.Status;
 import com.yahoo.omid.tso.ProgrammableTSOServer;
 import com.yahoo.omid.tsoclient.TSOClient;
-import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.KeyValue;
@@ -28,9 +27,6 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 
 import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.COMMIT_TABLE;
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
-import static com.yahoo.omid.tsoclient.TSOClient.ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 import static org.testng.Assert.assertEquals;
@@ -76,22 +72,20 @@ public class TestTxMgrFailover extends OmidTestBase {
     }
 
     @BeforeMethod(alwaysRun = true, timeOut = 30_000)
-    public void beforeMethod() throws OmidInstantiationException {
+    public void beforeMethod() throws IOException, InterruptedException {
 
         commitTable = new InMemoryCommitTable(); // Use an in-memory commit table to speed up tests
         commitTableClient = spy(commitTable.getClient());
         commitTableWriter = spy(commitTable.getWriter());
 
-        BaseConfiguration clientConf = new BaseConfiguration();
-        clientConf.setProperty(TSO_HOST_CONFKEY, TSO_SERVER_HOST);
-        clientConf.setProperty(TSO_PORT_CONFKEY, TSO_SERVER_PORT);
-        clientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, 0);
-        TSOClient tsoClientForTM = spy(TSOClient.newBuilder().withConfiguration(clientConf).build());
+        HBaseOmidClientConfiguration hbaseOmidClientConf = new HBaseOmidClientConfiguration();
+        hbaseOmidClientConf.setConnectionString(TSO_SERVER_HOST + ":" + TSO_SERVER_PORT);
+        hbaseOmidClientConf.setHBaseConfiguration(hbaseConf);
+        TSOClient tsoClientForTM = spy(TSOClient.newInstance(hbaseOmidClientConf.getOmidClientConfiguration()));
 
-        tm = spy(HBaseTransactionManager.newBuilder()
-                .withTSOClient(tsoClientForTM)
-                .withCommitTableClient(commitTableClient)
-                .withConfiguration(hbaseConf)
+        tm = spy(HBaseTransactionManager.builder(hbaseOmidClientConf)
+                .tsoClient(tsoClientForTM)
+                .commitTableClient(commitTableClient)
                 .build());
     }
 
@@ -176,32 +170,7 @@ public class TestTxMgrFailover extends OmidTestBase {
         commitTableClient.tryInvalidateTransaction(TX1_ST);
         assertEquals(commitTable.countElements(), 1, "Rows should be 1!");
 
-        try (TTable txTable = new TTable(hbaseConf, TEST_TABLE)) {
-            HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
-            assertEquals(tx1.getStartTimestamp(), TX1_ST);
-            Put put = new Put(row1);
-            put.add(TEST_FAMILY.getBytes(), qualifier, data1);
-            txTable.put(tx1, put);
-            try {
-                tm.commit(tx1);
-                fail();
-            } catch (RollbackException e) {
-                // Exception
-            }
-
-            // Check transaction status
-            assertEquals(tx1.getStatus(), Status.ROLLEDBACK);
-            assertEquals(tx1.getCommitTimestamp(), 0);
-            // Check the cleanup process did its job and the uncommitted data is NOT there
-            assertEquals(commitTable.countElements(), 1, "Rows should be 1! Dirty data should be there");
-            Optional<CommitTimestamp>
-                    optionalCT =
-                    tm.commitTableClient.getCommitTimestamp(TX1_ST).get();
-            assertTrue(optionalCT.isPresent());
-            assertFalse(optionalCT.get().isValid());
-            checkOperationSuccessOnCell(KeyValue.Type.Delete, null, TEST_TABLE.getBytes(), row1, TEST_FAMILY.getBytes(),
-                    qualifier);
-        }
+        executeTxAndCheckRollback();
 
     }
 
@@ -214,6 +183,11 @@ public class TestTxMgrFailover extends OmidTestBase {
 
         assertEquals(commitTable.countElements(), 0, "Rows should be 0!");
 
+        executeTxAndCheckRollback();
+
+    }
+
+    private void executeTxAndCheckRollback() throws IOException, TransactionException, InterruptedException, java.util.concurrent.ExecutionException {
         try (TTable txTable = new TTable(hbaseConf, TEST_TABLE)) {
             HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
             assertEquals(tx1.getStartTimestamp(), TX1_ST);
@@ -230,8 +204,7 @@ public class TestTxMgrFailover extends OmidTestBase {
             // Check transaction status
             assertEquals(tx1.getStatus(), Status.ROLLEDBACK);
             assertEquals(tx1.getCommitTimestamp(), 0);
-            // Check the cleanup process did its job and the transaction was invalidated
-            // Uncommitted data should NOT be there
+            // Check the cleanup process did its job and the uncommitted data is NOT there
             assertEquals(commitTable.countElements(), 1, "Rows should be 1! Dirty data should be there");
             Optional<CommitTimestamp>
                     optionalCT =
@@ -239,9 +212,8 @@ public class TestTxMgrFailover extends OmidTestBase {
             assertTrue(optionalCT.isPresent());
             assertFalse(optionalCT.get().isValid());
             checkOperationSuccessOnCell(KeyValue.Type.Delete, null, TEST_TABLE.getBytes(), row1, TEST_FAMILY.getBytes(),
-                    qualifier);
+                                        qualifier);
         }
-
     }
 
     @Test(timeOut = 30_000)

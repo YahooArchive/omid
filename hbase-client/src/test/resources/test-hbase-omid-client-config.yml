@@ -1,0 +1,35 @@
+#HBase related
+commitTableName: OMID_COMMIT_TABLE1
+
+#TSO/HA connection
+omidClientConfiguration: !!com.yahoo.omid.tsoclient.OmidClientConfiguration
+      #TSO/HA connection
+      connectionString: "somehost:54758"
+      connectionType: !!com.yahoo.omid.tsoclient.OmidClientConfiguration$ConnType HA
+      zkConnectionTimeoutSecs: 11
+
+      #TSO related
+      requestMaxRetries: 6
+      requestTimeoutMs: 5001
+      reconnectionDelaySecs: 11
+      retryDelayMs: 1001
+      executorThreads: 4
+
+#Instrumentation
+metrics: !!com.yahoo.omid.metrics.CodahaleMetricsProvider [
+    !!com.yahoo.omid.metrics.CodahaleMetricsConfig {
+        outputFreq: 1,
+        outputFreqTimeUnit: !!java.util.concurrent.TimeUnit SECONDS,
+        reporters: !!set {
+            !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CSV,
+            !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter SLF4J,
+            !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter GRAPHITE,
+            !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CONSOLE
+            },
+        csvDir: "some/folder",
+        prefix: "somePrefix",
+        slf4jLogger: "com.yahoo",
+        graphiteHostConfig: "somehost:1234"
+      }
+]
+

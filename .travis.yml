@@ -25,29 +25,42 @@ before_script:
   - umask 022
   - git config --global user.email "omid-ci@yahoo-inc.com"
   - git config --global user.name "Omid CI"
-  - git checkout -b tmp-build-branch
+  # Install protobuf to genearte TSO client-server protocol in each compilation
+  - wget https://protobuf.googlecode.com/files/protobuf-2.5.0.tar.gz
+  - tar -xzvf protobuf-2.5.0.tar.gz
+  - cd protobuf-2.5.0 && ./configure --prefix=/usr && make && sudo make install
+  - cd ..
 
 script:
   - if [ "${TRAVIS_PULL_REQUEST}" = "false" ] ; then
+      git checkout master
+      &&
       mvn clean cobertura:cobertura
       &&
       mkdir failedTests
       &&
       find -name testng-failed.xml -exec cp -vf "{}" failedTests/ \;
       &&
-      [ ! -f failedTests/testng-failed.xml ]  ;
+      [ ! -f failedTests/testng-failed.xml ]
+      &&
+      mvn coveralls:report
+      &&
+      mvn -B clean release:prepare release:perform -Prelease_profile,hbase-0 --settings bintray-settings.xml ;
     else
+      git checkout -b tmp-build-branch
+      &&
       mvn clean test ;
     fi
 
 after_success:
-  - if [ "${TRAVIS_PULL_REQUEST}" = "false" ] ; then
-      mvn coveralls:report
-      &&
-      mvn -B clean release:prepare release:perform -Prelease_profile,hbase-0 --settings bintray-settings.xml ;
-    fi
+  - echo ******************************************************************************************
+  - echo Omid release/pull-request process finished successfully
+  - echo ******************************************************************************************
 
 after_failure:
+  - echo ******************************************************************************************
+  - echo Omid failed during the release/pull-request process
+  - echo ******************************************************************************************
   - VERSION_SUFFIX=`date +%s`
     VERSION=`mvn org.apache.maven.plugins:maven-help-plugin:2.1.1:evaluate -Dexpression=project.version | grep -v '\[' | grep SNAPSHOT`
     &&

@@ -8,10 +8,8 @@ import com.yahoo.omid.TestUtils;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.tso.TSOMockModule;
 import com.yahoo.omid.tso.TSOServer;
-import com.yahoo.omid.tso.TSOServerCommandLineConfig;
+import com.yahoo.omid.tso.TSOServerConfig;
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
-import org.apache.commons.configuration.BaseConfiguration;
-import org.apache.commons.configuration.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -23,9 +21,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_HOST_CONFKEY;
-import static com.yahoo.omid.tsoclient.TSOClient.TSO_PORT_CONFKEY;
-import static com.yahoo.omid.tsoclient.TSOClient.ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
@@ -53,8 +48,9 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
 
         tsoServerPortForTest = TestUtils.getFreeLocalPort();
 
-        String[] configArgs = new String[]{"-port", Integer.toString(tsoServerPortForTest), "-maxItems", "1000"};
-        TSOServerCommandLineConfig tsoConfig = TSOServerCommandLineConfig.parseConfig(configArgs);
+        TSOServerConfig tsoConfig = new TSOServerConfig();
+        tsoConfig.setMaxItems(1000);
+        tsoConfig.setPort(tsoServerPortForTest);
         Module tsoServerMockModule = new TSOMockModule(tsoConfig);
         Injector injector = Guice.createInjector(tsoServerMockModule);
 
@@ -77,13 +73,12 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         LOG.info("======================================= Setup TSO Clients ========================================");
         LOG.info("==================================================================================================");
 
-        Configuration clientConf = new BaseConfiguration();
         // Configure direct connection to the server
-        clientConf.setProperty(TSO_HOST_CONFKEY, TSO_SERVER_HOST);
-        clientConf.setProperty(TSO_PORT_CONFKEY, tsoServerPortForTest);
-        clientConf.setProperty(ZK_CONNECTION_TIMEOUT_IN_SECS_CONFKEY, 0); // Don't for ZK, it's not there
-        tsoClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
-        justAnotherTSOClient = TSOClient.newBuilder().withConfiguration(clientConf).build();
+        OmidClientConfiguration tsoClientConf = new OmidClientConfiguration();
+        tsoClientConf.setConnectionString(TSO_SERVER_HOST + ":" + tsoServerPortForTest);
+
+        tsoClient = TSOClient.newInstance(tsoClientConf);
+        justAnotherTSOClient = TSOClient.newInstance(tsoClientConf);
 
         LOG.info("==================================================================================================");
         LOG.info("===================================== TSO Clients Initialized ====================================");
