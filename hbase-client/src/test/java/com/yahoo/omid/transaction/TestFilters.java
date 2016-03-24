@@ -1,6 +1,9 @@
 package com.yahoo.omid.transaction;
 
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import com.yahoo.omid.committable.CommitTable;
+import com.yahoo.omid.metrics.NullMetricsProvider;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -12,11 +15,13 @@ import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.ValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.testng.ITestContext;
 import org.testng.annotations.Test;
 
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertNull;
@@ -53,11 +58,14 @@ public class TestFilters extends OmidTestBase {
         hbaseOmidClientConf.setHBaseConfiguration(hbaseConf);
 
         TTable table = new TTable(hbaseConf, TEST_TABLE);
-        AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.builder(hbaseOmidClientConf)
+        PostCommitActions syncPostCommitter = spy(
+                new HBaseSyncPostCommitter(new NullMetricsProvider(), commitTableClient));
+        AbstractTransactionManager tm = HBaseTransactionManager.builder(hbaseOmidClientConf)
                 .commitTableClient(commitTableClient)
-                .build());
+                .postCommitter(syncPostCommitter)
+                .build();
 
-        writeRows(table, tm);
+        writeRows(table, tm, syncPostCommitter);
 
         Transaction t = tm.begin();
         Get g = new Get(row1);
@@ -96,11 +104,14 @@ public class TestFilters extends OmidTestBase {
         hbaseOmidClientConf.getOmidClientConfiguration().setConnectionString("localhost:1234");
         hbaseOmidClientConf.setHBaseConfiguration(hbaseConf);
         TTable table = new TTable(hbaseConf, TEST_TABLE);
-        AbstractTransactionManager tm = spy((AbstractTransactionManager) HBaseTransactionManager.builder(hbaseOmidClientConf)
+        PostCommitActions syncPostCommitter = spy(
+                new HBaseSyncPostCommitter(new NullMetricsProvider(), commitTableClient));
+        AbstractTransactionManager tm = HBaseTransactionManager.builder(hbaseOmidClientConf)
                 .commitTableClient(commitTableClient)
-                .build());
+                .postCommitter(syncPostCommitter)
+                .build();
 
-        writeRows(table, tm);
+        writeRows(table, tm, syncPostCommitter);
 
         Transaction t = tm.begin();
         Scan s = new Scan().setFilter(f);
@@ -120,7 +131,8 @@ public class TestFilters extends OmidTestBase {
     }
 
 
-    private void writeRows(TTable table, TransactionManager tm) throws Exception {
+    private void writeRows(TTable table, TransactionManager tm, PostCommitActions postCommitter)
+            throws Exception {
         // create normal row with both cells
         Transaction t = tm.begin();
         Put p = new Put(row1);
@@ -130,9 +142,12 @@ public class TestFilters extends OmidTestBase {
         tm.commit(t);
 
         // create normal row, but fail to update shadow cells
-        doThrow(new TransactionManagerException("fail"))
-                .when((HBaseTransactionManager) tm)
-                .updateShadowCells(any(HBaseTransaction.class));
+        doAnswer(new Answer<ListenableFuture<Void>>() {
+            public ListenableFuture<Void> answer(InvocationOnMock invocation) {
+                // Do not invoke the real method
+                return SettableFuture.create();
+            }
+        }).when(postCommitter).updateShadowCells(any(HBaseTransaction.class));
 
         t = tm.begin();
         p = new Put(row2);

@@ -23,20 +23,36 @@ import com.yahoo.omid.YAMLUtils;
  * Configuration for Omid client side
  */
 public class OmidClientConfiguration {
+
     private static final String DEFAULT_CONFIG_FILE_NAME = "omid-client-config.yml";
 
     public enum ConnType {DIRECT, HA}
+
+    public enum PostCommitMode {SYNC, ASYNC}
+
+    // Basic connection related params
 
     private ConnType connectionType = ConnType.DIRECT;
     private String connectionString;
     private String zkCurrentTsoPath;
     private String zkNamespace;
     private int zkConnectionTimeoutSecs;
+
+    // Communication protocol related params
+
     private int requestMaxRetries;
     private int requestTimeoutMs;
     private int reconnectionDelaySecs;
     private int retryDelayMs;
     private int executorThreads;
+
+    // Transaction Manager related params
+
+    private PostCommitMode postCommitMode = PostCommitMode.SYNC;
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // Instantiation
+    // ----------------------------------------------------------------------------------------------------------------
 
     public OmidClientConfiguration() {
         new YAMLUtils().loadSettings(DEFAULT_CONFIG_FILE_NAME, this);
@@ -144,6 +160,16 @@ public class OmidClientConfiguration {
     @Named("omid.ha.zkNamespace")
     public void setZkNamespace(String zkNamespace) {
         this.zkNamespace = zkNamespace;
+    }
+
+    public PostCommitMode getPostCommitMode() {
+        return postCommitMode;
+    }
+
+    @Inject(optional = true)
+    @Named("omid.tm.postCommitMode")
+    public void setPostCommitMode(PostCommitMode postCommitMode) {
+        this.postCommitMode = postCommitMode;
     }
 
 }

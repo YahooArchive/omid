@@ -21,12 +21,10 @@ import com.google.inject.name.Named;
 import com.yahoo.omid.YAMLUtils;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.tools.hbase.SecureHBaseConfig;
+import com.yahoo.omid.tsoclient.OmidClientConfiguration.PostCommitMode;
 import com.yahoo.omid.tsoclient.OmidClientConfiguration;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-
-import java.util.Arrays;
-import java.util.Map;
 
 /**
  * Configuration for HBase's Omid client side
@@ -63,6 +61,14 @@ public class HBaseOmidClientConfiguration extends SecureHBaseConfig {
 
     public void setHBaseConfiguration(Configuration hbaseConfiguration) {
         this.hbaseConfiguration = hbaseConfiguration;
+    }
+
+    public PostCommitMode getPostCommitMode() {
+        return omidClientConfiguration.getPostCommitMode();
+    }
+
+    public void setPostCommitMode(PostCommitMode postCommitMode) {
+        omidClientConfiguration.setPostCommitMode(postCommitMode);
     }
 
     public String getCommitTableName() {

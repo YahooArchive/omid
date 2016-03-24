@@ -5,6 +5,7 @@ import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.SettableFuture;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
+import com.yahoo.omid.metrics.NullMetricsProvider;
 import com.yahoo.omid.transaction.HBaseTransactionManager.CommitTimestampLocatorImpl;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
@@ -72,9 +73,11 @@ public class TestHBaseTransactionClient extends OmidTestBase {
 
     @Test(timeOut = 30_000)
     public void testCrashAfterCommit(ITestContext context) throws Exception {
-        AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context));
+        PostCommitActions syncPostCommitter =
+                spy(new HBaseSyncPostCommitter(new NullMetricsProvider(), getCommitTable(context).getClient()));
+        AbstractTransactionManager tm = (AbstractTransactionManager) newTransactionManager(context, syncPostCommitter);
         // The following line emulates a crash after commit that is observed in (*) below
-        doThrow(new RuntimeException()).when(tm).updateShadowCells(any(HBaseTransaction.class));
+        doThrow(new RuntimeException()).when(syncPostCommitter).updateShadowCells(any(HBaseTransaction.class));
 
         TTable table = new TTable(hbaseConf, TEST_TABLE);
 
@@ -115,9 +118,11 @@ public class TestHBaseTransactionClient extends OmidTestBase {
 
         final long NON_EXISTING_CELL_TS = 1000L;
 
-        AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context));
+        PostCommitActions syncPostCommitter =
+                spy(new HBaseSyncPostCommitter(new NullMetricsProvider(), getCommitTable(context).getClient()));
+        AbstractTransactionManager tm = (AbstractTransactionManager) newTransactionManager(context, syncPostCommitter);
         // The following line emulates a crash after commit that is observed in (*) below
-        doThrow(new RuntimeException()).when(tm).updateShadowCells(any(HBaseTransaction.class));
+        doThrow(new RuntimeException()).when(syncPostCommitter).updateShadowCells(any(HBaseTransaction.class));
 
         // Test that a non-existing cell timestamp returns an empty result
         Optional<CommitTimestamp> optionalCT = tm.commitTableClient.getCommitTimestamp(NON_EXISTING_CELL_TS).get();
@@ -227,9 +232,11 @@ public class TestHBaseTransactionClient extends OmidTestBase {
     @Test(timeOut = 30_000)
     public void testCellCommitTimestampIsLocatedInCommitTable(ITestContext context) throws Exception {
 
-        AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context));
+        PostCommitActions syncPostCommitter =
+                spy(new HBaseSyncPostCommitter(new NullMetricsProvider(), getCommitTable(context).getClient()));
+        AbstractTransactionManager tm = (AbstractTransactionManager) newTransactionManager(context, syncPostCommitter);
         // The following line emulates a crash after commit that is observed in (*) below
-        doThrow(new RuntimeException()).when(tm).updateShadowCells(any(HBaseTransaction.class));
+        doThrow(new RuntimeException()).when(syncPostCommitter).updateShadowCells(any(HBaseTransaction.class));
 
         try (TTable table = new TTable(hbaseConf, TEST_TABLE)) {
             // Commit a transaction that is broken on commit to avoid
@@ -332,9 +339,12 @@ public class TestHBaseTransactionClient extends OmidTestBase {
     public void testCellCommitTimestampIsLocatedInCommitTableAfterNotBeingInvalidated(ITestContext context) throws Exception {
 
         CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
-        AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context, commitTableClient));
+        PostCommitActions syncPostCommitter =
+                spy(new HBaseSyncPostCommitter(new NullMetricsProvider(), commitTableClient));
+        AbstractTransactionManager tm = spy((AbstractTransactionManager) newTransactionManager(context, syncPostCommitter));
+
         // The following line emulates a crash after commit that is observed in (*) below
-        doThrow(new RuntimeException()).when(tm).updateShadowCells(any(HBaseTransaction.class));
+        doThrow(new RuntimeException()).when(syncPostCommitter).updateShadowCells(any(HBaseTransaction.class));
         // The next two lines avoid steps 2) and 3) and go directly to step 5)
         // in AbstractTransactionManager.locateCellCommitTimestamp()
         SettableFuture<Optional<CommitTimestamp>> f = SettableFuture.create();

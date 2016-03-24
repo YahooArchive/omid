@@ -29,3 +29,11 @@ requestTimeoutMs: 5000
 reconnectionDelaySecs: 10
 retryDelayMs: 1000
 executorThreads: 3
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Transaction Manager parameters
+# ---------------------------------------------------------------------------------------------------------------------
+
+# Configure whether the TM performs the post-commit actions for a tx (update shadow cells and clean commit table entry)
+# before returning to the control to the client (SYNC) or in parallel (ASYNC)
+postCommitMode: !!com.yahoo.omid.tsoclient.OmidClientConfiguration$PostCommitMode SYNC
