@@ -15,7 +15,9 @@
  */
 package com.yahoo.omid.transaction;
 
+import com.google.common.base.Function;
 import com.google.common.base.Optional;
+import com.google.common.util.concurrent.Futures;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
 import com.yahoo.omid.metrics.Counter;
@@ -59,7 +61,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
 
     }
 
-    private final PostCommitActions postCommiter;
+    private final PostCommitActions postCommitter;
     protected final TSOClient tsoClient;
     private final boolean ownsTSOClient;
     protected final CommitTable.Client commitTableClient;
@@ -95,14 +97,14 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      *            objects required by the transaction manager being implemented.
      */
     public AbstractTransactionManager(MetricsRegistry metrics,
-                                      PostCommitActions postCommiter,
+                                      PostCommitActions postCommitter,
                                       TSOClient tsoClient,
                                       boolean ownsTSOClient,
                                       CommitTable.Client commitTableClient,
                                       boolean ownsCommitTableClient,
                                       TransactionFactory<? extends CellId> transactionFactory) {
         this.tsoClient = tsoClient;
-        this.postCommiter = postCommiter;
+        this.postCommitter = postCommitter;
         this.ownsTSOClient = ownsTSOClient;
         this.commitTableClient = commitTableClient;
         this.ownsCommitTableClient = ownsCommitTableClient;
@@ -409,13 +411,15 @@ public abstract class AbstractTransactionManager implements TransactionManager {
     }
 
     private void commitRegularTransaction(AbstractTransaction<? extends CellId> tx)
-            throws RollbackException, TransactionException, TransactionManagerException
+            throws RollbackException, TransactionException
     {
 
         try {
+
             long commitTs = tsoClient.commit(tx.getStartTimestamp(), tx.getWriteSet()).get();
             certifyCommitForTx(tx, commitTs);
-            postCommiter.updateShadowCellsAndRemoveCommitTableEntry(tx);
+            updateShadowCellsAndRemoveCommitTableEntry(tx, postCommitter);
+
         } catch (ExecutionException e) {
 
             if (e.getCause() instanceof AbortException) { // TSO reports Tx conflicts as AbortExceptions in the future
@@ -441,7 +445,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
                         if (commitTimestamp.get().isValid()) {
                             LOG.warn("{}: Valid commit TS found in Commit Table. Committing Tx...", tx);
                             certifyCommitForTx(tx, commitTimestamp.get().getValue());
-                            postCommiter.updateShadowCells(tx); // But do NOT remove transaction from commit table
+                            postCommitter.updateShadowCells(tx); // But do NOT remove transaction from commit table
                         } else { // Probably another Tx in a new TSO Server invalidated this transaction
                             LOG.warn("{}: Invalidated commit TS found in Commit Table. Rolling-back...", tx);
                             rollback(tx);
@@ -462,7 +466,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
                             if (commitTimestamp.isPresent() && commitTimestamp.get().isValid()) {
                                 LOG.warn("{}: Valid commit TS found in Commit Table. Committing Tx...", tx);
                                 certifyCommitForTx(tx, commitTimestamp.get().getValue());
-                                postCommiter.updateShadowCells(tx); // But do NOT remove transaction from commit table
+                                postCommitter.updateShadowCells(tx); // But do NOT remove transaction from commit table
                             } else {
                                 LOG.error("{}: Can't determine Transaction outcome", tx);
                                 throw new TransactionException(tx + ": cannot determine Tx outcome");
@@ -483,6 +487,19 @@ public abstract class AbstractTransactionManager implements TransactionManager {
             throw new TransactionException(tx + ": interrupted during commit", ie);
 
         }
+
+    }
+
+    private void updateShadowCellsAndRemoveCommitTableEntry(final AbstractTransaction<? extends CellId> tx,
+                                                            final PostCommitActions postCommitter) {
+
+        Futures.transform(postCommitter.updateShadowCells(tx), new Function<Void, Void>() {
+            @Override
+            public Void apply(Void aVoid) {
+                postCommitter.removeCommitTableEntry(tx);
+                return null;
+            }
+        });
 
     }
 

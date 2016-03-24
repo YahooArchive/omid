@@ -18,6 +18,9 @@ package com.yahoo.omid.transaction;
 import com.google.common.base.Charsets;
 import com.google.common.base.Optional;
 import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
 import com.yahoo.omid.committable.hbase.HBaseCommitTable;
@@ -37,6 +40,7 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 
 import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_DEFAULT_NAME;
 import static com.yahoo.omid.committable.hbase.CommitTableConstants.COMMIT_TABLE_NAME_KEY;
@@ -130,7 +134,10 @@ public class HBaseTransactionManager extends AbstractTransactionManager implemen
                 PostCommitActions syncPostCommitter = new HBaseSyncPostCommitter(metricsRegistry, commitTableClient);
                 switch(postCommitMode) {
                     case ASYNC:
-                        postCommitter = new HBaseAsyncPostCommitter(syncPostCommitter);
+                        ListeningExecutorService postCommitExecutor =
+                                MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor(
+                                        new ThreadFactoryBuilder().setNameFormat("postCommit-%d").build()));
+                        postCommitter = new HBaseAsyncPostCommitter(syncPostCommitter, postCommitExecutor);
                         break;
                     case SYNC:
                     default:

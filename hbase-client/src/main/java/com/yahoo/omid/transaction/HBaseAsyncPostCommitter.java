@@ -15,68 +15,49 @@
  */
 package com.yahoo.omid.transaction;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListeningExecutorService;
 import com.yahoo.omid.tsoclient.CellId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Callable;
 
 public class HBaseAsyncPostCommitter implements PostCommitActions {
 
-    private PostCommitActions syncPostCommitExecutor;
+    private static final Logger LOG = LoggerFactory.getLogger(HBaseAsyncPostCommitter.class);
 
-    ExecutorService postCommitExecutor =
-            Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("postCommit-%d").build());
+    private PostCommitActions syncPostCommitter;
 
-    public HBaseAsyncPostCommitter(PostCommitActions postCommitExecutor) {
-        syncPostCommitExecutor = postCommitExecutor;
+    private ListeningExecutorService postCommitExecutor;
+
+    public HBaseAsyncPostCommitter(PostCommitActions postCommitter, ListeningExecutorService  postCommitExecutor) {
+        this.syncPostCommitter = postCommitter;
+        this.postCommitExecutor = postCommitExecutor;
     }
 
     @Override
-    public void updateShadowCells(final AbstractTransaction<? extends CellId> transaction)
-            throws TransactionManagerException
-    {
-        postCommitExecutor.execute(new Runnable() {
+    public ListenableFuture<Void> updateShadowCells(final AbstractTransaction<? extends CellId> transaction) {
+
+        return postCommitExecutor.submit(new Callable<Void>() {
             @Override
-            public void run() {
-                try {
-                    syncPostCommitExecutor.updateShadowCells(transaction);
-                } catch (TransactionManagerException e) {
-                    e.printStackTrace();
-                }
+            public Void call() throws Exception {
+                syncPostCommitter.updateShadowCells(transaction);
+                return null;
             }
+
         });
+
     }
 
     @Override
-    public void removeCommitTableEntry(final AbstractTransaction<? extends CellId> transaction)
-            throws TransactionManagerException
-    {
-        postCommitExecutor.execute(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    syncPostCommitExecutor.removeCommitTableEntry(transaction);
-                } catch (TransactionManagerException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-    }
+    public ListenableFuture<Void> removeCommitTableEntry(final AbstractTransaction<? extends CellId> transaction) {
 
-    @Override
-    public void updateShadowCellsAndRemoveCommitTableEntry(final AbstractTransaction<? extends CellId> transaction)
-            throws TransactionManagerException
-    {
-        postCommitExecutor.execute(new Runnable() {
+        return postCommitExecutor.submit(new Callable<Void>() {
             @Override
-            public void run() {
-                try {
-                    syncPostCommitExecutor.updateShadowCells(transaction);
-                    syncPostCommitExecutor.removeCommitTableEntry(transaction);
-                } catch (TransactionManagerException e) {
-                    e.printStackTrace();
-                }
+            public Void call() throws Exception {
+                syncPostCommitter.removeCommitTableEntry(transaction);
+                return null;
             }
         });
     }

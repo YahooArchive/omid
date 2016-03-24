@@ -15,6 +15,7 @@
  */
 package com.yahoo.omid.transaction;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import com.yahoo.omid.tsoclient.CellId;
 
 public interface PostCommitActions {
@@ -23,26 +24,16 @@ public interface PostCommitActions {
      * Allows specific implementations to update the shadow cells.
      * @param transaction
      *            the transaction to update shadow cells for
-     * @throws TransactionManagerException
+     * @return future signalling end of the computation
      */
-    void updateShadowCells(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException;
+    ListenableFuture<Void> updateShadowCells(AbstractTransaction<? extends CellId> transaction);
 
     /**
      * Allows specific implementations to remove the transaction entry from the commit table.
      * @param transaction
      *            the transaction to remove the commit table entry
-     * @throws TransactionManagerException
+     * @return future signalling end of the computation
      */
-    void removeCommitTableEntry(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException;
-
-    /**
-     * Allows specific implementations to update the shadow cells and remove the transaction entry from the commit
-     * table sequentially.
-     * @param transaction
-     *            the transaction to update the shadow cells and remove the commit table entry
-     * @throws TransactionManagerException
-     */
-    void updateShadowCellsAndRemoveCommitTableEntry(AbstractTransaction<? extends CellId> transaction)
-            throws TransactionManagerException;
+    ListenableFuture<Void> removeCommitTableEntry(AbstractTransaction<? extends CellId> transaction);
 
 }

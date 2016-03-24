@@ -1,6 +1,8 @@
 package com.yahoo.omid.transaction;
 
 
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.metrics.NullMetricsProvider;
 import com.yahoo.omid.tsoclient.TSOClient;
@@ -15,11 +17,13 @@ import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.ValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.testng.ITestContext;
 import org.testng.annotations.Test;
 
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertNull;
@@ -141,9 +145,12 @@ public class TestFilters extends OmidTestBase {
         tm.commit(t);
 
         // create normal row, but fail to update shadow cells
-        doThrow(new TransactionManagerException("fail"))
-                .when(postCommitter)
-                .updateShadowCells(any(HBaseTransaction.class));
+        doAnswer(new Answer<ListenableFuture<Void>>() {
+            public ListenableFuture<Void> answer(InvocationOnMock invocation) {
+                // Do not invoke the real method
+                return SettableFuture.create();
+            }
+        }).when(postCommitter).updateShadowCells(any(HBaseTransaction.class));
 
         t = tm.begin();
         p = new Put(row2);

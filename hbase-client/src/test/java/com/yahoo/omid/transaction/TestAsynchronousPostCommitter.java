@@ -1,6 +1,9 @@
 package com.yahoo.omid.transaction;
 
 import com.google.common.base.Optional;
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.metrics.NullMetricsProvider;
 import org.apache.hadoop.hbase.client.Get;
@@ -9,10 +12,13 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.ITestContext;
 import org.testng.annotations.Test;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -26,6 +32,8 @@ import static org.testng.Assert.assertTrue;
 
 @Test(groups = "sharedHBase")
 public class TestAsynchronousPostCommitter extends OmidTestBase {
+
+    private static final Logger LOG = LoggerFactory.getLogger(TestAsynchronousPostCommitter.class);
 
     private static final byte[] family = Bytes.toBytes(TEST_FAMILY);
     private static final byte[] nonExistentFamily = Bytes.toBytes("non-existent");
@@ -41,7 +49,10 @@ public class TestAsynchronousPostCommitter extends OmidTestBase {
 
         PostCommitActions syncPostCommitter =
                 spy(new HBaseSyncPostCommitter(new NullMetricsProvider(), commitTableClient));
-        PostCommitActions asyncPostCommitter = new HBaseAsyncPostCommitter(syncPostCommitter);
+        ListeningExecutorService postCommitExecutor =
+                MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor(
+                        new ThreadFactoryBuilder().setNameFormat("postCommit-%d").build()));
+        PostCommitActions asyncPostCommitter = new HBaseAsyncPostCommitter(syncPostCommitter, postCommitExecutor);
 
         TransactionManager tm = newTransactionManager(context, asyncPostCommitter);
 
@@ -128,7 +139,10 @@ public class TestAsynchronousPostCommitter extends OmidTestBase {
 
         PostCommitActions syncPostCommitter =
                 spy(new HBaseSyncPostCommitter(new NullMetricsProvider(), commitTableClient));
-        PostCommitActions asyncPostCommitter = new HBaseAsyncPostCommitter(syncPostCommitter);
+        ListeningExecutorService postCommitExecutor =
+                MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor(
+                        new ThreadFactoryBuilder().setNameFormat("postCommit-%d").build()));
+        PostCommitActions asyncPostCommitter = new HBaseAsyncPostCommitter(syncPostCommitter, postCommitExecutor);
 
         TransactionManager tm = newTransactionManager(context, asyncPostCommitter);
 
@@ -196,7 +210,10 @@ public class TestAsynchronousPostCommitter extends OmidTestBase {
 
         PostCommitActions syncPostCommitter =
                 spy(new HBaseSyncPostCommitter(new NullMetricsProvider(), commitTableClient));
-        PostCommitActions asyncPostCommitter = new HBaseAsyncPostCommitter(syncPostCommitter);
+        ListeningExecutorService postCommitExecutor =
+                MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor(
+                        new ThreadFactoryBuilder().setNameFormat("postCommit-%d").build()));
+        PostCommitActions asyncPostCommitter = new HBaseAsyncPostCommitter(syncPostCommitter, postCommitExecutor);
 
         TransactionManager tm = newTransactionManager(context, asyncPostCommitter);
 

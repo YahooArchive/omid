@@ -2,6 +2,7 @@ package com.yahoo.omid.transaction;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Optional;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.metrics.NullMetricsProvider;
 import com.yahoo.omid.tsoclient.TSOClient;
@@ -214,9 +215,9 @@ public class TestShadowCells extends OmidTestBase {
     }
 
     @Test(timeOut = 60_000)
-    public void testTransactionNeverCompletesWhenCommitThrowsAnInternalTransactionManagerExceptionUpdatingShadowCells(
-            ITestContext context)
+    public void testTransactionNeverCompletesWhenAnExceptionIsThrownUpdatingShadowCells(ITestContext context)
             throws Exception {
+
         CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
 
         TSOClient client = TSOClient.newBuilder().withConfiguration(getTSOClientDefaultConfiguration()).build();
@@ -238,27 +239,23 @@ public class TestShadowCells extends OmidTestBase {
         table.put(tx, put);
 
         // This line emulates an error accessing the target table by disabling it
-        doAnswer(new Answer<Void>() {
+        doAnswer(new Answer<ListenableFuture<Void>>() {
             @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
+            public ListenableFuture<Void> answer(InvocationOnMock invocation) throws Throwable {
                 table.flushCommits();
                 HBaseAdmin admin = hBaseUtils.getHBaseAdmin();
                 admin.disableTable(table.getTableName());
-                invocation.callRealMethod();
-                return null;
+                return (ListenableFuture<Void>) invocation.callRealMethod();
             }
         }).when(syncPostCommitter).updateShadowCells(any(HBaseTransaction.class));
 
-        // When committing, a TransactionManagerException should be thrown by tm.updateShadowCells(). The exception
-        // must be catch internally by tm.commit(), avoiding the transaction completion on the commit table.
-        // After that, a TransacionException is thrown to the application.
+        // When committing, an IOException should be thrown in syncPostCommitter.updateShadowCells() and placed in the
+        // future as a TransactionManagerException. However, the exception is never retrieved in the
+        // AbstractTransactionManager as the future is never checked.
         // This requires to set the HConstants.HBASE_CLIENT_RETRIES_NUMBER in the HBase config to a finite number:
         // e.g -> hbaseConf.setInt(HBASE_CLIENT_RETRIES_NUMBER, 3); Otherwise it will get stuck in tm.commit();
-        try {
-            tm.commit(tx);
-        } catch (TransactionException e) {
-            // Expected, see comment above
-        }
+
+        tm.commit(tx); // Tx effectively commits but the post Commit Actions failed when updating the shadow cells
 
         // Re-enable table to allow the required checks below
         HBaseAdmin admin = hBaseUtils.getHBaseAdmin();
@@ -287,17 +284,17 @@ public class TestShadowCells extends OmidTestBase {
                 spy(new HBaseSyncPostCommitter(new NullMetricsProvider(), getCommitTable(context).getClient()));
         AbstractTransactionManager tm = (AbstractTransactionManager) newTransactionManager(context, syncPostCommitter);
 
-        doAnswer(new Answer<Void>() {
+        doAnswer(new Answer<ListenableFuture<Void>>() {
             @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
+            public ListenableFuture<Void> answer(InvocationOnMock invocation) throws Throwable {
                 LOG.info("Releasing readAfterCommit barrier");
                 readAfterCommit.countDown();
                 LOG.info("Waiting postCommitBegin barrier");
                 postCommitBegin.await();
-                invocation.callRealMethod();
+                ListenableFuture<Void> result = (ListenableFuture<Void>) invocation.callRealMethod();
                 LOG.info("Releasing postCommitEnd barrier");
                 postCommitEnd.countDown();
-                return null;
+                return result;
             }
         }).when(syncPostCommitter).updateShadowCells(any(HBaseTransaction.class));
 

@@ -15,12 +15,16 @@
  */
 package com.yahoo.omid.transaction;
 
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.metrics.Timer;
 import com.yahoo.omid.tsoclient.CellId;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
@@ -28,6 +32,8 @@ import java.util.concurrent.ExecutionException;
 import static com.yahoo.omid.metrics.MetricsUtils.name;
 
 public class HBaseSyncPostCommitter implements PostCommitActions {
+
+    private static final Logger LOG = LoggerFactory.getLogger(HBaseSyncPostCommitter.class);
 
     private final MetricsRegistry metrics;
     private final CommitTable.Client commitTableClient;
@@ -44,9 +50,9 @@ public class HBaseSyncPostCommitter implements PostCommitActions {
     }
 
     @Override
-    public void updateShadowCells(AbstractTransaction<? extends CellId> transaction)
-            throws TransactionManagerException
-    {
+    public ListenableFuture<Void> updateShadowCells(AbstractTransaction<? extends CellId> transaction) {
+
+        SettableFuture<Void> updateSCFuture = SettableFuture.create();
 
         HBaseTransaction tx = HBaseTransactionManager.enforceHBaseTransactionAsParam(transaction);
 
@@ -63,27 +69,33 @@ public class HBaseSyncPostCommitter implements PostCommitActions {
                 try {
                     cell.getTable().put(put);
                 } catch (IOException e) {
-                    throw new TransactionManagerException(tx + ": Error inserting shadow cell " + cell, e);
+                    LOG.warn("{}: Error inserting shadow cell {}", tx, cell, e);
+                    updateSCFuture.setException(
+                            new TransactionManagerException(tx + ": Error inserting shadow cell " + cell, e));
                 }
             }
 
             // Flush affected tables before returning to avoid loss of shadow cells updates when autoflush is disabled
             try {
                 tx.flushTables();
+                updateSCFuture.set(null);
             } catch (IOException e) {
-                throw new TransactionManagerException(tx + ": Error while flushing writes", e);
+                LOG.warn("{}: Error while flushing writes", tx, e);
+                updateSCFuture.setException(new TransactionManagerException(tx + ": Error while flushing writes", e));
             }
 
         } finally {
             shadowCellsUpdateTimer.stop();
         }
 
+        return updateSCFuture;
+
     }
 
     @Override
-    public void removeCommitTableEntry(AbstractTransaction<? extends CellId> transaction)
-            throws TransactionManagerException
-    {
+    public ListenableFuture<Void> removeCommitTableEntry(AbstractTransaction<? extends CellId> transaction) {
+
+        SettableFuture<Void> updateSCFuture = SettableFuture.create();
 
         HBaseTransaction tx = HBaseTransactionManager.enforceHBaseTransactionAsParam(transaction);
 
@@ -91,23 +103,21 @@ public class HBaseSyncPostCommitter implements PostCommitActions {
 
         try {
             commitTableClient.completeTransaction(tx.getStartTimestamp()).get();
+            updateSCFuture.set(null);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new TransactionManagerException(tx + ": interrupted during commit table entry delete");
+            LOG.warn("{}: interrupted during commit table entry delete", tx, e);
+            updateSCFuture.setException(
+                    new TransactionManagerException(tx + ": interrupted during commit table entry delete"));
         } catch (ExecutionException e) {
-            throw new TransactionManagerException(tx + ": can't remove commit table entry");
+            LOG.warn("{}: can't remove commit table entry", tx, e);
+            updateSCFuture.setException(new TransactionManagerException(tx + ": can't remove commit table entry"));
         } finally {
-            commitTableUpdateTimer.start();
+            commitTableUpdateTimer.stop();
         }
 
-    }
+        return updateSCFuture;
 
-    @Override
-    public void updateShadowCellsAndRemoveCommitTableEntry(AbstractTransaction<? extends CellId> transaction)
-            throws TransactionManagerException
-    {
-        updateShadowCells(transaction);
-        removeCommitTableEntry(transaction);
     }
 
 }
