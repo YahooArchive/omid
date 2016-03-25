@@ -15,6 +15,7 @@
  */
 package com.yahoo.omid;
 
+import com.google.common.base.Preconditions;
 import com.google.common.io.Resources;
 import org.apache.commons.beanutils.BeanUtils;
 import org.slf4j.Logger;
@@ -52,6 +53,7 @@ public class YAMLUtils {
     @SuppressWarnings("unchecked")
     private Map loadSettings(String resourcePath, String defaultResourcePath) throws IOException {
         Map defaultSetting = loadAsMap(defaultResourcePath);
+        Preconditions.checkState(defaultSetting.size() > 0, String.format("Failed to load file '%s' from classpath", defaultResourcePath));
         if (resourcePath != null) {
             Map userSetting = loadAsMap(resourcePath);
             defaultSetting.putAll(userSetting);
@@ -59,11 +61,16 @@ public class YAMLUtils {
         return defaultSetting;
     }
 
+    @SuppressWarnings("unchecked")
     private Map loadAsMap(String path) throws IOException {
         try {
             String content = Resources.toString(Resources.getResource(path), Charset.forName("UTF-8"));
             LOG.debug("Loaded resource file '{}'\n{}", path, content);
-            return new Yaml().loadAs(content, Map.class);
+            Map settings = new Yaml().loadAs(content, Map.class);
+            if (settings == null) {
+                settings = new HashMap(0);
+            }
+            return settings;
         } catch (IllegalArgumentException e) {
             return new HashMap();
         }
