@@ -15,8 +15,8 @@
 # Port reserved by the Status Oracle
 port: 54758
 maxItems: 100000000
-maxBatchSize: 10000
-batchPersistTimeoutMS: 100
+maxBatchSize: 25
+batchPersistTimeoutMS: 10
 
 # Default module configuration (No TSO High Availability & in-memory storage for timestamp and commit tables)
 timestampStoreModule: !!com.yahoo.omid.tso.InMemoryTimestampStorageModule [ ]
