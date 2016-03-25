@@ -1,8 +1,10 @@
 package com.yahoo.omid.transaction;
 
 import com.google.common.base.Optional;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
+import com.google.common.util.concurrent.SettableFuture;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.metrics.NullMetricsProvider;
@@ -58,9 +60,11 @@ public class TestAsynchronousPostCommitter extends OmidTestBase {
 
         final CountDownLatch beforeUpdatingShadowCellsLatch = new CountDownLatch(1);
         final CountDownLatch afterUpdatingShadowCellsLatch = new CountDownLatch(1);
+        final CountDownLatch beforeRemovingCTEntryLatch = new CountDownLatch(1);
+        final CountDownLatch afterRemovingCTEntryLatch = new CountDownLatch(1);
 
-        doAnswer(new Answer<Void>() {
-            public Void answer(InvocationOnMock invocation) {
+        doAnswer(new Answer<ListenableFuture<Void>>() {
+            public ListenableFuture<Void> answer(InvocationOnMock invocation) {
                 try {
                     beforeUpdatingShadowCellsLatch.await();
                     invocation.callRealMethod();
@@ -68,9 +72,23 @@ public class TestAsynchronousPostCommitter extends OmidTestBase {
                 } catch (Throwable throwable) {
                     throwable.printStackTrace();
                 }
-                return null;
+                return SettableFuture.create();
             }
         }).when(syncPostCommitter).updateShadowCells(any(AbstractTransaction.class));
+
+        doAnswer(new Answer<ListenableFuture<Void>>() {
+            public ListenableFuture<Void> answer(InvocationOnMock invocation) {
+                try {
+                    beforeRemovingCTEntryLatch.await();
+                    LOG.info("We are here");
+                    invocation.callRealMethod();
+                    afterRemovingCTEntryLatch.countDown();
+                } catch (Throwable throwable) {
+                    throwable.printStackTrace();
+                }
+                return SettableFuture.create();
+            }
+        }).when(syncPostCommitter).removeCommitTableEntry(any(AbstractTransaction.class));
 
         try (TTable txTable = new TTable(hbaseConf, TEST_TABLE)) {
 
@@ -117,16 +135,28 @@ public class TestAsynchronousPostCommitter extends OmidTestBase {
             beforeUpdatingShadowCellsLatch.countDown();
             afterUpdatingShadowCellsLatch.await();
 
-            // Finally, we check that the shadow cells are there
+            // Now we can check that the shadow cells are there...
+            verify(syncPostCommitter, times(1)).updateShadowCells(any(AbstractTransaction.class));
             assertTrue(CellUtils.hasShadowCell(row1, family, qualifier, tx1Id, new TTableCellGetterAdapter(txTable)));
             assertTrue(CellUtils.hasShadowCell(row2, family, qualifier, tx1Id, new TTableCellGetterAdapter(txTable)));
+            // ...and the transaction entry is still in the Commit Table
+            commitTimestamp = commitTableClient.getCommitTimestamp(tx1Id).get();
+            assertTrue(commitTimestamp.isPresent());
+            assertTrue(commitTimestamp.get().isValid());
+            assertEquals(commitTimestamp.get().getValue(), ((AbstractTransaction) tx1).getCommitTimestamp());
 
-            verify(syncPostCommitter, times(1)).updateShadowCells(any(AbstractTransaction.class));
+            // Finally, we continue till the Commit Table cleaning process is done...
+            beforeRemovingCTEntryLatch.countDown();
+            afterRemovingCTEntryLatch.await();
+
+            // ...so now, the Commit Table should NOT contain the entry for the transaction anymore
             verify(syncPostCommitter, times(1)).removeCommitTableEntry(any(AbstractTransaction.class));
-
-            // Commit Table should NOT contain the entry for the transaction anymore
             commitTimestamp = commitTableClient.getCommitTimestamp(tx1Id).get();
             assertFalse(commitTimestamp.isPresent());
+
+            // Final checks
+            verify(syncPostCommitter, times(1)).updateShadowCells(any(AbstractTransaction.class));
+            verify(syncPostCommitter, times(1)).removeCommitTableEntry(any(AbstractTransaction.class));
 
         }
 
@@ -183,22 +213,30 @@ public class TestAsynchronousPostCommitter extends OmidTestBase {
 
             long tx1Id = tx1.getTransactionId();
 
-            // As we have paused the update of shadow cells, the shadow cells shouldn't be there yet
+            // The shadow cells shouldn't be there...
             assertFalse(CellUtils.hasShadowCell(row1, family, qualifier, tx1Id, new TTableCellGetterAdapter(txTable)));
             assertFalse(CellUtils.hasShadowCell(row2, family, qualifier, tx1Id, new TTableCellGetterAdapter(txTable)));
-
-            // We continue with when both methods have been completed without doing nothing
-            updateShadowCellsCalledLatch.await();
-            removeCommitTableEntryCalledLatch.await();
-
-            // Finally, we check that the shadow cells are NOT there...
-            assertFalse(CellUtils.hasShadowCell(row1, family, qualifier, tx1Id, new TTableCellGetterAdapter(txTable)));
-            assertFalse(CellUtils.hasShadowCell(row2, family, qualifier, tx1Id, new TTableCellGetterAdapter(txTable)));
-
-            // ... and the commit table entry has NOT been cleaned
+            // ... and the should NOT have been cleaned
             Optional<CommitTable.CommitTimestamp> commitTimestamp = commitTableClient.getCommitTimestamp(tx1Id).get();
             assertTrue(commitTimestamp.isPresent());
             assertTrue(commitTimestamp.get().isValid());
+
+            updateShadowCellsCalledLatch.await();
+
+            // Not even after waiting for the method call on the shadow cells update...
+            assertFalse(CellUtils.hasShadowCell(row1, family, qualifier, tx1Id, new TTableCellGetterAdapter(txTable)));
+            assertFalse(CellUtils.hasShadowCell(row2, family, qualifier, tx1Id, new TTableCellGetterAdapter(txTable)));
+
+            removeCommitTableEntryCalledLatch.await();
+            // ... and after waiting for the method call for cleaning the commit table entry
+            commitTimestamp = commitTableClient.getCommitTimestamp(tx1Id).get();
+            assertTrue(commitTimestamp.isPresent());
+            assertTrue(commitTimestamp.get().isValid());
+
+            // Final checks
+            verify(syncPostCommitter, times(1)).updateShadowCells(any(AbstractTransaction.class));
+            verify(syncPostCommitter, times(1)).removeCommitTableEntry(any(AbstractTransaction.class));
+
         }
 
     }
@@ -244,14 +282,11 @@ public class TestAsynchronousPostCommitter extends OmidTestBase {
 
             long tx1Id = tx1.getTransactionId();
 
-            // As we have paused the update of shadow cells, the shadow cells shouldn't be there yet
-            assertFalse(CellUtils.hasShadowCell(row1, family, qualifier, tx1Id, new TTableCellGetterAdapter(txTable)));
-            assertFalse(CellUtils.hasShadowCell(row2, family, qualifier, tx1Id, new TTableCellGetterAdapter(txTable)));
-
-            // We continue with when the unsuccessful call of the method for cleaning commit table has been invoked
+            // We continue when the unsuccessful call of the method for cleaning commit table has been invoked
             removeCommitTableEntryCalledLatch.await();
 
-            // Finally, we check that the shadow cells are there...
+            // We check that the shadow cells are there (because the update of the shadow cells should precede
+            // the cleaning of the commit table entry) ...
             assertTrue(CellUtils.hasShadowCell(row1, family, qualifier, tx1Id, new TTableCellGetterAdapter(txTable)));
             assertTrue(CellUtils.hasShadowCell(row2, family, qualifier, tx1Id, new TTableCellGetterAdapter(txTable)));
 
@@ -259,6 +294,11 @@ public class TestAsynchronousPostCommitter extends OmidTestBase {
             Optional<CommitTable.CommitTimestamp> commitTimestamp = commitTableClient.getCommitTimestamp(tx1Id).get();
             assertTrue(commitTimestamp.isPresent());
             assertTrue(commitTimestamp.get().isValid());
+
+            // Final checks
+            verify(syncPostCommitter, times(1)).updateShadowCells(any(AbstractTransaction.class));
+            verify(syncPostCommitter, times(1)).removeCommitTableEntry(any(AbstractTransaction.class));
+
         }
 
     }
