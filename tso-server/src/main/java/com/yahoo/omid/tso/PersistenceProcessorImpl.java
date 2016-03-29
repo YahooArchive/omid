@@ -48,8 +48,6 @@ class PersistenceProcessorImpl
 
     private static final Logger LOG = LoggerFactory.getLogger(PersistenceProcessor.class);
 
-    final static int BATCH_TIMEOUT_MS = 100;
-
     private final String tsoHostAndPort;
     private final LeaseManagement leaseManager;
     final ReplyProcessor reply;
@@ -62,6 +60,7 @@ class PersistenceProcessorImpl
     final Timer flushTimer;
     final Histogram batchSizeHistogram;
     final Meter timeoutMeter;
+    final int batchPersistTimeoutMS;
 
     long lastFlush = System.nanoTime();
 
@@ -102,6 +101,7 @@ class PersistenceProcessorImpl
 
         this.tsoHostAndPort = tsoHostAndPort;
         this.batch = batch;
+        this.batchPersistTimeoutMS = config.getBatchPersistTimeoutMS();
         this.leaseManager = leaseManager;
         this.commitTableClient = commitTable.getClient();
         this.writer = commitTable.getWriter();
@@ -110,7 +110,7 @@ class PersistenceProcessorImpl
         this.panicker = panicker;
 
         LOG.info("Creating the persist processor with batch size {}, and timeout {}ms",
-                config.getMaxBatchSize(), config.getBatchPersistTimeoutMS());
+                 config.getMaxBatchSize(), batchPersistTimeoutMS);
 
         flushTimer = metrics.timer(name("tso", "persist", "flush"));
         batchSizeHistogram = metrics.histogram(name("tso", "persist", "batchsize"));
@@ -157,7 +157,6 @@ class PersistenceProcessorImpl
                 batch.addTimestamp(event.getStartTimestamp(), event.getChannel(), event.getMonCtx());
                 break;
         }
-
         if (batch.isFull() || endOfBatch) {
             maybeFlushBatch();
         }
@@ -188,13 +187,12 @@ class PersistenceProcessorImpl
     }
 
     /**
-     * Flush the current batch if it is larger than the max batch size,
-     * or BATCH_TIMEOUT_MS milliseconds have elapsed since the last flush.
+     * Flush the current batch if it's full, or the timeout has been elapsed since the last flush.
      */
     private void maybeFlushBatch() {
         if (batch.isFull()) {
             flush();
-        } else if ((System.nanoTime() - lastFlush) > TimeUnit.MILLISECONDS.toNanos(BATCH_TIMEOUT_MS)) {
+        } else if ((System.nanoTime() - lastFlush) > TimeUnit.MILLISECONDS.toNanos(batchPersistTimeoutMS)) {
             timeoutMeter.mark();
             flush();
         }
@@ -331,17 +329,17 @@ class PersistenceProcessorImpl
                         e.getMonCtx().timerStop("commitPersistProcessor");
                         if (isTSOInstanceMaster) {
                             reply.commitResponse(false, e.getStartTimestamp(), e.getCommitTimestamp(), e.getChannel(),
-                                    e.getMonCtx());
+                                                 e.getMonCtx());
                         } else {
                             // The client will need to perform heuristic actions to determine the output
                             reply.commitResponse(true, e.getStartTimestamp(), e.getCommitTimestamp(), e.getChannel(),
-                                    e.getMonCtx());
+                                                 e.getMonCtx());
                         }
                         break;
                     case ABORT:
                         if (e.isRetry()) {
                             retryProc.disambiguateRetryRequestHeuristically(e.getStartTimestamp(), e.getChannel(),
-                                    e.getMonCtx());
+                                                                            e.getMonCtx());
                         } else {
                             LOG.error("We should not be receiving non-retried aborted requests in here");
                         }
@@ -395,7 +393,7 @@ class PersistenceProcessorImpl
             e.channel = c;
             e.monCtx = monCtx;
         }
-        
+
         MonitoringContext getMonCtx() {
             return monCtx;
         }
