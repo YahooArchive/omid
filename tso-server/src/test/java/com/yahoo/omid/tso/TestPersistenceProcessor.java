@@ -80,8 +80,11 @@ public class TestPersistenceProcessor {
         // Init a non-HA lease manager
         VoidLeaseManager leaseManager = spy(new VoidLeaseManager(mock(TSOChannelHandler.class),
                                                                  mock(TSOStateManager.class)));
+
+        TSOServerConfig tsoServerConfig = new TSOServerConfig();
+        tsoServerConfig.setBatchPersistTimeoutMS(100);
         // Component under test
-        PersistenceProcessor proc = new PersistenceProcessorImpl(new TSOServerConfig(),
+        PersistenceProcessor proc = new PersistenceProcessorImpl(tsoServerConfig,
                                                                  metrics,
                                                                  "localhost:1234",
                                                                  batch,
@@ -106,8 +109,11 @@ public class TestPersistenceProcessor {
 
         // Init a HA lease manager
         LeaseManager leaseManager = mock(LeaseManager.class);
+
+        TSOServerConfig tsoServerConfig = new TSOServerConfig();
+        tsoServerConfig.setBatchPersistTimeoutMS(100);
         // Component under test
-        PersistenceProcessor proc = new PersistenceProcessorImpl(new TSOServerConfig(),
+        PersistenceProcessor proc = new PersistenceProcessorImpl(tsoServerConfig,
                                                                  metrics,
                                                                  "localhost:1234",
                                                                  batch,
