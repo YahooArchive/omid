@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.yahoo.omid</groupId>
         <artifactId>omid</artifactId>
-        <version>0.8.1.29-SNAPSHOT</version>
+        <version>0.8.1.29</version>
     </parent>
 
     <artifactId>omid-shims-aggregator</artifactId>
