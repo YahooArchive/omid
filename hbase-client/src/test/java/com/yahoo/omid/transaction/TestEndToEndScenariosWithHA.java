@@ -41,7 +41,7 @@ import static org.testng.Assert.fail;
 @Test(groups = "sharedHBase")
 public class TestEndToEndScenariosWithHA extends OmidTestBase {
 
-    private static final int TEST_LEASE_PERIOD_MS = 1000;
+    private static final int TEST_LEASE_PERIOD_MS = 5_000;
     private static final String CURRENT_TSO_PATH = "/CURRENT_TSO_PATH";
     private static final String TSO_LEASE_PATH = "/TSO_LEASE_PATH";
     private static final String NAMESPACE = "omid";
