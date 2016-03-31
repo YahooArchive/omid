@@ -20,7 +20,7 @@ for j in ../lib/*.jar; do
 done
 
 tso() {
-    exec java $JVM_FLAGS -Dlog4j.configuration=log4j.xml -cp $CLASSPATH com.yahoo.omid.benchmarks.tso.TSOBenchmark $@
+    exec java $JVM_FLAGS -Dlog4j.configuration=log4j.xml -cp $CLASSPATH com.yahoo.omid.benchmarks.tso.TSOServerBenchmark $@
 }
 
 usage() {

@@ -21,7 +21,6 @@ import com.yahoo.omid.metrics.MetricsRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.concurrent.NotThreadSafe;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.yahoo.omid.metrics.MetricsUtils.name;
 
-@NotThreadSafe
+//NotThreadSafe
 public class MonitoringContext {
 
     private static final Logger LOG = LoggerFactory.getLogger(MonitoringContext.class);

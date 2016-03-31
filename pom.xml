@@ -67,7 +67,7 @@
         <!-- 3rd-Party Library Versioning -->
         <hbase0.version>0.98.10.1-hadoop1</hbase0.version>
         <hbase1.version>1.1.1</hbase1.version>
-        <guava.version>11.0.2</guava.version>
+        <guava.version>14.0.1</guava.version>
         <guice.version>3.0</guice.version>
         <testng.version>6.8.8</testng.version>
         <slf4j.version>1.7.7</slf4j.version>
@@ -320,10 +320,10 @@
                         <exclude>**/src/main/java/com/yahoo/omid/proto/TSOProto.java</exclude>
 
                         <!-- Taken from https://github.com/brianfrankcooper/YCSB -->
-                        <exclude>**/src/main/java/com/yahoo/omid/benchmarks/tso/Generator.java</exclude>
-                        <exclude>**/src/main/java/com/yahoo/omid/benchmarks/tso/IntegerGenerator.java</exclude>
-                        <exclude>**/src/main/java/com/yahoo/omid/benchmarks/tso/ZipfianGenerator.java</exclude>
-                        <exclude>**/src/main/java/com/yahoo/omid/benchmarks/tso/ScrambledZipfianGenerator.java</exclude>
+                        <exclude>**/src/main/java/com/yahoo/omid/benchmarks/utils/Generator.java</exclude>
+                        <exclude>**/src/main/java/com/yahoo/omid/benchmarks/utils/IntegerGenerator.java</exclude>
+                        <exclude>**/src/main/java/com/yahoo/omid/benchmarks/utils/ZipfianGenerator.java</exclude>
+                        <exclude>**/src/main/java/com/yahoo/omid/benchmarks/utils/ScrambledZipfianGenerator.java</exclude>
 
                         <!-- Taken from https://github.com/apache/hbase -->
                         <exclude>**/src/main/java/com/yahoo/omid/committable/hbase/RegionSplitter.java</exclude>
