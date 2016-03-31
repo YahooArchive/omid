@@ -79,9 +79,17 @@
                         <id>default-cli</id>
                         <configuration>
                             <target>
+                                <mkdir dir="${project.build.directory}/generated-sources/proto"/>
+                                <path id="proto.path">
+                                    <fileset dir="src/main/proto">
+                                        <include name="**/*.proto"/>
+                                    </fileset>
+                                </path>
+                                <pathconvert pathsep=" " property="proto.files" refid="proto.path"/>
                                 <exec executable="protoc" failonerror="true">
-                                    <arg value="--java_out=src/main/java" />
-                                    <arg value="src/main/proto/TSOProto.proto" />
+                                    <arg value="--java_out=${project.build.directory}/generated-sources/proto"/>
+                                    <arg value="-I${project.basedir}/src/main/proto"/>
+                                    <arg line="${proto.files}"/>
                                 </exec>
                             </target>
                         </configuration>
