@@ -23,6 +23,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 
 import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.COMMIT_TABLE;
@@ -295,7 +296,7 @@ public class TestTxMgrFailover extends OmidTestBase {
     // ----------------------------------------------------------------------------------------------------------------
 
     protected void checkOperationSuccessOnCell(KeyValue.Type targetOp,
-                                               /** Nullable */ byte[] expectedValue,
+                                               @Nullable byte[] expectedValue,
                                                byte[] tableName,
                                                byte[] row,
                                                byte[] fam,

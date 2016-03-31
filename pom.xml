@@ -85,6 +85,7 @@
         <snakeyaml.version>1.11</snakeyaml.version>
         <beanutils.version>1.8.3</beanutils.version>
         <commons-io.version>2.4</commons-io.version>
+        <google.findbugs.version>3.0.1</google.findbugs.version>
 
         <!-- Maven Plugin Versioning -->
         <maven-antrun-plugin.version>1.7</maven-antrun-plugin.version>
