@@ -15,8 +15,20 @@
  */
 package com.yahoo.omid.benchmarks.utils;
 
-public enum Distribution {
+import java.util.Random;
 
-    UNIFORM, ZIPFIAN;
+public class UniformGenerator extends IntegerGenerator {
+
+    private final Random ramdom = new Random(System.nanoTime());
+
+    @Override
+    public int nextInt() {
+        return ramdom.nextInt(Integer.MAX_VALUE);
+    }
+
+    @Override
+    public double mean() {
+        return 0;
+    }
 
 }

@@ -21,7 +21,6 @@ import com.google.inject.Binder;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
-import com.yahoo.omid.benchmarks.utils.GeneratorUtils;
 import com.yahoo.omid.benchmarks.utils.IntegerGenerator;
 import com.yahoo.omid.benchmarks.utils.TimeValueTimeUnit;
 import com.yahoo.omid.committable.CommitTable;
@@ -63,7 +62,7 @@ class RawTxRunner implements Runnable {
     private final boolean fixedWriteSetSize;
     private final TimeValueTimeUnit commitDelay;
     private final int percentageOfReadOnlyTxs;
-    private final IntegerGenerator intGenerator;
+    private final IntegerGenerator cellIdGenerator;
     private final Random randomGen;
 
     // Main elements
@@ -111,7 +110,7 @@ class RawTxRunner implements Runnable {
         this.fixedWriteSetSize = expConfig.isFixedWritesetSize();
         this.commitDelay = expConfig.getCommitDelay();
         this.percentageOfReadOnlyTxs = expConfig.getPercentageOfReadOnlyTxs();
-        this.intGenerator = GeneratorUtils.getIntGenerator(expConfig.getRequestDistribution());
+        this.cellIdGenerator = expConfig.getCellIdGenerator();
         this.randomGen = new Random(System.currentTimeMillis() * txRunnerId); // to make it channel dependent
 
         int txRateInReqPerSec = expConfig.getTxRateInRequestPerSecond();
@@ -119,7 +118,7 @@ class RawTxRunner implements Runnable {
 
         LOG.info("TxRunner-{} [ Tx Rate (Req per Sec) -> {} ]", txRunnerId, txRateInReqPerSec);
         LOG.info("TxRunner-{} [ Warm Up -> {}:{} ]", txRunnerId, warmUp.getPeriod(),  warmUp.getTimeUnit());
-        LOG.info("TxRunner-{} [ Row Distribution -> {} ]", txRunnerId, expConfig.getRequestDistribution());
+        LOG.info("TxRunner-{} [ Cell Id Distribution Generator -> {} ]", txRunnerId, expConfig.getCellIdGenerator().getClass());
         LOG.info("TxRunner-{} [ Max Tx Size -> {} Fixed: {} ]", txRunnerId, writesetSize, fixedWriteSetSize);
         LOG.info("TxRunner-{} [ Commit delay -> {}:{} ]", txRunnerId, commitDelay.getPeriod(), commitDelay.getTimeUnit());
         LOG.info("TxRunner-{} [ % of Read-Only Tx -> {} % ]", txRunnerId, percentageOfReadOnlyTxs);
@@ -241,7 +240,7 @@ class RawTxRunner implements Runnable {
             // Otherwise, we create the writeset...
             final Set<CellId> cells = new HashSet<>();
             for (byte i = 0; i < txWritesetSize; i++) {
-                long cellId = intGenerator.nextInt();
+                long cellId = cellIdGenerator.nextInt();
                 cells.add(new DummyCellIdImpl(cellId));
             }
             // ... and we commit the transaction

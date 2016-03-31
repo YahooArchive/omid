@@ -21,8 +21,11 @@ warmUp: !!com.yahoo.omid.benchmarks.utils.TimeValueTimeUnit [
     !!java.util.concurrent.TimeUnit SECONDS
 ]
 
-# Request distribution (how to pick rows) [ UNIFORM | ZIPFIAN ]"
-requestDistribution: !!com.yahoo.omid.benchmarks.utils.Distribution UNIFORM
+# Writeset cell id generation distribution. Options:
+# 1) com.yahoo.omid.benchmarks.utils.UniformGenerator [ ]
+# 2) com.yahoo.omid.benchmarks.utils.ZipfianGenerator [ max_items_as_long_(e.g._Long.MAX_VALUE) ]
+# 3) com.yahoo.omid.benchmarks.utils.ScrambledZipfianGenerator [ max_items_as_long_(e.g._Long.MAX_VALUE) ]
+cellIdGenerator: !!com.yahoo.omid.benchmarks.utils.UniformGenerator [ ]
 
 # Size of tx writesets in terms of number of modified cells
 writesetSize: 2

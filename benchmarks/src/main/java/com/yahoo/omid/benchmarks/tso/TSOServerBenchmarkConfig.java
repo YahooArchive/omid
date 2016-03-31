@@ -17,7 +17,7 @@ package com.yahoo.omid.benchmarks.tso;
 
 import com.google.inject.AbstractModule;
 import com.yahoo.omid.YAMLUtils;
-import com.yahoo.omid.benchmarks.utils.Distribution;
+import com.yahoo.omid.benchmarks.utils.IntegerGenerator;
 import com.yahoo.omid.benchmarks.utils.TimeValueTimeUnit;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.tools.hbase.SecureHBaseConfig;
@@ -33,7 +33,7 @@ public class TSOServerBenchmarkConfig extends SecureHBaseConfig {
     private int txRunners;
     private int txRateInRequestPerSecond;
     private TimeValueTimeUnit warmUp;
-    private Distribution requestDistribution;
+    private IntegerGenerator cellIdGenerator;
     private int writesetSize;
     private boolean fixedWritesetSize;
     private int percentageOfReadOnlyTxs;
@@ -92,12 +92,12 @@ public class TSOServerBenchmarkConfig extends SecureHBaseConfig {
         this.warmUp = warmUp;
     }
 
-    public Distribution getRequestDistribution() {
-        return requestDistribution;
+    public IntegerGenerator getCellIdGenerator() {
+        return cellIdGenerator;
     }
 
-    public void setRequestDistribution(Distribution requestDistribution) {
-        this.requestDistribution = requestDistribution;
+    public void setCellIdGenerator(IntegerGenerator cellIdGenerator) {
+        this.cellIdGenerator = cellIdGenerator;
     }
 
     public int getWritesetSize() {
