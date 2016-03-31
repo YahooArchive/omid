@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.yahoo.omid</groupId>
         <artifactId>omid</artifactId>
-        <version>0.8.1.30-SNAPSHOT</version>
+        <version>0.8.1.30</version>
     </parent>
 
     <artifactId>common</artifactId>
@@ -79,17 +79,17 @@
                         <id>default-cli</id>
                         <configuration>
                             <target>
-                                <mkdir dir="${project.build.directory}/generated-sources/proto"/>
+                                <mkdir dir="${project.build.directory}/generated-sources/proto" />
                                 <path id="proto.path">
                                     <fileset dir="src/main/proto">
-                                        <include name="**/*.proto"/>
+                                        <include name="**/*.proto" />
                                     </fileset>
                                 </path>
-                                <pathconvert pathsep=" " property="proto.files" refid="proto.path"/>
+                                <pathconvert pathsep=" " property="proto.files" refid="proto.path" />
                                 <exec executable="protoc" failonerror="true">
-                                    <arg value="--java_out=${project.build.directory}/generated-sources/proto"/>
-                                    <arg value="-I${project.basedir}/src/main/proto"/>
-                                    <arg line="${proto.files}"/>
+                                    <arg value="--java_out=${project.build.directory}/generated-sources/proto" />
+                                    <arg value="-I${project.basedir}/src/main/proto" />
+                                    <arg line="${proto.files}" />
                                 </exec>
                             </target>
                         </configuration>
