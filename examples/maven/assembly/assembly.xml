@@ -39,7 +39,7 @@
         </file>
         <file>
             <source>${basedir}/src/main/resources/log4j.properties</source>
-            <outputDirectory>/</outputDirectory>
+            <outputDirectory>/conf</outputDirectory>
             <destName>log4j.properties</destName>
         </file>
         <file>
