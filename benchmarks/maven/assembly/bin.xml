@@ -10,29 +10,45 @@
 
     <includeBaseDirectory>true</includeBaseDirectory>
 
+    <moduleSets>
+
+        <moduleSet>
+            <!-- Enable access to all projects in the current multimodule build! -->
+            <!--<useAllReactorProjects>true</useAllReactorProjects>-->
+            <binaries>
+                <outputDirectory>/lib</outputDirectory>
+                <unpack>false</unpack>
+            </binaries>
+        </moduleSet>
+
+    </moduleSets>
+
     <fileSets>
         <fileSet>
-            <directory>target</directory>
-            <outputDirectory>/</outputDirectory>
             <includes>
-                <include>${project.artifactId}.jar</include>
+                <include>${basedir}/*.sh</include>
             </includes>
-        </fileSet>
-        <fileSet>
-            <directory>conf</directory>
         </fileSet>
         <fileSet>
             <directory>bin</directory>
         </fileSet>
         <fileSet>
-            <fileMode>644</fileMode>
-            <includes>
-                <include>${basedir}/*.txt</include>
-            </includes>
+            <directory>conf</directory>
         </fileSet>
     </fileSets>
 
     <files>
+
+        <file>
+            <source>target/${project.artifactId}-${project.version}.jar</source>
+            <outputDirectory>/</outputDirectory>
+            <destName>omid-benchmarks.jar</destName>
+        </file>
+        <file>
+            <source>${basedir}/src/main/resources/default-tso-server-benchmark-config.yml</source>
+            <outputDirectory>/conf</outputDirectory>
+            <destName>tso-server-benchmark-config.yml</destName>
+        </file>
 
     </files>
 

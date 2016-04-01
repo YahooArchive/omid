@@ -1,0 +1,78 @@
+# =====================================================================================================================
+# TSO Server Benchmark Configuration
+# =====================================================================================================================
+
+# Benchmark run lenght (Time Value: > 0, Time Unit: See java.util.concurrentTimeUnit class)
+runFor: !!com.yahoo.omid.benchmarks.utils.TimeValueTimeUnit [
+    5,
+    !!java.util.concurrent.TimeUnit MINUTES
+]
+
+# Number of simultaneous Omid TSO clients (TxRunners)
+txRunners: 1
+
+# Tx requests that each TxRunner triggers per second. Represents the max number of outstanding begin Tx async messages
+# in the communication channel
+txRateInRequestPerSecond: 100
+
+# Warm up time till the TxRunner reaches the specified transaction rate
+warmUp: !!com.yahoo.omid.benchmarks.utils.TimeValueTimeUnit [
+    30,
+    !!java.util.concurrent.TimeUnit SECONDS
+]
+
+# Writeset cell id generation distribution. Options:
+# 1) com.yahoo.omid.benchmarks.utils.UniformGenerator [ ]
+# 2) com.yahoo.omid.benchmarks.utils.ZipfianGenerator [ max_items_as_long_(e.g._Long.MAX_VALUE) ]
+# 3) com.yahoo.omid.benchmarks.utils.ScrambledZipfianGenerator [ max_items_as_long_(e.g._Long.MAX_VALUE) ]
+cellIdGenerator: !!com.yahoo.omid.benchmarks.utils.UniformGenerator [ ]
+
+# Size of tx writesets in terms of number of modified cells
+writesetSize: 2
+# If true, the writeset size will be exactly the number specified in the writesetSize config param.
+# If false, the writeset size will be homogeneously distributed between 1 & the number specified in writesetSize.
+fixedWritesetSize: true
+
+# % of read-only tx triggered -> [ 0 - 100 ] %
+percentageOfReadOnlyTxs: 0
+
+# Simulated delay between acquiring timestamp and committing. Can be used to simulated business operation execution.
+commitDelay: !!com.yahoo.omid.benchmarks.utils.TimeValueTimeUnit [
+    0,
+    !!java.util.concurrent.TimeUnit MILLISECONDS
+]
+
+# ---------------------------------------------------------------------------------------------------------------------
+# HBase security configuration
+# ---------------------------------------------------------------------------------------------------------------------
+# It's used for secure HBase only and ignored otherwise. core-site.xml and hbase-site.xml files are expected to be
+# found in the classpath if security is needed. Uncomment and configure the following lines if required:
+# principal: omid_hbase_user
+# keytab: /path/to/hbase/user/keytab
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Omid TSO Client configuration
+# ---------------------------------------------------------------------------------------------------------------------
+omidClientConfiguration: !!com.yahoo.omid.tsoclient.OmidClientConfiguration
+    connectionType: !!com.yahoo.omid.tsoclient.OmidClientConfiguration$ConnType DIRECT
+    connectionString: "localhost:54758"
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Commit Table storage configuration
+# ---------------------------------------------------------------------------------------------------------------------
+commitTableStoreModule: !!com.yahoo.omid.committable.hbase.DefaultHBaseCommitTableStorageModule
+    tableName: "OMID_COMMIT_TABLE"
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Metrics configuration
+# ---------------------------------------------------------------------------------------------------------------------
+metrics: !!com.yahoo.omid.metrics.CodahaleMetricsProvider [
+    !!com.yahoo.omid.metrics.CodahaleMetricsConfig {
+        outputFreqTimeUnit: !!java.util.concurrent.TimeUnit SECONDS,
+        outputFreq: 10,
+        reporters: !!set {
+            !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CSV,
+        },
+        csvDir: "csvMetrics",
+      }
+]

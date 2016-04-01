@@ -32,6 +32,13 @@
             <artifactId>metrics</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- The codahale-related dependency is added here just to include the jar in the final
+        tar.gz package assembled. -->
+        <dependency>
+            <groupId>com.yahoo.omid</groupId>
+            <artifactId>codahale-metrics</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- The hbase-related dependency is added here just to include the jar in the final tar.gz package assembled.
         The hbase tools are handy to create the required Omid tables from the same script that starts the TSO server -->
         <dependency>
@@ -112,6 +119,11 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>${guava.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+            <version>${google.findbugs.version}</version>
         </dependency>
 
         <!-- end utils -->

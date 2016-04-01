@@ -15,7 +15,7 @@
  * LICENSE file.                                                                                                                                                                   
  */
 
-package com.yahoo.omid.benchmarks.tso;
+package com.yahoo.omid.benchmarks.utils;
 
 
 /**

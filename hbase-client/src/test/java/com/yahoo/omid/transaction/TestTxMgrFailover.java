@@ -295,7 +295,8 @@ public class TestTxMgrFailover extends OmidTestBase {
     // Helper methods
     // ----------------------------------------------------------------------------------------------------------------
 
-    protected void checkOperationSuccessOnCell(KeyValue.Type targetOp, @Nullable byte[] expectedValue,
+    protected void checkOperationSuccessOnCell(KeyValue.Type targetOp,
+                                               @Nullable byte[] expectedValue,
                                                byte[] tableName,
                                                byte[] row,
                                                byte[] fam,
