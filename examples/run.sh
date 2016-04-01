@@ -68,7 +68,7 @@ if [ -z ${HBASE_CONF_DIR+x} ]; then echo "WARNING: HBASE_CONF_DIR is unset"; els
 
 [ ! -f "omid-examples.jar" ] && fileNotFound
 
-KLASSPATH=omid-examples.jar:${SCRIPTDIR}:${HBASE_CONF_DIR}:${HADOOP_CONF_DIR}
+KLASSPATH=omid-examples.jar:${HBASE_CONF_DIR}:${HADOOP_CONF_DIR}:${SCRIPTDIR}/conf
 
 for jar in ./lib/*.jar; do
     if [ -f "$jar" ]; then
@@ -90,7 +90,7 @@ case ${USER_OPTION} in
         java -cp $KLASSPATH com.yahoo.omid.examples.SnapshotIsolationExample "$@"
         ;;
     conf)
-        java -cp $KLASSPATH:${SCRIPTDIR}/conf com.yahoo.omid.examples.ConfigurationExample "$@"
+        java -cp $KLASSPATH com.yahoo.omid.examples.ConfigurationExample "$@"
         ;;
     *)
         show_help
