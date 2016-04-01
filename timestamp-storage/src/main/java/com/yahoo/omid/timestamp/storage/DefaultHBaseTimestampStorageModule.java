@@ -35,8 +35,8 @@ public class DefaultHBaseTimestampStorageModule extends AbstractModule {
 
     @Override
     public void configure() {
-        bindConstant().annotatedWith(Names.named(DEFAULT_TIMESTAMP_STORAGE_TABLE_NAME)).to(tableName);
-        bindConstant().annotatedWith(Names.named(DEFAULT_TIMESTAMP_STORAGE_CF_NAME)).to(familyName);
+        bindConstant().annotatedWith(Names.named(HBaseTimestampStorageConfig.TIMESTAMP_STORAGE_TABLE_NAME_KEY)).to(tableName);
+        bindConstant().annotatedWith(Names.named(HBaseTimestampStorageConfig.TIMESTAMP_STORAGE_CF_NAME_KEY)).to(familyName);
         install(new HBaseConfigModule(principal, keytab));
         install(new HBaseTimestampStorageModule());
     }
