@@ -16,7 +16,7 @@
 port: 54758
 maxItems: 100000000
 maxBatchSize: 25
-batchPersistTimeoutMS: 10
+batchPersistTimeoutInMs: 10
 
 # Default module configuration (No TSO High Availability & in-memory storage for timestamp and commit tables)
 timestampStoreModule: !!com.yahoo.omid.tso.InMemoryTimestampStorageModule [ ]
@@ -54,8 +54,7 @@ metrics: !!com.yahoo.omid.metrics.NullMetricsProvider [ ]
 #
 # metrics: !!com.yahoo.omid.metrics.CodahaleMetricsProvider [
 #     !!com.yahoo.omid.metrics.CodahaleMetricsConfig {
-#         outputFreqTimeUnit: !!java.util.concurrent.TimeUnit SECONDS,
-#         outputFreq: 60,
+#         outputFreqInSecs: 60,
 #         reporters: !!set {
 #             !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CONSOLE
 #         },
@@ -67,8 +66,7 @@ metrics: !!com.yahoo.omid.metrics.NullMetricsProvider [ ]
 #
 # metrics: !!com.yahoo.omid.metrics.CodahaleMetricsProvider [
 #     !!com.yahoo.omid.metrics.CodahaleMetricsConfig {
-#         outputFreqTimeUnit: !!java.util.concurrent.TimeUnit SECONDS,
-#         outputFreq: 60,
+#         outputFreqInSecs: 60,
 #         reporters: !!set {
 #             !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CSV,
 #             !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CONSOLE
@@ -120,8 +118,7 @@ metrics: !!com.yahoo.omid.metrics.NullMetricsProvider [ ]
 # leaseModule: !!com.yahoo.omid.tso.VoidLeaseManagementModule [ ]
 # metrics: !!com.yahoo.omid.metrics.CodahaleMetricsProvider [
 #     !!com.yahoo.omid.metrics.CodahaleMetricsConfig {
-#         outputFreqTimeUnit: !!java.util.concurrent.TimeUnit SECONDS,
-#         outputFreq: 30,
+#         outputFreqInSecs: 30,
 #         reporters: !!set {
 #             !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CONSOLE
 #         },

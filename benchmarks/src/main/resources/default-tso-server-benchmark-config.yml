@@ -2,11 +2,8 @@
 # TSO Server Benchmark Configuration
 # =====================================================================================================================
 
-# Benchmark run lenght (Time Value: > 0, Time Unit: See java.util.concurrentTimeUnit class)
-runFor: !!com.yahoo.omid.benchmarks.utils.TimeValueTimeUnit [
-    5,
-    !!java.util.concurrent.TimeUnit MINUTES
-]
+# Benchmark run length (Time Value: >  mins)
+benchmarkRunLengthInMins: 5
 
 # Number of simultaneous Omid TSO clients (TxRunners)
 txRunners: 1
@@ -16,10 +13,7 @@ txRunners: 1
 txRateInRequestPerSecond: 100
 
 # Warm up time till the TxRunner reaches the specified transaction rate
-warmUp: !!com.yahoo.omid.benchmarks.utils.TimeValueTimeUnit [
-    30,
-    !!java.util.concurrent.TimeUnit SECONDS
-]
+warmUpPeriodInSecs: 30
 
 # Writeset cell id generation distribution. Options:
 # 1) com.yahoo.omid.benchmarks.utils.UniformGenerator [ ]
@@ -37,10 +31,7 @@ fixedWritesetSize: true
 percentageOfReadOnlyTxs: 0
 
 # Simulated delay between acquiring timestamp and committing. Can be used to simulated business operation execution.
-commitDelay: !!com.yahoo.omid.benchmarks.utils.TimeValueTimeUnit [
-    0,
-    !!java.util.concurrent.TimeUnit MILLISECONDS
-]
+commitDelayInMs: 0
 
 # ---------------------------------------------------------------------------------------------------------------------
 # HBase security configuration
@@ -68,8 +59,7 @@ commitTableStoreModule: !!com.yahoo.omid.committable.hbase.DefaultHBaseCommitTab
 # ---------------------------------------------------------------------------------------------------------------------
 metrics: !!com.yahoo.omid.metrics.CodahaleMetricsProvider [
     !!com.yahoo.omid.metrics.CodahaleMetricsConfig {
-        outputFreqTimeUnit: !!java.util.concurrent.TimeUnit SECONDS,
-        outputFreq: 10,
+        outputFreqInSecs: 10,
         reporters: !!set {
             !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CSV,
         },

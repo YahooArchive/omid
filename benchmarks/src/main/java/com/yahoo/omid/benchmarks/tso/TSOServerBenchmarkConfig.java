@@ -18,7 +18,6 @@ package com.yahoo.omid.benchmarks.tso;
 import com.google.inject.AbstractModule;
 import com.yahoo.omid.YAMLUtils;
 import com.yahoo.omid.benchmarks.utils.IntegerGenerator;
-import com.yahoo.omid.benchmarks.utils.TimeValueTimeUnit;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.tools.hbase.SecureHBaseConfig;
 import com.yahoo.omid.tsoclient.OmidClientConfiguration;
@@ -28,16 +27,16 @@ public class TSOServerBenchmarkConfig extends SecureHBaseConfig {
     private static final String DEFAULT_CONFIG_FILE_NAME = "tso-server-benchmark-config.yml";
     private static final String CONFIG_FILE_NAME = "default-tso-server-benchmark-config.yml";
 
-    private TimeValueTimeUnit runFor;
+    private long benchmarkRunLengthInMins;
 
     private int txRunners;
     private int txRateInRequestPerSecond;
-    private TimeValueTimeUnit warmUp;
+    private long warmUpPeriodInSecs;
     private IntegerGenerator cellIdGenerator;
     private int writesetSize;
     private boolean fixedWritesetSize;
     private int percentageOfReadOnlyTxs;
-    private TimeValueTimeUnit commitDelay;
+    private long commitDelayInMs;
 
     private OmidClientConfiguration omidClientConfiguration;
     private AbstractModule commitTableStoreModule;
@@ -60,12 +59,12 @@ public class TSOServerBenchmarkConfig extends SecureHBaseConfig {
     // Getters and setters for config params
     // ----------------------------------------------------------------------------------------------------------------
 
-    public TimeValueTimeUnit getRunFor() {
-        return runFor;
+    public long getBenchmarkRunLengthInMins() {
+        return benchmarkRunLengthInMins;
     }
 
-    public void setRunFor(TimeValueTimeUnit runFor) {
-        this.runFor = runFor;
+    public void setBenchmarkRunLengthInMins(long benchmarkRunLengthInMins) {
+        this.benchmarkRunLengthInMins = benchmarkRunLengthInMins;
     }
 
     public int getTxRunners() {
@@ -84,12 +83,12 @@ public class TSOServerBenchmarkConfig extends SecureHBaseConfig {
         this.txRateInRequestPerSecond = txRateInRequestPerSecond;
     }
 
-    public TimeValueTimeUnit getWarmUp() {
-        return warmUp;
+    public long getWarmUpPeriodInSecs() {
+        return warmUpPeriodInSecs;
     }
 
-    public void setWarmUp(TimeValueTimeUnit warmUp) {
-        this.warmUp = warmUp;
+    public void setWarmUpPeriodInSecs(long warmUpPeriodInSecs) {
+        this.warmUpPeriodInSecs = warmUpPeriodInSecs;
     }
 
     public IntegerGenerator getCellIdGenerator() {
@@ -124,12 +123,12 @@ public class TSOServerBenchmarkConfig extends SecureHBaseConfig {
         this.percentageOfReadOnlyTxs = percentageOfReadOnlyTxs;
     }
 
-    public TimeValueTimeUnit getCommitDelay() {
-        return commitDelay;
+    public long getCommitDelayInMs() {
+        return commitDelayInMs;
     }
 
-    public void setCommitDelay(TimeValueTimeUnit commitDelay) {
-        this.commitDelay = commitDelay;
+    public void setCommitDelayInMs(long commitDelayInMs) {
+        this.commitDelayInMs = commitDelayInMs;
     }
 
     public OmidClientConfiguration getOmidClientConfiguration() {

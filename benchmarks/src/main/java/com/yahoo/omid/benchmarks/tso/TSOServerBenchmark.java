@@ -66,8 +66,7 @@ public class TSOServerBenchmark implements Closeable {
 
         final int nOfTxRunners = config.getTxRunners();
 
-        final int benchmarkTimeValue = config.getRunFor().getPeriod();
-        final TimeUnit benchmarkTimeUnit = config.getRunFor().getTimeUnit();
+        final long benchmarkRunLengthInMins = config.getBenchmarkRunLengthInMins();
 
         try (TSOServerBenchmark tsoBenchmark = new TSOServerBenchmark(config)) {
 
@@ -79,8 +78,8 @@ public class TSOServerBenchmark implements Closeable {
                 tsoBenchmark.createTxRunner();
             }
 
-            LOG.info("Benchmark run lenght {} {}", benchmarkTimeValue, benchmarkTimeUnit);
-            benchmarkTimeUnit.sleep(benchmarkTimeValue);
+            LOG.info("Benchmark run lenght {} Mins", benchmarkRunLengthInMins);
+            TimeUnit.MINUTES.sleep(benchmarkRunLengthInMins);
 
         } finally {
             LOG.info("----- TSO Benchmark complete - Check metrics from individual clients in log -----");

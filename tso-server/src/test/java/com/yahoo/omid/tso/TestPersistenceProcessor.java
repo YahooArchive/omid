@@ -82,7 +82,7 @@ public class TestPersistenceProcessor {
                                                                  mock(TSOStateManager.class)));
 
         TSOServerConfig tsoServerConfig = new TSOServerConfig();
-        tsoServerConfig.setBatchPersistTimeoutMS(100);
+        tsoServerConfig.setBatchPersistTimeoutInMs(100);
         // Component under test
         PersistenceProcessor proc = new PersistenceProcessorImpl(tsoServerConfig,
                                                                  metrics,
@@ -111,7 +111,7 @@ public class TestPersistenceProcessor {
         LeaseManager leaseManager = mock(LeaseManager.class);
 
         TSOServerConfig tsoServerConfig = new TSOServerConfig();
-        tsoServerConfig.setBatchPersistTimeoutMS(100);
+        tsoServerConfig.setBatchPersistTimeoutInMs(100);
         // Component under test
         PersistenceProcessor proc = new PersistenceProcessorImpl(tsoServerConfig,
                                                                  metrics,

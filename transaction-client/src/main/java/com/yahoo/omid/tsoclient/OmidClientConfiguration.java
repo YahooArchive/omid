@@ -36,14 +36,14 @@ public class OmidClientConfiguration {
     private String connectionString;
     private String zkCurrentTsoPath;
     private String zkNamespace;
-    private int zkConnectionTimeoutSecs;
+    private int zkConnectionTimeoutInSecs;
 
     // Communication protocol related params
 
     private int requestMaxRetries;
-    private int requestTimeoutMs;
-    private int reconnectionDelaySecs;
-    private int retryDelayMs;
+    private int requestTimeoutInMs;
+    private int reconnectionDelayInSecs;
+    private int retryDelayInMs;
     private int executorThreads;
 
     // Transaction Manager related params
@@ -82,14 +82,14 @@ public class OmidClientConfiguration {
         this.connectionString = connectionString;
     }
 
-    public int getZkConnectionTimeoutSecs() {
-        return zkConnectionTimeoutSecs;
+    public int getZkConnectionTimeoutInSecs() {
+        return zkConnectionTimeoutInSecs;
     }
 
     @Inject(optional = true)
-    @Named("omid.client.zkConnectionTimeoutSecs")
-    public void setZkConnectionTimeoutSecs(int zkConnectionTimeoutSecs) {
-        this.zkConnectionTimeoutSecs = zkConnectionTimeoutSecs;
+    @Named("omid.client.zkConnectionTimeoutInSecs")
+    public void setZkConnectionTimeoutInSecs(int zkConnectionTimeoutInSecs) {
+        this.zkConnectionTimeoutInSecs = zkConnectionTimeoutInSecs;
     }
 
     public int getRequestMaxRetries() {
@@ -102,34 +102,34 @@ public class OmidClientConfiguration {
         this.requestMaxRetries = requestMaxRetries;
     }
 
-    public int getRequestTimeoutMs() {
-        return requestTimeoutMs;
+    public int getRequestTimeoutInMs() {
+        return requestTimeoutInMs;
     }
 
     @Inject(optional = true)
-    @Named("omid.client.requestTimeoutMs")
-    public void setRequestTimeoutMs(int requestTimeoutMs) {
-        this.requestTimeoutMs = requestTimeoutMs;
+    @Named("omid.client.requestTimeoutInMs")
+    public void setRequestTimeoutInMs(int requestTimeoutInMs) {
+        this.requestTimeoutInMs = requestTimeoutInMs;
     }
 
-    public int getReconnectionDelaySecs() {
-        return reconnectionDelaySecs;
-    }
-
-    @Inject(optional = true)
-    @Named("omid.client.reconnectionDelaySecs")
-    public void setReconnectionDelaySecs(int reconnectionDelaySecs) {
-        this.reconnectionDelaySecs = reconnectionDelaySecs;
-    }
-
-    public int getRetryDelayMs() {
-        return retryDelayMs;
+    public int getReconnectionDelayInSecs() {
+        return reconnectionDelayInSecs;
     }
 
     @Inject(optional = true)
-    @Named("omid.client.retryDelayMs")
-    public void setRetryDelayMs(int retryDelayMs) {
-        this.retryDelayMs = retryDelayMs;
+    @Named("omid.client.reconnectionDelayInSecs")
+    public void setReconnectionDelayInSecs(int reconnectionDelayInSecs) {
+        this.reconnectionDelayInSecs = reconnectionDelayInSecs;
+    }
+
+    public int getRetryDelayInMs() {
+        return retryDelayInMs;
+    }
+
+    @Inject(optional = true)
+    @Named("omid.client.retryDelayInMs")
+    public void setRetryDelayInMs(int retryDelayInMs) {
+        this.retryDelayInMs = retryDelayInMs;
     }
 
     public int getExecutorThreads() {

@@ -28,7 +28,7 @@ public class TestUnconnectedTSOClient {
 
         OmidClientConfiguration tsoClientConf = new OmidClientConfiguration();
         tsoClientConf.setConnectionString("localhost:12345");
-        tsoClientConf.setReconnectionDelaySecs(TSO_RECONNECTION_DELAY_IN_SECS_FOR_TEST);
+        tsoClientConf.setReconnectionDelayInSecs(TSO_RECONNECTION_DELAY_IN_SECS_FOR_TEST);
 
         // Component under test
         TSOClient tsoClient = TSOClient.newInstance(tsoClientConf);

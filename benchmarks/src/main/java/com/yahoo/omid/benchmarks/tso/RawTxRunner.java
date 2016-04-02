@@ -22,7 +22,6 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.yahoo.omid.benchmarks.utils.IntegerGenerator;
-import com.yahoo.omid.benchmarks.utils.TimeValueTimeUnit;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.metrics.Counter;
 import com.yahoo.omid.metrics.MetricsRegistry;
@@ -60,7 +59,7 @@ class RawTxRunner implements Runnable {
     // Config params
     private final int writesetSize;
     private final boolean fixedWriteSetSize;
-    private final TimeValueTimeUnit commitDelay;
+    private final long commitDelayInMs;
     private final int percentageOfReadOnlyTxs;
     private final IntegerGenerator cellIdGenerator;
     private final Random randomGen;
@@ -108,19 +107,19 @@ class RawTxRunner implements Runnable {
         // Tx Runner config
         this.writesetSize = expConfig.getWritesetSize();
         this.fixedWriteSetSize = expConfig.isFixedWritesetSize();
-        this.commitDelay = expConfig.getCommitDelay();
+        this.commitDelayInMs = expConfig.getCommitDelayInMs();
         this.percentageOfReadOnlyTxs = expConfig.getPercentageOfReadOnlyTxs();
         this.cellIdGenerator = expConfig.getCellIdGenerator();
         this.randomGen = new Random(System.currentTimeMillis() * txRunnerId); // to make it channel dependent
 
         int txRateInReqPerSec = expConfig.getTxRateInRequestPerSecond();
-        TimeValueTimeUnit warmUp = expConfig.getWarmUp();
+        long warmUpPeriodInSecs = expConfig.getWarmUpPeriodInSecs();
 
         LOG.info("TxRunner-{} [ Tx Rate (Req per Sec) -> {} ]", txRunnerId, txRateInReqPerSec);
-        LOG.info("TxRunner-{} [ Warm Up -> {}:{} ]", txRunnerId, warmUp.getPeriod(),  warmUp.getTimeUnit());
+        LOG.info("TxRunner-{} [ Warm Up Period -> {} Secs ]", txRunnerId, warmUpPeriodInSecs);
         LOG.info("TxRunner-{} [ Cell Id Distribution Generator -> {} ]", txRunnerId, expConfig.getCellIdGenerator().getClass());
         LOG.info("TxRunner-{} [ Max Tx Size -> {} Fixed: {} ]", txRunnerId, writesetSize, fixedWriteSetSize);
-        LOG.info("TxRunner-{} [ Commit delay -> {}:{} ]", txRunnerId, commitDelay.getPeriod(), commitDelay.getTimeUnit());
+        LOG.info("TxRunner-{} [ Commit delay -> {} Ms ]", txRunnerId, commitDelayInMs);
         LOG.info("TxRunner-{} [ % of Read-Only Tx -> {} % ]", txRunnerId, percentageOfReadOnlyTxs);
 
         // Commit table client initialization
@@ -143,7 +142,7 @@ class RawTxRunner implements Runnable {
                  tsoClientConf.getConnectionType(), tsoClientConf.getConnectionString());
 
         // Limiter for configured request per second
-        this.rateLimiter = RateLimiter.create((double) txRateInReqPerSec, warmUp.getPeriod(), warmUp.getTimeUnit());
+        this.rateLimiter = RateLimiter.create((double) txRateInReqPerSec, warmUpPeriodInSecs, TimeUnit.SECONDS);
     }
 
     @Override
@@ -203,12 +202,10 @@ class RawTxRunner implements Runnable {
             try {
                 long txId = tsFuture.get();
                 timestampTimer.update(System.nanoTime() - tsRequestTime);
-                if (commitDelay.getPeriod() <= 0) {
+                if (commitDelayInMs <= 0) {
                     callbackExec.execute(new Committer(txId));
                 } else {
-                    callbackExec.schedule(new Committer(txId),
-                                          commitDelay.getPeriod(),
-                                          commitDelay.getTimeUnit());
+                    callbackExec.schedule(new Committer(txId), commitDelayInMs, TimeUnit.MILLISECONDS);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
