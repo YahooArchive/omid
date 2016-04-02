@@ -84,9 +84,9 @@ public class TSOClient implements TSOProtocol, NodeCacheListener {
     private final ScheduledExecutorService fsmExecutor;
     StateMachine.Fsm fsm;
 
-    private final int requestTimeoutMs;
+    private final int requestTimeoutInMs;
     private final int requestMaxRetries;
-    private final int tsoReconnectionDelaySecs;
+    private final int tsoReconnectionDelayInSecs;
     private InetSocketAddress tsoAddr;
     private String zkCurrentTsoPath;
 
@@ -113,9 +113,9 @@ public class TSOClient implements TSOProtocol, NodeCacheListener {
         // Create the bootstrap
         bootstrap = new ClientBootstrap(factory);
 
-        requestTimeoutMs = omidConf.getRequestTimeoutMs();
+        requestTimeoutInMs = omidConf.getRequestTimeoutInMs();
         requestMaxRetries = omidConf.getRequestMaxRetries();
-        tsoReconnectionDelaySecs = omidConf.getReconnectionDelaySecs();
+        tsoReconnectionDelayInSecs = omidConf.getReconnectionDelayInSecs();
 
         LOG.info("Connecting to TSO...");
         HostAndPort hp;
@@ -123,7 +123,7 @@ public class TSOClient implements TSOProtocol, NodeCacheListener {
             case HA:
                 zkClient = ZKUtils.initZKClient(omidConf.getConnectionString(),
                                                 omidConf.getZkNamespace(),
-                                                omidConf.getZkConnectionTimeoutSecs());
+                                                omidConf.getZkConnectionTimeoutInSecs());
                 zkCurrentTsoPath = omidConf.getZkCurrentTsoPath();
                 configureCurrentTSOServerZNodeCache(zkCurrentTsoPath);
                 String tsoInfo = getCurrentTSOInfoFoundInZK(zkCurrentTsoPath);
@@ -511,7 +511,7 @@ public class TSOClient implements TSOProtocol, NodeCacheListener {
         }
 
         private Timeout newTimeout() {
-            if (requestTimeoutMs > 0) {
+            if (requestTimeoutInMs > 0) {
                 return timeoutExecutor.newTimeout(new TimerTask() {
                     @Override
                     public void run(Timeout timeout) {
@@ -579,7 +579,7 @@ public class TSOClient implements TSOProtocol, NodeCacheListener {
                 public void run(Timeout timeout) {
                     fsm.sendEvent(new ReconnectEvent());
                 }
-            }, tsoReconnectionDelaySecs, TimeUnit.SECONDS);
+            }, tsoReconnectionDelayInSecs, TimeUnit.SECONDS);
         }
 
         public StateMachine.State handleEvent(UserEvent e) {
@@ -628,13 +628,13 @@ public class TSOClient implements TSOProtocol, NodeCacheListener {
         }
 
         private Timeout newTimeout(final StateMachine.Event timeoutEvent) {
-            if (requestTimeoutMs > 0) {
+            if (requestTimeoutInMs > 0) {
                 return timeoutExecutor.newTimeout(new TimerTask() {
                     @Override
                     public void run(Timeout timeout) {
                         fsm.sendEvent(timeoutEvent);
                     }
-                }, requestTimeoutMs, TimeUnit.MILLISECONDS);
+                }, requestTimeoutInMs, TimeUnit.MILLISECONDS);
             } else {
                 return null;
             }

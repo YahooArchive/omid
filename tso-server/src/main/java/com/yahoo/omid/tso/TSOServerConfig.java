@@ -72,7 +72,7 @@ public class TSOServerConfig extends SecureHBaseConfig {
 
     private int maxBatchSize;
 
-    private int batchPersistTimeoutMS;
+    private int batchPersistTimeoutInMs;
 
     private String networkIfaceName = getDefaultNetworkInterface();
 
@@ -88,8 +88,8 @@ public class TSOServerConfig extends SecureHBaseConfig {
         this.maxBatchSize = maxBatchSize;
     }
 
-    public void setBatchPersistTimeoutMS(int value) {
-        this.batchPersistTimeoutMS = value;
+    public void setBatchPersistTimeoutInMs(int value) {
+        this.batchPersistTimeoutInMs = value;
     }
 
     public String getNetworkIfaceName() {
@@ -136,8 +136,8 @@ public class TSOServerConfig extends SecureHBaseConfig {
         return maxBatchSize;
     }
 
-    public int getBatchPersistTimeoutMS() {
-        return batchPersistTimeoutMS;
+    public int getBatchPersistTimeoutInMs() {
+        return batchPersistTimeoutInMs;
     }
 
     public MetricsRegistry getMetrics() {

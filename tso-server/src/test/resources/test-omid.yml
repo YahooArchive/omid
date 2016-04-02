@@ -6,7 +6,7 @@ keytab: /home/sieve_omid0/sieve_omid0.prod.headless.keytab
 port: 54758
 maxItems: 100000000
 maxBatchSize: 500
-batchPersistTimeoutMS: 100
+batchPersistTimeoutInMs: 100
 networkIfaceName: eth1
 
 commitTableStoreModule: !!com.yahoo.omid.committable.hbase.DefaultHBaseCommitTableStorageModule

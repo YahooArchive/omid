@@ -60,7 +60,7 @@ class PersistenceProcessorImpl
     final Timer flushTimer;
     final Histogram batchSizeHistogram;
     final Meter timeoutMeter;
-    final int batchPersistTimeoutMS;
+    final int batchPersistTimeoutInMs;
 
     long lastFlush = System.nanoTime();
 
@@ -101,7 +101,7 @@ class PersistenceProcessorImpl
 
         this.tsoHostAndPort = tsoHostAndPort;
         this.batch = batch;
-        this.batchPersistTimeoutMS = config.getBatchPersistTimeoutMS();
+        this.batchPersistTimeoutInMs = config.getBatchPersistTimeoutInMs();
         this.leaseManager = leaseManager;
         this.commitTableClient = commitTable.getClient();
         this.writer = commitTable.getWriter();
@@ -110,7 +110,7 @@ class PersistenceProcessorImpl
         this.panicker = panicker;
 
         LOG.info("Creating the persist processor with batch size {}, and timeout {}ms",
-                 config.getMaxBatchSize(), batchPersistTimeoutMS);
+                 config.getMaxBatchSize(), batchPersistTimeoutInMs);
 
         flushTimer = metrics.timer(name("tso", "persist", "flush"));
         batchSizeHistogram = metrics.histogram(name("tso", "persist", "batchsize"));
@@ -119,7 +119,7 @@ class PersistenceProcessorImpl
         // FIXME consider putting something more like a phased strategy here to avoid
         // all the syscalls
         final TimeoutBlockingWaitStrategy timeoutStrategy
-                = new TimeoutBlockingWaitStrategy(config.getBatchPersistTimeoutMS(), TimeUnit.MILLISECONDS);
+                = new TimeoutBlockingWaitStrategy(config.getBatchPersistTimeoutInMs(), TimeUnit.MILLISECONDS);
 
         persistRing = RingBuffer.createSingleProducer(
                 PersistEvent.EVENT_FACTORY, 1 << 20, timeoutStrategy); // 2^20 entries in ringbuffer
@@ -192,7 +192,7 @@ class PersistenceProcessorImpl
     private void maybeFlushBatch() {
         if (batch.isFull()) {
             flush();
-        } else if ((System.nanoTime() - lastFlush) > TimeUnit.MILLISECONDS.toNanos(batchPersistTimeoutMS)) {
+        } else if ((System.nanoTime() - lastFlush) > TimeUnit.MILLISECONDS.toNanos(batchPersistTimeoutInMs)) {
             timeoutMeter.mark();
             flush();
         }

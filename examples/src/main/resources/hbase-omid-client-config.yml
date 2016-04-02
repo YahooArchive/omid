@@ -8,8 +8,7 @@ omidClientConfiguration: !!com.yahoo.omid.tsoclient.OmidClientConfiguration
 
 metrics: !!com.yahoo.omid.metrics.CodahaleMetricsProvider [
     !!com.yahoo.omid.metrics.CodahaleMetricsConfig {
-        outputFreqTimeUnit: !!java.util.concurrent.TimeUnit SECONDS,
-        outputFreq: 1,
+        outputFreqInSecs: 1,
         reporters: !!set {
             !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CSV,
             !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CONSOLE

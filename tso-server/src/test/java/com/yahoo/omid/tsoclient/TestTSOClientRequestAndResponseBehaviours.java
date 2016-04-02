@@ -115,9 +115,9 @@ public class TestTSOClientRequestAndResponseBehaviours {
     public void testTimeoutsAreCancelled() throws Exception {
 
         TSOClient client = TSOClient.newInstance(tsoClientConf);
-        int requestTimeoutMs = 500;
+        int requestTimeoutInMs = 500;
         int requestMaxRetries = 5;
-        LOG.info("Request timeout {} ms; Max retries {}", requestTimeoutMs, requestMaxRetries);
+        LOG.info("Request timeout {} ms; Max retries {}", requestTimeoutInMs, requestMaxRetries);
         Future<Long> f = null;
         for (int i = 0; i < (requestMaxRetries * 10); i++) {
             f = client.getNewStartTimestamp();
@@ -126,11 +126,11 @@ public class TestTSOClientRequestAndResponseBehaviours {
             f.get();
         }
         pausableTSOracle.pause();
-        long msToSleep = ((long) (requestTimeoutMs * 0.75));
+        long msToSleep = ((long) (requestTimeoutInMs * 0.75));
         LOG.info("Sleeping for {} ms", msToSleep);
         TimeUnit.MILLISECONDS.sleep(msToSleep);
         f = client.getNewStartTimestamp();
-        msToSleep = ((long) (requestTimeoutMs * 0.9));
+        msToSleep = ((long) (requestTimeoutInMs * 0.9));
         LOG.info("Sleeping for {} ms", msToSleep);
         TimeUnit.MILLISECONDS.sleep(msToSleep);
         LOG.info("Resuming");
@@ -275,7 +275,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
 
         OmidClientConfiguration testTSOClientConf = new OmidClientConfiguration();
         testTSOClientConf.setConnectionString(TSO_SERVER_HOST + ":" + TSO_SERVER_PORT);
-        testTSOClientConf.setRequestTimeoutMs(100);
+        testTSOClientConf.setRequestTimeoutInMs(100);
         testTSOClientConf.setRequestMaxRetries(10000);
         TSOClient client = TSOClient.newInstance(testTSOClientConf);
 
@@ -292,7 +292,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
 
         OmidClientConfiguration testTSOClientConf = new OmidClientConfiguration();
         testTSOClientConf.setConnectionString(TSO_SERVER_HOST + ":" + TSO_SERVER_PORT);
-        testTSOClientConf.setRequestTimeoutMs(100);
+        testTSOClientConf.setRequestTimeoutInMs(100);
         testTSOClientConf.setRequestMaxRetries(10);
         TSOClient client = TSOClient.newInstance(testTSOClientConf);
 
@@ -313,7 +313,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
 
         OmidClientConfiguration testTSOClientConf = new OmidClientConfiguration();
         testTSOClientConf.setConnectionString(TSO_SERVER_HOST + ":" + TSO_SERVER_PORT);
-        testTSOClientConf.setRequestTimeoutMs(100);
+        testTSOClientConf.setRequestTimeoutInMs(100);
         testTSOClientConf.setRequestMaxRetries(10000);
         TSOClient client = TSOClient.newInstance(testTSOClientConf);
 

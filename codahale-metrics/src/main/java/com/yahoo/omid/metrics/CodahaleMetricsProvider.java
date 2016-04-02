@@ -50,8 +50,7 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
     private MetricRegistry metrics = new MetricRegistry();
     private List<ScheduledReporter> reporters = new ArrayList<>();
 
-    private final int metricsOutputFrequency;
-    private final TimeUnit timeUnit;
+    private final int metricsOutputFrequencyInSecs;
 
     public static CodahaleMetricsProvider createCodahaleMetricsProvider(
             List<String> metricsConfigs) throws IOException {
@@ -64,8 +63,7 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
 
                 String reporter = matcher.group(1);
                 String reporterConfig = matcher.group(2);
-                codahaleConfig.setOutputFreq(Integer.valueOf(matcher.group(3)));
-                codahaleConfig.setOutputFreqTimeUnit(TimeUnit.valueOf(matcher.group(4)));
+                codahaleConfig.setOutputFreqInSecs(Integer.valueOf(matcher.group(3)));
 
                 switch (reporter) {
                     case "csv":
@@ -97,8 +95,7 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
     }
 
     public CodahaleMetricsProvider(CodahaleMetricsConfig conf) throws IOException {
-        metricsOutputFrequency = conf.getOutputFreq();
-        timeUnit = conf.getOutputFreqTimeUnit();
+        metricsOutputFrequencyInSecs = conf.getOutputFreqInSecs();
         int reporterCount = 0;
         for (Reporter reporter : conf.getReporters()) {
             ScheduledReporter codahaleReporter = null;
@@ -132,9 +129,9 @@ public class CodahaleMetricsProvider implements MetricsProvider, MetricsRegistry
     @Override
     public void startMetrics() {
         for (ScheduledReporter r : reporters) {
-            LOG.info("Starting reporter {} with freq {} {}",
-                     r.getClass().getCanonicalName(), metricsOutputFrequency, timeUnit);
-            r.start(metricsOutputFrequency, timeUnit);
+            LOG.info("Starting metrics reporter {} reporting every {} Secs",
+                     r.getClass().getCanonicalName(), metricsOutputFrequencyInSecs);
+            r.start(metricsOutputFrequencyInSecs, TimeUnit.SECONDS);
         }
     }
 

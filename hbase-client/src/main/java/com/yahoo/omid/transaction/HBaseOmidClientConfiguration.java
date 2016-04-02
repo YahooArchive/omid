@@ -105,28 +105,28 @@ public class HBaseOmidClientConfiguration extends SecureHBaseConfig {
         return omidClientConfiguration.getConnectionType();
     }
 
-    public void setReconnectionDelaySecs(int reconnectionDelaySecs) {
-        omidClientConfiguration.setReconnectionDelaySecs(reconnectionDelaySecs);
+    public void setReconnectionDelayInSecs(int reconnectionDelayInSecs) {
+        omidClientConfiguration.setReconnectionDelayInSecs(reconnectionDelayInSecs);
     }
 
     public void setExecutorThreads(int executorThreads) {
         omidClientConfiguration.setExecutorThreads(executorThreads);
     }
 
-    public int getRequestTimeoutMs() {
-        return omidClientConfiguration.getRequestTimeoutMs();
+    public int getRequestTimeoutInMs() {
+        return omidClientConfiguration.getRequestTimeoutInMs();
     }
 
     public void setConnectionString(String connectionString) {
         omidClientConfiguration.setConnectionString(connectionString);
     }
 
-    public void setRequestTimeoutMs(int requestTimeoutMs) {
-        omidClientConfiguration.setRequestTimeoutMs(requestTimeoutMs);
+    public void setRequestTimeoutInMs(int requestTimeoutInMs) {
+        omidClientConfiguration.setRequestTimeoutInMs(requestTimeoutInMs);
     }
 
-    public void setZkConnectionTimeoutSecs(int zkConnectionTimeoutSecs) {
-        omidClientConfiguration.setZkConnectionTimeoutSecs(zkConnectionTimeoutSecs);
+    public void setZkConnectionTimeoutInSecs(int zkConnectionTimeoutInSecs) {
+        omidClientConfiguration.setZkConnectionTimeoutInSecs(zkConnectionTimeoutInSecs);
     }
 
     public void setConnectionType(OmidClientConfiguration.ConnType connectionType) {
@@ -137,20 +137,20 @@ public class HBaseOmidClientConfiguration extends SecureHBaseConfig {
         omidClientConfiguration.setRequestMaxRetries(requestMaxRetries);
     }
 
-    public int getZkConnectionTimeoutSecs() {
-        return omidClientConfiguration.getZkConnectionTimeoutSecs();
+    public int getZkConnectionTimeoutInSecs() {
+        return omidClientConfiguration.getZkConnectionTimeoutInSecs();
     }
 
-    public void setRetryDelayMs(int retryDelayMs) {
-        omidClientConfiguration.setRetryDelayMs(retryDelayMs);
+    public void setRetryDelayInMs(int retryDelayInMs) {
+        omidClientConfiguration.setRetryDelayInMs(retryDelayInMs);
     }
 
     public int getExecutorThreads() {
         return omidClientConfiguration.getExecutorThreads();
     }
 
-    public int getRetryDelayMs() {
-        return omidClientConfiguration.getRetryDelayMs();
+    public int getRetryDelayInMs() {
+        return omidClientConfiguration.getRetryDelayInMs();
     }
 
     public String getConnectionString() {
@@ -161,8 +161,8 @@ public class HBaseOmidClientConfiguration extends SecureHBaseConfig {
         return omidClientConfiguration.getRequestMaxRetries();
     }
 
-    public int getReconnectionDelaySecs() {
-        return omidClientConfiguration.getReconnectionDelaySecs();
+    public int getReconnectionDelayInSecs() {
+        return omidClientConfiguration.getReconnectionDelayInSecs();
     }
 
 }
