@@ -105,9 +105,7 @@
 
         <!-- Licensing properties (for license-maven-plugins) -->
         <license.header>misc/header.txt</license.header>
-        <license.owner>Yahoo Inc.</license.owner>
-        <license.inceptionYear>${project.inceptionYear}</license.inceptionYear>
-        <license.currentYear>2016</license.currentYear> <!-- Manually assigned -->
+
 
     </properties>
 
@@ -286,11 +284,6 @@
                     <header>${license.header}</header>
                     <aggregate>true</aggregate> <!-- for multi-module config -->
                     <skipExistingHeaders>false</skipExistingHeaders>
-                    <properties>
-                        <owner>${license.owner}</owner>
-                        <inceptionYear>${project.inceptionYear}</inceptionYear>
-                        <latestYearOfContribution>${license.currentYear}</latestYearOfContribution>
-                    </properties>
                     <includes>
                         <!-- Add files where to include licensing -->
                         <include>src/**/*.java</include>
@@ -311,9 +304,6 @@
 
                         <!-- Exclude assembly -->
                         <exclude>**/maven/assembly/*</exclude>
-
-                        <!-- Exclude tests -->
-                        <exclude>**/src/test/**/*</exclude>
 
                         <!-- Project specific exclusions (e.g. they've been copied/modified from other open-source projects -->
 
