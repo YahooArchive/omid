@@ -15,6 +15,12 @@ lib/
 *~
 *.swp
 
+# Generated website files
+generated-website/
+generated-website-staging/
+
 # TestNG
 */test-output/
-common/src/main/java/org/apache/omid/proto/
+
+# Protobuf generated classes
+common/src/main/java/com/yahoo/omid/proto/
