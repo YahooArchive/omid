@@ -2,10 +2,10 @@
 commitTableName: OMID_COMMIT_TABLE1
 
 #TSO/HA connection
-omidClientConfiguration: !!com.yahoo.omid.tso.client.OmidClientConfiguration
+omidClientConfiguration: !!org.apache.omid.tso.client.OmidClientConfiguration
       #TSO/HA connection
       connectionString: "somehost:54758"
-      connectionType: !!com.yahoo.omid.tso.client.OmidClientConfiguration$ConnType HA
+      connectionType: !!org.apache.omid.tso.client.OmidClientConfiguration$ConnType HA
       zkConnectionTimeoutInSecs: 11
 
       #TSO related
@@ -16,18 +16,18 @@ omidClientConfiguration: !!com.yahoo.omid.tso.client.OmidClientConfiguration
       executorThreads: 4
 
 #Instrumentation
-metrics: !!com.yahoo.omid.metrics.CodahaleMetricsProvider [
-    !!com.yahoo.omid.metrics.CodahaleMetricsConfig {
+metrics: !!org.apache.omid.metrics.CodahaleMetricsProvider [
+    !!org.apache.omid.metrics.CodahaleMetricsConfig {
         outputFreqInSecs: 1,
         reporters: !!set {
-            !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CSV,
-            !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter SLF4J,
-            !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter GRAPHITE,
-            !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CONSOLE
+            !!org.apache.omid.metrics.CodahaleMetricsConfig$Reporter CSV,
+            !!org.apache.omid.metrics.CodahaleMetricsConfig$Reporter SLF4J,
+            !!org.apache.omid.metrics.CodahaleMetricsConfig$Reporter GRAPHITE,
+            !!org.apache.omid.metrics.CodahaleMetricsConfig$Reporter CONSOLE
             },
         csvDir: "some/folder",
         prefix: "somePrefix",
-        slf4jLogger: "com.yahoo",
+        slf4jLogger: "org.apache",
         graphiteHostConfig: "somehost:1234"
       }
 ]

@@ -9,13 +9,13 @@ maxBatchSize: 500
 batchPersistTimeoutInMs: 100
 networkIfaceName: eth1
 
-commitTableStoreModule: !!com.yahoo.omid.committable.hbase.DefaultHBaseCommitTableStorageModule
+commitTableStoreModule: !!org.apache.omid.committable.hbase.DefaultHBaseCommitTableStorageModule
                      tableName: "sieve_omid:OMID_TIMESTAMP_F"
 
-timestampStoreModule: !!com.yahoo.omid.timestamp.storage.DefaultHBaseTimestampStorageModule
+timestampStoreModule: !!org.apache.omid.timestamp.storage.DefaultHBaseTimestampStorageModule
                     tableName: "sieve_omid:OMID_COMMIT_TABLE_F"
                     familyName: "MAX_TIMESTAMP_F"
 
-leaseModule: !!com.yahoo.omid.tso.VoidLeaseManagementModule [ ]
+leaseModule: !!org.apache.omid.tso.VoidLeaseManagementModule [ ]
 
-metrics: !!com.yahoo.omid.metrics.NullMetricsProvider [ ]
+metrics: !!org.apache.omid.metrics.NullMetricsProvider [ ]

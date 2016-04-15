@@ -2,7 +2,7 @@
 commitTableName: OMID_COMMIT_TABLE
 
 #TSO/HA connection
-omidClientConfiguration: !!com.yahoo.omid.tso.client.OmidClientConfiguration [ ]
+omidClientConfiguration: !!org.apache.omid.tso.client.OmidClientConfiguration [ ]
 
 #Instrumentation
-metrics: !!com.yahoo.omid.metrics.NullMetricsProvider [ ]
+metrics: !!org.apache.omid.metrics.NullMetricsProvider [ ]

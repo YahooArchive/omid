@@ -16,10 +16,10 @@ txRateInRequestPerSecond: 100
 warmUpPeriodInSecs: 30
 
 # Writeset cell id generation distribution. Options:
-# 1) com.yahoo.omid.benchmarks.utils.UniformGenerator [ ]
-# 2) com.yahoo.omid.benchmarks.utils.ZipfianGenerator [ max_items_as_long_(e.g._Long.MAX_VALUE) ]
-# 3) com.yahoo.omid.benchmarks.utils.ScrambledZipfianGenerator [ max_items_as_long_(e.g._Long.MAX_VALUE) ]
-cellIdGenerator: !!com.yahoo.omid.benchmarks.utils.UniformGenerator [ ]
+# 1) org.apache.omid.benchmarks.utils.UniformGenerator [ ]
+# 2) org.apache.omid.benchmarks.utils.ZipfianGenerator [ max_items_as_long_(e.g._Long.MAX_VALUE) ]
+# 3) org.apache.omid.benchmarks.utils.ScrambledZipfianGenerator [ max_items_as_long_(e.g._Long.MAX_VALUE) ]
+cellIdGenerator: !!org.apache.omid.benchmarks.utils.UniformGenerator [ ]
 
 # Size of tx writesets in terms of number of modified cells
 writesetSize: 2
@@ -44,24 +44,24 @@ commitDelayInMs: 0
 # ---------------------------------------------------------------------------------------------------------------------
 # Omid TSO Client configuration
 # ---------------------------------------------------------------------------------------------------------------------
-omidClientConfiguration: !!com.yahoo.omid.tso.client.OmidClientConfiguration
-    connectionType: !!com.yahoo.omid.tso.client.OmidClientConfiguration$ConnType DIRECT
+omidClientConfiguration: !!org.apache.omid.tso.client.OmidClientConfiguration
+    connectionType: !!org.apache.omid.tso.client.OmidClientConfiguration$ConnType DIRECT
     connectionString: "localhost:54758"
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Commit Table storage configuration
 # ---------------------------------------------------------------------------------------------------------------------
-commitTableStoreModule: !!com.yahoo.omid.committable.hbase.DefaultHBaseCommitTableStorageModule
+commitTableStoreModule: !!org.apache.omid.committable.hbase.DefaultHBaseCommitTableStorageModule
     tableName: "OMID_COMMIT_TABLE"
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Metrics configuration
 # ---------------------------------------------------------------------------------------------------------------------
-metrics: !!com.yahoo.omid.metrics.CodahaleMetricsProvider [
-    !!com.yahoo.omid.metrics.CodahaleMetricsConfig {
+metrics: !!org.apache.omid.metrics.CodahaleMetricsProvider [
+    !!org.apache.omid.metrics.CodahaleMetricsConfig {
         outputFreqInSecs: 10,
         reporters: !!set {
-            !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CSV,
+            !!org.apache.omid.metrics.CodahaleMetricsConfig$Reporter CSV,
         },
         csvDir: "csvMetrics",
       }

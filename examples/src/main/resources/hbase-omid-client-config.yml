@@ -3,15 +3,15 @@
 # principal: omid_hbase_client
 # keytab: /path/to/hbase/client/keytab
 
-omidClientConfiguration: !!com.yahoo.omid.tso.client.OmidClientConfiguration
+omidClientConfiguration: !!org.apache.omid.tso.client.OmidClientConfiguration
     connectionString: "localhost:54758"
 
-metrics: !!com.yahoo.omid.metrics.CodahaleMetricsProvider [
-    !!com.yahoo.omid.metrics.CodahaleMetricsConfig {
+metrics: !!org.apache.omid.metrics.CodahaleMetricsProvider [
+    !!org.apache.omid.metrics.CodahaleMetricsConfig {
         outputFreqInSecs: 1,
         reporters: !!set {
-            !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CSV,
-            !!com.yahoo.omid.metrics.CodahaleMetricsConfig$Reporter CONSOLE
+            !!org.apache.omid.metrics.CodahaleMetricsConfig$Reporter CSV,
+            !!org.apache.omid.metrics.CodahaleMetricsConfig$Reporter CONSOLE
             },
         csvDir: "csvMetrics",
         prefix: "somePrefix",
