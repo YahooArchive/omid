@@ -6,7 +6,7 @@
     <parent>
         <artifactId>omid</artifactId>
         <groupId>com.yahoo.omid</groupId>
-        <version>0.8.1.36</version>
+        <version>0.8.1.37-SNAPSHOT</version>
     </parent>
 
     <artifactId>examples</artifactId>
