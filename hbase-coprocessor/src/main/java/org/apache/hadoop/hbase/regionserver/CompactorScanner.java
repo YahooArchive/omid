@@ -21,12 +21,12 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
-import com.yahoo.omid.HBaseShims;
-import com.yahoo.omid.committable.CommitTable;
-import com.yahoo.omid.committable.CommitTable.Client;
-import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
-import com.yahoo.omid.transaction.CellUtils;
-import com.yahoo.omid.transaction.CellInfo;
+import org.apache.omid.HBaseShims;
+import org.apache.omid.committable.CommitTable;
+import org.apache.omid.committable.CommitTable.Client;
+import org.apache.omid.committable.CommitTable.CommitTimestamp;
+import org.apache.omid.transaction.CellUtils;
+import org.apache.omid.transaction.CellInfo;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.KeyValue;
@@ -48,7 +48,7 @@ import java.util.Queue;
 import java.util.SortedMap;
 import java.util.concurrent.ExecutionException;
 
-import static com.yahoo.omid.committable.CommitTable.CommitTimestamp.Location.SHADOW_CELL;
+import static org.apache.omid.committable.CommitTable.CommitTimestamp.Location.SHADOW_CELL;
 
 public class CompactorScanner implements InternalScanner {
     private static final Logger LOG = LoggerFactory.getLogger(CompactorScanner.class);

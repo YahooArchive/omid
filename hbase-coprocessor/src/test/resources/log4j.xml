@@ -45,11 +45,11 @@
         </layout>
     </appender>
 
-    <logger name="com.yahoo.omid">
+    <logger name="org.apache.omid">
         <level value="TRACE"/>
     </logger>
 
-    <logger name="com.yahoo.omid.util">
+    <logger name="org.apache.omid.util">
         <level value="INFO"/>
     </logger>
 

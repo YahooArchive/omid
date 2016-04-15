@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.yahoo.omid</groupId>
+        <groupId>org.apache.omid</groupId>
         <artifactId>omid</artifactId>
         <version>0.8.1.37-SNAPSHOT</version>
     </parent>
@@ -17,12 +17,12 @@
         <!-- Dependencies on Omid modules -->
 
         <dependency>
-            <groupId>com.yahoo.omid</groupId>
+            <groupId>org.apache.omid</groupId>
             <artifactId>hbase-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.yahoo.omid</groupId>
+            <groupId>org.apache.omid</groupId>
             <artifactId>common</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -116,7 +116,7 @@
             </activation>
             <dependencies>
                 <dependency>
-                    <groupId>com.yahoo.omid</groupId>
+                    <groupId>org.apache.omid</groupId>
                     <artifactId>hbase0-shims</artifactId>
                     <version>${project.version}</version>
                 </dependency>
@@ -127,7 +127,7 @@
             <id>hbase-1</id>
             <dependencies>
                 <dependency>
-                    <groupId>com.yahoo.omid</groupId>
+                    <groupId>org.apache.omid</groupId>
                     <artifactId>hbase1-shims</artifactId>
                     <version>${project.version}</version>
                 </dependency>

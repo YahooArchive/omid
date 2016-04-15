@@ -8,8 +8,8 @@
     <name>Omid</name>
     <description>The Omid project provides transactional support for HBase-based applications</description>
     <inceptionYear>2011</inceptionYear>
-    <url>http://www.github.com/yahoo/omid</url>
-    <groupId>com.yahoo.omid</groupId>
+    <url>http://www.github.org/apache/omid</url>
+    <groupId>org.apache.omid</groupId>
     <artifactId>omid</artifactId>
     <packaging>pom</packaging>
     <!-- WARNING: do not update version manually, use mvn versions:set -->
@@ -43,9 +43,9 @@
     </modules>
 
     <scm>
-        <connection>scm:git:git://github.com/yahoo/omid.git</connection>
-        <developerConnection>scm:git:https://${GH_TOKEN}@github.com/yahoo/omid.git</developerConnection>
-        <url>https://github.com/yahoo/omid</url>
+        <connection>scm:git:git://github.org/apache/omid.git</connection>
+        <developerConnection>scm:git:https://${GH_TOKEN}@github.org/apache/omid.git</developerConnection>
+        <url>https://github.org/apache/omid</url>
         <tag>omid-0.8.1.21</tag>
     </scm>
 
@@ -221,7 +221,7 @@
                         </formats>
                         <instrumentation>
                             <excludes>
-                                <exclude>com/yahoo/omid/proto/*.class</exclude>
+                                <exclude>org/apache/omid/proto/*.class</exclude>
                             </excludes>
                         </instrumentation>
                     </configuration>
@@ -308,16 +308,17 @@
                         <!-- Project specific exclusions (e.g. they've been copied/modified from other open-source projects -->
 
                         <!-- Protocol buffers generated classes -->
-                        <exclude>**/src/main/java/com/yahoo/omid/proto/TSOProto.java</exclude>
+                        <exclude>**/src/main/java/org/apache/omid/proto/TSOProto.java</exclude>
 
                         <!-- Taken from https://github.com/brianfrankcooper/YCSB -->
-                        <exclude>**/src/main/java/com/yahoo/omid/benchmarks/utils/Generator.java</exclude>
-                        <exclude>**/src/main/java/com/yahoo/omid/benchmarks/utils/IntegerGenerator.java</exclude>
-                        <exclude>**/src/main/java/com/yahoo/omid/benchmarks/utils/ZipfianGenerator.java</exclude>
-                        <exclude>**/src/main/java/com/yahoo/omid/benchmarks/utils/ScrambledZipfianGenerator.java</exclude>
+                        <exclude>**/src/main/java/org/apache/omid/benchmarks/utils/Generator.java</exclude>
+                        <exclude>**/src/main/java/org/apache/omid/benchmarks/utils/IntegerGenerator.java</exclude>
+                        <exclude>**/src/main/java/org/apache/omid/benchmarks/utils/ZipfianGenerator.java</exclude>
+                        <exclude>**/src/main/java/org/apache/omid/benchmarks/utils/ScrambledZipfianGenerator.java
+                        </exclude>
 
                         <!-- Taken from https://github.com/apache/hbase -->
-                        <exclude>**/src/main/java/com/yahoo/omid/committable/hbase/RegionSplitter.java</exclude>
+                        <exclude>**/src/main/java/org/apache/omid/committable/hbase/RegionSplitter.java</exclude>
 
                     </excludes>
                     <!-- Add comment style for protocol buffers -->

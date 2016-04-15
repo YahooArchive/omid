@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.yahoo.omid</groupId>
+        <groupId>org.apache.omid</groupId>
         <artifactId>omid</artifactId>
         <version>0.8.1.37-SNAPSHOT</version>
     </parent>
@@ -18,37 +18,37 @@
         <!-- Dependencies on Omid modules -->
 
         <dependency>
-            <groupId>com.yahoo.omid</groupId>
+            <groupId>org.apache.omid</groupId>
             <artifactId>transaction-client</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.yahoo.omid</groupId>
+            <groupId>org.apache.omid</groupId>
             <artifactId>hbase-commit-table</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.yahoo.omid</groupId>
+            <groupId>org.apache.omid</groupId>
             <artifactId>tso-server</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.yahoo.omid</groupId>
+            <groupId>org.apache.omid</groupId>
             <artifactId>tso-server</artifactId>
             <version>${project.version}</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.yahoo.omid</groupId>
+            <groupId>org.apache.omid</groupId>
             <artifactId>commit-table</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
             <classifier>tests</classifier>
         </dependency>
         <dependency>
-            <groupId>com.yahoo.omid</groupId>
+            <groupId>org.apache.omid</groupId>
             <artifactId>hbase-tools</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
@@ -159,7 +159,7 @@
             </activation>
             <dependencies>
                 <dependency>
-                    <groupId>com.yahoo.omid</groupId>
+                    <groupId>org.apache.omid</groupId>
                     <artifactId>hbase0-shims</artifactId>
                     <version>${project.version}</version>
                 </dependency>
@@ -170,7 +170,7 @@
             <id>hbase-1</id>
             <dependencies>
                 <dependency>
-                    <groupId>com.yahoo.omid</groupId>
+                    <groupId>org.apache.omid</groupId>
                     <artifactId>hbase1-shims</artifactId>
                     <version>${project.version}</version>
                 </dependency>

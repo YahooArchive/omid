@@ -84,13 +84,13 @@ USER_OPTION=$1
 shift
 case ${USER_OPTION} in
     basic)
-        java -cp $KLASSPATH com.yahoo.omid.examples.BasicExample "$@"
+        java -cp $KLASSPATH org.apache.omid.examples.BasicExample "$@"
         ;;
     si)
-        java -cp $KLASSPATH com.yahoo.omid.examples.SnapshotIsolationExample "$@"
+        java -cp $KLASSPATH org.apache.omid.examples.SnapshotIsolationExample "$@"
         ;;
     conf)
-        java -cp $KLASSPATH com.yahoo.omid.examples.ConfigurationExample "$@"
+        java -cp $KLASSPATH org.apache.omid.examples.ConfigurationExample "$@"
         ;;
     *)
         show_help

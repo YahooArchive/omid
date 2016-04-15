@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.yahoo.omid</groupId>
+        <groupId>org.apache.omid</groupId>
         <artifactId>omid</artifactId>
         <version>0.8.1.37-SNAPSHOT</version>
     </parent>
@@ -18,44 +18,44 @@
         <!-- Dependencies on Omid modules -->
 
         <dependency>
-            <groupId>com.yahoo.omid</groupId>
+            <groupId>org.apache.omid</groupId>
             <artifactId>commit-table</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.yahoo.omid</groupId>
+            <groupId>org.apache.omid</groupId>
             <artifactId>timestamp-storage</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.yahoo.omid</groupId>
+            <groupId>org.apache.omid</groupId>
             <artifactId>metrics</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!-- The codahale-related dependency is added here just to include the jar in the final
         tar.gz package assembled. -->
         <dependency>
-            <groupId>com.yahoo.omid</groupId>
+            <groupId>org.apache.omid</groupId>
             <artifactId>codahale-metrics</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!-- The hbase-related dependency is added here just to include the jar in the final tar.gz package assembled.
         The hbase tools are handy to create the required Omid tables from the same script that starts the TSO server -->
         <dependency>
-            <groupId>com.yahoo.omid</groupId>
+            <groupId>org.apache.omid</groupId>
             <artifactId>hbase-tools</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>com.yahoo.omid</groupId>
+            <groupId>org.apache.omid</groupId>
             <artifactId>commit-table</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
             <classifier>tests</classifier>
         </dependency>
         <dependency>
-            <groupId>com.yahoo.omid</groupId>
+            <groupId>org.apache.omid</groupId>
             <artifactId>transaction-client</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
@@ -268,7 +268,7 @@
             </activation>
             <dependencies>
                 <dependency>
-                    <groupId>com.yahoo.omid</groupId>
+                    <groupId>org.apache.omid</groupId>
                     <artifactId>hbase0-shims</artifactId>
                     <version>${project.version}</version>
                 </dependency>
@@ -279,7 +279,7 @@
             <id>hbase-1</id>
             <dependencies>
                 <dependency>
-                    <groupId>com.yahoo.omid</groupId>
+                    <groupId>org.apache.omid</groupId>
                     <artifactId>hbase1-shims</artifactId>
                     <version>${project.version}</version>
                 </dependency>
