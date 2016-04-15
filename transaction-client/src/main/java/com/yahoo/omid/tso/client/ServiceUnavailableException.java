@@ -15,11 +15,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.yahoo.omid.tsoclient;
+package com.yahoo.omid.tso.client;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.Future;
+/**
+ * Thrown when the requests from TSO client to the TSO server have reached
+ * a number of retries
+ */
+public class ServiceUnavailableException extends Exception {
 
-public interface TSOFuture<T> extends Future<T> {
-    public void addListener(Runnable listener, Executor executor);
+    private static final long serialVersionUID = -1551974284011474385L;
+
+    public ServiceUnavailableException(String message) {
+        super(message);
+    }
+
 }

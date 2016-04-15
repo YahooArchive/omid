@@ -18,7 +18,7 @@
 package com.yahoo.omid.transaction;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.yahoo.omid.tsoclient.CellId;
+import com.yahoo.omid.tso.client.CellId;
 
 public interface PostCommitActions {
 

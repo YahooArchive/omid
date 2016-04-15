@@ -29,11 +29,11 @@ import com.yahoo.omid.metrics.Counter;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.metrics.Timer;
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
-import com.yahoo.omid.tsoclient.AbortException;
-import com.yahoo.omid.tsoclient.CellId;
-import com.yahoo.omid.tsoclient.OmidClientConfiguration;
-import com.yahoo.omid.tsoclient.TSOClient;
-import com.yahoo.omid.tsoclient.TSOFuture;
+import com.yahoo.omid.tso.client.AbortException;
+import com.yahoo.omid.tso.client.CellId;
+import com.yahoo.omid.tso.client.OmidClientConfiguration;
+import com.yahoo.omid.tso.client.TSOClient;
+import com.yahoo.omid.tso.client.TSOFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

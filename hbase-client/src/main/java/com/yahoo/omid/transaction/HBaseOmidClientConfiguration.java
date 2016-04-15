@@ -23,8 +23,8 @@ import com.google.inject.name.Named;
 import com.yahoo.omid.YAMLUtils;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.tools.hbase.SecureHBaseConfig;
-import com.yahoo.omid.tsoclient.OmidClientConfiguration.PostCommitMode;
-import com.yahoo.omid.tsoclient.OmidClientConfiguration;
+import com.yahoo.omid.tso.client.OmidClientConfiguration.PostCommitMode;
+import com.yahoo.omid.tso.client.OmidClientConfiguration;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 

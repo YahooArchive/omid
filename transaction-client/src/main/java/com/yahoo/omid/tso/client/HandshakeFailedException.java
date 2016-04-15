@@ -15,13 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.yahoo.omid.tsoclient;
+package com.yahoo.omid.tso.client;
 
 /**
- * Thrown when the TSO server has aborted a transaction
+ * Thrown when some incompatibilities between the TSO client & server are
+ * found
  */
-public class AbortException extends Exception {
+public class HandshakeFailedException extends Exception {
 
-    private static final long serialVersionUID = 1861474360100681040L;
+    private static final long serialVersionUID = 8545505066920548834L;
 
 }

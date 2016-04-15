@@ -15,13 +15,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.yahoo.omid.tsoclient;
+package com.yahoo.omid.tso.client;
 
-/**
- * Thrown when a new TSO has been detected
- */
-public class NewTSOException extends Exception {
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
-    private static final long serialVersionUID = -3250655858200759321L;
+public class TestOmidClientConfiguration {
+
+    @Test
+    public void testYamlReading() {
+        OmidClientConfiguration configuration = new OmidClientConfiguration();
+        Assert.assertNotNull(configuration.getConnectionString());
+        Assert.assertNotNull(configuration.getConnectionType());
+    }
 
 }

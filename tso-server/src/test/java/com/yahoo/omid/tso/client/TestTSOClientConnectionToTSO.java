@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.yahoo.omid.tsoclient;
+package com.yahoo.omid.tso.client;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -39,7 +39,6 @@ import org.testng.annotations.Test;
 
 import java.util.concurrent.ExecutionException;
 
-import static com.yahoo.omid.tsoclient.OmidClientConfiguration.ConnType.HA;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
@@ -168,7 +167,7 @@ public class TestTSOClientConnectionToTSO {
 
         // When a HA node for TSOServer is found we should get a connection
         OmidClientConfiguration tsoClientConf = new OmidClientConfiguration();
-        tsoClientConf.setConnectionType(HA);
+        tsoClientConf.setConnectionType(OmidClientConfiguration.ConnType.HA);
         tsoClientConf.setConnectionString(zkClusterForTest);
         tsoClientConf.setZkCurrentTsoPath(CURRENT_TSO_PATH);
         TSOClient tsoClient = TSOClient.newInstance(tsoClientConf);
@@ -206,7 +205,7 @@ public class TestTSOClientConnectionToTSO {
 
         // Then create the TSO Client under test...
         OmidClientConfiguration tsoClientConf = new OmidClientConfiguration();
-        tsoClientConf.setConnectionType(HA);
+        tsoClientConf.setConnectionType(OmidClientConfiguration.ConnType.HA);
         tsoClientConf.setConnectionString(zkClusterForTest);
         tsoClientConf.setZkCurrentTsoPath(CURRENT_TSO_PATH);
         TSOClient tsoClient = TSOClient.newInstance(tsoClientConf);

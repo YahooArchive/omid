@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-import static com.yahoo.omid.tsoclient.OmidClientConfiguration.ConnType.DIRECT;
+import static com.yahoo.omid.tso.client.OmidClientConfiguration.ConnType.DIRECT;
 
 /**
  * ****************************************************************************************************************

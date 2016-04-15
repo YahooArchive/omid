@@ -22,7 +22,7 @@ import com.yahoo.omid.YAMLUtils;
 import com.yahoo.omid.benchmarks.utils.IntegerGenerator;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.tools.hbase.SecureHBaseConfig;
-import com.yahoo.omid.tsoclient.OmidClientConfiguration;
+import com.yahoo.omid.tso.client.OmidClientConfiguration;
 
 public class TSOServerBenchmarkConfig extends SecureHBaseConfig {
 

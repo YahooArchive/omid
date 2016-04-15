@@ -22,7 +22,7 @@ import com.google.common.util.concurrent.SettableFuture;
 import com.yahoo.omid.committable.CommitTable;
 import com.yahoo.omid.metrics.MetricsRegistry;
 import com.yahoo.omid.metrics.Timer;
-import com.yahoo.omid.tsoclient.CellId;
+import com.yahoo.omid.tso.client.CellId;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;

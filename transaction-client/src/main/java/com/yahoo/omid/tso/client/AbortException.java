@@ -15,18 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.yahoo.omid.tsoclient;
+package com.yahoo.omid.tso.client;
 
-import org.testng.Assert;
-import org.testng.annotations.Test;
+/**
+ * Thrown when the TSO server has aborted a transaction
+ */
+public class AbortException extends Exception {
 
-public class TestOmidClientConfiguration {
-
-    @Test
-    public void testYamlReading() {
-        OmidClientConfiguration configuration = new OmidClientConfiguration();
-        Assert.assertNotNull(configuration.getConnectionString());
-        Assert.assertNotNull(configuration.getConnectionType());
-    }
+    private static final long serialVersionUID = 1861474360100681040L;
 
 }

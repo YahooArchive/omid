@@ -18,7 +18,7 @@
 package com.yahoo.omid.transaction;
 
 import com.google.common.base.Optional;
-import com.yahoo.omid.tsoclient.CellId;
+import com.yahoo.omid.tso.client.CellId;
 
 import java.util.ArrayList;
 import java.util.HashMap;

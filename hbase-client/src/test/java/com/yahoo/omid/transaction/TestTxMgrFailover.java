@@ -25,7 +25,7 @@ import com.yahoo.omid.committable.CommitTable.CommitTimestamp;
 import com.yahoo.omid.committable.InMemoryCommitTable;
 import com.yahoo.omid.transaction.Transaction.Status;
 import com.yahoo.omid.tso.ProgrammableTSOServer;
-import com.yahoo.omid.tsoclient.TSOClient;
+import com.yahoo.omid.tso.client.TSOClient;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.KeyValue;
