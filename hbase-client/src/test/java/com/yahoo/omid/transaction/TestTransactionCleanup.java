@@ -18,9 +18,9 @@
 package com.yahoo.omid.transaction;
 
 import com.google.common.util.concurrent.SettableFuture;
-import com.yahoo.omid.tsoclient.AbortException;
-import com.yahoo.omid.tsoclient.ForwardingTSOFuture;
-import com.yahoo.omid.tsoclient.TSOClient;
+import com.yahoo.omid.tso.client.AbortException;
+import com.yahoo.omid.tso.client.ForwardingTSOFuture;
+import com.yahoo.omid.tso.client.TSOClient;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;

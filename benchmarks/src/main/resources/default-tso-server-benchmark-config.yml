@@ -44,8 +44,8 @@ commitDelayInMs: 0
 # ---------------------------------------------------------------------------------------------------------------------
 # Omid TSO Client configuration
 # ---------------------------------------------------------------------------------------------------------------------
-omidClientConfiguration: !!com.yahoo.omid.tsoclient.OmidClientConfiguration
-    connectionType: !!com.yahoo.omid.tsoclient.OmidClientConfiguration$ConnType DIRECT
+omidClientConfiguration: !!com.yahoo.omid.tso.client.OmidClientConfiguration
+    connectionType: !!com.yahoo.omid.tso.client.OmidClientConfiguration$ConnType DIRECT
     connectionString: "localhost:54758"
 
 # ---------------------------------------------------------------------------------------------------------------------

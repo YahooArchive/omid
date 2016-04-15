@@ -15,14 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.yahoo.omid.tsoclient;
+package com.yahoo.omid.tso.client;
 
-/**
- * Thrown when an error is produced when performing the actions required
- * to close the communication with the TSO server
- */
-public class ClosingException extends Exception {
+import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
 
-    private static final long serialVersionUID = -5681694952053689884L;
-
+public interface TSOFuture<T> extends Future<T> {
+    public void addListener(Runnable listener, Executor executor);
 }

@@ -23,8 +23,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.yahoo.omid.committable.CommitTable;
 
 import com.yahoo.omid.metrics.NullMetricsProvider;
-import com.yahoo.omid.tsoclient.TSOClient;
-import org.apache.commons.configuration.BaseConfiguration;
 
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;

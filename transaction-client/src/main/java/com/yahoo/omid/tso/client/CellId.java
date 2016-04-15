@@ -15,16 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.yahoo.omid.tsoclient;
+package com.yahoo.omid.tso.client;
 
-import com.yahoo.omid.tsoclient.TSOClient.ConnectedState;
-import com.yahoo.statemachine.StateMachine.FsmImpl;
+public interface CellId {
 
-public class TSOClientAccessor {
+    public long getCellId();
 
-    public static void closeChannel(TSOClient tsoClient) throws InterruptedException {
-        FsmImpl fsm = (FsmImpl) tsoClient.fsm;
-        ConnectedState connectedState = (ConnectedState) fsm.getState();
-        connectedState.channel.close().await();
-    }
 }

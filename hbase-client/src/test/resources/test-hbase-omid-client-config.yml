@@ -2,10 +2,10 @@
 commitTableName: OMID_COMMIT_TABLE1
 
 #TSO/HA connection
-omidClientConfiguration: !!com.yahoo.omid.tsoclient.OmidClientConfiguration
+omidClientConfiguration: !!com.yahoo.omid.tso.client.OmidClientConfiguration
       #TSO/HA connection
       connectionString: "somehost:54758"
-      connectionType: !!com.yahoo.omid.tsoclient.OmidClientConfiguration$ConnType HA
+      connectionType: !!com.yahoo.omid.tso.client.OmidClientConfiguration$ConnType HA
       zkConnectionTimeoutInSecs: 11
 
       #TSO related

@@ -49,7 +49,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorageConfig.DEFAULT_TIMESTAMP_STORAGE_TABLE_NAME;
 import static com.yahoo.omid.timestamp.storage.HBaseTimestampStorageConfig.DEFAULT_TIMESTAMP_STORAGE_CF_NAME;
-import static com.yahoo.omid.tsoclient.OmidClientConfiguration.ConnType.HA;
+import static com.yahoo.omid.tso.client.OmidClientConfiguration.ConnType.HA;
 import static org.apache.hadoop.hbase.HConstants.HBASE_CLIENT_RETRIES_NUMBER;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;

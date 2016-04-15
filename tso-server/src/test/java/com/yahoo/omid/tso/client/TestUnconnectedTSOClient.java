@@ -15,10 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.yahoo.omid.tsoclient;
+package com.yahoo.omid.tso.client;
 
 import com.yahoo.omid.tso.util.DummyCellIdImpl;
-import com.yahoo.omid.tsoclient.TSOClient.DisconnectedState;
 import com.yahoo.statemachine.StateMachine.FsmImpl;
 import org.slf4j.Logger;
 import org.testng.annotations.Test;
@@ -53,7 +52,7 @@ public class TestUnconnectedTSOClient {
         // Internal accessor to fsm
         FsmImpl fsm = (FsmImpl) tsoClient.fsm;
 
-        assertEquals(fsm.getState().getClass(), DisconnectedState.class);
+        assertEquals(fsm.getState().getClass(), TSOClient.DisconnectedState.class);
 
         // Test requests to the 3 relevant methods in TSO client
 
@@ -64,7 +63,7 @@ public class TestUnconnectedTSOClient {
             LOG.info("Exception expected");
             assertEquals(e.getCause().getClass(), ConnectionException.class);
             TimeUnit.SECONDS.sleep(TSO_RECONNECTION_DELAY_IN_SECS_FOR_TEST * 2);
-            assertEquals(fsm.getState().getClass(), DisconnectedState.class);
+            assertEquals(fsm.getState().getClass(), TSOClient.DisconnectedState.class);
         }
 
         try {
@@ -74,7 +73,7 @@ public class TestUnconnectedTSOClient {
             LOG.info("Exception expected");
             assertEquals(e.getCause().getClass(), ConnectionException.class);
             TimeUnit.SECONDS.sleep(TSO_RECONNECTION_DELAY_IN_SECS_FOR_TEST * 2);
-            assertEquals(fsm.getState().getClass(), DisconnectedState.class);
+            assertEquals(fsm.getState().getClass(), TSOClient.DisconnectedState.class);
         }
 
         tsoClient.close().get();

@@ -17,7 +17,7 @@
  */
 package com.yahoo.omid.transaction;
 
-import com.yahoo.omid.tsoclient.TSOClient;
+import com.yahoo.omid.tso.client.TSOClient;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;

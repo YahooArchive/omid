@@ -19,7 +19,7 @@ package com.yahoo.omid.transaction;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
-import com.yahoo.omid.tsoclient.CellId;
+import com.yahoo.omid.tso.client.CellId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -33,7 +33,7 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 
-import static com.yahoo.omid.tsoclient.TSOClient.DEFAULT_ZK_CLUSTER;
+import static com.yahoo.omid.tso.client.TSOClient.DEFAULT_ZK_CLUSTER;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.mock;

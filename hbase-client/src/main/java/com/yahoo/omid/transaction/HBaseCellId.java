@@ -18,7 +18,7 @@
 package com.yahoo.omid.transaction;
 
 import com.google.common.hash.Hashing;
-import com.yahoo.omid.tsoclient.CellId;
+import com.yahoo.omid.tso.client.CellId;
 import org.apache.hadoop.hbase.client.HTableInterface;
 
 import static com.google.common.base.Charsets.UTF_8;

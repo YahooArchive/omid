@@ -15,18 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.yahoo.omid.tsoclient;
+package com.yahoo.omid.tso.client;
 
 /**
- * Thrown when the requests from TSO client to the TSO server have reached
- * a number of retries
+ * Thrown when an error is produced when performing the actions required
+ * to close the communication with the TSO server
  */
-public class ServiceUnavailableException extends Exception {
+public class ClosingException extends Exception {
 
-    private static final long serialVersionUID = -1551974284011474385L;
-
-    public ServiceUnavailableException(String message) {
-        super(message);
-    }
+    private static final long serialVersionUID = -5681694952053689884L;
 
 }
