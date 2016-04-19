@@ -6,14 +6,19 @@
     <!-- Project description                                                                                        -->
     <!-- ========================================================================================================== -->
     <name>Omid</name>
-    <description>The Omid project provides transactional support for HBase-based applications</description>
+    <description>Apache Omid provides multi-row/multi-table transactional support for HBase-based applications</description>
     <inceptionYear>2011</inceptionYear>
-    <url>http://www.github.org/apache/omid</url>
+    <url>http://omid.incubator.apache.org</url>
     <groupId>org.apache.omid</groupId>
     <artifactId>omid</artifactId>
     <packaging>pom</packaging>
     <!-- WARNING: do not update version manually, use mvn versions:set -->
     <version>0.8.1.37-SNAPSHOT</version>
+
+    <organization>
+        <name>Apache Software Foundation</name>
+        <url>http://www.apache.org</url>
+    </organization>
 
     <licenses>
         <license>
@@ -22,6 +27,51 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
+
+    <developers>
+
+        <developer>
+            <id>daijy</id>
+            <name>Daniel Dai</name>
+            <email>daijy@apache.org</email>
+            <timezone>-8</timezone>
+            <organization>Hortonworks</organization>
+            <organizationUrl>http://www.hortonworks.com</organizationUrl>
+        </developer>
+        <developer>
+            <id>fperezsorrosal</id>
+            <name>Francisco Perez-Sorrosal</name>
+            <email>fperezsorrosal@apache.org</email>
+            <timezone>-8</timezone>
+            <organization>Yahoo Inc.</organization>
+            <organizationUrl>http://www.yahoo.com</organizationUrl>
+        </developer>
+        <developer>
+            <id>ikatkov</id>
+            <name>Igor Katkov</name>
+            <email>ikatkov@apache.org</email>
+            <timezone>-8</timezone>
+            <organization>Yahoo Inc.</organization>
+            <organizationUrl>http://www.yahoo.com</organizationUrl>
+        </developer>
+        <developer>
+            <id>ohads</id>
+            <name>Ohad Shacham</name>
+            <email>ohads@apache.org</email>
+            <timezone>+2</timezone>
+            <organization>Yahoo Inc.</organization>
+            <organizationUrl>http://www.yahoo.com</organizationUrl>
+        </developer>
+        <developer>
+            <id>sameerp</id>
+            <name>Sameer Paranjpye</name>
+            <email>sameerp@apache.org</email>
+            <timezone>-8</timezone>
+            <organization>Arimo</organization>
+            <organizationUrl>https://www.arimo.com</organizationUrl>
+        </developer>
+
+    </developers>
 
     <modules>
         <module>benchmarks</module>
@@ -42,11 +92,20 @@
         <module>examples</module>
     </modules>
 
+    <pluginRepositories>
+
+        <pluginRepository>
+            <id>synergian-repo</id>
+            <url>https://raw.github.com/synergian/wagon-git/releases</url>
+        </pluginRepository>
+
+    </pluginRepositories>
+
     <scm>
-        <connection>scm:git:git://github.org/apache/omid.git</connection>
-        <developerConnection>scm:git:https://${GH_TOKEN}@github.org/apache/omid.git</developerConnection>
-        <url>https://github.org/apache/omid</url>
-        <tag>omid-0.8.1.21</tag>
+        <connection>scm:git:git://github.com/yahoo/omid.git</connection>
+        <developerConnection>scm:git:https://${GH_TOKEN}@github.com/yahoo/omid.git</developerConnection>
+        <url>https://github.com/yahoo/omid</url>
+        <tag>master</tag>
     </scm>
 
     <distributionManagement>
@@ -54,6 +113,15 @@
             <id>bintray</id>
             <url>https://api.bintray.com/maven/yahoo/maven/omid</url>
         </repository>
+
+        <site>
+            <id>apache-omid-site</id>
+            <!-- Wagon-git URL format:
+                     protocol:branch://url
+                 Do not forget the 2 backslashes before the url
+            -->
+            <url>git:asf-site://https://git-wip-us.apache.org/repos/asf/incubator-omid-site.git</url>
+        </site>
     </distributionManagement>
 
     <properties>
@@ -102,10 +170,10 @@
         <maven-coveralls-plugin.version>4.1.0</maven-coveralls-plugin.version>
         <maven-cobertura-plugin.version>2.7</maven-cobertura-plugin.version>
         <maven-license-plugin.version>2.11</maven-license-plugin.version>
+        <maven-site-plugin.version>3.5</maven-site-plugin.version>
 
         <!-- Licensing properties (for license-maven-plugins) -->
         <license.header>misc/header.txt</license.header>
-
 
     </properties>
 
@@ -194,7 +262,6 @@
                         <additionalparam>-Xdoclint:none</additionalparam>
                     </configuration>
                 </plugin>
-
 
                 <!-- ============================================================================================== -->
                 <!-- Code coverage plugins                                                                          -->
@@ -337,7 +404,35 @@
                 </executions>
             </plugin>
 
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-site-plugin</artifactId>
+                <version>${maven-site-plugin.version}</version>
+                <configuration>
+                    <siteDirectory>${basedir}/doc/site</siteDirectory>
+                    <outputDirectory>${basedir}/generated-website</outputDirectory>
+                    <stagingDirectory>${basedir}/generated-website-staging</stagingDirectory>
+                </configuration>
+                <dependencies>
+                    <dependency><!-- add support for ssh/scp -->
+                        <groupId>org.apache.maven.wagon</groupId>
+                        <artifactId>wagon-ssh</artifactId>
+                        <version>1.0</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+
         </plugins>
+
+        <extensions>
+
+            <extension>
+                <groupId>ar.com.synergian</groupId>
+                <artifactId>wagon-git</artifactId>
+                <version>0.2.5</version>
+            </extension>
+
+        </extensions>
 
     </build>
 

@@ -1,0 +1,85 @@
+<project name="Apache Omid">
+
+    <skin>
+        <groupId>org.apache.maven.skins</groupId>
+        <artifactId>maven-fluido-skin</artifactId>
+        <version>1.5</version>
+    </skin>
+
+    <custom>
+        <fluidoSkin>
+
+            <topBarEnabled>true</topBarEnabled>
+            <topBarContainerStyle>width: 100%;</topBarContainerStyle>
+            <sideBarEnabled>false</sideBarEnabled>
+
+            <twitter>
+                <user>apacheomid</user>
+                <showUser>true</showUser>
+                <showFollowers>true</showFollowers>
+            </twitter>
+
+            <googleSearch/>
+
+        </fluidoSkin>
+    </custom>
+
+    <bannerLeft>
+        <name>Omid</name>
+        <src>images/omid-logo.png</src>
+        <href>http://omid.incubator.apache.org</href>
+        <width>200</width>
+    </bannerLeft>
+
+    <bannerRight>
+        <name>Apache Incubator</name>
+        <src>http://incubator.apache.org/images/egg-logo2.png</src>
+        <href>http://incubator.apache.org/</href>
+        <width>200</width>
+    </bannerRight>
+
+    <publishDate position="right"/>
+    <!-- Do not publish version as it shows the current SNAPSHOT -->
+    <!-- version position="right"/ -->
+
+    <poweredBy>
+        <logo name="Maven" href="http://maven.apache.org/" img="http://maven.apache.org/images/logos/maven-feather.png"/>
+    </poweredBy>
+
+    <body>
+
+        <menu name="Home">
+            <item name="Overview" href="index.html" />
+            <item name="License" href="license.html" />
+        </menu>
+
+        <menu name="Download">
+            <item name="Omid Sources" href="https://github.com/yahoo/omid" />
+            <item name="Bintray Repository" href="https://bintray.com/yahoo/maven/omid/_latestVersion" />
+        </menu>
+
+        <menu name="User Guide &amp; API">
+            <item name="Quickstart" href="quickstart.html" />
+            <item name="API and Code Examples" href="basic-examples.html" />
+        </menu>
+
+        <menu name="Technical Docs">
+            <item name="Basic Concepts" href="basic-concepts.html" />
+            <item name="Omid Components" href="omid-components.html" />
+            <item name="Basic Algorithm" href="basic-algorithm.html" />
+            <item name="Management of Client Failures" href="client-failure-management.html" />
+            <item name="Blog Entries" href="http://yahoohadoop.tumblr.com/tagged/HBase" />
+        </menu>
+
+        <menu name="Contribute">
+            <item name="Source Code" href="https://git-wip-us.apache.org/repos/asf/incubator-omid.git" />
+            <item name="JIRA" href="https://issues.apache.org/jira/browse/Omid" />
+            <item name="Mailing Lists" href="mailing-lists.html" />
+            <item name="Coding Guide and Style" href="coding-guide-and-style.html" />
+        </menu>
+
+        <menu name="Project Reports" ref="reports" />
+
+    </body>
+
+</project>

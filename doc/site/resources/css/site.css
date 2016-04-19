@@ -1,0 +1,103 @@
+/* Basics */
+
+a {
+  color: #B9140A;
+}
+
+body {
+    font-size: 16px;
+    font-family: 'Ubuntu', sans-serif;
+}
+
+/* Navigation Bar */
+
+.navbar .container {
+  color: white;
+  background-color: #B9140A;
+  background-image: none;
+}
+
+.navbar .nav>li>a {
+    color: white;
+    text-shadow: 0px 0px 10px black;
+}
+
+.navbar .nav li.dropdown.open>.dropdown-toggle {
+    color: #08C;
+    text-shadow: none;
+}
+
+.navbar .nav>li>a:focus, .navbar .nav>li>a:hover, .navbar .nav>li>a:active {
+    color: white;
+    text-shadow: 0px 0px 20px white;
+}
+
+
+/* Tables */
+
+table td, table th {
+    border: 1px solid #333;
+    padding: 0 .5em;
+}
+
+table th {
+    background: #CCC;
+    padding: 0 .5em;
+}
+
+table {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+
+/* Footer */
+
+footer {
+    color: white;
+    text-shadow: 0px 0px 10px black;
+    background-color: #B9140A;
+}
+
+footer .container {
+    background-color: #B9140A;
+    background-image: none;
+}
+
+footer .container a {
+    color: white;
+    text-shadow: 0px 0px 10px black;
+    text-decoration: underline;
+}
+
+footer .pull-right {
+    color: white;
+    text-shadow: 0px 0px 10px black;
+}
+
+/* Others */
+
+.row {
+    margin-top: 20px;
+}
+
+.breadcrumb {
+    padding: 20px 15px;
+    background-color: #B9140A;
+}
+
+
+#search-form {
+    margin-left: 9px;
+    margin-right: 40px;
+}
+
+#publishDate {
+    color: white;
+    text-shadow: 0px 0px 10px black;
+}
+
+#projectVersion {
+    color: white;
+    text-shadow: 0px 0px 10px black;
+}
