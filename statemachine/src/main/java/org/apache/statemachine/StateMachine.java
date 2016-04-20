@@ -243,7 +243,7 @@ public class StateMachine {
         }
 
         @Override
-        public void finalize() throws Throwable {
+        protected void finalize() throws Throwable {
             super.finalize();
             LOG.debug("FSM-{}: Finalizing", getFsmId());
         }

@@ -24,34 +24,34 @@ import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class MockTSOClient implements TSOProtocol {
+class MockTSOClient implements TSOProtocol {
     private final AtomicLong timestampGenerator = new AtomicLong();
-    private final int CONFLICT_MAP_SIZE = 1 * 1000 * 1000;
+    private static final int CONFLICT_MAP_SIZE = 1_000_000;
     private final long[] conflictMap = new long[CONFLICT_MAP_SIZE];
     private final AtomicLong lwm = new AtomicLong();
 
     private final CommitTable.Writer commitTable;
 
-    public MockTSOClient(CommitTable.Writer commitTable) {
+    MockTSOClient(CommitTable.Writer commitTable) {
         this.commitTable = commitTable;
     }
 
     @Override
     public TSOFuture<Long> getNewStartTimestamp() {
         synchronized (conflictMap) {
-            SettableFuture<Long> f = SettableFuture.<Long>create();
+            SettableFuture<Long> f = SettableFuture.create();
             f.set(timestampGenerator.incrementAndGet());
-            return new ForwardingTSOFuture<Long>(f);
+            return new ForwardingTSOFuture<>(f);
         }
     }
 
     @Override
     public TSOFuture<Long> commit(long transactionId, Set<? extends CellId> cells) {
         synchronized (conflictMap) {
-            SettableFuture<Long> f = SettableFuture.<Long>create();
+            SettableFuture<Long> f = SettableFuture.create();
             if (transactionId < lwm.get()) {
                 f.setException(new AbortException());
-                return new ForwardingTSOFuture<Long>(f);
+                return new ForwardingTSOFuture<>(f);
             }
 
             boolean canCommit = true;
@@ -89,14 +89,14 @@ public class MockTSOClient implements TSOProtocol {
             } else {
                 f.setException(new AbortException());
             }
-            return new ForwardingTSOFuture<Long>(f);
+            return new ForwardingTSOFuture<>(f);
         }
     }
 
     @Override
     public TSOFuture<Void> close() {
-        SettableFuture<Void> f = SettableFuture.<Void>create();
+        SettableFuture<Void> f = SettableFuture.create();
         f.set(null);
-        return new ForwardingTSOFuture<Void>(f);
+        return new ForwardingTSOFuture<>(f);
     }
 }

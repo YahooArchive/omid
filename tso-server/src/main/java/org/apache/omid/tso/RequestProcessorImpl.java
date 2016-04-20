@@ -34,6 +34,7 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -279,6 +280,9 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
 
                 @Override
                 public Long next() {
+                    if (!hasNext()) {
+                        throw new NoSuchElementException();
+                    }
                     return writeSet[i++];
                 }
 

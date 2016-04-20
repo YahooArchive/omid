@@ -52,10 +52,10 @@ public class OmidTableManager {
     static final String TIMESTAMP_TABLE_COMMAND_NAME = "timestamp-table";
 
     private static final byte[][] commitTableFamilies = new byte[][]{
-            HBaseCommitTableConfig.DEFAULT_COMMIT_TABLE_CF_NAME.getBytes(),
-            HBaseCommitTableConfig.DEFAULT_COMMIT_TABLE_LWM_CF_NAME.getBytes()};
+            Bytes.toBytes(HBaseCommitTableConfig.DEFAULT_COMMIT_TABLE_CF_NAME),
+            Bytes.toBytes(HBaseCommitTableConfig.DEFAULT_COMMIT_TABLE_LWM_CF_NAME)};
     private static final byte[][] timestampTableFamilies = new byte[][]{
-            HBaseTimestampStorageConfig.DEFAULT_TIMESTAMP_STORAGE_CF_NAME.getBytes()};
+            Bytes.toBytes(HBaseTimestampStorageConfig.DEFAULT_TIMESTAMP_STORAGE_CF_NAME)};
 
     private JCommander commandLine;
     private MainConfig mainConfig = new MainConfig();

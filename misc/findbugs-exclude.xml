@@ -1,0 +1,33 @@
+<FindBugsFilter>
+    <Match>
+        <Package name="org.apache.omid.proto"/>
+    </Match>
+    <Match>
+        <Class name="org.apache.omid.benchmarks.utils.ZipfianGenerator"/>
+    </Match>
+
+    <Match>
+        <Class name="org.apache.omid.benchmarks.tso.RawTxRunner"/>
+        <Bug pattern="ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD"/>
+    </Match>
+
+
+    <Match>
+        <Class name="~org.apache.omid.committable.hbase.HBaseCommitTableConfig.*"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+    <Match>
+        <Class name="~org.apache.omid.committable.hbase.RegionSplitter.*"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+    <Match>
+        <Class name="org.apache.omid.transaction.ColumnWrapper"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+    <Match>
+        <Class name="org.apache.omid.transaction.HBaseCellId"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+
+</FindBugsFilter>

@@ -34,7 +34,7 @@ public class NullCommitTable implements CommitTable {
         return new Client();
     }
 
-    public class Writer implements CommitTable.Writer {
+    public static class Writer implements CommitTable.Writer {
         @Override
         public void addCommittedTransaction(long startTimestamp, long commitTimestamp) {
             // noop

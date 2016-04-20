@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.omid.metrics.MetricsUtils.name;
 import static org.apache.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
@@ -64,7 +65,7 @@ class PersistenceProcessorImpl
     final Meter timeoutMeter;
     final int batchPersistTimeoutInMs;
 
-    long lastFlush = System.nanoTime();
+    AtomicLong lastFlush = new AtomicLong(System.nanoTime());
 
     @Inject
     PersistenceProcessorImpl(TSOServerConfig config,
@@ -194,15 +195,14 @@ class PersistenceProcessorImpl
     private void maybeFlushBatch() {
         if (batch.isFull()) {
             flush();
-        } else if ((System.nanoTime() - lastFlush) > TimeUnit.MILLISECONDS.toNanos(batchPersistTimeoutInMs)) {
+        } else if ((System.nanoTime() - lastFlush.get()) > TimeUnit.MILLISECONDS.toNanos(batchPersistTimeoutInMs)) {
             timeoutMeter.mark();
             flush();
         }
     }
 
-    @VisibleForTesting
-    synchronized void flush() {
-        lastFlush = System.nanoTime();
+    synchronized private void flush() {
+        lastFlush.set(System.nanoTime());
 
         boolean areWeStillMaster = true;
         if (!leaseManager.stillInLeasePeriod()) {
@@ -227,7 +227,7 @@ class PersistenceProcessorImpl
                 LOG.warn("Replica {} lost mastership after flushing data", tsoHostAndPort);
             }
         }
-        flushTimer.update((System.nanoTime() - lastFlush));
+        flushTimer.update((System.nanoTime() - lastFlush.get()));
         batch.sendRepliesAndReset(reply, retryProc, areWeStillMaster);
 
     }
