@@ -16,17 +16,17 @@ The basic principle is to always write code that is testable, easy to understand
     * Use proven libraries for (e.g. Apache commons, guava, etc.)
 * Refactor when necessary
     * When adding a new feature and the context is not appropriate, refactor first in a separate commit/s
+* Use [TestNG](http://testng.org/) for testing instead of JUnit
 
 # Coding Style
-Omid coding style shoud follow [Oracle's Code Conventions for Java](http://www.oracle.com/technetwork/java/javase/documentation/codeconvtoc-136057.html), with the following modifications:
+Omid coding style should follow general rules found in [Google's Code Style for Java](https://google.github.io/styleguide/javaguide.html), with the following modifications:
 
 * Lines can be up to 120 characters long
-* Indentation should be:
+* Block indentation should be:
     * 4 spaces
     * Tabs not allowed
 * Always use curly braces for code blocks, even for single-line 'ifs' and 'elses'
 * Do not include @author tags in any javadoc
-* Use TestNG for testing
 * Import ordering and spacing:
     * Try to organize imports alphabetically in blocks with this format:
         * A first block of imports from external libraries
@@ -54,3 +54,7 @@ Omid coding style shoud follow [Oracle's Code Conventions for Java](http://www.o
     import static com.yahoo.omid.zk.ZKUtils.provideZookeeperClient;
     ...
 ```
+
+The complete rules (specified with [Checkstyle](https://github.com/checkstyle/checkstyle)) can be found in the
+`misc/omid_checks.xml` file. A summary of the current status of the style in the Omid project can be found in
+the [[checkstyle-aggregate]] page.
