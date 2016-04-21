@@ -393,6 +393,7 @@
                     </excludes>
                     <!-- Add comment style for protocol buffers -->
                     <mapping>
+                        <java>SLASHSTAR_STYLE</java>
                         <proto>DOUBLESLASH_STYLE</proto>
                     </mapping>
                 </configuration>
