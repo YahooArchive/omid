@@ -32,7 +32,7 @@ public class ZKUtils {
     private static final Logger LOG = LoggerFactory.getLogger(ZKUtils.class);
 
     public static CuratorFramework initZKClient(String zkCluster, String namespace, int zkConnectionTimeoutInSec)
-            throws IOException, InterruptedException {
+            throws IOException {
 
         LOG.info("Creating Zookeeper Client connecting to {}", zkCluster);
 
@@ -44,10 +44,17 @@ public class ZKUtils {
                 .build();
 
         zkClient.start();
-        if (zkClient.blockUntilConnected(zkConnectionTimeoutInSec, TimeUnit.SECONDS)) {
-            LOG.info("Connected to ZK cluster '{}', client in state: [{}]", zkCluster, zkClient.getState());
-        } else {
-            throw new IOException(String.format("Can't contact ZK cluster '%s' after 10 seconds", zkCluster));
+
+        try {
+            if (zkClient.blockUntilConnected(zkConnectionTimeoutInSec, TimeUnit.SECONDS)) {
+                LOG.info("Connected to ZK cluster '{}', client in state: [{}]", zkCluster, zkClient.getState());
+            } else {
+                String errorMsg = String.format("Can't contact ZK cluster '%s' after %d seconds",
+                                                zkCluster, zkConnectionTimeoutInSec);
+                throw new IOException(errorMsg);
+            }
+        } catch (InterruptedException ex) {
+            throw new IOException(String.format("Interrupted whilst connecting to ZK cluster '%s'", zkCluster));
         }
 
         return zkClient;

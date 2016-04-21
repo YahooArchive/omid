@@ -22,7 +22,6 @@ import org.apache.omid.transaction.HBaseTransactionManager;
 import org.apache.omid.transaction.RollbackException;
 import org.apache.omid.transaction.TTable;
 import org.apache.omid.transaction.Transaction;
-import org.apache.omid.transaction.TransactionException;
 import org.apache.omid.transaction.TransactionManager;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.client.Put;
@@ -91,7 +90,7 @@ public class ConfigurationExample {
     }
 
     private void doWork(String userTableName, byte[] family, HBaseOmidClientConfiguration configuration)
-            throws IOException, TransactionException, RollbackException, InterruptedException {
+            throws IOException, RollbackException, InterruptedException {
 
         byte[] exampleRow1 = Bytes.toBytes("EXAMPLE_ROW1");
         byte[] exampleRow2 = Bytes.toBytes("EXAMPLE_ROW2");

@@ -369,7 +369,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
     }
 
     private void checkRowValues(TTable txTable, byte[] expectedDataR1Q1, byte[] expectedDataR2Q2)
-            throws TransactionException, IOException, RollbackException {
+            throws IOException, RollbackException {
         Transaction readTx = tm.begin();
         LOG.info("Starting Read Tx {} for checking cell values", readTx.getTransactionId());
         Get getRow1 = new Get(row1).setMaxVersions(1);

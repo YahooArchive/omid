@@ -96,13 +96,12 @@ public class TSOClient implements TSOProtocol, NodeCacheListener {
     // Construction
     // ----------------------------------------------------------------------------------------------------------------
 
-    public static TSOClient newInstance(OmidClientConfiguration tsoClientConf)
-            throws IOException, InterruptedException {
+    public static TSOClient newInstance(OmidClientConfiguration tsoClientConf) throws IOException {
         return new TSOClient(tsoClientConf);
     }
 
     // Avoid instantiation
-    private TSOClient(OmidClientConfiguration omidConf) throws IOException, InterruptedException {
+    private TSOClient(OmidClientConfiguration omidConf) throws IOException {
 
         // Start client with Nb of active threads = 3 as maximum.
         int tsoExecutorThreads = omidConf.getExecutorThreads();
