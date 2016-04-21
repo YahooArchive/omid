@@ -25,7 +25,7 @@ public interface MetricsProvider {
     String CODAHALE_METRICS_CONFIG = "console:_:60:SECONDS";
 
     enum Provider {
-        CODAHALE, YMON;
+        CODAHALE, YMON
     }
 
     /**

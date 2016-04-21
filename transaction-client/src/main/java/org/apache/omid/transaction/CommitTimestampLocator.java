@@ -30,9 +30,8 @@ import java.io.IOException;
  */
 public interface CommitTimestampLocator {
 
-    public Optional<Long> readCommitTimestampFromCache(long startTimestamp);
+    Optional<Long> readCommitTimestampFromCache(long startTimestamp);
 
-    public Optional<Long> readCommitTimestampFromShadowCell(long startTimestamp)
-            throws IOException;
+    Optional<Long> readCommitTimestampFromShadowCell(long startTimestamp) throws IOException;
 
 }

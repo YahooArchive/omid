@@ -28,7 +28,7 @@ public interface TSOStateManager {
     /**
      * Represents the state of the TSO
      */
-    public static class TSOState {
+    class TSOState {
 
         // TSO state variables
         private final long lowWatermark;
@@ -56,14 +56,14 @@ public interface TSOStateManager {
     /**
      * Allows implementors to receive the new state when changes occur
      */
-    public interface StateObserver {
+    interface StateObserver {
 
         /**
          * Notifies the observer about the change in state
          * @param state
          *            the new TSOState
          */
-        public void update(TSOState state) throws IOException;
+        void update(TSOState state) throws IOException;
 
     }
 
@@ -73,7 +73,7 @@ public interface TSOStateManager {
      * @param observer
      *            the observer to register
      */
-    public void register(StateObserver observer);
+    void register(StateObserver observer);
 
     /**
      * Allows to de-register observers for stopping receiving changes
@@ -81,7 +81,7 @@ public interface TSOStateManager {
      * @param observer
      *            the observer to unregister
      */
-    public void unregister(StateObserver observer);
+    void unregister(StateObserver observer);
 
     /**
      * Allows to reset the state
@@ -90,6 +90,6 @@ public interface TSOStateManager {
      * @throws IOException
      *             when problems resetting occur
      */
-    public TSOState reset() throws IOException;
+    TSOState reset() throws IOException;
 
 }

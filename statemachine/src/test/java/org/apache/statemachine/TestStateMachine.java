@@ -46,7 +46,7 @@ public class TestStateMachine {
             latch.countDown();
         }
 
-        public int get() throws InterruptedException, Throwable {
+        public int get() throws Throwable {
             latch.await();
             if (t != null) {
                 throw t;

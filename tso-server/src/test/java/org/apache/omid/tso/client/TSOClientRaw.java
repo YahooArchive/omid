@@ -94,7 +94,7 @@ public class TSOClientRaw {
     }
 
     public Future<Response> getResponse() throws InterruptedException {
-        SettableFuture<Response> future = SettableFuture.<Response>create();
+        SettableFuture<Response> future = SettableFuture.create();
         responseQueue.put(future);
         return future;
     }
