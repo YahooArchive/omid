@@ -442,6 +442,7 @@ public class TTable implements Closeable {
                 // cell with the right commit timestamp for avoiding further reads to
                 // hit the storage
                 healShadowCell(cell, tentativeCommitTimestamp.getValue());
+                return Optional.of(tentativeCommitTimestamp.getValue());
             case CACHE:
             case SHADOW_CELL:
                 return Optional.of(tentativeCommitTimestamp.getValue());
@@ -749,7 +750,7 @@ public class TTable implements Closeable {
 
             @Override
             public boolean apply(Cell cell) {
-                return !CellUtils.isShadowCell(cell);
+                return cell != null && !CellUtils.isShadowCell(cell);
             }
 
         };

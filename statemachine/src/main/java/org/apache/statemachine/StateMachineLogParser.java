@@ -21,6 +21,7 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -155,7 +156,7 @@ public class StateMachineLogParser {
             System.out.println("Usage: StateMachineLogParser <logfile> | dot -Tsvg ");
             System.exit(-1);
         }
-        BufferedReader f = new BufferedReader(new InputStreamReader(new FileInputStream(args[0])));
+        BufferedReader f = new BufferedReader(new InputStreamReader(new FileInputStream(args[0]), Charset.forName("UTF-8")));
         Map<String, List<String>> fsms = getFsmEventMap(f);
         Set<Tuple> tuples = getStateTuples(fsms);
         drawDotGraph(tuples);

@@ -68,7 +68,7 @@ public class CacheEvaluation {
             }
             if (i % ENTRIES == 0) {
                 int round = i / ENTRIES + 1;
-                System.err.format("Warmup [%d/%d]\n", round, WARMUP_ROUNDS);
+                System.err.format("Warmup [%d/%d]%n", round, WARMUP_ROUNDS);
             }
         }
 
@@ -86,7 +86,7 @@ public class CacheEvaluation {
             tempStdDev += (gap - oldAvg) * (gap - tempAvg);
             if (i % ENTRIES == 0) {
                 int round = i / ENTRIES - WARMUP_ROUNDS + 1;
-                System.err.format("Progress [%d/%d]\n", round, ROUNDS);
+                System.err.format("Progress [%d/%d]%n", round, ROUNDS);
             }
         }
         long elapsed = System.nanoTime() - time;

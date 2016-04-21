@@ -68,9 +68,8 @@ public class MonitoringContext {
 
     public void publish() {
         flag = true;
-        for (String name : elapsedTimeMsMap.keySet()) {
-            Long durationInNs = elapsedTimeMsMap.get(name);
-            metrics.timer(name("tso", name)).update(durationInNs);
+        for (Map.Entry<String, Long> entry : elapsedTimeMsMap.entrySet()) {
+            metrics.timer(name("tso", entry.getKey())).update(entry.getValue());
         }
     }
 
