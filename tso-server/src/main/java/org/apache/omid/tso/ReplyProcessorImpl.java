@@ -48,8 +48,7 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
 
     @Inject
     ReplyProcessorImpl(MetricsRegistry metrics, Panicker panicker) {
-        replyRing = RingBuffer.<ReplyEvent>createMultiProducer(ReplyEvent.EVENT_FACTORY, 1 << 12,
-                new BusySpinWaitStrategy());
+        replyRing = RingBuffer.createMultiProducer(ReplyEvent.EVENT_FACTORY, 1 << 12, new BusySpinWaitStrategy());
         SequenceBarrier replySequenceBarrier = replyRing.newBarrier();
         BatchEventProcessor<ReplyEvent> replyProcessor = new BatchEventProcessor<ReplyEvent>(
                 replyRing, replySequenceBarrier, this);

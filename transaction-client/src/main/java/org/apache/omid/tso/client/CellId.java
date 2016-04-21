@@ -19,6 +19,6 @@ package org.apache.omid.tso.client;
 
 public interface CellId {
 
-    public long getCellId();
+    long getCellId();
 
 }

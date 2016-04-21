@@ -56,9 +56,7 @@ public class ColumnWrapper {
         ColumnWrapper other = (ColumnWrapper) obj;
         if (!Arrays.equals(family, other.family))
             return false;
-        if (!Arrays.equals(qualifier, other.qualifier))
-            return false;
-        return true;
+        return Arrays.equals(qualifier, other.qualifier);
     }
 
 }

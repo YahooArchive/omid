@@ -273,7 +273,7 @@ public class ProgrammableTSOServer extends SimpleChannelHandler {
     abstract static class Response {
 
         enum ResponseType {
-            TIMESTAMP, COMMIT, ABORT;
+            TIMESTAMP, COMMIT, ABORT
         }
 
         final ResponseType type;

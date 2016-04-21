@@ -99,7 +99,7 @@ public class CompactorScanner implements InternalScanner {
             List<Cell> scanResult = new ArrayList<Cell>();
             hasMoreRows = internalScanner.next(scanResult);
             if (LOG.isTraceEnabled()) {
-                LOG.trace("Row: Result {} limit {} more rows? {}", new Object[]{scanResult, limit, hasMoreRows});
+                LOG.trace("Row: Result {} limit {} more rows? {}", scanResult, limit, hasMoreRows);
             }
             // 2) Traverse result list separating normal cells from shadow
             // cells and building a map to access easily the shadow cells.

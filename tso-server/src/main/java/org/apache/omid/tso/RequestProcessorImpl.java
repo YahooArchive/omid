@@ -65,8 +65,7 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
         this.hashmap = new CommitHashMap(config.getMaxItems());
 
         // Set up the disruptor thread
-        requestRing = RingBuffer.<RequestEvent>createMultiProducer(RequestEvent.EVENT_FACTORY, 1 << 12,
-                new BusySpinWaitStrategy());
+        requestRing = RingBuffer.createMultiProducer(RequestEvent.EVENT_FACTORY, 1 << 12, new BusySpinWaitStrategy());
         SequenceBarrier requestSequenceBarrier = requestRing.newBarrier();
         BatchEventProcessor<RequestEvent> requestProcessor =
                 new BatchEventProcessor<RequestEvent>(requestRing,
@@ -206,8 +205,6 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
         enum Type {
             TIMESTAMP, COMMIT
         }
-
-        ;
 
         private Type type = null;
         private Channel channel = null;

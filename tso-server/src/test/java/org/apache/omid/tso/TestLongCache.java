@@ -103,7 +103,7 @@ public class TestLongCache {
             if (removed > largestDeletedTimestamp) {
                 largestDeletedTimestamp = (int) removed;
             }
-            int gap = i - ((int) largestDeletedTimestamp);
+            int gap = i - largestDeletedTimestamp;
             removals++;
             totalAge += gap;
             double oldAvg = tempAvg;

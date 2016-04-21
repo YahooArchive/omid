@@ -69,7 +69,7 @@ public class TestCompactorScanner {
         RegionCoprocessorEnvironment rce = mock(RegionCoprocessorEnvironment.class);
         HRegion hRegion = mock(HRegion.class);
         HRegionInfo hRegionInfo = mock(HRegionInfo.class);
-        SettableFuture<Long> f = SettableFuture.<Long>create();
+        SettableFuture<Long> f = SettableFuture.create();
 
         // Wire required mock internals
         f.set(TEST_TS);

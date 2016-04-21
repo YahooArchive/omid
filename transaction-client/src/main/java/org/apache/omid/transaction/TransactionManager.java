@@ -35,7 +35,7 @@ public interface TransactionManager extends Closeable {
      *          representation of the created transaction
      * @throws TransactionException
      */
-    public Transaction begin() throws TransactionException;
+    Transaction begin() throws TransactionException;
 
     /**
      * Commits a transaction.
@@ -51,7 +51,7 @@ public interface TransactionManager extends Closeable {
      *          or when was marked for rollback.
      * @throws TransactionException
      */
-    public void commit(Transaction tx) throws RollbackException, TransactionException;
+    void commit(Transaction tx) throws RollbackException, TransactionException;
 
     /**
      * Aborts a transaction.
@@ -61,6 +61,6 @@ public interface TransactionManager extends Closeable {
      * @param tx
      *          transaction to be rolled-back.
      */
-    public void rollback(Transaction tx) throws TransactionException;
+    void rollback(Transaction tx) throws TransactionException;
 
 }

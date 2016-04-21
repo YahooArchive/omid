@@ -31,12 +31,11 @@ public class FatalExceptionHandler implements ExceptionHandler {
     }
 
     @Override
-    public void handleEventException(Throwable ex,
-                                     long sequence,
-                                     Object event) {
-        LOG.error("Uncaught exception throws for sequence {}, event {}",
-                new Object[]{sequence, event, ex});
+    public void handleEventException(Throwable ex, long sequence, Object event) {
+
+        LOG.error("Uncaught exception throws for sequence {}, event {}", sequence, event, ex);
         panicker.panic("Uncaught exception in disruptor thread", ex);
+
     }
 
     @Override

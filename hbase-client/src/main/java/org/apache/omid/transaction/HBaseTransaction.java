@@ -42,7 +42,7 @@ public class HBaseTransaction extends AbstractTransaction<HBaseCellId> {
             try {
                 cell.getTable().delete(delete);
             } catch (IOException e) {
-                LOG.warn("Failed cleanup cell {} for Tx {}. This issue has been ignored", new Object[]{cell, getTransactionId(), e});
+                LOG.warn("Failed cleanup cell {} for Tx {}. This issue has been ignored", cell, getTransactionId(), e);
             }
         }
         try {
