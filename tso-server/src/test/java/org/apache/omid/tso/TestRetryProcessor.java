@@ -88,7 +88,7 @@ public class TestRetryProcessor {
         retryProc.disambiguateRetryRequestHeuristically(ST_TX_1, channel, new MonitoringContext(metrics));
         ArgumentCaptor<Long> secondTScapture = ArgumentCaptor.forClass(Long.class);
         verify(replyProc, timeout(100).times(1))
-                .commitResponse(eq(false), firstTScapture.capture(), secondTScapture.capture(), any(Channel.class), any(MonitoringContext.class));
+                .commitResponse(firstTScapture.capture(), secondTScapture.capture(), any(Channel.class), any(MonitoringContext.class));
 
         startTS = firstTScapture.getValue();
         long commitTS = secondTScapture.getValue();

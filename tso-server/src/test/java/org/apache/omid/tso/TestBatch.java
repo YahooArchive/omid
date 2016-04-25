@@ -110,49 +110,14 @@ public class TestBatch {
         }
 
         // Test that sending replies empties the batch
-        final boolean MASTER_INSTANCE = true;
-        final boolean SHOULD_MAKE_HEURISTIC_DECISSION = true;
-        batch.sendRepliesAndReset(replyProcessor, retryProcessor, MASTER_INSTANCE);
+        batch.sendRepliesAndReset(replyProcessor, retryProcessor);
         verify(replyProcessor, timeout(100).times(BATCH_SIZE / 2))
                 .timestampResponse(anyLong(), any(Channel.class), any(MonitoringContext.class));
         verify(replyProcessor, timeout(100).times(BATCH_SIZE / 2))
-                .commitResponse(eq(!SHOULD_MAKE_HEURISTIC_DECISSION), anyLong(), anyLong(),
-                        any(Channel.class), any(MonitoringContext.class));
+                .commitResponse(anyLong(), anyLong(), any(Channel.class), any(MonitoringContext.class));
         AssertJUnit.assertFalse("Batch shouldn't be full", batch.isFull());
         AssertJUnit.assertEquals("Num events should be 0", 0, batch.getNumEvents());
 
     }
 
-    @Test
-    public void testBatchFunctionalityWhenMastershipIsLost() {
-        Channel channel = Mockito.mock(Channel.class);
-
-        // Fill the batch with events till full
-        for (int i = 0; i < BATCH_SIZE; i++) {
-            if (i % 2 == 0) {
-                MonitoringContext monCtx = new MonitoringContext(metrics);
-                monCtx.timerStart("timestampPersistProcessor");
-                batch.addTimestamp(i, channel, monCtx);
-            } else {
-                MonitoringContext monCtx = new MonitoringContext(metrics);
-                monCtx.timerStart("commitPersistProcessor");
-                batch.addCommit(i, i + 1, channel, monCtx);
-            }
-        }
-
-        // Test that sending replies empties the batch also when the replica
-        // is NOT master and calls the ambiguousCommitResponse() method on the
-        // reply processor
-        final boolean MASTER_INSTANCE = true;
-        final boolean SHOULD_MAKE_HEURISTIC_DECISSION = true;
-        batch.sendRepliesAndReset(replyProcessor, retryProcessor, !MASTER_INSTANCE);
-        verify(replyProcessor, timeout(100).times(BATCH_SIZE / 2))
-                .timestampResponse(anyLong(), any(Channel.class), any(MonitoringContext.class));
-        verify(replyProcessor, timeout(100).times(BATCH_SIZE / 2))
-                .commitResponse(eq(SHOULD_MAKE_HEURISTIC_DECISSION), anyLong(), anyLong(), any(Channel.class), any(
-                        MonitoringContext.class));
-        assertFalse(batch.isFull(), "Batch shouldn't be full");
-        assertEquals(batch.getNumEvents(), 0, "Num events should be 0");
-
-    }
 }

@@ -29,7 +29,6 @@ import org.apache.omid.transaction.Transaction.Status;
 import org.apache.omid.tso.client.AbortException;
 import org.apache.omid.tso.client.CellId;
 import org.apache.omid.tso.client.ConnectionException;
-import org.apache.omid.tso.client.NewTSOException;
 import org.apache.omid.tso.client.ServiceUnavailableException;
 import org.apache.omid.tso.client.TSOClient;
 import org.slf4j.Logger;
@@ -417,11 +416,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
                 throw new RollbackException("Conflicts detected in tx writeset", e.getCause());
             }
 
-            if (e.getCause() instanceof ServiceUnavailableException
-                    ||
-                    e.getCause() instanceof NewTSOException
-                    ||
-                    e.getCause() instanceof ConnectionException) {
+            if (e.getCause() instanceof ServiceUnavailableException || e.getCause() instanceof ConnectionException) {
 
                 errorTxsCounter.inc();
                 try {

@@ -72,12 +72,7 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
                 case COMMIT:
                     name = "commitReplyProcessor";
                     event.getMonCtx().timerStart(name);
-                    handleCommitResponse(false, event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel());
-                    break;
-                case HEURISTIC_COMMIT:
-                    name = "commitReplyProcessor";
-                    event.getMonCtx().timerStart(name);
-                    handleCommitResponse(true, event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel());
+                    handleCommitResponse(event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel());
                     break;
                 case ABORT:
                     name = "abortReplyProcessor";
@@ -102,10 +97,10 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
     }
 
     @Override
-    public void commitResponse(boolean makeHeuristicDecision, long startTimestamp, long commitTimestamp, Channel c, MonitoringContext monCtx) {
+    public void commitResponse(long startTimestamp, long commitTimestamp, Channel c, MonitoringContext monCtx) {
         long seq = replyRing.next();
         ReplyEvent e = replyRing.get(seq);
-        ReplyEvent.makeCommitResponse(makeHeuristicDecision, e, startTimestamp, commitTimestamp, c, monCtx);
+        ReplyEvent.makeCommitResponse(e, startTimestamp, commitTimestamp, c, monCtx);
         replyRing.publish(seq);
     }
 
@@ -125,12 +120,9 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
         replyRing.publish(seq);
     }
 
-    void handleCommitResponse(boolean makeHeuristicDecision, long startTimestamp, long commitTimestamp, Channel c) {
+    void handleCommitResponse(long startTimestamp, long commitTimestamp, Channel c) {
         TSOProto.Response.Builder builder = TSOProto.Response.newBuilder();
         TSOProto.CommitResponse.Builder commitBuilder = TSOProto.CommitResponse.newBuilder();
-        if (makeHeuristicDecision) { // If the commit is ambiguous is due to a new master TSO
-            commitBuilder.setMakeHeuristicDecision(true);
-        }
         commitBuilder.setAborted(false)
                 .setStartTimestamp(startTimestamp)
                 .setCommitTimestamp(commitTimestamp);
@@ -164,7 +156,7 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
     public final static class ReplyEvent {
 
         enum Type {
-            TIMESTAMP, COMMIT, HEURISTIC_COMMIT, ABORT
+            TIMESTAMP, COMMIT, ABORT
         }
 
         private Type type = null;
@@ -201,14 +193,10 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyEvent>,
             e.monCtx = monCtx;
         }
 
-        static void makeCommitResponse(boolean makeHeuristicDecision, ReplyEvent e, long startTimestamp,
+        static void makeCommitResponse(ReplyEvent e, long startTimestamp,
                                        long commitTimestamp, Channel c, MonitoringContext monCtx) {
 
-            if (makeHeuristicDecision) {
-                e.type = Type.HEURISTIC_COMMIT;
-            } else {
-                e.type = Type.COMMIT;
-            }
+            e.type = Type.COMMIT;
             e.startTimestamp = startTimestamp;
             e.commitTimestamp = commitTimestamp;
             e.channel = c;

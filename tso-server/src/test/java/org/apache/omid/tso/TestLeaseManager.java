@@ -40,6 +40,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
@@ -359,7 +360,7 @@ public class TestLeaseManager {
         Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
 
         ArgumentCaptor<IllegalArgumentException> trowableIAE = ArgumentCaptor.forClass(IllegalArgumentException.class);
-        verify(panicker).panic(anyString(), trowableIAE.capture());
+        verify(panicker, times(2)).panic(anyString(), trowableIAE.capture());
         assertTrue(trowableIAE.getValue() instanceof IllegalArgumentException);
         assertTrue(trowableIAE.getValue().getMessage().contains("Incorrect TSO Info found"));
 
@@ -378,7 +379,7 @@ public class TestLeaseManager {
 
         ArgumentCaptor<LeaseManagement.LeaseManagementException> trowableLME =
                 ArgumentCaptor.forClass(LeaseManagement.LeaseManagementException.class);
-        verify(panicker).panic(anyString(), trowableLME.capture());
+        verify(panicker, times(2)).panic(anyString(), trowableLME.capture());
         assertTrue(trowableLME.getValue() instanceof LeaseManagement.LeaseManagementException);
         assertTrue(trowableLME.getValue().getMessage().contains("Another TSO replica was found"));
     }

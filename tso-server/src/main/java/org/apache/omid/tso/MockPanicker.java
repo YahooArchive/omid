@@ -26,7 +26,7 @@ public class MockPanicker implements Panicker {
 
     @Override
     public void panic(String reason) {
-        LOG.error("PANICKING: {}", reason);
+        panic(reason, new Throwable("Mock Panicker"));
     }
 
     @Override
