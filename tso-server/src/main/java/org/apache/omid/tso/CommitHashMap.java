@@ -66,11 +66,6 @@ class CommitHashMap {
         LOG.info("CellId -> CommitTS map created with [{}] buckets (32 elems/bucket)", size);
     }
 
-    public void reset() {
-        cellIdToCommitMap.reset();
-        LOG.info("CellId -> CommitTS map reset");
-    }
-
     public long getLatestWriteForCell(long hash) {
         return cellIdToCommitMap.get(hash);
     }

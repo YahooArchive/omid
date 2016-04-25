@@ -25,8 +25,6 @@ import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.Singleton;
 import org.apache.omid.metrics.MetricsRegistry;
-import org.apache.omid.tools.hbase.HBaseLogin;
-import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

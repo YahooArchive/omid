@@ -75,7 +75,7 @@ public class TestRequestProcessor {
 
         // Initialize the state for the experiment
         stateManager.register(requestProc);
-        stateManager.reset();
+        stateManager.initialize();
 
     }
 
@@ -150,7 +150,7 @@ public class TestRequestProcessor {
 
         // ... simulate the reset of the RequestProcessor state (e.g. due to
         // a change in mastership) and...
-        stateManager.reset();
+        stateManager.initialize();
 
         // ...check that the transaction is aborted when trying to commit
         requestProc.commitRequest(startTS, writeSet, false, null, new MonitoringContext(metrics));

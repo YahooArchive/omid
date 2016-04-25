@@ -23,8 +23,6 @@ package org.apache.omid.tso;
  */
 public interface Cache {
 
-    void reset();
-
     long set(long key, long value);
 
     long get(long key);

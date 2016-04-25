@@ -84,12 +84,12 @@ public interface TSOStateManager {
     void unregister(StateObserver observer);
 
     /**
-     * Allows to reset the state
+     * Allows to initialize the state
      *
-     * @return the new state after reset
+     * @return the new state
      * @throws IOException
      *             when problems resetting occur
      */
-    TSOState reset() throws IOException;
+    TSOState initialize() throws IOException;
 
 }

@@ -18,5 +18,9 @@
 package org.apache.omid.tso;
 
 public interface Panicker {
+
+    void panic(String reason);
+
     void panic(String reason, Throwable cause);
+
 }
