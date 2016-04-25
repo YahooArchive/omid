@@ -204,7 +204,7 @@ public class TestTxMgrFailover extends OmidTestBase {
 
     }
 
-    private void executeTxAndCheckRollback() throws IOException, TransactionException, InterruptedException, java.util.concurrent.ExecutionException {
+    private void executeTxAndCheckRollback() throws IOException, InterruptedException, java.util.concurrent.ExecutionException {
         try (TTable txTable = new TTable(hbaseConf, TEST_TABLE)) {
             HBaseTransaction tx1 = (HBaseTransaction) tm.begin();
             assertEquals(tx1.getStartTimestamp(), TX1_ST);

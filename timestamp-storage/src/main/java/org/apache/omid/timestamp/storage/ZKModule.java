@@ -42,7 +42,7 @@ public class ZKModule extends AbstractModule {
 
     @Provides
     @Singleton
-    CuratorFramework provideInitializedZookeeperClient() throws IOException, InterruptedException {
+    CuratorFramework provideInitializedZookeeperClient() throws IOException {
         return ZKUtils.initZKClient(zkCluster, namespace, 10);
     }
 

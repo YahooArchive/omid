@@ -17,7 +17,9 @@
  */
 package org.apache.omid.transaction;
 
-public class TransactionException extends Exception {
+import java.io.IOException;
+
+public class TransactionException extends IOException {
 
     private static final long serialVersionUID = 7273525983622126275L;
 
@@ -28,4 +30,5 @@ public class TransactionException extends Exception {
     public TransactionException(String reason, Throwable e) {
         super(reason, e);
     }
+
 }
