@@ -18,11 +18,11 @@
 package org.apache.omid.transaction;
 
 import com.google.common.base.Optional;
-import org.apache.omid.HBaseShims;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.omid.HBaseShims;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -32,10 +32,10 @@ import java.util.List;
 import java.util.SortedMap;
 
 import static org.apache.omid.transaction.CellUtils.SHADOW_CELL_SUFFIX;
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertFalse;
-import static org.testng.AssertJUnit.assertTrue;
-import static org.testng.AssertJUnit.fail;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
 
 @Test(groups = "noHBase")
 public class TestCellUtils {
@@ -72,27 +72,27 @@ public class TestCellUtils {
         // and is placed at the end of the qualifier:
         // qual_nameSUFFIX
         KeyValue kv = new KeyValue(row, family, validShadowCellQualifier, value);
-        assertTrue("Should include a valid shadowCell identifier", CellUtils.isShadowCell(kv));
+        assertTrue(CellUtils.isShadowCell(kv), "Should include a valid shadowCell identifier");
 
         // We also accept this pattern in the qualifier:
         // SUFFIXqual_nameSUFFIX
         kv = new KeyValue(row, family, sandwichValidShadowCellQualifier, value);
-        assertTrue("Should include a valid shadowCell identifier", CellUtils.isShadowCell(kv));
+        assertTrue(CellUtils.isShadowCell(kv), "Should include a valid shadowCell identifier");
 
         // We also accept this pattern in the qualifier:
         // qual_nameSUFFIXSUFFIX
         kv = new KeyValue(row, family, doubleEndedValidShadowCellQualifier, value);
-        assertTrue("Should include a valid shadowCell identifier", CellUtils.isShadowCell(kv));
+        assertTrue(CellUtils.isShadowCell(kv), "Should include a valid shadowCell identifier");
 
         // We also accept this pattern in the qualifier:
         // qual_nameSUFFIXqual_nameSUFFIXqual_nameSUFFIX
         kv = new KeyValue(row, family, interleavedValidShadowCellQualifier, value);
-        assertTrue("Should include a valid shadowCell identifier", CellUtils.isShadowCell(kv));
+        assertTrue(CellUtils.isShadowCell(kv), "Should include a valid shadowCell identifier");
 
         // Test the qualifier passed is not a shadow cell
         // qualifier if there's nothing else apart from the suffix
         kv = new KeyValue(row, family, shadowCellSuffixToTest, value);
-        assertFalse("Should not include a valid shadowCell identifier", CellUtils.isShadowCell(kv));
+        assertFalse(CellUtils.isShadowCell(kv), "Should not include a valid shadowCell identifier");
 
     }
 
@@ -126,27 +126,27 @@ public class TestCellUtils {
 
         // Check dup shadow cell with same MVCC is ignored
         SortedMap<Cell, Optional<Cell>> cellsToShadowCells = CellUtils.mapCellsToShadowCells(badListWithDups);
-        assertEquals("There should be only 1 key-value maps", 1, cellsToShadowCells.size());
+        assertEquals(cellsToShadowCells.size(), 1, "There should be only 1 key-value maps");
         assertTrue(cellsToShadowCells.containsKey(cell1));
         KeyValue firstKey = (KeyValue) cellsToShadowCells.firstKey();
         KeyValue lastKey = (KeyValue) cellsToShadowCells.lastKey();
         assertTrue(firstKey.equals(lastKey));
-        assertTrue("Should be equal", 0 == Bytes.compareTo(
-                firstKey.getValueArray(), firstKey.getValueOffset(), firstKey.getValueLength(),
-                cell1.getValueArray(), cell1.getValueOffset(), cell1.getValueLength()));
+        assertTrue(0 == Bytes.compareTo(firstKey.getValueArray(), firstKey.getValueOffset(), firstKey.getValueLength(),
+                                        cell1.getValueArray(), cell1.getValueOffset(), cell1.getValueLength()),
+                   "Should be equal");
 
         // Modify dup shadow cell to have a greater MVCC and check that is replaced
         HBaseShims.setKeyValueSequenceId((KeyValue) dupCell1WithAnotherValue, 1);
         cellsToShadowCells = CellUtils.mapCellsToShadowCells(badListWithDups);
-        assertEquals("There should be only 1 key-value maps", 1, cellsToShadowCells.size());
+        assertEquals(cellsToShadowCells.size(), 1, "There should be only 1 key-value maps");
         assertTrue(cellsToShadowCells.containsKey(dupCell1WithAnotherValue));
         firstKey = (KeyValue) cellsToShadowCells.firstKey();
         lastKey = (KeyValue) cellsToShadowCells.lastKey();
         assertTrue(firstKey.equals(lastKey));
-        assertTrue("Should be equal", 0 == Bytes.compareTo(
-                firstKey.getValueArray(), firstKey.getValueOffset(), firstKey.getValueLength(),
-                dupCell1WithAnotherValue.getValueArray(), dupCell1WithAnotherValue.getValueOffset(),
-                dupCell1WithAnotherValue.getValueLength()));
+        assertTrue(0 == Bytes.compareTo(firstKey.getValueArray(), firstKey.getValueOffset(),
+                                        firstKey.getValueLength(), dupCell1WithAnotherValue.getValueArray(),
+                                        dupCell1WithAnotherValue.getValueOffset(), dupCell1WithAnotherValue.getValueLength()),
+                   "Should be equal");
         // Check a list of cells with duplicate values
         List<Cell> cellListWithDups = new ArrayList<>();
         cellListWithDups.add(cell1);
@@ -158,7 +158,7 @@ public class TestCellUtils {
         cellListWithDups.add(shadowCell2);
 
         cellsToShadowCells = CellUtils.mapCellsToShadowCells(cellListWithDups);
-        assertEquals("There should be only 3 key-value maps", 3, cellsToShadowCells.size());
+        assertEquals(cellsToShadowCells.size(), 3, "There should be only 3 key-value maps");
         assertTrue(cellsToShadowCells.get(cell1).get().equals(shadowCell1));
         assertTrue(cellsToShadowCells.get(dupCell1).get().equals(shadowCell1));
         assertFalse(cellsToShadowCells.containsKey(delCell1)); // TODO This is strange and needs to be solved.
@@ -177,7 +177,7 @@ public class TestCellUtils {
                 cell.getQualifierOffset(),
                 cell.getQualifierLength());
         byte[] expectedQualifier = com.google.common.primitives.Bytes.concat(qualifier, SHADOW_CELL_SUFFIX);
-        assertEquals(expectedQualifier, suffixedQualifier);
+        assertEquals(suffixedQualifier, expectedQualifier);
 
     }
 
@@ -191,7 +191,7 @@ public class TestCellUtils {
                 cell.getQualifierOffset(),
                 cell.getQualifierLength());
         byte[] expectedQualifier = qualifier;
-        assertEquals(expectedQualifier, resultedQualifier);
+        assertEquals(resultedQualifier, expectedQualifier);
 
         // Test removal from a badly suffixed qualifier
         byte[] badlySuffixedQualifier = com.google.common.primitives.Bytes.concat(qualifier, Bytes.toBytes("BAD"));
@@ -219,12 +219,12 @@ public class TestCellUtils {
         byte[] suffixedQualifier = com.google.common.primitives.Bytes.concat(qualifier, shadowCellSuffixToTest);
         int originalQualifierLength =
                 CellUtils.qualifierLengthFromShadowCellQualifier(suffixedQualifier, 0, suffixedQualifier.length);
-        assertEquals(qualifier.length, originalQualifierLength);
+        assertEquals(originalQualifierLength, qualifier.length);
 
         // Test passing qualifier without shadow cell suffix
         originalQualifierLength =
                 CellUtils.qualifierLengthFromShadowCellQualifier(qualifier, 0, qualifier.length);
-        assertEquals(qualifier.length, originalQualifierLength);
+        assertEquals(originalQualifierLength, qualifier.length);
     }
 
 }

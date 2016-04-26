@@ -36,8 +36,9 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 
-import static org.apache.omid.timestamp.storage.HBaseTimestampStorageConfig.*;
-import static org.testng.AssertJUnit.assertEquals;
+import static org.apache.omid.timestamp.storage.HBaseTimestampStorageConfig.DEFAULT_TIMESTAMP_STORAGE_CF_NAME;
+import static org.apache.omid.timestamp.storage.HBaseTimestampStorageConfig.DEFAULT_TIMESTAMP_STORAGE_TABLE_NAME;
+import static org.testng.Assert.assertEquals;
 
 public class TestHBaseTimestampStorage {
 
@@ -111,7 +112,7 @@ public class TestHBaseTimestampStorage {
         HBaseTimestampStorage tsStorage = new HBaseTimestampStorage(hbaseConf, config);
 
         // Test that the first time we get the timestamp is the initial value
-        assertEquals("Initial value should be " + INITIAL_TS_VALUE, INITIAL_TS_VALUE, tsStorage.getMaxTimestamp());
+        assertEquals(tsStorage.getMaxTimestamp(), INITIAL_TS_VALUE, "Initial value should be " + INITIAL_TS_VALUE);
 
         // Test that updating the timestamp succeeds when passing the initial value as the previous one
         long newTimestamp = 1;
@@ -125,12 +126,13 @@ public class TestHBaseTimestampStorage {
         } catch (IOException e) {
             // Correct behavior
         }
-        assertEquals("Value should be still " + newTimestamp, newTimestamp, tsStorage.getMaxTimestamp());
+        assertEquals(tsStorage.getMaxTimestamp(), newTimestamp, "Value should be still " + newTimestamp);
 
         // Test we can set a new timestamp when passing the right previous max timestamp
         long veryNewTimestamp = 40;
         tsStorage.updateMaxTimestamp(newTimestamp, veryNewTimestamp);
-        assertEquals("Value should be " + veryNewTimestamp, veryNewTimestamp, tsStorage.getMaxTimestamp());
+        assertEquals(tsStorage.getMaxTimestamp(), veryNewTimestamp, "Value should be " + veryNewTimestamp);
+
     }
 
 }

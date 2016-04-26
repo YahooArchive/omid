@@ -37,7 +37,7 @@ import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
-import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.Assert.assertTrue;
 
 public class TestRequestProcessor {
 
@@ -113,7 +113,7 @@ public class TestRequestProcessor {
         ArgumentCaptor<Long> commitTScapture = ArgumentCaptor.forClass(Long.class);
 
         verify(persist, timeout(100).times(1)).persistCommit(eq(firstTS), commitTScapture.capture(), any(Channel.class), any(MonitoringContext.class));
-        assertTrue("Commit TS must be greater than start TS", commitTScapture.getValue() > firstTS);
+        assertTrue(commitTScapture.getValue() > firstTS, "Commit TS must be greater than start TS");
 
         // test conflict
         requestProc.timestampRequest(null, new MonitoringContext(metrics));

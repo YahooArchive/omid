@@ -40,9 +40,9 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertFalse;
-import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertTrue;
 
 @Test(groups = "sharedHBase")
 public class TestHBaseTransactionClient extends OmidTestBase {
@@ -83,9 +83,9 @@ public class TestHBaseTransactionClient extends OmidTestBase {
         HBaseCellId hBaseCellId3 = new HBaseCellId(htable, row2, family, qualifier, t3.getStartTimestamp());
 
         HBaseTransactionClient hbaseTm = (HBaseTransactionClient) newTransactionManager(context);
-        assertTrue("row1 should be committed", hbaseTm.isCommitted(hBaseCellId1));
-        assertFalse("row2 should not be committed for kv2", hbaseTm.isCommitted(hBaseCellId2));
-        assertTrue("row2 should be committed for kv3", hbaseTm.isCommitted(hBaseCellId3));
+        assertTrue(hbaseTm.isCommitted(hBaseCellId1), "row1 should be committed");
+        assertFalse(hbaseTm.isCommitted(hBaseCellId2), "row2 should not be committed for kv2");
+        assertTrue(hbaseTm.isCommitted(hBaseCellId3), "row2 should be committed for kv3");
     }
 
     @Test(timeOut = 30_000)
@@ -110,24 +110,16 @@ public class TestHBaseTransactionClient extends OmidTestBase {
             // Do nothing
         }
 
-        assertTrue("Cell should be there",
-                CellUtils.hasCell(row1,
-                        family,
-                        qualifier,
-                        t1.getStartTimestamp(),
-                        new TTableCellGetterAdapter(table)));
-        assertFalse("Shadow cell should not be there",
-                CellUtils.hasShadowCell(row1,
-                        family,
-                        qualifier,
-                        t1.getStartTimestamp(),
-                        new TTableCellGetterAdapter(table)));
+        assertTrue(CellUtils.hasCell(row1, family, qualifier, t1.getStartTimestamp(), new TTableCellGetterAdapter(table)),
+                   "Cell should be there");
+        assertFalse(CellUtils.hasShadowCell(row1, family, qualifier, t1.getStartTimestamp(), new TTableCellGetterAdapter(table)),
+                    "Shadow cell should not be there");
 
         HTable htable = new HTable(hbaseConf, TEST_TABLE);
         HBaseCellId hBaseCellId = new HBaseCellId(htable, row1, family, qualifier, t1.getStartTimestamp());
 
         HBaseTransactionClient hbaseTm = (HBaseTransactionClient) newTransactionManager(context);
-        assertTrue("row1 should be committed", hbaseTm.isCommitted(hBaseCellId));
+        assertTrue(hbaseTm.isCommitted(hBaseCellId), "row1 should be committed");
     }
 
     @Test(timeOut = 30_000)
@@ -159,7 +151,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
             assertTrue(optionalCT.isPresent());
             CommitTimestamp ct = optionalCT.get();
             assertFalse(ct.isValid());
-            assertEquals(CommitTable.INVALID_TRANSACTION_MARKER, ct.getValue());
+            assertEquals(ct.getValue(), CommitTable.INVALID_TRANSACTION_MARKER);
             assertTrue(ct.getLocation().compareTo(COMMIT_TABLE) == 0);
 
             // Finally test that we get the right commit timestamp for a committed tx
@@ -178,7 +170,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
             assertTrue(optionalCT.isPresent());
             ct = optionalCT.get();
             assertTrue(ct.isValid());
-            assertEquals(tx2.getCommitTimestamp(), ct.getValue());
+            assertEquals(ct.getValue(), tx2.getCommitTimestamp());
             assertTrue(ct.getLocation().compareTo(COMMIT_TABLE) == 0);
         }
     }
@@ -212,7 +204,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
             assertTrue(optionalCT.isPresent());
             CommitTimestamp ct = optionalCT.get();
             assertTrue(ct.isValid());
-            assertEquals(tx1.getCommitTimestamp(), ct.getValue());
+            assertEquals(ct.getValue(), tx1.getCommitTimestamp());
             assertTrue(ct.getLocation().compareTo(SHADOW_CELL) == 0);
 
         }
@@ -277,7 +269,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
                     ctLocator);
             assertTrue(ct.isValid());
             long expectedCommitTS = tx1.getStartTimestamp() + 1;
-            assertEquals(expectedCommitTS, ct.getValue());
+            assertEquals(ct.getValue(), expectedCommitTS);
             assertTrue(ct.getLocation().compareTo(COMMIT_TABLE) == 0);
         }
 
@@ -306,7 +298,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
             CommitTimestamp ct = tm.locateCellCommitTimestamp(tx1.getStartTimestamp(), tm.tsoClient.getEpoch(),
                     ctLocator);
             assertTrue(ct.isValid());
-            assertEquals(tx1.getCommitTimestamp(), ct.getValue());
+            assertEquals(ct.getValue(), tx1.getCommitTimestamp());
             assertTrue(ct.getLocation().compareTo(SHADOW_CELL) == 0);
         }
 
@@ -346,7 +338,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
             // Fake the current epoch to simulate a newer TSO
             CommitTimestamp ct = tm.locateCellCommitTimestamp(tx1.getStartTimestamp(), CURRENT_EPOCH_FAKE, ctLocator);
             assertFalse(ct.isValid());
-            assertEquals(CommitTable.INVALID_TRANSACTION_MARKER, ct.getValue());
+            assertEquals(ct.getValue(), CommitTable.INVALID_TRANSACTION_MARKER);
             assertTrue(ct.getLocation().compareTo(COMMIT_TABLE) == 0);
         }
     }
@@ -392,7 +384,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
             CommitTimestamp ct = tm.locateCellCommitTimestamp(tx1.getStartTimestamp(), tm.tsoClient.getEpoch(),
                     ctLocator);
             assertTrue(ct.isValid());
-            assertEquals(tx1.getCommitTimestamp(), ct.getValue());
+            assertEquals(ct.getValue(), tx1.getCommitTimestamp());
             assertTrue(ct.getLocation().compareTo(COMMIT_TABLE) == 0);
         }
 
@@ -430,7 +422,7 @@ public class TestHBaseTransactionClient extends OmidTestBase {
             CommitTimestamp ct = tm.locateCellCommitTimestamp(tx1.getStartTimestamp(), tm.tsoClient.getEpoch(),
                     ctLocator);
             assertTrue(ct.isValid());
-            assertEquals(tx1.getCommitTimestamp(), ct.getValue());
+            assertEquals(ct.getValue(), tx1.getCommitTimestamp());
             assertTrue(ct.getLocation().compareTo(SHADOW_CELL) == 0);
         }
 
@@ -457,9 +449,10 @@ public class TestHBaseTransactionClient extends OmidTestBase {
                     Maps.<Long, Long>newHashMap());
             CommitTimestamp ct = tm.locateCellCommitTimestamp(CELL_TS, tm.tsoClient.getEpoch(), ctLocator);
             assertTrue(ct.isValid());
-            assertEquals(-1L, ct.getValue());
+            assertEquals(ct.getValue(), -1L);
             assertTrue(ct.getLocation().compareTo(NOT_PRESENT) == 0);
         }
+
     }
 
 }

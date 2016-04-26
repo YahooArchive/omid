@@ -18,8 +18,6 @@
 package org.apache.omid.transaction;
 
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.omid.committable.CommitTable;
-import org.apache.omid.committable.CommitTable.Client;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
@@ -29,6 +27,8 @@ import org.apache.hadoop.hbase.regionserver.CompactorScanner;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.omid.committable.CommitTable;
+import org.apache.omid.committable.CommitTable.Client;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.DataProvider;
@@ -39,8 +39,8 @@ import java.util.Queue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertFalse;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
 
 public class TestCompactorScanner {
 
@@ -94,10 +94,10 @@ public class TestCompactorScanner {
             KeyValue deleteFamilyVersionKV = new KeyValue(Bytes.toBytes("test-row"), TEST_TS, Type.DeleteFamilyVersion);
 
             assertFalse(scanner.shouldRetainNonTransactionallyDeletedCell(regularKV));
-            assertEquals(retainOption, scanner.shouldRetainNonTransactionallyDeletedCell(deleteKV));
-            assertEquals(retainOption, scanner.shouldRetainNonTransactionallyDeletedCell(deleteColumnKV));
-            assertEquals(retainOption, scanner.shouldRetainNonTransactionallyDeletedCell(deleteFamilyKV));
-            assertEquals(retainOption, scanner.shouldRetainNonTransactionallyDeletedCell(deleteFamilyVersionKV));
+            assertEquals(scanner.shouldRetainNonTransactionallyDeletedCell(deleteKV), retainOption);
+            assertEquals(scanner.shouldRetainNonTransactionallyDeletedCell(deleteColumnKV), retainOption);
+            assertEquals(scanner.shouldRetainNonTransactionallyDeletedCell(deleteFamilyKV), retainOption);
+            assertEquals(scanner.shouldRetainNonTransactionallyDeletedCell(deleteFamilyVersionKV), retainOption);
 
         }
 

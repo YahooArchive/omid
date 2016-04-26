@@ -30,9 +30,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.testng.AssertJUnit.assertFalse;
-import static org.testng.AssertJUnit.assertNotNull;
-import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertTrue;
 
 @Test(groups = "sharedHBase")
 public class TestReadPath extends OmidTestBase {
@@ -59,7 +59,7 @@ public class TestReadPath extends OmidTestBase {
 
         Get get = new Get(row);
         Result result = table.get(t2, get);
-        assertFalse("Should be unable to read column", result.containsColumn(family, col));
+        assertFalse(result.containsColumn(family, col), "Should be unable to read column");
     }
 
     @Test
@@ -89,9 +89,9 @@ public class TestReadPath extends OmidTestBase {
         Get get = new Get(row);
         Result result = table.get(t, get);
         Cell cell = result.getColumnLatestCell(family, col);
-        assertNotNull("KeyValue is null", cell);
+        assertNotNull(cell, "KeyValue is null");
         byte[] value = CellUtil.cloneValue(cell);
-        assertTrue("Read data doesn't match", Arrays.equals(data, value));
+        assertTrue(Arrays.equals(data, value), "Read data doesn't match");
         tm.commit(t);
 
         table.close();

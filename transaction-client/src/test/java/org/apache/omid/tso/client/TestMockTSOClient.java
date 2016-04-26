@@ -21,13 +21,13 @@ import com.google.common.collect.Sets;
 import org.apache.omid.committable.CommitTable;
 import org.apache.omid.committable.InMemoryCommitTable;
 import org.apache.omid.tso.util.DummyCellIdImpl;
-import org.testng.Assert;
-import org.testng.AssertJUnit;
 import org.testng.annotations.Test;
 
 import java.util.concurrent.ExecutionException;
 
-import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
 
 public class TestMockTSOClient {
 
@@ -46,9 +46,9 @@ public class TestMockTSOClient {
 
         try {
             client.commit(tr2, Sets.newHashSet(c1, c2)).get();
-            Assert.fail("Shouldn't have committed");
+            fail("Shouldn't have committed");
         } catch (ExecutionException ee) {
-            assertEquals("Should have aborted", ee.getCause().getClass(), AbortException.class);
+            assertEquals(ee.getCause().getClass(), AbortException.class, "Should have aborted");
         }
     }
 
@@ -67,6 +67,6 @@ public class TestMockTSOClient {
         client.commit(tr2, Sets.newHashSet(c1)).get();
 
         long newWatermark = commitTableClient.readLowWatermark().get();
-        AssertJUnit.assertTrue("new low watermark should be bigger", newWatermark > initWatermark);
+        assertTrue(newWatermark > initWatermark, "new low watermark should be bigger");
     }
 }

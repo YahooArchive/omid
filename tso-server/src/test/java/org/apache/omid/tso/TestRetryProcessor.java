@@ -34,10 +34,9 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
-import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.Assert.assertEquals;
 
 public class TestRetryProcessor {
 
@@ -80,7 +79,7 @@ public class TestRetryProcessor {
         verify(replyProc, timeout(100).times(1)).abortResponse(firstTScapture.capture(), any(Channel.class), any(MonitoringContext.class));
 
         long startTS = firstTScapture.getValue();
-        assertEquals("Captured timestamp should be the same as NON_EXISTING_ST_TX", NON_EXISTING_ST_TX, startTS);
+        assertEquals(startTS, NON_EXISTING_ST_TX, "Captured timestamp should be the same as NON_EXISTING_ST_TX");
 
         // Test we'll reply with a commit for a retry request when the start timestamp IS in the commit table
         commitTable.getWriter().addCommittedTransaction(ST_TX_1, CT_TX_1); // Add a tx to commit table
@@ -92,8 +91,8 @@ public class TestRetryProcessor {
 
         startTS = firstTScapture.getValue();
         long commitTS = secondTScapture.getValue();
-        assertEquals("Captured timestamp should be the same as ST_TX_1", ST_TX_1, startTS);
-        assertEquals("Captured timestamp should be the same as CT_TX_1", CT_TX_1, commitTS);
+        assertEquals(startTS, ST_TX_1, "Captured timestamp should be the same as ST_TX_1");
+        assertEquals(commitTS, CT_TX_1, "Captured timestamp should be the same as CT_TX_1");
     }
 
     @Test(timeOut = 10_000)

@@ -24,13 +24,14 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.testng.ITestContext;
 import org.testng.annotations.Test;
 
-import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.Assert.assertEquals;
 
 @Test(groups = "sharedHBase")
 public class TestAutoFlush extends OmidTestBase {
 
     @Test
     public void testReadWithSeveralUncommitted(ITestContext context) throws Exception {
+
         byte[] family = Bytes.toBytes(TEST_FAMILY);
         byte[] row = Bytes.toBytes("row");
         byte[] col = Bytes.toBytes("col1");
@@ -49,14 +50,14 @@ public class TestAutoFlush extends OmidTestBase {
         // Data shouldn't be in DB yet
         Get get = new Get(row);
         Result result = table.getHTable().get(get);
-        assertEquals("Writes are already in DB", 0, result.size());
+        assertEquals(result.size(), 0, "Writes are already in DB");
 
         tm.commit(t);
 
         // After commit, both the cell and shadow cell should be there.
         // That's why we check for two elements in the test assertion
         result = table.getHTable().get(get);
-        assertEquals("Writes were not flushed to DB", 2, result.size());
+        assertEquals(result.size(), 2, "Writes were not flushed to DB");
     }
 
 }

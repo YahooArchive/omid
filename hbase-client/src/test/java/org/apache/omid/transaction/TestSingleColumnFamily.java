@@ -27,12 +27,12 @@ import org.slf4j.LoggerFactory;
 import org.testng.ITestContext;
 import org.testng.annotations.Test;
 
-import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.Assert.assertTrue;
 
 @Test(groups = "sharedHBase")
 public class TestSingleColumnFamily extends OmidTestBase {
-    private static final Logger LOG = LoggerFactory.getLogger(TestSingleColumnFamily.class);
 
+    private static final Logger LOG = LoggerFactory.getLogger(TestSingleColumnFamily.class);
 
     @Test
     public void testSingleColumnFamily(ITestContext context) throws Exception {
@@ -59,9 +59,7 @@ public class TestSingleColumnFamily extends OmidTestBase {
             LOG.info("RES:" + tmp1 + ";" + tmp2);
             count++;
         }
-        assertTrue("Can't see puts. I should see "
-                        + num + " but I see " + count
-                , num == count);
+        assertTrue(num == count, "Can't see puts. I should see " + num + " but I see " + count);
 
         tm.commit(t);
         t = tm.begin();
@@ -94,12 +92,9 @@ public class TestSingleColumnFamily extends OmidTestBase {
                 LOG.debug("stop");
             }
         }
-        assertTrue("Can't see puts. I should see "
-                        + num + " but I see " + count
-                , num == count);
-        assertTrue("Half of rows should equal row id, half not ("
-                        + modified + ", " + notmodified + ")"
-                , modified == notmodified && notmodified == (num / 2));
+        assertTrue(num == count, "Can't see puts. I should see " + num + " but I see " + count);
+        assertTrue(modified == notmodified && notmodified == (num / 2),
+                   "Half of rows should equal row id, half not (" + modified + ", " + notmodified + ")");
 
         tm.commit(t);
         LOG.info("End commiting");

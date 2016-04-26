@@ -30,18 +30,17 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.Assert;
 import org.testng.ITestContext;
 import org.testng.annotations.Test;
 
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
 
 @Test(groups = "sharedHBase")
 public class TestTransactionConflict extends OmidTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestTransactionConflict.class);
-
 
     @Test
     public void runTestWriteWriteConflict(ITestContext context) throws Exception {
@@ -72,7 +71,7 @@ public class TestTransactionConflict extends OmidTestBase {
 
         try {
             tm.commit(t1);
-            Assert.fail("Transaction should not commit successfully");
+            fail("Transaction should not commit successfully");
         } catch (RollbackException e) {
         }
     }
@@ -132,11 +131,11 @@ public class TestTransactionConflict extends OmidTestBase {
         boolean aborted = false;
         try {
             tm.commit(t1);
-            assertTrue("Transaction commited successfully", false);
+            fail("Transaction commited successfully");
         } catch (RollbackException e) {
             aborted = true;
         }
-        assertTrue("Transaction didn't raise exception", aborted);
+        assertTrue(aborted, "Transaction didn't raise exception");
 
         ResultScanner rs = tt2.getHTable().getScanner(fam, col);
 
@@ -145,7 +144,7 @@ public class TestTransactionConflict extends OmidTestBase {
         while ((r = rs.next()) != null) {
             count += r.size();
         }
-        assertEquals("Should have cell", 1, count);
+        assertEquals(count, 1, "Should have cell");
     }
 
     @Test
@@ -172,111 +171,107 @@ public class TestTransactionConflict extends OmidTestBase {
         Get g = new Get(row).setMaxVersions();
         g.addColumn(fam, col);
         Result r = tt.getHTable().get(g);
-        assertEquals("Unexpected size for read.", 1, r.size());
-        assertTrue("Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)),
-                Bytes.equals(data1, r.getValue(fam, col)));
+        assertEquals(r.size(), 1, "Unexpected size for read.");
+        assertTrue(Bytes.equals(data1, r.getValue(fam, col)),
+                   "Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)));
 
         Put p2 = new Put(row);
         p2.add(fam, col, data2);
         tt.put(t2, p2);
 
         r = tt.getHTable().get(g);
-        assertEquals("Unexpected size for read.", 2, r.size());
+        assertEquals(r.size(), 2, "Unexpected size for read.");
         r = tt.get(t2, g);
-        assertEquals("Unexpected size for read.", 1, r.size());
-        assertTrue("Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)),
-                Bytes.equals(data2, r.getValue(fam, col)));
+        assertEquals(r.size(),1, "Unexpected size for read.");
+        assertTrue(Bytes.equals(data2, r.getValue(fam, col)),
+                   "Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)));
 
         tm.commit(t1);
 
         boolean aborted = false;
         try {
             tm.commit(t2);
-            assertTrue("Transaction commited successfully", false);
+            fail("Transaction commited successfully");
         } catch (RollbackException e) {
             aborted = true;
         }
-        assertTrue("Transaction didn't raise exception", aborted);
+        assertTrue(aborted, "Transaction didn't raise exception");
 
         r = tt.getHTable().get(g);
-        assertEquals("Unexpected size for read.", 1, r.size());
-        assertTrue("Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)),
-                Bytes.equals(data1, r.getValue(fam, col)));
+        assertEquals(r.size(), 1, "Unexpected size for read.");
+        assertTrue(Bytes.equals(data1, r.getValue(fam, col)),
+                   "Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)));
     }
 
     @Test
     public void testCleanupWithDeleteRow(ITestContext context) throws Exception {
-        try {
-            TransactionManager tm = newTransactionManager(context);
-            TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
-            Transaction t1 = tm.begin();
-            LOG.info("Transaction created " + t1);
+        TransactionManager tm = newTransactionManager(context);
+        TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
-            int rowcount = 10;
-            int count = 0;
+        Transaction t1 = tm.begin();
+        LOG.info("Transaction created " + t1);
 
-            byte[] fam = Bytes.toBytes(TEST_FAMILY);
-            byte[] col = Bytes.toBytes("testdata");
-            byte[] data1 = Bytes.toBytes("testWrite-1");
-            byte[] data2 = Bytes.toBytes("testWrite-2");
+        int rowcount = 10;
+        int count = 0;
 
-            byte[] modrow = Bytes.toBytes("test-del" + 3);
-            for (int i = 0; i < rowcount; i++) {
-                byte[] row = Bytes.toBytes("test-del" + i);
+        byte[] fam = Bytes.toBytes(TEST_FAMILY);
+        byte[] col = Bytes.toBytes("testdata");
+        byte[] data1 = Bytes.toBytes("testWrite-1");
+        byte[] data2 = Bytes.toBytes("testWrite-2");
 
-                Put p = new Put(row);
-                p.add(fam, col, data1);
-                tt.put(t1, p);
-            }
-            tm.commit(t1);
+        byte[] modrow = Bytes.toBytes("test-del" + 3);
+        for (int i = 0; i < rowcount; i++) {
+            byte[] row = Bytes.toBytes("test-del" + i);
 
-            Transaction t2 = tm.begin();
-            LOG.info("Transaction created " + t2);
-            Delete d = new Delete(modrow);
-            tt.delete(t2, d);
-
-            ResultScanner rs = tt.getScanner(t2, new Scan());
-            Result r = rs.next();
-            count = 0;
-            while (r != null) {
-                count++;
-                LOG.trace("row: " + Bytes.toString(r.getRow()) + " count: " + count);
-                r = rs.next();
-            }
-            assertEquals("Wrong count", rowcount - 1, count);
-
-            Transaction t3 = tm.begin();
-            LOG.info("Transaction created " + t3);
-            Put p = new Put(modrow);
-            p.add(fam, col, data2);
-            tt.put(t3, p);
-
-            tm.commit(t3);
-
-            boolean aborted = false;
-            try {
-                tm.commit(t2);
-                assertTrue("Didn't abort", false);
-            } catch (RollbackException e) {
-                aborted = true;
-            }
-            assertTrue("Didn't raise exception", aborted);
-
-            Transaction tscan = tm.begin();
-            rs = tt.getScanner(tscan, new Scan());
-            r = rs.next();
-            count = 0;
-            while (r != null) {
-                count++;
-                r = rs.next();
-            }
-            assertEquals("Wrong count", rowcount, count);
-
-        } catch (Exception e) {
-            LOG.error("Exception occurred", e);
-            throw e;
+            Put p = new Put(row);
+            p.add(fam, col, data1);
+            tt.put(t1, p);
         }
+        tm.commit(t1);
+
+        Transaction t2 = tm.begin();
+        LOG.info("Transaction created " + t2);
+        Delete d = new Delete(modrow);
+        tt.delete(t2, d);
+
+        ResultScanner rs = tt.getScanner(t2, new Scan());
+        Result r = rs.next();
+        count = 0;
+        while (r != null) {
+            count++;
+            LOG.trace("row: " + Bytes.toString(r.getRow()) + " count: " + count);
+            r = rs.next();
+        }
+        assertEquals(count, rowcount - 1, "Wrong count");
+
+        Transaction t3 = tm.begin();
+        LOG.info("Transaction created " + t3);
+        Put p = new Put(modrow);
+        p.add(fam, col, data2);
+        tt.put(t3, p);
+
+        tm.commit(t3);
+
+        boolean aborted = false;
+        try {
+            tm.commit(t2);
+            fail("Didn't abort");
+        } catch (RollbackException e) {
+            aborted = true;
+        }
+        assertTrue(aborted, "Didn't raise exception");
+
+        Transaction tscan = tm.begin();
+        rs = tt.getScanner(tscan, new Scan());
+        r = rs.next();
+        count = 0;
+        while (r != null) {
+            count++;
+            r = rs.next();
+        }
+        assertEquals(count, rowcount, "Wrong count");
+
     }
 
     @Test

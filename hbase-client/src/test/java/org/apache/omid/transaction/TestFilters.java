@@ -19,8 +19,6 @@ package org.apache.omid.transaction;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.omid.committable.CommitTable;
-import org.apache.omid.metrics.NullMetricsProvider;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -32,6 +30,8 @@ import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.ValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.omid.committable.CommitTable;
+import org.apache.omid.metrics.NullMetricsProvider;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.testng.ITestContext;
@@ -40,8 +40,8 @@ import org.testng.annotations.Test;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertNull;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNull;
 
 /**
  * Tests to verify that Get and Scan filters still work with transactions tables
@@ -68,6 +68,7 @@ public class TestFilters extends OmidTestBase {
     }
 
     private void testGet(ITestContext context, Filter f) throws Exception {
+
         CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
 
         HBaseOmidClientConfiguration hbaseOmidClientConf = new HBaseOmidClientConfiguration();
@@ -89,19 +90,20 @@ public class TestFilters extends OmidTestBase {
         g.setFilter(f);
 
         Result r = table.get(t, g);
-        assertEquals("should exist in result", 1, r.getColumnCells(family, col1).size());
-        assertEquals("shouldn't exist in result", 0, r.getColumnCells(family, col2).size());
+        assertEquals(r.getColumnCells(family, col1).size(), 1, "should exist in result");
+        assertEquals(r.getColumnCells(family, col2).size(), 0 , "shouldn't exist in result");
 
         g = new Get(row2);
         g.setFilter(f);
         r = table.get(t, g);
-        assertEquals("should exist in result", 1, r.getColumnCells(family, col1).size());
-        assertEquals("shouldn't exist in result", 0, r.getColumnCells(family, col2).size());
+        assertEquals(r.getColumnCells(family, col1).size(), 1, "should exist in result");
+        assertEquals(r.getColumnCells(family, col2).size(), 0, "shouldn't exist in result");
 
         g = new Get(row3);
         g.setFilter(f);
         r = table.get(t, g);
-        assertEquals("shouldn't exist in result", 0, r.getColumnCells(family, col2).size());
+        assertEquals(r.getColumnCells(family, col2).size(), 0, "shouldn't exist in result");
+
     }
 
     @Test(timeOut = 60_000)
@@ -115,6 +117,7 @@ public class TestFilters extends OmidTestBase {
     }
 
     private void testScan(ITestContext context, Filter f) throws Exception {
+
         CommitTable.Client commitTableClient = spy(getCommitTable(context).getClient());
 
         HBaseOmidClientConfiguration hbaseOmidClientConf = new HBaseOmidClientConfiguration();
@@ -136,17 +139,17 @@ public class TestFilters extends OmidTestBase {
         ResultScanner rs = table.getScanner(t, s);
 
         Result r = rs.next();
-        assertEquals("should exist in result", 1, r.getColumnCells(family, col1).size());
-        assertEquals("shouldn't exist in result", 0, r.getColumnCells(family, col2).size());
+        assertEquals(r.getColumnCells(family, col1).size(), 1, "should exist in result");
+        assertEquals(r.getColumnCells(family, col2).size(), 0, "shouldn't exist in result");
 
         r = rs.next();
-        assertEquals("should exist in result", 1, r.getColumnCells(family, col1).size());
-        assertEquals("shouldn't exist in result", 0, r.getColumnCells(family, col2).size());
+        assertEquals(r.getColumnCells(family, col1).size(), 1, "should exist in result");
+        assertEquals(r.getColumnCells(family, col2).size(), 0, "shouldn't exist in result");
 
         r = rs.next();
-        assertNull("Last row shouldn't exist", r);
+        assertNull(r, "Last row shouldn't exist");
+
     }
-
 
     private void writeRows(TTable table, TransactionManager tm, PostCommitActions postCommitter)
             throws Exception {
@@ -188,4 +191,5 @@ public class TestFilters extends OmidTestBase {
             // Expected, see comment above
         }
     }
+
 }
