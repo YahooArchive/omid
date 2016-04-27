@@ -357,7 +357,6 @@ public class TestTSOClientRequestAndResponseBehaviours {
         clientOneShot.makeRequest(createRetryCommitRequest(tx1ST));
         TSOProto.Response response = clientOneShot.makeRequest(createRetryCommitRequest(tx1ST));
         assertFalse(response.getCommitResponse().getAborted(), "Transaction should be committed");
-        assertFalse(response.getCommitResponse().getMakeHeuristicDecision());
         assertEquals(response.getCommitResponse().getCommitTimestamp(), tx1ST + 1);
     }
 
@@ -374,7 +373,6 @@ public class TestTSOClientRequestAndResponseBehaviours {
         clientOneShot.makeRequest(createRetryCommitRequest(tx1ST));
         TSOProto.Response response = clientOneShot.makeRequest(createRetryCommitRequest(tx1ST));
         assertTrue(response.getCommitResponse().getAborted(), "Transaction should be aborted");
-        assertFalse(response.getCommitResponse().getMakeHeuristicDecision());
         assertEquals(response.getCommitResponse().getCommitTimestamp(), 0);
     }
 
@@ -393,7 +391,6 @@ public class TestTSOClientRequestAndResponseBehaviours {
 
         TSOProto.Response response = clientOneShot.makeRequest(createRetryCommitRequest(tx1ST));
         assertTrue(response.getCommitResponse().getAborted(), "Transaction should abort");
-        assertFalse(response.getCommitResponse().getMakeHeuristicDecision());
         assertEquals(response.getCommitResponse().getCommitTimestamp(), 0);
     }
     // ----------------------------------------------------------------------------------------------------------------

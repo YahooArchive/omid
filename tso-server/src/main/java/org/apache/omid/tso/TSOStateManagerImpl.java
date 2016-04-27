@@ -58,8 +58,9 @@ public class TSOStateManagerImpl implements TSOStateManager {
     }
 
     @Override
-    public synchronized TSOState reset() throws IOException {
-        LOG.info("Reseting the TSO Server state...");
+    public TSOState initialize() throws IOException {
+
+        LOG.info("Initializing TSO Server state...");
         // The timestamp oracle dictates the new state
         timestampOracle.initialize();
         long lowWatermark = timestampOracle.getLast();
@@ -71,8 +72,9 @@ public class TSOStateManagerImpl implements TSOStateManager {
         for (StateObserver stateObserver : stateObservers) {
             stateObserver.update(state);
         }
-        LOG.info("New TSO Server state {}", state);
+        LOG.info("TSO Server state {}", state);
         return state;
+
     }
 
 }

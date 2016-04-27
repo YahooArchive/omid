@@ -137,10 +137,7 @@ public class ProgrammableTSOServer extends SimpleChannelHandler {
                 switch (resp.type) {
                     case COMMIT:
                         CommitResponse commitResp = (CommitResponse) resp;
-                        sendCommitResponse(commitResp.heuristicDecissionRequired,
-                                commitResp.startTS,
-                                commitResp.commitTS,
-                                channel);
+                        sendCommitResponse(commitResp.startTS, commitResp.commitTS, channel);
                         break;
                     case ABORT:
                         AbortResponse abortResp = (AbortResponse) resp;
@@ -198,12 +195,9 @@ public class ProgrammableTSOServer extends SimpleChannelHandler {
         c.write(builder.build());
     }
 
-    private void sendCommitResponse(boolean makeHeuristicDecission, long startTimestamp, long commitTimestamp, Channel c) {
+    private void sendCommitResponse(long startTimestamp, long commitTimestamp, Channel c) {
         TSOProto.Response.Builder builder = TSOProto.Response.newBuilder();
         TSOProto.CommitResponse.Builder commitBuilder = TSOProto.CommitResponse.newBuilder();
-        if (makeHeuristicDecission) { // If the commit is ambiguous is due to a new master TSO
-            commitBuilder.setMakeHeuristicDecision(true);
-        }
         commitBuilder.setAborted(false).setStartTimestamp(startTimestamp).setCommitTimestamp(commitTimestamp);
         builder.setCommitResponse(commitBuilder.build());
         c.write(builder.build());
@@ -246,13 +240,11 @@ public class ProgrammableTSOServer extends SimpleChannelHandler {
 
     public static class CommitResponse extends Response {
 
-        final boolean heuristicDecissionRequired;
         final long startTS;
         final long commitTS;
 
-        public CommitResponse(boolean heuristicDecissionRequired, long startTS, long commitTS) {
+        public CommitResponse(long startTS, long commitTS) {
             super(ResponseType.COMMIT);
-            this.heuristicDecissionRequired = heuristicDecissionRequired;
             this.startTS = startTS;
             this.commitTS = commitTS;
         }

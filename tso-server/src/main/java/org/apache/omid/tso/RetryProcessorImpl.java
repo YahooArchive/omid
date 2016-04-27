@@ -110,7 +110,7 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
             if (commitTimestamp.isPresent()) {
                 if (commitTimestamp.get().isValid()) {
                     LOG.trace("Valid commit TS found in Commit Table");
-                    replyProc.commitResponse(false, startTimestamp, commitTimestamp.get().getValue(),
+                    replyProc.commitResponse(startTimestamp, commitTimestamp.get().getValue(),
                             event.getChannel(), event.getMonCtx());
                 } else {
                     LOG.trace("Invalid commit TS found in Commit Table");

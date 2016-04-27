@@ -87,25 +87,10 @@ public class TestTSOClientResponseHandling {
         // side returns a commit timestamp
 
         // Program the TSO to return an Commit response (with no required heuristic actions)
-        tsoServer.queueResponse(new CommitResponse(false, START_TS, COMMIT_TS));
+        tsoServer.queueResponse(new CommitResponse(START_TS, COMMIT_TS));
 
         long commitTS = tsoClient.commit(START_TS, Collections.<CellId>emptySet()).get();
         assertEquals(commitTS, COMMIT_TS);
-    }
-
-    @Test
-    public void testCommitRequestReceivingAHeuristicResponse() throws Exception {
-        // test commit request which needs heuristic actions from the client
-        // throws an execution exception with a NewTSOException as a cause
-
-        // Program the TSO to return an Commit response requiring heuristic actions
-        tsoServer.queueResponse(new CommitResponse(true, START_TS, COMMIT_TS));
-        try {
-            tsoClient.commit(START_TS, Collections.<CellId>emptySet()).get();
-        } catch (ExecutionException ee) {
-            assertEquals(ee.getCause().getClass(), NewTSOException.class);
-        }
-
     }
 
 }

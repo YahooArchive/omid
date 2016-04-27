@@ -17,11 +17,7 @@
  */
 package org.apache.omid.tso;
 
-import java.util.Arrays;
-
-public class LongCache implements Cache {
-
-    public static final long RESET_VALUE = 0L;
+public class LongCache {
 
     private final long[] cache;
     private final int size;
@@ -33,15 +29,6 @@ public class LongCache implements Cache {
         this.associativity = associativity;
     }
 
-    @Override
-    public void reset() {
-        Arrays.fill(cache, RESET_VALUE);
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.omid.tso.Cache#set(long, long)
-     */
-    @Override
     public long set(long key, long value) {
         final int index = index(key);
         int oldestIndex = 0;
@@ -63,10 +50,6 @@ public class LongCache implements Cache {
         return oldestValue;
     }
 
-    /* (non-Javadoc)
-     * @see org.apache.omid.tso.Cache#get(long)
-     */
-    @Override
     public long get(long key) {
         final int index = index(key);
         for (int i = 0; i < associativity; ++i) {

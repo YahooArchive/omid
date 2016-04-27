@@ -18,9 +18,11 @@
 package org.apache.omid.tso;
 
 import org.apache.omid.committable.CommitTable;
+import org.apache.omid.committable.InMemoryCommitTable;
 import org.apache.omid.metrics.MetricsRegistry;
 import org.apache.omid.metrics.NullMetricsProvider;
 import org.apache.omid.tso.PersistenceProcessorImpl.Batch;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -33,14 +35,17 @@ import java.io.IOException;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Matchers.eq;
+import static org.mockito.Matchers.isA;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 @SuppressWarnings({"UnusedDeclaration"})
 public class TestPersistenceProcessor {
@@ -100,6 +105,9 @@ public class TestPersistenceProcessor {
 
         TSOServerConfig tsoServerConfig = new TSOServerConfig();
         tsoServerConfig.setBatchPersistTimeoutInMs(100);
+
+        Batch batch = spy(new Batch(1));
+
         // Component under test
         PersistenceProcessor proc = new PersistenceProcessorImpl(tsoServerConfig,
                                                                  metrics,
@@ -114,58 +122,118 @@ public class TestPersistenceProcessor {
         // The non-ha lease manager always return true for
         // stillInLeasePeriod(), so verify the batch sends replies as master
         MonitoringContext monCtx = new MonitoringContext(metrics);
-        proc.persistCommit(1, 2, null, monCtx);
+        proc.persistCommit(0, 1, null, monCtx);
         verify(leaseManager, timeout(1000).times(2)).stillInLeasePeriod();
-        verify(batch, timeout(1000).times(2)).sendRepliesAndReset(any(ReplyProcessor.class),
-                                                                  any(RetryProcessor.class),
-                                                                  eq(true));
+        verify(batch, timeout(1000).times(1)).sendRepliesAndReset(any(ReplyProcessor.class),
+                                                                  any(RetryProcessor.class));
     }
 
     @Test
     public void testCommitPersistenceWithHALeaseManager() throws Exception {
 
-        // Init a HA lease manager
-        LeaseManager leaseManager = mock(LeaseManager.class);
-
         TSOServerConfig tsoServerConfig = new TSOServerConfig();
         tsoServerConfig.setBatchPersistTimeoutInMs(100);
+
+        MonitoringContext monCtx = new MonitoringContext(metrics);
+
+        // Test 1: Configure the lease manager to always return true for stillInLeasePeriod, so verify the batch sends
+        // replies as master
+
+        // Init stuff
+        ArgumentCaptor<String> msg = ArgumentCaptor.forClass(String.class);
+        Panicker panicker = spy(new RuntimeExceptionPanicker());
+        LeaseManager leaseManager = mock(LeaseManager.class);
+        Batch batch = spy(new Batch(1));
         // Component under test
         PersistenceProcessor proc = new PersistenceProcessorImpl(tsoServerConfig,
                                                                  metrics,
                                                                  "localhost:1234",
                                                                  batch,
                                                                  leaseManager,
-                                                                 commitTable,
+                                                                 new InMemoryCommitTable(),
                                                                  replyProcessor,
                                                                  retryProcessor,
                                                                  panicker);
 
-        // Configure the lease manager to always return true for
-        // stillInLeasePeriod, so verify the batch sends replies as master
         doReturn(true).when(leaseManager).stillInLeasePeriod();
-        MonitoringContext monCtx = new MonitoringContext(metrics);
         proc.persistCommit(1, 2, null, monCtx);
         verify(leaseManager, timeout(1000).times(2)).stillInLeasePeriod();
-        verify(batch).sendRepliesAndReset(any(ReplyProcessor.class), any(RetryProcessor.class), eq(true));
+        verify(batch).sendRepliesAndReset(any(ReplyProcessor.class), any(RetryProcessor.class));
+        verify(panicker, never()).panic(msg.capture(), any(Throwable.class));
 
-        // Configure the lease manager to always return true first and false
-        // later for stillInLeasePeriod, so verify the batch sends replies as
-        // non-master
+        // Test 2: Configure the lease manager to return true first and false later for stillInLeasePeriod, so verify
+        // the batch sends replies as non-master
+
+        // Reset stuff
         reset(leaseManager);
-        reset(batch);
+        batch = spy(new Batch(1));
+        msg = ArgumentCaptor.forClass(String.class);
+        panicker = spy(new RuntimeExceptionPanicker());
+        // Component under test
+        proc = new PersistenceProcessorImpl(tsoServerConfig,
+                                            metrics,
+                                            "localhost:1234",
+                                            batch,
+                                            leaseManager,
+                                            new InMemoryCommitTable(),
+                                            replyProcessor,
+                                            retryProcessor,
+                                            panicker);
         doReturn(true).doReturn(false).when(leaseManager).stillInLeasePeriod();
         proc.persistCommit(1, 2, null, monCtx);
         verify(leaseManager, timeout(1000).times(2)).stillInLeasePeriod();
-        verify(batch).sendRepliesAndReset(any(ReplyProcessor.class), any(RetryProcessor.class), eq(false));
+        verify(batch, never()).sendRepliesAndReset(any(ReplyProcessor.class), any(RetryProcessor.class));
+        verify(panicker).panic(msg.capture());
+        assertTrue(msg.getValue().contains("Committing suicide"));
 
-        // Configure the lease manager to always return false for
-        // stillInLeasePeriod, so verify the batch sends replies as non-master
+        // Test 3:  Configure the lease manager to always return false for stillInLeasePeriod, so verify the batch
+        // sends replies as non-master
+
+        // Reset stuff
         reset(leaseManager);
-        reset(batch);
+        batch = spy(new Batch(1));
+        msg = ArgumentCaptor.forClass(String.class);
+        panicker = spy(new RuntimeExceptionPanicker());
+        // Component under test
+        proc = new PersistenceProcessorImpl(tsoServerConfig,
+                                            metrics,
+                                            "localhost:1234",
+                                            batch,
+                                            leaseManager,
+                                            commitTable,
+                                            replyProcessor,
+                                            retryProcessor,
+                                            panicker);
         doReturn(false).when(leaseManager).stillInLeasePeriod();
         proc.persistCommit(1, 2, null, monCtx);
         verify(leaseManager, timeout(1000).times(1)).stillInLeasePeriod();
-        verify(batch).sendRepliesAndReset(any(ReplyProcessor.class), any(RetryProcessor.class), eq(false));
+        verify(batch, never()).sendRepliesAndReset(any(ReplyProcessor.class), any(RetryProcessor.class));
+        verify(panicker).panic(msg.capture());
+        assertTrue(msg.getValue().contains("Committing suicide"));
+
+        // Test 4: Test when flushing data fails to the database
+
+        // Reset stuff
+        reset(leaseManager);
+        batch = spy(new Batch(1));
+        msg = ArgumentCaptor.forClass(String.class);
+        panicker = spy(new RuntimeExceptionPanicker());
+        // Component under test
+        proc = new PersistenceProcessorImpl(tsoServerConfig,
+                                            metrics,
+                                            "localhost:1234",
+                                            batch,
+                                            leaseManager,
+                                            commitTable, // Commit table writer will fail and launch a panic
+                                            replyProcessor,
+                                            retryProcessor,
+                                            panicker);
+        doReturn(true).when(leaseManager).stillInLeasePeriod();
+        proc.persistCommit(1, 2, null, monCtx);
+        verify(leaseManager, timeout(1000).times(1)).stillInLeasePeriod();
+        verify(batch, never()).sendRepliesAndReset(any(ReplyProcessor.class), any(RetryProcessor.class));
+        verify(panicker).panic(msg.capture(), isA(IOException.class));
+        assertEquals(msg.getValue(), "Error persisting commit batch");
 
     }
 

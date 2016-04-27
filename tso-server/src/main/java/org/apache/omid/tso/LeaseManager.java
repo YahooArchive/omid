@@ -17,14 +17,13 @@
  */
 package org.apache.omid.tso;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.AbstractScheduledService;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import org.apache.omid.tso.TSOStateManager.TSOState;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.utils.EnsurePath;
+import org.apache.omid.tso.TSOStateManager.TSOState;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
@@ -127,13 +126,13 @@ class LeaseManager extends AbstractScheduledService implements LeaseManagement {
         if (canAcquireLease()) {
             endLeaseInMs.set(baseTimeInMs.get() + leasePeriodInMs);
             LOG.info("{} got the lease (Master) Ver. {}/End of lease: {}ms", tsoHostAndPort,
-                    leaseNodeVersion, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(endLeaseInMs));
+                     leaseNodeVersion, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(endLeaseInMs));
             tsoStateInitializer.submit(new Runnable() {
                 // TSO State initialization
                 @Override
                 public void run() {
                     try {
-                        TSOState newTSOState = stateManager.reset();
+                        TSOState newTSOState = stateManager.initialize();
                         advertiseTSOServerInfoThroughZK(newTSOState.getEpoch());
                         tsoChannelHandler.reconnect();
                     } catch (Exception e) {
@@ -159,18 +158,15 @@ class LeaseManager extends AbstractScheduledService implements LeaseManagement {
         if (canAcquireLease()) {
             if (System.currentTimeMillis() > getEndLeaseInMs()) {
                 endLeaseInMs.set(0L);
-                LOG.warn("{} expired lease! Releasing lease to start Master re-election", tsoHostAndPort);
-                tsoChannelHandler.closeConnection();
+                panicker.panic(tsoHostAndPort + " expired lease! Master is committing suicide");
             } else {
                 endLeaseInMs.set(baseTimeInMs.get() + leasePeriodInMs);
                 LOG.trace("{} renewed lease: Version {}/End of lease at {}ms",
-                        tsoHostAndPort, leaseNodeVersion, endLeaseInMs);
+                          tsoHostAndPort, leaseNodeVersion, endLeaseInMs);
             }
         } else {
             endLeaseInMs.set(0L);
-            LOG.warn("{} lost the lease (Ver. {})! Other instance is now Master",
-                    tsoHostAndPort, leaseNodeVersion);
-            tsoChannelHandler.closeConnection();
+            panicker.panic(tsoHostAndPort + " lease lost (Ver. " + leaseNodeVersion + ")! Other instance is Master. Committing suicide...");
         }
     }
 
@@ -240,13 +236,13 @@ class LeaseManager extends AbstractScheduledService implements LeaseManagement {
                     Stat stat = zkClient.checkExists().forPath(leasePath);
                     leaseNodeVersion = stat.getVersion();
                     LOG.trace("{} will try to get lease (with Ver. {}) in {}ms", tsoHostAndPort, leaseNodeVersion,
-                            leasePeriodInMs);
+                              leasePeriodInMs);
                     // ...and wait the lease period
                     return new Schedule(leasePeriodInMs, TimeUnit.MILLISECONDS);
                 } else {
                     long waitTimeInMs = getEndLeaseInMs() - System.currentTimeMillis() - guardLeasePeriodInMs;
                     LOG.trace("{} will try to renew lease (with Ver. {}) in {}ms", tsoHostAndPort,
-                            leaseNodeVersion, waitTimeInMs);
+                              leaseNodeVersion, waitTimeInMs);
                     return new Schedule(waitTimeInMs, TimeUnit.MILLISECONDS);
                 }
             }

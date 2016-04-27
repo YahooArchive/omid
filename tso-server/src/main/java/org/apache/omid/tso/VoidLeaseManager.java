@@ -32,7 +32,7 @@ public class VoidLeaseManager implements LeaseManagement {
     @Override
     public void startService() throws LeaseManagementException {
         try {
-            stateManager.reset();
+            stateManager.initialize();
             tsoChannelHandler.reconnect();
         } catch (IOException e) {
             throw new LeaseManagementException("Error initializing Lease Manager", e);

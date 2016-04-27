@@ -17,10 +17,16 @@
  */
 package org.apache.omid.tso;
 
-class RuntimeExceptionPanicker implements Panicker {
+public class RuntimeExceptionPanicker implements Panicker {
+
+    @Override
+    public void panic(String reason) {
+        panic(reason, new Throwable("TSO Error"));
+    }
 
     @Override
     public void panic(String reason, Throwable cause) {
         throw new RuntimeException(reason, cause);
     }
+
 }

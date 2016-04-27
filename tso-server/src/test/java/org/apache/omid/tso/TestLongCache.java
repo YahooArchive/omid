@@ -26,7 +26,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import static org.testng.Assert.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.Assert.assertTrue;
 
 public class TestLongCache {
 
@@ -37,17 +37,17 @@ public class TestLongCache {
     private Random random = new Random(System.currentTimeMillis());
 
     @Test
-    public void testAddAndGetElemsAndResetCache() {
+    public void testAddAndGetElems() {
 
         // Cache configuration
         final int CACHE_SIZE = 10_000_000;
         final int CACHE_ASSOCIATIVITY = 32;
-        Cache cache = new LongCache(CACHE_SIZE, CACHE_ASSOCIATIVITY);
+        LongCache cache = new LongCache(CACHE_SIZE, CACHE_ASSOCIATIVITY);
 
         // After creation, cache values should be the default
         for (int i = 0; i < 1000; i++) {
             long position = random.nextLong();
-            assertEquals(cache.get(position), LongCache.RESET_VALUE);
+            assertEquals(cache.get(position), 0L);
         }
 
         Set<Long> testedKeys = new TreeSet<>();
@@ -63,17 +63,6 @@ public class TestLongCache {
             assertEquals(cache.get(key), TEST_VALUE);
         }
 
-        // Reset cache and check the values are the default again
-        long startTimeInMs = System.currentTimeMillis();
-        cache.reset();
-        long endTimeInMs = System.currentTimeMillis();
-        long resetTimeInMs = endTimeInMs - startTimeInMs;
-        LOG.info("Time in reseting cache of {}/{} elems/asoc {}ms", CACHE_SIZE, CACHE_ASSOCIATIVITY, resetTimeInMs);
-
-        for (long key : testedKeys) {
-            assertEquals(cache.get(key), LongCache.RESET_VALUE);
-        }
-
     }
 
     @Test(timeOut = 10000)
@@ -81,7 +70,7 @@ public class TestLongCache {
 
         final int entries = 1000;
 
-        Cache cache = new LongCache(entries, 16);
+        LongCache cache = new LongCache(entries, 16);
 
         int removals = 0;
         long totalAge = 0;
@@ -116,7 +105,7 @@ public class TestLongCache {
         double avgGap = totalAge / (double) removals;
         LOG.info("Avg gap: " + (tempAvg));
         LOG.info("Std dev gap: " + Math.sqrt((tempStdDev / entries)));
-        assertTrue("avgGap should be greater than entries * 0.6",
-                avgGap > entries * 0.6);
+        assertTrue(avgGap > entries * 0.6, "avgGap should be greater than entries * 0.6");
+
     }
 }

@@ -18,11 +18,11 @@
 package org.apache.omid.tso;
 
 import com.google.common.base.Charsets;
-import org.apache.omid.TestUtils;
-import org.apache.omid.tso.TSOStateManager.TSOState;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.test.TestingServer;
 import org.apache.curator.utils.CloseableUtils;
+import org.apache.omid.TestUtils;
+import org.apache.omid.tso.TSOStateManager.TSOState;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.slf4j.Logger;
@@ -40,6 +40,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
@@ -105,7 +106,7 @@ public class TestLeaseManager {
 
         TSOChannelHandler tsoChannelHandler = mock(TSOChannelHandler.class);
         TSOStateManager stateManager = mock(TSOStateManager.class);
-        when(stateManager.reset()).thenThrow(new IOException());
+        when(stateManager.initialize()).thenThrow(new IOException());
         leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
                                                  tsoChannelHandler,
                                                  stateManager,
@@ -126,8 +127,7 @@ public class TestLeaseManager {
     }
 
     @Test(timeOut = 60000)
-    public void testLeaseHolderDoesNotChangeWhenPausedForALongTimeAndTheresNoOtherInstance()
-            throws Exception {
+    public void testLeaseHolderDoesNotChangeWhenPausedForALongTimeAndTheresNoOtherInstance() throws Exception {
 
         final String TEST_TSO_LEASE_PATH = "/test1_tsolease";
         final String TEST_CURRENT_TSO_PATH = "/test1_currenttso";
@@ -135,7 +135,7 @@ public class TestLeaseManager {
         // Launch the instance under test...
         TSOChannelHandler tsoChannelHandler1 = mock(TSOChannelHandler.class);
         TSOStateManager stateManager1 = mock(TSOStateManager.class);
-        when(stateManager1.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
+        when(stateManager1.initialize()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
         leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
                                                  tsoChannelHandler1,
                                                  stateManager1,
@@ -173,7 +173,7 @@ public class TestLeaseManager {
         // ... and check again that nothing changed
         checkLeaseHolder(TEST_TSO_LEASE_PATH, LEASE_MGR_ID_1);
         checkInstanceId(TEST_CURRENT_TSO_PATH, INSTANCE_ID_1 + "1");
-        assertTrue(leaseManager1.stillInLeasePeriod());
+        assertFalse(leaseManager1.stillInLeasePeriod()); // Must not be master as it should have triggered and exception
 
     }
 
@@ -186,7 +186,7 @@ public class TestLeaseManager {
         // Launch the master instance...
         TSOChannelHandler tsoChannelHandler1 = mock(TSOChannelHandler.class);
         TSOStateManager stateManager1 = mock(TSOStateManager.class);
-        when(stateManager1.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
+        when(stateManager1.initialize()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
         leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
                                                  tsoChannelHandler1,
                                                  stateManager1,
@@ -209,7 +209,7 @@ public class TestLeaseManager {
         // Then launch another instance...
         TSOChannelHandler tsoChannelHandler2 = mock(TSOChannelHandler.class);
         TSOStateManager stateManager2 = mock(TSOStateManager.class);
-        when(stateManager2.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_2, DUMMY_EPOCH_2));
+        when(stateManager2.initialize()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_2, DUMMY_EPOCH_2));
         leaseManager2 = new PausableLeaseManager(LEASE_MGR_ID_2,
                                                  tsoChannelHandler2,
                                                  stateManager2,
@@ -239,7 +239,7 @@ public class TestLeaseManager {
         // Launch the master instance...
         TSOChannelHandler tsoChannelHandler1 = mock(TSOChannelHandler.class);
         TSOStateManager stateManager1 = mock(TSOStateManager.class);
-        when(stateManager1.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
+        when(stateManager1.initialize()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
         leaseManager1 = new PausableLeaseManager(LEASE_MGR_ID_1,
                                                  tsoChannelHandler1,
                                                  stateManager1,
@@ -262,7 +262,7 @@ public class TestLeaseManager {
         // Then launch another instance...
         TSOChannelHandler tsoChannelHandler2 = mock(TSOChannelHandler.class);
         TSOStateManager stateManager2 = mock(TSOStateManager.class);
-        when(stateManager2.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_2, DUMMY_EPOCH_2));
+        when(stateManager2.initialize()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_2, DUMMY_EPOCH_2));
         leaseManager2 = new PausableLeaseManager(LEASE_MGR_ID_2,
                                                  tsoChannelHandler2,
                                                  stateManager2,
@@ -285,7 +285,7 @@ public class TestLeaseManager {
         assertTrue(leaseManager2.stillInLeasePeriod());
 
         // Now, lets resume the first instance...
-        when(stateManager1.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_3, DUMMY_EPOCH_3));
+        when(stateManager1.initialize()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_3, DUMMY_EPOCH_3));
         leaseManager1.resume();
 
         // ... let the test run for some time...
@@ -334,7 +334,7 @@ public class TestLeaseManager {
 
         // Launch the master instance...
         TSOStateManager stateManager1 = mock(TSOStateManager.class);
-        when(stateManager1.reset()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
+        when(stateManager1.initialize()).thenReturn(new TSOState(DUMMY_LOW_WATERMARK_1, DUMMY_EPOCH_1));
         PausableLeaseManager leaseManager = new PausableLeaseManager(LEASE_MGR_ID_1,
                                                                      mock(TSOChannelHandler.class),
                                                                      stateManager1,
@@ -360,7 +360,7 @@ public class TestLeaseManager {
         Thread.sleep(TEST_LEASE_PERIOD_IN_MS * 2);
 
         ArgumentCaptor<IllegalArgumentException> trowableIAE = ArgumentCaptor.forClass(IllegalArgumentException.class);
-        verify(panicker).panic(anyString(), trowableIAE.capture());
+        verify(panicker, times(2)).panic(anyString(), trowableIAE.capture());
         assertTrue(trowableIAE.getValue() instanceof IllegalArgumentException);
         assertTrue(trowableIAE.getValue().getMessage().contains("Incorrect TSO Info found"));
 
@@ -379,7 +379,7 @@ public class TestLeaseManager {
 
         ArgumentCaptor<LeaseManagement.LeaseManagementException> trowableLME =
                 ArgumentCaptor.forClass(LeaseManagement.LeaseManagementException.class);
-        verify(panicker).panic(anyString(), trowableLME.capture());
+        verify(panicker, times(2)).panic(anyString(), trowableLME.capture());
         assertTrue(trowableLME.getValue() instanceof LeaseManagement.LeaseManagementException);
         assertTrue(trowableLME.getValue().getMessage().contains("Another TSO replica was found"));
     }

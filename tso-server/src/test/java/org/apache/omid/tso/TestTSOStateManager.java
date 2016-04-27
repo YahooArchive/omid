@@ -51,23 +51,23 @@ public class TestTSOStateManager {
     }
 
     @Test
-    public void testResetOfTSOServerState() throws Exception {
+    public void testTSOServerStateInitialization() throws Exception {
 
         // Reset the state and check we get the initial state values
-        TSOState initialState = stateManager.reset();
+        TSOState initialState = stateManager.initialize();
         assertEquals(initialState.getLowWatermark(), INITIAL_STATE_VALUE);
         assertEquals(initialState.getEpoch(), INITIAL_STATE_VALUE);
         assertTrue("In this implementation low watermark should be equal to epoch",
-                initialState.getLowWatermark() == initialState.getEpoch());
+                   initialState.getLowWatermark() == initialState.getEpoch());
 
         // Then, simulate a change in the state returned by the Timestamp Oracle...
         when(timestampOracle.getLast()).thenReturn(NEW_STATE_VALUE);
         // ... and again, reset the state and check we get the new values
-        TSOState secondState = stateManager.reset();
+        TSOState secondState = stateManager.initialize();
         assertEquals(secondState.getLowWatermark(), NEW_STATE_VALUE);
         assertEquals(secondState.getEpoch(), NEW_STATE_VALUE);
         assertTrue("In this implementation low watermark should be equal to epoch",
-                secondState.getLowWatermark() == secondState.getEpoch());
+                   secondState.getLowWatermark() == secondState.getEpoch());
 
     }
 
@@ -79,7 +79,7 @@ public class TestTSOStateManager {
         stateManager.register(observer1);
 
         // Reset the state to trigger observer notifications
-        TSOState state = stateManager.reset();
+        TSOState state = stateManager.initialize();
 
         // Check observer 1 was notified with the corresponding state
         verify(observer1, timeout(100).times(1)).update(eq(state));
@@ -89,7 +89,7 @@ public class TestTSOStateManager {
         stateManager.register(observer2);
 
         // Again, reset the state to trigger observer notifications
-        state = stateManager.reset();
+        state = stateManager.initialize();
 
         // Check both observers were notified with the corresponding state
         verify(observer1, timeout(100).times(1)).update(eq(state));
@@ -99,16 +99,16 @@ public class TestTSOStateManager {
         stateManager.unregister(observer1);
 
         // Again, reset the state to trigger observer notifications
-        state = stateManager.reset();
+        state = stateManager.initialize();
 
         // Check only observer 2 was notified
         verify(observer1, timeout(100).times(0)).update(eq(state));
         verify(observer2, timeout(100).times(1)).update(eq(state));
     }
 
-    // ------------------------------------------------------------------------
-    // -------------------------- Helper classes ------------------------------
-    // ------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------------------------------------
+    // Helper classes
+    // ----------------------------------------------------------------------------------------------------------------
 
     private class DummyObserver implements StateObserver {
 

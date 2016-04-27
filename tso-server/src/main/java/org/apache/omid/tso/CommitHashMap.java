@@ -40,7 +40,7 @@ class CommitHashMap {
 
     private static final Logger LOG = LoggerFactory.getLogger(CommitHashMap.class);
 
-    private final Cache cellIdToCommitMap;
+    private final LongCache cellIdToCommitMap;
 
     /**
      * Constructs a new, empty hashtable with a default size of 1000
@@ -64,11 +64,6 @@ class CommitHashMap {
 
         this.cellIdToCommitMap = new LongCache(size, 32);
         LOG.info("CellId -> CommitTS map created with [{}] buckets (32 elems/bucket)", size);
-    }
-
-    public void reset() {
-        cellIdToCommitMap.reset();
-        LOG.info("CellId -> CommitTS map reset");
     }
 
     public long getLatestWriteForCell(long hash) {

@@ -691,14 +691,7 @@ public class TSOClient implements TSOProtocol, NodeCacheListener {
                 if (resp.getCommitResponse().getAborted()) {
                     e.getRequest().error(new AbortException());
                 } else {
-                    // Check if the commit response received implies heuristic
-                    // actions during commit (because there's a new TSO master
-                    // replica) and inform the caller (e.g. the TxMgr) about it
-                    if (resp.getCommitResponse().getMakeHeuristicDecision()) {
-                        e.getRequest().error(new NewTSOException());
-                    } else {
-                        e.getRequest().success(resp.getCommitResponse().getCommitTimestamp());
-                    }
+                    e.getRequest().success(resp.getCommitResponse().getCommitTimestamp());
                 }
             }
         }

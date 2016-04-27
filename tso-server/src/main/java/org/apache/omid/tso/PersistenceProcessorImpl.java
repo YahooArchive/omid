@@ -202,34 +202,27 @@ class PersistenceProcessorImpl
     }
 
     synchronized private void flush() {
-        lastFlush.set(System.nanoTime());
 
-        boolean areWeStillMaster = true;
-        if (!leaseManager.stillInLeasePeriod()) {
-            // The master TSO replica has changed, so we must inform the
-            // clients about it when sending the replies and avoid flushing
-            // the current batch of TXs
-            areWeStillMaster = false;
-            // We need also to clear the data in the buffer
-            writer.clearWriteBuffer();
-            LOG.trace("Replica {} lost mastership before flushing data", tsoHostAndPort);
-        } else {
+        if (batch.getNumEvents() > 0) {
+            lastFlush.set(System.nanoTime());
+            commitSuicideIfNotMaster();
             try {
                 writer.flush();
+                batchSizeHistogram.update(batch.getNumEvents());
             } catch (IOException e) {
-                panicker.panic("Error persisting commit batch", e.getCause());
+                panicker.panic("Error persisting commit batch", e);
             }
-            batchSizeHistogram.update(batch.getNumEvents());
-            if (!leaseManager.stillInLeasePeriod()) {
-                // If after flushing this TSO server is not the master
-                // replica we need inform the client about it
-                areWeStillMaster = false;
-                LOG.warn("Replica {} lost mastership after flushing data", tsoHostAndPort);
-            }
+            commitSuicideIfNotMaster(); // TODO Here, we can return the client responses before committing suicide
+            flushTimer.update((System.nanoTime() - lastFlush.get()));
+            batch.sendRepliesAndReset(reply, retryProc);
         }
-        flushTimer.update((System.nanoTime() - lastFlush.get()));
-        batch.sendRepliesAndReset(reply, retryProc, areWeStillMaster);
 
+    }
+
+    private void commitSuicideIfNotMaster() {
+        if (!leaseManager.stillInLeasePeriod()) {
+            panicker.panic("Replica " + tsoHostAndPort + " lost mastership whilst flushing data. Committing suicide");
+        }
     }
 
     @Override
@@ -273,6 +266,7 @@ class PersistenceProcessorImpl
 
         Batch(int maxBatchSize) {
             assert (maxBatchSize > 0);
+            LOG.info("Creating the Batch with {} elements", maxBatchSize);
             this.maxBatchSize = maxBatchSize;
             events = new PersistEvent[maxBatchSize];
             numEvents = 0;
@@ -319,7 +313,7 @@ class PersistenceProcessorImpl
             PersistEvent.makePersistTimestamp(e, startTimestamp, c, monCtx);
         }
 
-        void sendRepliesAndReset(ReplyProcessor reply, RetryProcessor retryProc, boolean isTSOInstanceMaster) {
+        void sendRepliesAndReset(ReplyProcessor reply, RetryProcessor retryProc) {
             for (int i = 0; i < numEvents; i++) {
                 PersistEvent e = events[i];
                 switch (e.getType()) {
@@ -329,14 +323,8 @@ class PersistenceProcessorImpl
                         break;
                     case COMMIT:
                         e.getMonCtx().timerStop("commitPersistProcessor");
-                        if (isTSOInstanceMaster) {
-                            reply.commitResponse(false, e.getStartTimestamp(), e.getCommitTimestamp(), e.getChannel(),
-                                                 e.getMonCtx());
-                        } else {
-                            // The client will need to perform heuristic actions to determine the output
-                            reply.commitResponse(true, e.getStartTimestamp(), e.getCommitTimestamp(), e.getChannel(),
-                                                 e.getMonCtx());
-                        }
+
+                        reply.commitResponse(e.getStartTimestamp(), e.getCommitTimestamp(), e.getChannel(), e.getMonCtx());
                         break;
                     case ABORT:
                         if (e.isRetry()) {

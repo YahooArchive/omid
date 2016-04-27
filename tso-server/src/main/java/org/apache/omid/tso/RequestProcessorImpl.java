@@ -68,9 +68,7 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
         requestRing = RingBuffer.createMultiProducer(RequestEvent.EVENT_FACTORY, 1 << 12, new BusySpinWaitStrategy());
         SequenceBarrier requestSequenceBarrier = requestRing.newBarrier();
         BatchEventProcessor<RequestEvent> requestProcessor =
-                new BatchEventProcessor<RequestEvent>(requestRing,
-                        requestSequenceBarrier,
-                        this);
+                new BatchEventProcessor<RequestEvent>(requestRing, requestSequenceBarrier, this);
         requestRing.addGatingSequences(requestProcessor.getSequence());
         requestProcessor.setExceptionHandler(new FatalExceptionHandler(panicker));
 
@@ -82,15 +80,14 @@ public class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.R
     }
 
     /**
-     * This should be called when the TSO gets initialized or gets leadership
+     * This should be called when the TSO gets leadership
      */
     @Override
-    public void update(TSOState state) throws IOException {
-        LOG.info("Reseting RequestProcessor...");
+    public void update(TSOState state) {
+        LOG.info("Initializing RequestProcessor...");
         this.lowWatermark = state.getLowWatermark();
         persistProc.persistLowWatermark(lowWatermark);
         this.epoch = state.getEpoch();
-        hashmap.reset();
         LOG.info("RequestProcessor initialized with LWMs {} and Epoch {}", lowWatermark, epoch);
     }
 
