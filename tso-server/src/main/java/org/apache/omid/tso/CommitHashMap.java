@@ -40,7 +40,7 @@ class CommitHashMap {
 
     private static final Logger LOG = LoggerFactory.getLogger(CommitHashMap.class);
 
-    private final Cache cellIdToCommitMap;
+    private final LongCache cellIdToCommitMap;
 
     /**
      * Constructs a new, empty hashtable with a default size of 1000

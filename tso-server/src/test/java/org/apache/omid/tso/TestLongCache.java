@@ -42,7 +42,7 @@ public class TestLongCache {
         // Cache configuration
         final int CACHE_SIZE = 10_000_000;
         final int CACHE_ASSOCIATIVITY = 32;
-        Cache cache = new LongCache(CACHE_SIZE, CACHE_ASSOCIATIVITY);
+        LongCache cache = new LongCache(CACHE_SIZE, CACHE_ASSOCIATIVITY);
 
         // After creation, cache values should be the default
         for (int i = 0; i < 1000; i++) {
@@ -70,7 +70,7 @@ public class TestLongCache {
 
         final int entries = 1000;
 
-        Cache cache = new LongCache(entries, 16);
+        LongCache cache = new LongCache(entries, 16);
 
         int removals = 0;
         long totalAge = 0;

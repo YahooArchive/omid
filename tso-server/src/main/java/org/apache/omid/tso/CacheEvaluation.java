@@ -40,7 +40,7 @@ public class CacheEvaluation {
         writer.close();
     }
 
-    private void testEntriesAge(Cache cache, PrintWriter writer) {
+    private void testEntriesAge(LongCache cache, PrintWriter writer) {
         Random random = new Random();
 
         long seed = random.nextLong();
