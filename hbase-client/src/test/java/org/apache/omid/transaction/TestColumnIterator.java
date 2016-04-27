@@ -30,7 +30,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.Assert.assertEquals;
 
 @Test(groups = "noHBase")
 public class TestColumnIterator {
@@ -63,7 +63,7 @@ public class TestColumnIterator {
         ImmutableList<Collection<Cell>> groupedColumnsWithoutShadowCells =
                 TTable.groupCellsByColumnFilteringShadowCells(cells);
         Log.info("Column Groups " + groupedColumnsWithoutShadowCells);
-        assertEquals("Should be 3 column groups", 3, groupedColumnsWithoutShadowCells.size());
+        assertEquals(groupedColumnsWithoutShadowCells.size(), 3, "Should be 3 column groups");
         int group1Counter = 0;
         int group2Counter = 0;
         int group3Counter = 0;
@@ -89,8 +89,8 @@ public class TestColumnIterator {
             }
         }
 
-        assertEquals("Group 1 should have 2 elems", 2, group1Counter);
-        assertEquals("Group 2 should have 1 elems", 1, group2Counter);
-        assertEquals("Group 3 should have 1 elems", 1, group3Counter);
+        assertEquals(group1Counter, 2, "Group 1 should have 2 elems");
+        assertEquals(group2Counter, 1, "Group 2 should have 1 elems");
+        assertEquals(group3Counter, 1, "Group 3 should have 1 elems");
     }
 }

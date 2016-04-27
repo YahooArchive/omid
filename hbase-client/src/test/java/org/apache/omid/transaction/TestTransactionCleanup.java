@@ -18,15 +18,15 @@
 package org.apache.omid.transaction;
 
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.omid.tso.client.AbortException;
-import org.apache.omid.tso.client.ForwardingTSOFuture;
-import org.apache.omid.tso.client.TSOClient;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.omid.tso.client.AbortException;
+import org.apache.omid.tso.client.ForwardingTSOFuture;
+import org.apache.omid.tso.client.TSOClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.ITestContext;
@@ -36,7 +36,7 @@ import static org.mockito.Matchers.anySetOf;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
-import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.Assert.assertEquals;
 
 @Test(groups = "sharedHBase")
 public class TestTransactionCleanup extends OmidTestBase {
@@ -104,15 +104,14 @@ public class TestTransactionCleanup extends OmidTestBase {
             ResultScanner resultScanner = txTable.getHTable().getScanner(scan);
             int resultCount = 0;
             for (Result result : resultScanner) {
-                assertEquals(2, result.size()); // Size == 2, including the put and delete from cleanup
+                assertEquals(result.size(), 2); // Size == 2, including the put and delete from cleanup
                 LOG.trace("Result {}", result);
                 // The last element of the qualifier should have the Delete marker
                 byte encodedType = result.getColumnLatestCell(family, qual).getTypeByte();
-                assertEquals(KeyValue.Type.Delete,
-                        KeyValue.Type.codeToType(encodedType));
+                assertEquals(KeyValue.Type.codeToType(encodedType), KeyValue.Type.Delete);
                 resultCount++;
             }
-            assertEquals(ROWS_MODIFIED, resultCount);
+            assertEquals(resultCount, ROWS_MODIFIED);
         }
     }
 

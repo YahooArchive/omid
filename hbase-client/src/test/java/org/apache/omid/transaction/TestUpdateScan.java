@@ -34,8 +34,8 @@ import org.testng.Assert;
 import org.testng.ITestContext;
 import org.testng.annotations.Test;
 
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 @Test(groups = "sharedHBase")
 public class TestUpdateScan extends OmidTestBase {
@@ -67,9 +67,7 @@ public class TestUpdateScan extends OmidTestBase {
                 int tmp = Bytes.toInt(r.getValue(Bytes.toBytes(TEST_FAMILY),
                         Bytes.toBytes(TEST_COL)));
                 LOG.info("Result:" + tmp);
-                assertTrue("Bad value, should be "
-                                + startKeyValue + " but is " + tmp
-                        , tmp == startKeyValue);
+                assertTrue(tmp == startKeyValue, "Bad value, should be " + startKeyValue + " but is " + tmp);
             } else {
                 Assert.fail("Bad result");
             }
@@ -98,7 +96,7 @@ public class TestUpdateScan extends OmidTestBase {
                 LOG.info("Result: " + iTmp);
                 count++;
             }
-            assertEquals("Count is wrong", 1, count);
+            assertEquals(count, 1, "Count is wrong");
             LOG.info("Rows found " + count);
             tm.commit(t);
             table.close();
@@ -136,8 +134,7 @@ public class TestUpdateScan extends OmidTestBase {
                 LOG.info("Result: " + iTmp);
                 count++;
             }
-            assertTrue("Count should be " + lInts.length + " but is " + count,
-                    count == lInts.length);
+            assertTrue(count == lInts.length, "Count should be " + lInts.length + " but is " + count);
             LOG.info("Rows found " + count);
 
             tm.commit(t);
@@ -151,8 +148,7 @@ public class TestUpdateScan extends OmidTestBase {
                 LOG.info("Result: " + iTmp);
                 count++;
             }
-            assertTrue("Count should be " + lInts.length + " but is " + count,
-                    count == lInts.length);
+            assertTrue(count == lInts.length, "Count should be " + lInts.length + " but is " + count);
             LOG.info("Rows found " + count);
             tm.commit(t);
         }
@@ -206,8 +202,8 @@ public class TestUpdateScan extends OmidTestBase {
                 LOG.info("Result: " + iTmp);
                 count++;
             }
-            assertTrue("Count should be " + (lIntsA.length * lIntsC.length) + " but is " + count,
-                    count == lIntsA.length + lIntsC.length);
+            assertTrue(count == lIntsA.length + lIntsC.length,
+                       "Count should be " + (lIntsA.length * lIntsC.length) + " but is " + count);
             LOG.info("Rows found " + count);
             tm.commit(t);
             table.close();

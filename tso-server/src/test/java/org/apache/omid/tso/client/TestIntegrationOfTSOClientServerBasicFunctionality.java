@@ -40,8 +40,8 @@ import java.util.concurrent.ExecutionException;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
-import static org.testng.AssertJUnit.assertNotNull;
 
 public class TestIntegrationOfTSOClientServerBasicFunctionality {
 
@@ -186,7 +186,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         assertTrue(commitTsForTx1 > startTsForTx1, "Commit TS should be higher than Start TS for the same tx");
 
         Long commitTs1InCommitTable = commitTableClient.getCommitTimestamp(startTsForTx1).get().get().getValue();
-        assertNotNull("Tx is committed, should return as such from Commit Table", commitTs1InCommitTable);
+        assertNotNull(commitTs1InCommitTable, "Tx is committed, should return as such from Commit Table");
         assertEquals(commitTsForTx1, (long) commitTs1InCommitTable,
                 "getCommitTimestamp() & commit() should report same Commit TS value for same tx");
         assertTrue(commitTs1InCommitTable > startTsForTx2, "Commit TS should be higher than tx's Start TS");

@@ -31,7 +31,7 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.Assert.assertTrue;
 
 public class TestTSOStateManager {
 
@@ -57,8 +57,8 @@ public class TestTSOStateManager {
         TSOState initialState = stateManager.initialize();
         assertEquals(initialState.getLowWatermark(), INITIAL_STATE_VALUE);
         assertEquals(initialState.getEpoch(), INITIAL_STATE_VALUE);
-        assertTrue("In this implementation low watermark should be equal to epoch",
-                   initialState.getLowWatermark() == initialState.getEpoch());
+        assertTrue(initialState.getLowWatermark() == initialState.getEpoch(),
+                   "In this implementation low watermark should be equal to epoch");
 
         // Then, simulate a change in the state returned by the Timestamp Oracle...
         when(timestampOracle.getLast()).thenReturn(NEW_STATE_VALUE);
@@ -66,8 +66,8 @@ public class TestTSOStateManager {
         TSOState secondState = stateManager.initialize();
         assertEquals(secondState.getLowWatermark(), NEW_STATE_VALUE);
         assertEquals(secondState.getEpoch(), NEW_STATE_VALUE);
-        assertTrue("In this implementation low watermark should be equal to epoch",
-                   secondState.getLowWatermark() == secondState.getEpoch());
+        assertTrue(secondState.getLowWatermark() == secondState.getEpoch(),
+                   "In this implementation low watermark should be equal to epoch");
 
     }
 

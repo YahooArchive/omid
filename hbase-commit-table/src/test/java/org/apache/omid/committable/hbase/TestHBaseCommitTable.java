@@ -19,11 +19,6 @@ package org.apache.omid.committable.hbase;
 
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.omid.committable.CommitTable;
-import org.apache.omid.committable.CommitTable.Client;
-import org.apache.omid.committable.CommitTable.CommitTimestamp;
-import org.apache.omid.committable.CommitTable.Writer;
-import org.apache.omid.committable.hbase.HBaseCommitTable.HBaseClient;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
@@ -35,6 +30,11 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.coprocessor.AggregationClient;
 import org.apache.hadoop.hbase.client.coprocessor.LongColumnInterpreter;
+import org.apache.omid.committable.CommitTable;
+import org.apache.omid.committable.CommitTable.Client;
+import org.apache.omid.committable.CommitTable.CommitTimestamp;
+import org.apache.omid.committable.CommitTable.Writer;
+import org.apache.omid.committable.hbase.HBaseCommitTable.HBaseClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -47,9 +47,9 @@ import org.testng.annotations.Test;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertFalse;
-import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertTrue;
 
 public class TestHBaseCommitTable {
 
@@ -139,14 +139,14 @@ public class TestHBaseCommitTable {
         Client client = commitTable.getClient();
 
         // Test that the first time the table is empty
-        assertEquals("Rows should be 0!", 0, rowCount(TABLE_NAME, commitTableFamily));
+        assertEquals(rowCount(TABLE_NAME, commitTableFamily), 0, "Rows should be 0!");
 
         // Test the successful creation of 1000 txs in the table
         for (int i = 0; i < 1000; i++) {
             writer.addCommittedTransaction(i, i + 1);
         }
         writer.flush();
-        assertEquals("Rows should be 1000!", 1000, rowCount(TABLE_NAME, commitTableFamily));
+        assertEquals(rowCount(TABLE_NAME, commitTableFamily), 1000, "Rows should be 1000!");
 
         // Test the we get the right commit timestamps for each previously inserted tx
         for (long i = 0; i < 1000; i++) {
@@ -154,9 +154,9 @@ public class TestHBaseCommitTable {
             assertTrue(commitTimestamp.isPresent());
             assertTrue(commitTimestamp.get().isValid());
             long ct = commitTimestamp.get().getValue();
-            assertEquals("Commit timestamp should be " + (i + 1), (i + 1), ct);
+            assertEquals(ct, (i + 1), "Commit timestamp should be " + (i + 1));
         }
-        assertEquals("Rows should be 1000!", 1000, rowCount(TABLE_NAME, commitTableFamily));
+        assertEquals(rowCount(TABLE_NAME, commitTableFamily), 1000, "Rows should be 1000!");
 
         // Test the successful deletion of the 1000 txs
         Future<Void> f;
@@ -164,31 +164,31 @@ public class TestHBaseCommitTable {
             f = client.completeTransaction(i);
             f.get();
         }
-        assertEquals("Rows should be 0!", 0, rowCount(TABLE_NAME, commitTableFamily));
+        assertEquals(rowCount(TABLE_NAME, commitTableFamily), 0, "Rows should be 0!");
 
         // Test we don't get a commit timestamp for a non-existent transaction id in the table
         Optional<CommitTimestamp> commitTimestamp = client.getCommitTimestamp(0).get();
-        assertFalse("Commit timestamp should not be present", commitTimestamp.isPresent());
+        assertFalse(commitTimestamp.isPresent(), "Commit timestamp should not be present");
 
         // Test that the first time, the low watermark family in table is empty
-        assertEquals("Rows should be 0!", 0, rowCount(TABLE_NAME, lowWatermarkFamily));
+        assertEquals(rowCount(TABLE_NAME, lowWatermarkFamily), 0, "Rows should be 0!");
 
         // Test the unsuccessful read of the low watermark the first time
         ListenableFuture<Long> lowWatermarkFuture = client.readLowWatermark();
-        assertEquals("Low watermark should be 0", Long.valueOf(0), lowWatermarkFuture.get());
+        assertEquals(lowWatermarkFuture.get(), Long.valueOf(0), "Low watermark should be 0");
 
         // Test the successful update of the low watermark
         for (int lowWatermark = 0; lowWatermark < 1000; lowWatermark++) {
             writer.updateLowWatermark(lowWatermark);
         }
         writer.flush();
-        assertEquals("Should there be only one row!", 1, rowCount(TABLE_NAME, lowWatermarkFamily));
+        assertEquals(rowCount(TABLE_NAME, lowWatermarkFamily), 1, "Should there be only one row!");
 
         // Test the successful read of the low watermark
         lowWatermarkFuture = client.readLowWatermark();
         long lowWatermark = lowWatermarkFuture.get();
-        assertEquals("Low watermark should be 999", 999, lowWatermark);
-        assertEquals("Should there be only one row!", 1, rowCount(TABLE_NAME, lowWatermarkFamily));
+        assertEquals(lowWatermark, 999, "Low watermark should be 999");
+        assertEquals(rowCount(TABLE_NAME, lowWatermarkFamily), 1, "Should there be only one row!");
 
     }
 
@@ -210,7 +210,7 @@ public class TestHBaseCommitTable {
         Client client = commitTable.getClient();
 
         // Test that initially the table is empty
-        assertEquals("Rows should be 0!", 0, rowCount(TABLE_NAME, commitTableFamily));
+        assertEquals(rowCount(TABLE_NAME, commitTableFamily), 0, "Rows should be 0!");
 
         // Test that a transaction can be added properly to the commit table
         writer.addCommittedTransaction(TX1_ST, TX1_CT);
@@ -219,28 +219,28 @@ public class TestHBaseCommitTable {
         assertTrue(commitTimestamp.isPresent());
         assertTrue(commitTimestamp.get().isValid());
         long ct = commitTimestamp.get().getValue();
-        assertEquals("Commit timestamp should be " + TX1_CT, TX1_CT, ct);
+        assertEquals(ct, TX1_CT, "Commit timestamp should be " + TX1_CT);
 
         // Test that a committed transaction cannot be invalidated and
         // preserves its commit timestamp after that
         boolean wasInvalidated = client.tryInvalidateTransaction(TX1_ST).get();
-        assertFalse("Transaction should not be invalidated", wasInvalidated);
+        assertFalse(wasInvalidated, "Transaction should not be invalidated");
 
         commitTimestamp = client.getCommitTimestamp(TX1_ST).get();
         assertTrue(commitTimestamp.isPresent());
         assertTrue(commitTimestamp.get().isValid());
         ct = commitTimestamp.get().getValue();
-        assertEquals("Commit timestamp should be " + TX1_CT, TX1_CT, ct);
+        assertEquals(ct, TX1_CT, "Commit timestamp should be " + TX1_CT);
 
         // Test that a non-committed transaction can be invalidated...
         wasInvalidated = client.tryInvalidateTransaction(TX2_ST).get();
-        assertTrue("Transaction should be invalidated", wasInvalidated);
+        assertTrue(wasInvalidated, "Transaction should be invalidated");
         commitTimestamp = client.getCommitTimestamp(TX2_ST).get();
         assertTrue(commitTimestamp.isPresent());
         assertFalse(commitTimestamp.get().isValid());
         ct = commitTimestamp.get().getValue();
-        assertEquals("Commit timestamp should be " + CommitTable.INVALID_TRANSACTION_MARKER,
-                     CommitTable.INVALID_TRANSACTION_MARKER, ct);
+        assertEquals(ct, CommitTable.INVALID_TRANSACTION_MARKER,
+                     "Commit timestamp should be " + CommitTable.INVALID_TRANSACTION_MARKER);
         // ...and that if it has been already invalidated, it remains
         // invalidated when someone tries to commit it
         writer.addCommittedTransaction(TX2_ST, TX2_CT);
@@ -249,12 +249,12 @@ public class TestHBaseCommitTable {
         assertTrue(commitTimestamp.isPresent());
         assertFalse(commitTimestamp.get().isValid());
         ct = commitTimestamp.get().getValue();
-        assertEquals("Commit timestamp should be " + CommitTable.INVALID_TRANSACTION_MARKER,
-                     CommitTable.INVALID_TRANSACTION_MARKER, ct);
+        assertEquals(ct, CommitTable.INVALID_TRANSACTION_MARKER,
+                     "Commit timestamp should be " + CommitTable.INVALID_TRANSACTION_MARKER);
 
         // Test that at the end of the test, the commit table contains 2
         // elements, which correspond to the two rows added in the test
-        assertEquals("Rows should be 2!", 2, rowCount(TABLE_NAME, commitTableFamily));
+        assertEquals(rowCount(TABLE_NAME, commitTableFamily), 2, "Rows should be 2!");
 
     }
 
@@ -274,7 +274,7 @@ public class TestHBaseCommitTable {
 
         // Completing first transaction should be fine
         client.completeTransaction(0).get();
-        assertEquals("Rows should be 999!", 999, rowCount(TABLE_NAME, commitTableFamily));
+        assertEquals(rowCount(TABLE_NAME, commitTableFamily), 999, "Rows should be 999!");
 
         // When closing, removing a transaction should throw an EE with an IOException
         client.close();
@@ -284,8 +284,8 @@ public class TestHBaseCommitTable {
         } catch (ExecutionException e) {
             // Expected
         }
-        assertEquals("Delete queue size should be 0!", 0, client.deleteQueue.size());
-        assertEquals("Rows should be 999!", 999, rowCount(TABLE_NAME, commitTableFamily));
+        assertEquals(client.deleteQueue.size(), 0, "Delete queue size should be 0!");
+        assertEquals(rowCount(TABLE_NAME, commitTableFamily), 999, "Rows should be 999!");
 
     }
 

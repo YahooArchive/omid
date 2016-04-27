@@ -26,17 +26,16 @@ import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
-import org.testng.AssertJUnit;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertTrue;
 
 public class TestBatch {
 
@@ -73,15 +72,15 @@ public class TestBatch {
         PersistenceProcessorImpl.Batch batch = new PersistenceProcessorImpl.Batch(BATCH_SIZE);
 
         // Test initial state is OK
-        AssertJUnit.assertFalse("Batch shouldn't be full", batch.isFull());
-        AssertJUnit.assertEquals("Num events should be 0", 0, batch.getNumEvents());
+        assertFalse(batch.isFull(), "Batch shouldn't be full");
+        assertEquals(batch.getNumEvents(), 0, "Num events should be 0");
 
         // Test adding a single commit event is OK
         MonitoringContext monCtx = new MonitoringContext(metrics);
         monCtx.timerStart("commitPersistProcessor");
         batch.addCommit(0, 1, channel, monCtx);
-        AssertJUnit.assertFalse("Batch shouldn't be full", batch.isFull());
-        AssertJUnit.assertEquals("Num events should be 1", 1, batch.getNumEvents());
+        assertFalse(batch.isFull(), "Batch shouldn't be full");
+        assertEquals(batch.getNumEvents(), 1, "Num events should be 1");
 
         // Test when filling the batch with events, batch is full
         for (int i = 0; i < (BATCH_SIZE - 1); i++) {
@@ -95,8 +94,8 @@ public class TestBatch {
                 batch.addCommit(i, i + 1, channel, monCtx);
             }
         }
-        AssertJUnit.assertTrue("Batch should be full", batch.isFull());
-        AssertJUnit.assertEquals("Num events should be " + BATCH_SIZE, BATCH_SIZE, batch.getNumEvents());
+        assertTrue(batch.isFull(), "Batch should be full");
+        assertEquals(batch.getNumEvents(), BATCH_SIZE, "Num events should be " + BATCH_SIZE);
 
         // Test an exception is thrown when batch is full and a new element is going to be added
         try {
@@ -105,7 +104,7 @@ public class TestBatch {
             batch.addCommit(0, 1, channel, new MonitoringContext(metrics));
             Assert.fail("Should throw an IllegalStateException");
         } catch (IllegalStateException e) {
-            AssertJUnit.assertEquals("message returned doesn't match", "batch full", e.getMessage());
+            assertEquals(e.getMessage(), "batch full", "message returned doesn't match");
             LOG.debug("IllegalStateException catched properly");
         }
 
@@ -115,8 +114,8 @@ public class TestBatch {
                 .timestampResponse(anyLong(), any(Channel.class), any(MonitoringContext.class));
         verify(replyProcessor, timeout(100).times(BATCH_SIZE / 2))
                 .commitResponse(anyLong(), anyLong(), any(Channel.class), any(MonitoringContext.class));
-        AssertJUnit.assertFalse("Batch shouldn't be full", batch.isFull());
-        AssertJUnit.assertEquals("Num events should be 0", 0, batch.getNumEvents());
+        assertFalse(batch.isFull(), "Batch shouldn't be full");
+        assertEquals(batch.getNumEvents(), 0, "Num events should be 0");
 
     }
 
