@@ -19,8 +19,8 @@ package org.apache.omid.timestamp.storage;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import org.apache.omid.zk.ZKUtils;
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.omid.zk.ZKUtils;
 
 import javax.inject.Singleton;
 import java.io.IOException;
@@ -44,6 +44,32 @@ public class ZKModule extends AbstractModule {
     @Singleton
     CuratorFramework provideInitializedZookeeperClient() throws IOException {
         return ZKUtils.initZKClient(zkCluster, namespace, 10);
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // NOTE: We need to implement equals() and hashCode() because the ZKModule is installed from several parent modules
+    // ----------------------------------------------------------------------------------------------------------------
+
+    @Override
+    public boolean equals(Object o) {
+
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        ZKModule zkModule = (ZKModule) o;
+
+        if (!zkCluster.equals(zkModule.zkCluster)) return false;
+        return namespace.equals(zkModule.namespace);
+
+    }
+
+    @Override
+    public int hashCode() {
+
+        int result = zkCluster.hashCode();
+        result = 31 * result + namespace.hashCode();
+        return result;
+
     }
 
 }
