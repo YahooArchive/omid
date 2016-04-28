@@ -23,7 +23,7 @@ timestampStoreModule: !!org.apache.omid.tso.InMemoryTimestampStorageModule [ ]
 commitTableStoreModule: !!org.apache.omid.tso.InMemoryCommitTableStorageModule [ ]
 leaseModule: !!org.apache.omid.tso.VoidLeaseManagementModule [ ]
 
-# Default stats/metrics configuration (
+# Default stats/metrics configuration
 metrics: !!org.apache.omid.metrics.NullMetricsProvider [ ]
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -132,13 +132,12 @@ metrics: !!org.apache.omid.metrics.NullMetricsProvider [ ]
 #
 # commitTableStoreModule: !!org.apache.omid.tso.DefaultHBaseCommitTableStorageModule [ ]
 # timestampStoreModule: !!org.apache.omid.tso.DefaultHBaseTimestampStorageModule [ ]
-# leaseModule: !!org.apache.omid.tso.HALeaseManagementModule [
-#     leasePeriodInMs: 10000,
-#     tsoLeasePath: "/tso-lease",
-#     zkCurrentTsoPath: "/current-tso",
-#     zkCluster: "localhost:2181",
-#     namespace: "omid"
-# ]
+# leaseModule: !!org.apache.omid.tso.HALeaseManagementModule
+#     leasePeriodInMs: 10000
+#     tsoLeasePath: "/tso-lease"
+#     currentTsoPath: "/current-tso"
+#     zkCluster: "localhost:2181"
+#     zkNamespace: "omid"
 # metrics: !!org.apache.omid.metrics.NullMetricsProvider [ ]
 
 

@@ -17,11 +17,12 @@
  */
 package org.apache.omid.tso;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.omid.timestamp.storage.ZKModule;
 import org.apache.omid.tso.LeaseManagement.LeaseManagementException;
-import org.apache.curator.framework.CuratorFramework;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,12 +34,22 @@ import static org.apache.omid.tso.TSOServer.TSO_HOST_AND_PORT_KEY;
 public class HALeaseManagementModule extends AbstractModule {
 
     private static final Logger LOG = LoggerFactory.getLogger(HALeaseManagementModule.class);
-    private final long leasePeriodInMs;
-    private final String tsoLeasePath;
-    private final String currentTsoPath;
-    private final String zkCluster;
-    private final String zkNamespace;
 
+    private long leasePeriodInMs = 10_000; // 10 secs
+    private String tsoLeasePath = "/tso-lease";
+    private String currentTsoPath = "/current-tso";
+    private String zkCluster = "localhost:2181";
+    private String zkNamespace = "omid";
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // WARNING: Do not remove empty constructor, needed by snake_yaml!
+    // ----------------------------------------------------------------------------------------------------------------
+
+    public HALeaseManagementModule() {
+
+    }
+
+    @VisibleForTesting
     public HALeaseManagementModule(long leasePeriodInMs, String tsoLeasePath, String currentTsoPath,
                                    String zkCluster, String zkNamespace) {
 
@@ -76,6 +87,50 @@ public class HALeaseManagementModule extends AbstractModule {
                                 zkClient,
                                 panicker);
 
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // WARNING: Do not remove getters/setters, needed by snake_yaml!
+    // ----------------------------------------------------------------------------------------------------------------
+
+    public String getCurrentTsoPath() {
+        return currentTsoPath;
+    }
+
+    public void setCurrentTsoPath(String currentTsoPath) {
+        this.currentTsoPath = currentTsoPath;
+    }
+
+    public long getLeasePeriodInMs() {
+        return leasePeriodInMs;
+    }
+
+    public void setLeasePeriodInMs(long leasePeriodInMs) {
+        this.leasePeriodInMs = leasePeriodInMs;
+    }
+
+    public String getTsoLeasePath() {
+        return tsoLeasePath;
+    }
+
+    public void setTsoLeasePath(String tsoLeasePath) {
+        this.tsoLeasePath = tsoLeasePath;
+    }
+
+    public String getZkCluster() {
+        return zkCluster;
+    }
+
+    public void setZkCluster(String zkCluster) {
+        this.zkCluster = zkCluster;
+    }
+
+    public String getZkNamespace() {
+        return zkNamespace;
+    }
+
+    public void setZkNamespace(String zkNamespace) {
+        this.zkNamespace = zkNamespace;
     }
 
 }
