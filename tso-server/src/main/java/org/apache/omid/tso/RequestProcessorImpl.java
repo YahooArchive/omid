@@ -92,7 +92,7 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
         LOG.info("Initializing RequestProcessor...");
         this.lowWatermark = state.getLowWatermark();
         persistProc.persistLowWatermark(lowWatermark, new MonitoringContext(metrics));
-        persistProc.reset();
+        persistProc.persistFlush();
         LOG.info("RequestProcessor initialized with LWMs {} and Epoch {}", lowWatermark, state.getEpoch());
     }
 

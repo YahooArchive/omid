@@ -88,10 +88,6 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
 
     }
 
-    public void reset() {
-        nextIDToHandle.set(0);
-    }
-
     private void handleReplyBatchEvent(ReplyBatchEvent event) {
 
         String name;
@@ -103,7 +99,7 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
             case COMMIT:
                 name = "commitReplyProcessor";
                 localEvent.getMonCtx().timerStart(name);
-                handleCommitResponse(localEvent.getStartTimestamp(), localEvent.getCommitTimestamp(), localEvent.getChannel(), event.getMakeHeuristicDecision());
+                handleCommitResponse(localEvent.getStartTimestamp(), localEvent.getCommitTimestamp(), localEvent.getChannel());
                 localEvent.getMonCtx().timerStop(name);
                  break;
             case ABORT:
@@ -169,11 +165,11 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
     }
 
     @Override
-    public void batchResponse(Batch batch, long batchID, boolean makeHeuristicDecision) {
+    public void batchResponse(Batch batch, long batchID) {
 
         long seq = replyRing.next();
         ReplyBatchEvent e = replyRing.get(seq);
-        ReplyBatchEvent.makeReplyBatch(e, batch, batchID, makeHeuristicDecision);
+        ReplyBatchEvent.makeReplyBatch(e, batch, batchID);
         replyRing.publish(seq);
 
     }
@@ -182,7 +178,7 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
     public void addAbort(Batch batch, long startTimestamp, Channel c, MonitoringContext context) {
 
         batch.addAbort(startTimestamp, true, c, context);
-        batchResponse(batch, NO_ORDER, false);
+        batchResponse(batch, NO_ORDER);
 
     }
 
@@ -190,19 +186,14 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
     public void addCommit(Batch batch, long startTimestamp, long commitTimestamp, Channel c, MonitoringContext context) {
 
         batch.addCommit(startTimestamp, commitTimestamp, c, context);
-        batchResponse(batch, NO_ORDER, false);
+        batchResponse(batch, NO_ORDER);
 
     }
 
-    private void handleCommitResponse(long startTimestamp, long commitTimestamp, Channel c,
-                                      boolean makeHeuristicDecision) {
+    private void handleCommitResponse(long startTimestamp, long commitTimestamp, Channel c) {
 
         TSOProto.Response.Builder builder = TSOProto.Response.newBuilder();
         TSOProto.CommitResponse.Builder commitBuilder = TSOProto.CommitResponse.newBuilder();
-        // TODO Remove heuristic decissions as is not in the protocol anymore
-        if (makeHeuristicDecision) { // If the commit is ambiguous is due to a new master TSO
-//            commitBuilder.setMakeHeuristicDecision(true);
-        }
         commitBuilder.setAborted(false)
                 .setStartTimestamp(startTimestamp)
                 .setCommitTimestamp(commitTimestamp);
@@ -242,12 +233,10 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
 
         private Batch batch;
         private long batchID;
-        private boolean makeHeuristicDecision;
 
-        static void makeReplyBatch(ReplyBatchEvent e, Batch batch, long batchID, boolean makeHeuristicDecision) {
+        static void makeReplyBatch(ReplyBatchEvent e, Batch batch, long batchID) {
             e.batch = batch;
             e.batchID = batchID;
-            e.makeHeuristicDecision = makeHeuristicDecision;
         }
 
         Batch getBatch() {
@@ -256,10 +245,6 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
 
         long getBatchID() {
             return batchID;
-        }
-
-        boolean getMakeHeuristicDecision() {
-            return makeHeuristicDecision;
         }
 
         final static EventFactory<ReplyBatchEvent> EVENT_FACTORY = new EventFactory<ReplyBatchEvent>() {

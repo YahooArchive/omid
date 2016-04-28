@@ -24,6 +24,8 @@ import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.WorkerPool;
 import org.jboss.netty.channel.Channel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -32,6 +34,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 class PersistenceProcessorImpl implements PersistenceProcessor {
+
+    private static final Logger LOG = LoggerFactory.getLogger(PersistenceProcessorImpl.class);
 
     private static final long INITIAL_LWM_VALUE = -1L;
 
@@ -74,16 +78,6 @@ class PersistenceProcessorImpl implements PersistenceProcessor {
         ExecutorService requestExec = Executors.newFixedThreadPool(config.getPersistHandlerNum(),
                                                                    new ThreadFactoryBuilder().setNameFormat("persist-%d").build());
         persistProcessor.start(requestExec);
-
-    }
-
-    @Override
-    public void reset() throws InterruptedException {
-
-        batchIDCnt = 0L;
-        batchPool.reset();
-        batch = batchPool.getNextEmptyBatch();
-        replyProcessor.reset();
 
     }
 

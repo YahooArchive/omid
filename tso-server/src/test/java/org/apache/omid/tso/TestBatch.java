@@ -118,12 +118,8 @@ public class TestBatch {
 //        assertFalse(batch.isFull(), "Batch shouldn't be full");
 //        assertEquals(batch.getNumEvents(), 0, "Num events should be 0");
 //=======
-        final boolean MASTER_INSTANCE = true;
-
-        final boolean SHOULD_MAKE_HEURISTIC_DECISION = true;
-        batch.sendReply(replyProcessor, retryProcessor, (-1), MASTER_INSTANCE);
-        verify(replyProcessor, timeout(100).times(1))
-               .batchResponse(batch, (-1), !SHOULD_MAKE_HEURISTIC_DECISION);
+        batch.sendReply(replyProcessor, retryProcessor, (-1));
+        verify(replyProcessor, timeout(100).times(1)).batchResponse(batch, (-1));
         assertTrue(batch.isFull(), "Batch shouldn't be empty");
     }
 
@@ -148,11 +144,9 @@ public class TestBatch {
         // Test that sending replies empties the batch also when the replica
         // is NOT master and calls the ambiguousCommitResponse() method on the
         // reply processor
-        final boolean MASTER_INSTANCE = true;
-        final boolean SHOULD_MAKE_HEURISTIC_DECISION = true;
-        batch.sendReply(replyProcessor, retryProcessor, (-1), !MASTER_INSTANCE);
+        batch.sendReply(replyProcessor, retryProcessor, (-1));
         verify(replyProcessor, timeout(100).times(1))
-               .batchResponse(batch, (-1), SHOULD_MAKE_HEURISTIC_DECISION);
+               .batchResponse(batch, (-1));
         assertTrue(batch.isFull(), "Batch should be full");
     }
 

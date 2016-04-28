@@ -100,36 +100,28 @@ public class PersistenceProcessorHandler implements WorkHandler<PersistenceProce
     // TODO Fix this method with the contents of PersistenceProcessor.flush() in master branch
     // TODO This is related to the changes in TestPersistenceProcessor.testCommitPersistenceWithHALeaseManager().
     // TODO Check also that test in the master branch
-    private void flush(Batch batch, long batchID) throws IOException {
+    private void flush(Batch batch, long batchID) {
 
-        long startFlushTimeInNs = System.nanoTime();
-
-        boolean areWeStillMaster = true;
-        if (!leaseManager.stillInLeasePeriod()) {
-            // The master TSO replica has changed, so we must inform the
-            // clients about it when sending the replies and avoid flushing
-            // the current batch of TXs
-            areWeStillMaster = false;
-            // We need also to clear the data in the buffer
-            writer.clearWriteBuffer();
-            LOG.trace("Replica {} lost mastership before flushing data", tsoHostAndPort);
-        } else {
+        if (batch.getNumEvents() > 0) {
+            commitSuicideIfNotMaster();
             try {
+                long startFlushTimeInNs = System.nanoTime();
                 writer.flush();
+                flushTimer.update(System.nanoTime() - startFlushTimeInNs);
+                batchSizeHistogram.update(batch.getNumEvents());
             } catch (IOException e) {
-                panicker.panic("Error persisting commit batch", e.getCause());
+                panicker.panic("Error persisting commit batch", e);
             }
-            batchSizeHistogram.update(batch.getNumEvents());
-            if (!leaseManager.stillInLeasePeriod()) {
-                // If after flushing this TSO server is not the master
-                // replica we need inform the client about it
-                areWeStillMaster = false;
-                LOG.warn("Replica {} lost mastership after flushing data", tsoHostAndPort);
-            }
+            commitSuicideIfNotMaster(); // TODO Here, we can return the client responses before committing suicide
+            batch.sendReply(replyProcessor, retryProc, batchID);
         }
-        flushTimer.update((System.nanoTime() - startFlushTimeInNs));
-        batch.sendReply(replyProcessor, retryProc, batchID, areWeStillMaster);
 
+    }
+
+    private void commitSuicideIfNotMaster() {
+        if (!leaseManager.stillInLeasePeriod()) {
+            panicker.panic("Replica " + tsoHostAndPort + " lost mastership whilst flushing data. Committing suicide");
+        }
     }
 
 }

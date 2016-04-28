@@ -39,6 +39,4 @@ interface PersistenceProcessor {
     // TODO The name of this method is weird. Rename to "persist"
     void persistFlush() throws InterruptedException;
 
-    void reset() throws InterruptedException;
-
 }

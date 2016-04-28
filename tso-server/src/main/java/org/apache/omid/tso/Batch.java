@@ -20,8 +20,12 @@ package org.apache.omid.tso;
 import com.google.common.base.Preconditions;
 import org.apache.omid.tso.PersistEvent.Type;
 import org.jboss.netty.channel.Channel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Batch {
+
+    private static final Logger LOG = LoggerFactory.getLogger(Batch.class);
 
     private final PersistEvent[] events;
     private final int maxBatchSize;
@@ -37,6 +41,7 @@ public class Batch {
 
     Batch(int size, int id, BatchPool batchPool) {
         Preconditions.checkArgument(size > 0, "Size must be positive");
+        LOG.info("Batch id {} created with size {}", id, size);
         this.maxBatchSize = size;
         this.batchPool = batchPool;
         this.id = id;
@@ -118,7 +123,7 @@ public class Batch {
 
     }
 
-    void sendReply(ReplyProcessor reply, RetryProcessor retryProc, long batchID, boolean isTSOInstanceMaster) {
+    void sendReply(ReplyProcessor reply, RetryProcessor retryProc, long batchID) {
         int i = 0;
         while (i < numEvents) {
             PersistEvent e = events[i];
@@ -130,7 +135,7 @@ public class Batch {
                 events[numEvents - 1] = tmp;
                 if (numEvents == 1) {
                     clear();
-                    reply.batchResponse(null, batchID, !isTSOInstanceMaster);
+                    reply.batchResponse(null, batchID);
                     return;
                 }
                 numEvents--;
@@ -139,7 +144,7 @@ public class Batch {
             i++;
         }
 
-        reply.batchResponse(this, batchID, !isTSOInstanceMaster);
+        reply.batchResponse(this, batchID);
 
     }
 

@@ -38,13 +38,11 @@ interface ReplyProcessor {
      * @param channel
      *            the communication channed with the client
      */
-    void batchResponse(Batch batch, long batchID, boolean makeHeuristicDecision);
+    void batchResponse(Batch batch, long batchID);
 
     void addAbort(Batch batch, long startTimestamp, Channel c, MonitoringContext context);
 
     void addCommit(Batch batch, long startTimestamp, long commitTimestamp, Channel c, MonitoringContext context);
-
-    void reset();
 
 }
 
