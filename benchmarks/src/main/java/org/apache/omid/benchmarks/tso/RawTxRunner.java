@@ -163,7 +163,7 @@ class RawTxRunner implements Runnable {
 
     }
 
-    public void stop() {
+    void stop() {
         isRunning = false;
     }
 
