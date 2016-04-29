@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.apache.omid</groupId>
         <artifactId>omid</artifactId>
-        <version>0.8.1.47</version>
+        <version>0.8.1.48-SNAPSHOT</version>
     </parent>
 
     <artifactId>hbase-client</artifactId>
