@@ -91,8 +91,8 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
     public void update(TSOState state) throws InterruptedException {
         LOG.info("Initializing RequestProcessor...");
         this.lowWatermark = state.getLowWatermark();
-        persistProc.persistLowWatermark(lowWatermark, new MonitoringContext(metrics));
-        persistProc.persistFlush();
+        persistProc.addLowWatermarkToBatch(lowWatermark, new MonitoringContext(metrics));
+        persistProc.triggerCurrentBatchFlush();
         LOG.info("RequestProcessor initialized with LWMs {} and Epoch {}", lowWatermark, state.getEpoch());
     }
 
@@ -117,7 +117,7 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
         }
 
         if (endOfBatch) {
-            persistProc.persistFlush();
+            persistProc.triggerCurrentBatchFlush();
         }
 
     }
@@ -125,7 +125,7 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
     @Override
     public void onTimeout(long sequence) throws Exception {
 
-        persistProc.persistFlush();
+        persistProc.triggerCurrentBatchFlush();
 
     }
 
@@ -161,7 +161,7 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
             return;
         }
 
-        persistProc.persistTimestamp(timestamp, requestEvent.getChannel(), requestEvent.getMonCtx());
+        persistProc.addTimestampToBatch(timestamp, requestEvent.getChannel(), requestEvent.getMonCtx());
 
     }
 
@@ -208,15 +208,15 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
                     if (newLowWatermark != lowWatermark) {
                         LOG.trace("Setting new low Watermark to {}", newLowWatermark);
                         lowWatermark = newLowWatermark;
-                        persistProc.persistLowWatermark(newLowWatermark, event.getMonCtx());
+                        persistProc.addLowWatermarkToBatch(newLowWatermark, event.getMonCtx());
                     }
                 }
-                persistProc.persistCommit(startTimestamp, commitTimestamp, c, event.getMonCtx());
+                persistProc.addCommitToBatch(startTimestamp, commitTimestamp, c, event.getMonCtx());
             } catch (IOException e) {
                 LOG.error("Error committing", e);
             }
         } else { // add it to the aborted list
-            persistProc.persistAbort(startTimestamp, isRetry, c, event.getMonCtx());
+            persistProc.addAbortToBatch(startTimestamp, isRetry, c, event.getMonCtx());
         }
 
         return commitTimestamp;

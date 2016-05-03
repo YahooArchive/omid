@@ -72,15 +72,11 @@ public class TSOServerConfig extends SecureHBaseConfig {
 
     private int maxItems;
 
-    private int maxBatchSize;
+    private int numConcurrentCTWriters;
+
+    private int batchSizePerCTWriter;
 
     private int batchPersistTimeoutInMs;
-
-    // TODO Rename this (e.g. numOfConcurrentWriters)
-    private int persistHandlerNum;
-
-    // TODO Rename this
-    private int numBuffersPerHandler;
 
     private String networkIfaceName = getDefaultNetworkInterface();
 
@@ -92,8 +88,32 @@ public class TSOServerConfig extends SecureHBaseConfig {
         this.port = port;
     }
 
-    public void setMaxBatchSize(int maxBatchSize) {
-        this.maxBatchSize = maxBatchSize;
+    public int getMaxItems() {
+        return maxItems;
+    }
+
+    public void setMaxItems(int maxItems) {
+        this.maxItems = maxItems;
+    }
+
+    public int getNumConcurrentCTWriters() {
+        return numConcurrentCTWriters;
+    }
+
+    public void setNumConcurrentCTWriters(int numConcurrentCTWriters) {
+        this.numConcurrentCTWriters = numConcurrentCTWriters;
+    }
+
+    public int getBatchSizePerCTWriter() {
+        return batchSizePerCTWriter;
+    }
+
+    public void setBatchSizePerCTWriter(int batchSizePerCTWriter) {
+        this.batchSizePerCTWriter = batchSizePerCTWriter;
+    }
+
+    public int getBatchPersistTimeoutInMs() {
+        return batchPersistTimeoutInMs;
     }
 
     public void setBatchPersistTimeoutInMs(int value) {
@@ -132,48 +152,12 @@ public class TSOServerConfig extends SecureHBaseConfig {
         this.leaseModule = leaseModule;
     }
 
-    public int getMaxItems() {
-        return maxItems;
-    }
-
-    public void setMaxItems(int maxItems) {
-        this.maxItems = maxItems;
-    }
-
-    public int getMaxBatchSize() {
-        return maxBatchSize;
-    }
-
-    public int getBatchPersistTimeoutInMs() {
-        return batchPersistTimeoutInMs;
-    }
-
     public MetricsRegistry getMetrics() {
         return metrics;
     }
 
     public void setMetrics(MetricsRegistry metrics) {
         this.metrics = metrics;
-    }
-
-    // TODO Rename this (e.g. numOfConcurrentWriters)
-    public int getPersistHandlerNum() {
-        return persistHandlerNum;
-    }
-
-    // TODO Rename this
-    public void setPersistHandlerNum(int persistHandlerNum) {
-        this.persistHandlerNum = persistHandlerNum;
-    }
-
-    // TODO Rename this
-    public int getNumBuffersPerHandler() {
-        return numBuffersPerHandler;
-    }
-
-    // TODO Rename this
-    public void setNumBuffersPerHandler(int numBuffersPerHandler) {
-        this.numBuffersPerHandler = numBuffersPerHandler;
     }
 
     // ----------------------------------------------------------------------------------------------------------------

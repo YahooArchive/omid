@@ -21,27 +21,20 @@ import org.jboss.netty.channel.Channel;
 
 interface ReplyProcessor {
 
-    // TODO This documentation does not corresponds to the method below anymore. Put in the right place or remove
     /**
-     * Informs the client about the outcome of the Tx it was trying to commit.
+     * The each reply to a transactional operation for a client is contained in a batch. The batch must be ordered
+     * before sending the replies in order to not to break snapshot isolation properties.
      *
+     * @param batchSequence
+     *            a batch sequence number, used to enforce order between replies
      * @param batch
-     *            the batch of operations
-     * @param batchID
-     *            the id of the batch, used to enforce order between replies
-     * @param makeHeuristicDecision
-     *            informs about whether heuristic actions are needed or not
-     * @param startTimestamp
-     *            the start timestamp of the transaction (a.k.a. tx id)
-     * @param commitTimestamp
-     *            the commit timestamp of the transaction
-     * @param channel
-     *            the communication channed with the client
+     *            a batch containing the transaction operations
      */
-    void batchResponse(Batch batch, long batchID);
+    void manageResponsesBatch(long batchSequence, Batch batch);
 
+    // TODO This method can be removed if we return the responses from the retry processor
     void addAbort(Batch batch, long startTimestamp, Channel c, MonitoringContext context);
-
+    // TODO This method can be removed if we return the responses from the retry processor
     void addCommit(Batch batch, long startTimestamp, long commitTimestamp, Channel c, MonitoringContext context);
 
 }

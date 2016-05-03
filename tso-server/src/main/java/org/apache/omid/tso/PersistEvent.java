@@ -17,6 +17,7 @@
  */
 package org.apache.omid.tso;
 
+import com.google.common.base.Objects;
 import org.jboss.netty.channel.Channel;
 
 public final class PersistEvent {
@@ -112,6 +113,17 @@ public final class PersistEvent {
 
         return lowWatermark;
 
+    }
+
+    @Override
+    public String toString() {
+        return Objects.toStringHelper(this)
+                .add("type", type)
+                .add("isRetry", isRetry)
+                .add("ST", startTimestamp)
+                .add("CT", commitTimestamp)
+                .add("LWM", lowWatermark)
+                .toString();
     }
 
 }

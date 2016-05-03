@@ -55,20 +55,12 @@ public class TestBatch {
     @BeforeMethod(alwaysRun = true, timeOut = 30_000)
     public void initMocksAndComponents() {
         MockitoAnnotations.initMocks(this);
-        batch = new Batch(BATCH_SIZE);
+        batch = new Batch(BATCH_SIZE, 0, null);
     }
 
-    // TODO. Check this test with the contents of the master branch. See commented asserts below
+    // TODO. Refactor the batch and test it properly. See commented asserts below
     @Test
     public void testBatchFunctionality() {
-
-        // Required mocks
-        Channel channel = Mockito.mock(Channel.class);
-        ReplyProcessor replyProcessor = Mockito.mock(ReplyProcessor.class);
-        RetryProcessor retryProcessor = Mockito.mock(RetryProcessor.class);
-
-        // The batch element to test
-        Batch batch = new Batch(BATCH_SIZE);
 
         // Test initial state is OK
         assertFalse(batch.isFull(), "Batch shouldn't be full");
@@ -119,7 +111,7 @@ public class TestBatch {
 //        assertEquals(batch.getNumEvents(), 0, "Num events should be 0");
 //=======
         batch.sendReply(replyProcessor, retryProcessor, (-1));
-        verify(replyProcessor, timeout(100).times(1)).batchResponse(batch, (-1));
+        verify(replyProcessor, timeout(100).times(1)).manageResponsesBatch((-1), batch);
         assertTrue(batch.isFull(), "Batch shouldn't be empty");
     }
 
@@ -141,12 +133,10 @@ public class TestBatch {
             }
         }
 
-        // Test that sending replies empties the batch also when the replica
-        // is NOT master and calls the ambiguousCommitResponse() method on the
-        // reply processor
+        // Test that sending replies empties the batch also when the replica  is NOT master and calls the
+        // ambiguousCommitResponse() method on the reply processor
         batch.sendReply(replyProcessor, retryProcessor, (-1));
-        verify(replyProcessor, timeout(100).times(1))
-               .batchResponse(batch, (-1));
+        verify(replyProcessor, timeout(100).times(1)).manageResponsesBatch((-1), batch);
         assertTrue(batch.isFull(), "Batch should be full");
     }
 

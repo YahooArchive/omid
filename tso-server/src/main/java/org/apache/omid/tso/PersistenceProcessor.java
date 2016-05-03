@@ -19,24 +19,18 @@ package org.apache.omid.tso;
 
 import org.jboss.netty.channel.Channel;
 
-// TODO Check the names of all methods as they do not persist anything anymore
 interface PersistenceProcessor {
 
-    // TODO maybe it should be called addCommit(...) or addCommitToBatch(...)
-    void persistCommit(long startTimestamp, long commitTimestamp, Channel c, MonitoringContext monCtx)
+    void addCommitToBatch(long startTimestamp, long commitTimestamp, Channel c, MonitoringContext monCtx)
             throws InterruptedException;
 
-    // TODO maybe it should be called addAbort(...) or addAbortToBatch(...)
-    void persistAbort(long startTimestamp, boolean isRetry, Channel c, MonitoringContext monCtx)
+    void addAbortToBatch(long startTimestamp, boolean isRetry, Channel c, MonitoringContext monCtx)
             throws InterruptedException;
 
-    // TODO maybe it should be called addTimestamp(...) or addTimestampToBatch(...)
-    void persistTimestamp(long startTimestamp, Channel c, MonitoringContext monCtx) throws InterruptedException;
+    void addTimestampToBatch(long startTimestamp, Channel c, MonitoringContext monCtx) throws InterruptedException;
 
-    // TODO maybe it should be called addLowWatermark(...) or addLowWatermarkToBatch(...)
-    void persistLowWatermark(long lowWatermark, MonitoringContext monCtx);
+    void addLowWatermarkToBatch(long lowWatermark, MonitoringContext monCtx);
 
-    // TODO The name of this method is weird. Rename to "persist"
-    void persistFlush() throws InterruptedException;
+    void triggerCurrentBatchFlush() throws InterruptedException;
 
 }

@@ -123,7 +123,7 @@ class TSOForHBaseCompactorTestModule extends AbstractModule {
 
     @Provides
     PersistenceProcessorHandler[] getPersistenceProcessorHandler(Provider<PersistenceProcessorHandler> provider) {
-        PersistenceProcessorHandler[] persistenceProcessorHandlers = new PersistenceProcessorHandler[config.getPersistHandlerNum()];
+        PersistenceProcessorHandler[] persistenceProcessorHandlers = new PersistenceProcessorHandler[config.getNumConcurrentCTWriters()];
         for (int i = 0; i < persistenceProcessorHandlers.length; i++) {
             persistenceProcessorHandlers[i] = provider.get();
         }

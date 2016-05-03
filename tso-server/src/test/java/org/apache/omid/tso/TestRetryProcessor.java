@@ -66,10 +66,7 @@ public class TestRetryProcessor {
     }
 
     @Test(timeOut = 10_000)
-    public void testBasicFunctionality() throws Exception {
-
-        commitTable.getWriter().addCommittedTransaction(ST_TX_1, CT_TX_1);
-
+    public void testRetriedRequestForANonExistingTxReturnsAbort() throws Exception {
         BatchPool batchPool = new BatchPool(new TSOServerConfig());
 
         // The element to test
@@ -77,22 +74,35 @@ public class TestRetryProcessor {
 
         // Test we'll reply with an abort for a retry request when the start timestamp IS NOT in the commit table
         retryProc.disambiguateRetryRequestHeuristically(NON_EXISTING_ST_TX, channel, new MonitoringContext(metrics));
-        ArgumentCaptor<Long> firstTScapture = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<Long> firstTSCapture = ArgumentCaptor.forClass(Long.class);
 
         verify(replyProc, timeout(100).times(1))
-                .addAbort(any(Batch.class), firstTScapture.capture(), any(Channel.class), any(MonitoringContext.class));
-        long startTS = firstTScapture.getValue();
+                .addAbort(any(Batch.class), firstTSCapture.capture(), any(Channel.class), any(MonitoringContext.class));
+        long startTS = firstTSCapture.getValue();
         assertEquals(startTS, NON_EXISTING_ST_TX, "Captured timestamp should be the same as NON_EXISTING_ST_TX");
+    }
+
+    @Test(timeOut = 10_000)
+    public void testRetriedRequestForAnExistingTxReturnsCommit() throws Exception {
+        BatchPool batchPool = new BatchPool(new TSOServerConfig());
+
+        // The element to test
+        RetryProcessor retryProc = new RetryProcessorImpl(metrics, commitTable, replyProc, panicker, batchPool);
 
         // Test we'll reply with a commit for a retry request when the start timestamp IS in the commit table
+        commitTable.getWriter().addCommittedTransaction(ST_TX_1, CT_TX_1);
         retryProc.disambiguateRetryRequestHeuristically(ST_TX_1, channel, new MonitoringContext(metrics));
-        ArgumentCaptor<Long> secondTScapture = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<Long> firstTSCapture = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<Long> secondTSCapture = ArgumentCaptor.forClass(Long.class);
 
-        verify(replyProc, timeout(100).times(1))
-                .addCommit(any(Batch.class), firstTScapture.capture(), secondTScapture.capture(), any(Channel.class), any(MonitoringContext.class));
+        verify(replyProc, timeout(100).times(1)).addCommit(any(Batch.class),
+                                                           firstTSCapture.capture(),
+                                                           secondTSCapture.capture(),
+                                                           any(Channel.class),
+                                                           any(MonitoringContext.class));
 
-        startTS = firstTScapture.getValue();
-        long commitTS = secondTScapture.getValue();
+        long startTS = firstTSCapture.getValue();
+        long commitTS = secondTSCapture.getValue();
         assertEquals(startTS, ST_TX_1, "Captured timestamp should be the same as ST_TX_1");
         assertEquals(commitTS, CT_TX_1, "Captured timestamp should be the same as CT_TX_1");
     }
@@ -117,9 +127,10 @@ public class TestRetryProcessor {
         // Test we'll reply with an abort for a retry request when the
         // transaction id IS in the commit table BUT invalidated
         retryProc.disambiguateRetryRequestHeuristically(ST_TX_1, channel, new MonitoringContext(metrics));
-        ArgumentCaptor<Long> startTScapture = ArgumentCaptor.forClass(Long.class);
-        verify(replyProc, timeout(100).times(1)).addAbort(any(Batch.class), startTScapture.capture(), any(Channel.class), any(MonitoringContext.class));
-        long startTS = startTScapture.getValue();
+        ArgumentCaptor<Long> startTSCapture = ArgumentCaptor.forClass(Long.class);
+        verify(replyProc, timeout(100).times(1))
+                .addAbort(any(Batch.class), startTSCapture.capture(), any(Channel.class), any(MonitoringContext.class));
+        long startTS = startTSCapture.getValue();
         Assert.assertEquals(startTS, ST_TX_1, "Captured timestamp should be the same as NON_EXISTING_ST_TX");
 
     }

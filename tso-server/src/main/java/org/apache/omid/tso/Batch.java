@@ -17,32 +17,29 @@
  */
 package org.apache.omid.tso;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import org.apache.omid.tso.PersistEvent.Type;
 import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
+
 public class Batch {
 
     private static final Logger LOG = LoggerFactory.getLogger(Batch.class);
 
-    private final PersistEvent[] events;
-    private final int maxBatchSize;
-    private final BatchPool batchPool;
     private final int id;
+    private final int size;
     private int numEvents;
-
-    Batch(int maxBatchSize) {
-
-        this(maxBatchSize, 0, null);
-
-    }
+    private final PersistEvent[] events;
+    private final BatchPool batchPool;
 
     Batch(int size, int id, BatchPool batchPool) {
+
         Preconditions.checkArgument(size > 0, "Size must be positive");
-        LOG.info("Batch id {} created with size {}", id, size);
-        this.maxBatchSize = size;
+        this.size = size;
         this.batchPool = batchPool;
         this.id = id;
         this.numEvents = 0;
@@ -50,12 +47,14 @@ public class Batch {
         for (int i = 0; i < size; i++) {
             this.events[i] = new PersistEvent();
         }
+        LOG.info("Batch id {} created with size {}", id, size);
 
     }
 
     boolean isFull() {
-        Preconditions.checkState(numEvents <= maxBatchSize, "numEvents > maxBatchSize");
-        return numEvents == maxBatchSize;
+
+        Preconditions.checkState(numEvents <= size, "numEvents > size");
+        return numEvents == size;
 
     }
 
@@ -66,8 +65,9 @@ public class Batch {
     }
 
     boolean isLastEntryEmpty() {
-        Preconditions.checkState(numEvents <= maxBatchSize, "numEvents > maxBatchSize");
-        return numEvents == (maxBatchSize - 1);
+
+        Preconditions.checkState(numEvents <= size, "numEvents > size");
+        return numEvents == (size - 1);
 
     }
 
@@ -124,6 +124,7 @@ public class Batch {
     }
 
     void sendReply(ReplyProcessor reply, RetryProcessor retryProc, long batchID) {
+
         int i = 0;
         while (i < numEvents) {
             PersistEvent e = events[i];
@@ -135,7 +136,7 @@ public class Batch {
                 events[numEvents - 1] = tmp;
                 if (numEvents == 1) {
                     clear();
-                    reply.batchResponse(null, batchID);
+                    reply.manageResponsesBatch(batchID, null);
                     return;
                 }
                 numEvents--;
@@ -144,8 +145,18 @@ public class Batch {
             i++;
         }
 
-        reply.batchResponse(this, batchID);
+        reply.manageResponsesBatch(batchID, this);
 
+    }
+
+    @Override
+    public String toString() {
+        return Objects.toStringHelper(this)
+                .add("id", id)
+                .add("size", size)
+                .add("num events", numEvents)
+                .add("events", Arrays.toString(events))
+                .toString();
     }
 
 }

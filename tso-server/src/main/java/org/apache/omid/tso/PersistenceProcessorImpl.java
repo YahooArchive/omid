@@ -18,6 +18,7 @@
 package org.apache.omid.tso;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Objects;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BusySpinWaitStrategy;
 import com.lmax.disruptor.EventFactory;
@@ -33,21 +34,23 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static org.apache.omid.tso.PersistenceProcessorImpl.PersistBatchEvent.EVENT_FACTORY;
+import static org.apache.omid.tso.PersistenceProcessorImpl.PersistBatchEvent.makePersistBatch;
+
 class PersistenceProcessorImpl implements PersistenceProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(PersistenceProcessorImpl.class);
 
     private static final long INITIAL_LWM_VALUE = -1L;
 
-    private final ReplyProcessor replyProcessor;
     private final RingBuffer<PersistBatchEvent> persistRing;
 
     private final BatchPool batchPool;
     @VisibleForTesting
-    Batch batch;
+    Batch currentBatch;
 
     // TODO Next two need to be either int or AtomicLong
-    volatile private long batchIDCnt;
+    volatile private long batchSequence;
     volatile private long lowWatermark = INITIAL_LWM_VALUE;
 
     private MonitoringContext lowWatermarkContext;
@@ -55,82 +58,80 @@ class PersistenceProcessorImpl implements PersistenceProcessor {
     @Inject
     PersistenceProcessorImpl(TSOServerConfig config,
                              BatchPool batchPool,
-                             ReplyProcessor replyProcessor,
                              Panicker panicker,
                              PersistenceProcessorHandler[] handlers)
             throws InterruptedException, ExecutionException, IOException {
 
-        this.batchIDCnt = 0L;
+        this.batchSequence = 0L;
         this.batchPool = batchPool;
-        this.batch = batchPool.getNextEmptyBatch();
+        this.currentBatch = batchPool.getNextEmptyBatch();
 
-        this.replyProcessor = replyProcessor;
+        // Disruptor configuration
+        this.persistRing = RingBuffer.createSingleProducer(EVENT_FACTORY, 1 << 20, new BusySpinWaitStrategy());
 
-        this.persistRing = RingBuffer.createSingleProducer(
-                PersistBatchEvent.EVENT_FACTORY, 1 << 20, new BusySpinWaitStrategy());
+        ThreadFactoryBuilder threadFactory = new ThreadFactoryBuilder().setNameFormat("persist-%d");
+        ExecutorService requestExec = Executors.newFixedThreadPool(config.getNumConcurrentCTWriters(),
+                                                                   threadFactory.build());
 
         WorkerPool<PersistBatchEvent> persistProcessor = new WorkerPool<>(persistRing,
                                                                           persistRing.newBarrier(),
                                                                           new FatalExceptionHandler(panicker),
                                                                           handlers);
         this.persistRing.addGatingSequences(persistProcessor.getWorkerSequences());
-
-        ExecutorService requestExec = Executors.newFixedThreadPool(config.getPersistHandlerNum(),
-                                                                   new ThreadFactoryBuilder().setNameFormat("persist-%d").build());
         persistProcessor.start(requestExec);
 
     }
 
     @Override
-    public void persistFlush() throws InterruptedException {
+    public void triggerCurrentBatchFlush() throws InterruptedException {
 
-        if (batch.isEmpty()) {
+        if (currentBatch.isEmpty()) {
             return;
         }
-        batch.addLowWatermark(this.lowWatermark, this.lowWatermarkContext);
+        currentBatch.addLowWatermark(this.lowWatermark, this.lowWatermarkContext);
         long seq = persistRing.next();
         PersistBatchEvent e = persistRing.get(seq);
-        PersistBatchEvent.makePersistBatch(e, batch, batchIDCnt++);
+        makePersistBatch(e, batchSequence++, currentBatch);
         persistRing.publish(seq);
-        batch = batchPool.getNextEmptyBatch();
+        currentBatch = batchPool.getNextEmptyBatch();
 
     }
 
     @Override
-    public void persistCommit(long startTimestamp, long commitTimestamp, Channel c, MonitoringContext monCtx)
+    public void addCommitToBatch(long startTimestamp, long commitTimestamp, Channel c, MonitoringContext monCtx)
             throws InterruptedException {
 
-        batch.addCommit(startTimestamp, commitTimestamp, c, monCtx);
-        if (batch.isLastEntryEmpty()) {
-            persistFlush();
+        currentBatch.addCommit(startTimestamp, commitTimestamp, c, monCtx);
+        if (currentBatch.isLastEntryEmpty()) {
+            triggerCurrentBatchFlush();
         }
 
     }
 
     @Override
-    public void persistAbort(long startTimestamp, boolean isRetry, Channel c, MonitoringContext context)
+    public void addAbortToBatch(long startTimestamp, boolean isRetry, Channel c, MonitoringContext context)
             throws InterruptedException {
 
-        batch.addAbort(startTimestamp, isRetry, c, context);
-        if (batch.isLastEntryEmpty()) {
-            persistFlush();
+        currentBatch.addAbort(startTimestamp, isRetry, c, context);
+        if (currentBatch.isLastEntryEmpty()) {
+            triggerCurrentBatchFlush();
         }
 
     }
 
     @Override
-    public void persistTimestamp(long startTimestamp, Channel c, MonitoringContext context)
+    public void addTimestampToBatch(long startTimestamp, Channel c, MonitoringContext context)
             throws InterruptedException {
 
-        batch.addTimestamp(startTimestamp, c, context);
-        if (batch.isLastEntryEmpty()) {
-            persistFlush();
+        currentBatch.addTimestamp(startTimestamp, c, context);
+        if (currentBatch.isLastEntryEmpty()) {
+            triggerCurrentBatchFlush();
         }
 
     }
 
     @Override
-    public void persistLowWatermark(long lowWatermark, MonitoringContext context) {
+    public void addLowWatermarkToBatch(long lowWatermark, MonitoringContext context) {
 
         this.lowWatermark = lowWatermark;
         this.lowWatermarkContext = context;
@@ -139,20 +140,20 @@ class PersistenceProcessorImpl implements PersistenceProcessor {
 
     final static class PersistBatchEvent {
 
+        private long batchSequence;
         private Batch batch;
-        private long batchID;
 
-        static void makePersistBatch(PersistBatchEvent e, Batch batch, long batchID) {
+        static void makePersistBatch(PersistBatchEvent e, long batchSequence, Batch batch) {
             e.batch = batch;
-            e.batchID = batchID;
+            e.batchSequence = batchSequence;
         }
 
         Batch getBatch() {
             return batch;
         }
 
-        long getBatchID() {
-            return batchID;
+        long getBatchSequence() {
+            return batchSequence;
         }
 
         final static EventFactory<PersistBatchEvent> EVENT_FACTORY = new EventFactory<PersistBatchEvent>() {
@@ -160,6 +161,14 @@ class PersistenceProcessorImpl implements PersistenceProcessor {
                 return new PersistBatchEvent();
             }
         };
+
+        @Override
+        public String toString() {
+            return Objects.toStringHelper(this)
+                    .add("batchSequence", batchSequence)
+                    .add("batch", batch)
+                    .toString();
+        }
 
     }
 

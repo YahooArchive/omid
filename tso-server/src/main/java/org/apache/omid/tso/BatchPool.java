@@ -34,13 +34,12 @@ public class BatchPool {
     @Inject
     public BatchPool(TSOServerConfig config) {
 
-        int numBuffersPerHandler = (config.getNumBuffersPerHandler() >= 2) ? config.getNumBuffersPerHandler() : 2;
-        poolSize = config.getPersistHandlerNum() * numBuffersPerHandler;
-        LOG.info("Config param maxBatchSize {}", config.getMaxBatchSize());
-        LOG.info("Persistent Handlers {} ; Buffers per handler {}", config.getPersistHandlerNum(), numBuffersPerHandler);
+        poolSize = config.getNumConcurrentCTWriters();
+        int batchSize = config.getBatchSizePerCTWriter() + 1; // Add 1 element to batch size for storing LWM
+
+        LOG.info("Pool Size (Batches) {}; Batch Size {} (including LWM bucket)", poolSize, batchSize);
+        LOG.info("Total Batch Size (Pool size * Batch Size): {}", poolSize * batchSize);
         batches = new Batch[poolSize];
-        // TODO The + 1 is because the low watermark is added in each flush and needs one extra position. Fix and clarify initialization
-        int batchSize = (config.getMaxBatchSize() / config.getPersistHandlerNum() > 0) ? (config.getMaxBatchSize() / config.getPersistHandlerNum()) + 1 : 2;
 
         LOG.info("Creating {} Batches with {} elements each", poolSize, batchSize);
         for (int i = 0; i < poolSize; i++) {

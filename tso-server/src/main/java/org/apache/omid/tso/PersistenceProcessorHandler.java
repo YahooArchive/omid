@@ -17,6 +17,7 @@
  */
 package org.apache.omid.tso;
 
+import com.lmax.disruptor.LifecycleAware;
 import com.lmax.disruptor.WorkHandler;
 import org.apache.omid.committable.CommitTable;
 import org.apache.omid.metrics.Histogram;
@@ -93,14 +94,11 @@ public class PersistenceProcessorHandler implements WorkHandler<PersistenceProce
                 throw new RuntimeException("Unknown event type: " + localEvent.getType().name());
             }
         }
-        flush(batch, event.getBatchID());
+        flush(batch, event.getBatchSequence());
 
     }
 
-    // TODO Fix this method with the contents of PersistenceProcessor.flush() in master branch
-    // TODO This is related to the changes in TestPersistenceProcessor.testCommitPersistenceWithHALeaseManager().
-    // TODO Check also that test in the master branch
-    private void flush(Batch batch, long batchID) {
+    private void flush(Batch batch, long batchSequence) {
 
         if (batch.getNumEvents() > 0) {
             commitSuicideIfNotMaster();
@@ -113,7 +111,7 @@ public class PersistenceProcessorHandler implements WorkHandler<PersistenceProce
                 panicker.panic("Error persisting commit batch", e);
             }
             commitSuicideIfNotMaster(); // TODO Here, we can return the client responses before committing suicide
-            batch.sendReply(replyProcessor, retryProc, batchID);
+            batch.sendReply(replyProcessor, retryProc, batchSequence);
         }
 
     }

@@ -165,28 +165,30 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
     }
 
     @Override
-    public void batchResponse(Batch batch, long batchID) {
+    public void manageResponsesBatch(long batchSequence, Batch batch) {
 
         long seq = replyRing.next();
         ReplyBatchEvent e = replyRing.get(seq);
-        ReplyBatchEvent.makeReplyBatch(e, batch, batchID);
+        ReplyBatchEvent.makeReplyBatch(e, batch, batchSequence);
         replyRing.publish(seq);
 
     }
 
+    // TODO This method can be removed if we return the responses from the retry processor
     @Override
     public void addAbort(Batch batch, long startTimestamp, Channel c, MonitoringContext context) {
 
         batch.addAbort(startTimestamp, true, c, context);
-        batchResponse(batch, NO_ORDER);
+        manageResponsesBatch(NO_ORDER, batch);
 
     }
 
+    // TODO This method can be removed if we return the responses from the retry processor
     @Override
     public void addCommit(Batch batch, long startTimestamp, long commitTimestamp, Channel c, MonitoringContext context) {
 
         batch.addCommit(startTimestamp, commitTimestamp, c, context);
-        batchResponse(batch, NO_ORDER);
+        manageResponsesBatch(NO_ORDER, batch);
 
     }
 

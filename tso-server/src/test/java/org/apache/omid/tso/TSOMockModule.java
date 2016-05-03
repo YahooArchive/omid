@@ -17,6 +17,7 @@
  */
 package org.apache.omid.tso;
 
+import com.google.common.base.Preconditions;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
@@ -40,6 +41,7 @@ public class TSOMockModule extends AbstractModule {
     private final TSOServerConfig config;
 
     public TSOMockModule(TSOServerConfig config) {
+        Preconditions.checkArgument(config.getNumConcurrentCTWriters() >= 2, "# of Commit Table writers must be >= 2");
         this.config = config;
     }
 
@@ -78,7 +80,7 @@ public class TSOMockModule extends AbstractModule {
 
     @Provides
     PersistenceProcessorHandler[] getPersistenceProcessorHandler(Provider<PersistenceProcessorHandler> provider) {
-        PersistenceProcessorHandler[] persistenceProcessorHandlers = new PersistenceProcessorHandler[config.getPersistHandlerNum()];
+        PersistenceProcessorHandler[] persistenceProcessorHandlers = new PersistenceProcessorHandler[config.getNumConcurrentCTWriters()];
         for (int i = 0; i < persistenceProcessorHandlers.length; i++) {
             persistenceProcessorHandlers[i] = provider.get();
         }

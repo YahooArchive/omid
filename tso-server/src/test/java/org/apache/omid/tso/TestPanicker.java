@@ -119,8 +119,8 @@ public class TestPanicker {
         TSOServerConfig config = new TSOServerConfig();
         BatchPool batchPool = new BatchPool(config);
 
-        PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[config.getPersistHandlerNum()];
-        for (int i = 0; i < config.getPersistHandlerNum(); i++) {
+        PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[config.getNumConcurrentCTWriters()];
+        for (int i = 0; i < config.getNumConcurrentCTWriters(); i++) {
             handlers[i] = new PersistenceProcessorHandler(metrics,
                                                           "localhost:1234",
                                                           leaseManager,
@@ -132,11 +132,10 @@ public class TestPanicker {
 
         PersistenceProcessor proc = new PersistenceProcessorImpl(config,
                                                                  batchPool,
-                                                                 mock(ReplyProcessor.class),
                                                                  panicker,
                                                                  handlers);
 
-        proc.persistCommit(1, 2, null, new MonitoringContext(metrics));
+        proc.addCommitToBatch(1, 2, null, new MonitoringContext(metrics));
 
         new RequestProcessorImpl(metrics, mock(TimestampOracle.class), proc, panicker, mock(TSOServerConfig.class));
 
@@ -170,8 +169,8 @@ public class TestPanicker {
         TSOServerConfig config = new TSOServerConfig();
         BatchPool batchPool = new BatchPool(config);
 
-        PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[config.getPersistHandlerNum()];
-        for (int i = 0; i < config.getPersistHandlerNum(); i++) {
+        PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[config.getNumConcurrentCTWriters()];
+        for (int i = 0; i < config.getNumConcurrentCTWriters(); i++) {
             handlers[i] = new PersistenceProcessorHandler(metrics,
                                                           "localhost:1234",
                                                           mock(LeaseManager.class),
@@ -183,10 +182,9 @@ public class TestPanicker {
 
         PersistenceProcessor proc = new PersistenceProcessorImpl(config,
                                                                  batchPool,
-                                                                 mock(ReplyProcessor.class),
                                                                  panicker,
                                                                  handlers);
-        proc.persistCommit(1, 2, null, new MonitoringContext(metrics));
+        proc.addCommitToBatch(1, 2, null, new MonitoringContext(metrics));
 
         new RequestProcessorImpl(metrics, mock(TimestampOracle.class), proc, panicker, mock(TSOServerConfig.class));
 
