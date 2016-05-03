@@ -20,7 +20,7 @@ package org.apache.omid.tso;
 import javax.inject.Inject;
 import java.util.Stack;
 
-class BatchPool {
+public class BatchPool {
 
     final private Batch[] batches;
     final private int poolSize;

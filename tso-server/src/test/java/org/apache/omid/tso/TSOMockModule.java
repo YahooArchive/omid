@@ -52,6 +52,7 @@ public class TSOMockModule extends AbstractModule {
         bind(TimestampStorage.class).to(InMemoryTimestampStorage.class).in(Singleton.class);
         bind(TimestampOracle.class).to(PausableTimestampOracle.class).in(Singleton.class);
         bind(Panicker.class).to(MockPanicker.class).in(Singleton.class);
+        bind(BatchPool.class).in(Singleton.class);
 
         install(config.getLeaseModule());
         install(new DisruptorModule());

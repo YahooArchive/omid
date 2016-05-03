@@ -26,6 +26,7 @@ import org.apache.omid.metrics.MetricsRegistry;
 import org.apache.omid.metrics.NullMetricsProvider;
 import org.apache.omid.timestamp.storage.HBaseTimestampStorage;
 import org.apache.omid.timestamp.storage.TimestampStorage;
+import org.apache.omid.tso.BatchPool;
 import org.apache.omid.tso.DisruptorModule;
 import org.apache.omid.tso.RuntimeExceptionPanicker;
 import org.apache.omid.tso.NetworkInterfaceUtils;
@@ -69,6 +70,8 @@ class TestTSOModule extends AbstractModule {
         bind(TimestampStorage.class).to(HBaseTimestampStorage.class).in(Singleton.class);
         bind(TimestampOracle.class).to(PausableTimestampOracle.class).in(Singleton.class);
         bind(Panicker.class).to(RuntimeExceptionPanicker.class).in(Singleton.class);
+
+        bind(BatchPool.class).in(Singleton.class);
 
         // Disruptor setup
         install(new DisruptorModule());

@@ -44,6 +44,7 @@ class TSOModule extends AbstractModule {
         bind(TSOStateManager.class).to(TSOStateManagerImpl.class).in(Singleton.class);
         bind(TimestampOracle.class).to(TimestampOracleImpl.class).in(Singleton.class);
         bind(Panicker.class).to(RuntimeExceptionPanicker.class).in(Singleton.class);
+        bind(BatchPool.class).in(Singleton.class);
 
         // Disruptor setup
         install(new DisruptorModule());
