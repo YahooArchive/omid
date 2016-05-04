@@ -17,7 +17,6 @@
  */
 package org.apache.omid.tso;
 
-import com.lmax.disruptor.LifecycleAware;
 import com.lmax.disruptor.WorkHandler;
 import org.apache.omid.committable.CommitTable;
 import org.apache.omid.metrics.Histogram;
@@ -94,25 +93,24 @@ public class PersistenceProcessorHandler implements WorkHandler<PersistenceProce
                 throw new RuntimeException("Unknown event type: " + localEvent.getType().name());
             }
         }
-        flush(batch, event.getBatchSequence());
-
+        if (batch.getNumEvents() > 0) {
+            flush(batch.getNumEvents());
+            sendReplies(batch, event.getBatchSequence());
+        }
     }
 
-    private void flush(Batch batch, long batchSequence) {
+    private void flush(int numBatchedEvents) {
 
-        if (batch.getNumEvents() > 0) {
             commitSuicideIfNotMaster();
             try {
                 long startFlushTimeInNs = System.nanoTime();
                 writer.flush();
                 flushTimer.update(System.nanoTime() - startFlushTimeInNs);
-                batchSizeHistogram.update(batch.getNumEvents());
+                batchSizeHistogram.update(numBatchedEvents);
             } catch (IOException e) {
                 panicker.panic("Error persisting commit batch", e);
             }
             commitSuicideIfNotMaster(); // TODO Here, we can return the client responses before committing suicide
-            batch.sendReply(replyProcessor, retryProc, batchSequence);
-        }
 
     }
 
@@ -120,6 +118,32 @@ public class PersistenceProcessorHandler implements WorkHandler<PersistenceProce
         if (!leaseManager.stillInLeasePeriod()) {
             panicker.panic("Replica " + tsoHostAndPort + " lost mastership whilst flushing data. Committing suicide");
         }
+    }
+
+    private void sendReplies(Batch batch, long batchSequence) {
+
+        int i = 0;
+        while (i < batch.getNumEvents()) {
+            PersistEvent e = batch.get(i);
+            if (e.getType() == PersistEvent.Type.ABORT && e.isRetry()) {
+                retryProc.disambiguateRetryRequestHeuristically(e.getStartTimestamp(), e.getChannel(), e.getMonCtx());
+                PersistEvent tmp = batch.get(i);
+                //TODO: why assign it?
+                batch.set(i, batch.get(batch.getNumEvents() - 1));
+                batch.set(batch.getNumEvents()  - 1, tmp);
+                if (batch.getNumEvents()  == 1) {
+                    batch.clear();
+                    replyProcessor.manageResponsesBatch(batchSequence, null);
+                    return;
+                }
+                batch.decreaseNumEvents();
+                continue;
+            }
+            i++;
+        }
+
+        replyProcessor.manageResponsesBatch(batchSequence, batch);
+
     }
 
 }

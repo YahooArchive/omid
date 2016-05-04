@@ -91,6 +91,18 @@ public class Batch {
 
     }
 
+    PersistEvent get(int idx) {
+        return events[idx];
+    }
+
+    void set(int idx, PersistEvent event) {
+        events[idx] = event;
+    }
+
+    void decreaseNumEvents() {
+        numEvents--;
+    }
+
     void addCommit(long startTimestamp, long commitTimestamp, Channel c, MonitoringContext context) {
         Preconditions.checkState(!isFull(), "batch is full");
         int index = numEvents++;
@@ -120,32 +132,6 @@ public class Batch {
         int index = numEvents++;
         PersistEvent e = events[index];
         e.makePersistLowWatermark(lowWatermark, context);
-
-    }
-
-    void sendReply(ReplyProcessor reply, RetryProcessor retryProc, long batchID) {
-
-        int i = 0;
-        while (i < numEvents) {
-            PersistEvent e = events[i];
-            if (e.getType() == Type.ABORT && e.isRetry()) {
-                retryProc.disambiguateRetryRequestHeuristically(e.getStartTimestamp(), e.getChannel(), e.getMonCtx());
-                PersistEvent tmp = events[i];
-                //TODO: why assign it?
-                events[i] = events[numEvents - 1];
-                events[numEvents - 1] = tmp;
-                if (numEvents == 1) {
-                    clear();
-                    reply.manageResponsesBatch(batchID, null);
-                    return;
-                }
-                numEvents--;
-                continue;
-            }
-            i++;
-        }
-
-        reply.manageResponsesBatch(batchID, this);
 
     }
 
