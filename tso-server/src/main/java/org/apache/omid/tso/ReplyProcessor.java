@@ -32,10 +32,38 @@ interface ReplyProcessor {
      */
     void manageResponsesBatch(long batchSequence, Batch batch);
 
-    // TODO This method can be removed if we return the responses from the retry processor
-    void addAbort(Batch batch, long startTimestamp, Channel c, MonitoringContext context);
-    // TODO This method can be removed if we return the responses from the retry processor
-    void addCommit(Batch batch, long startTimestamp, long commitTimestamp, Channel c, MonitoringContext context);
+    /**
+     * Allows to send a commit response back to the client.
+     *
+     * @param startTimestamp
+     *            the start timestamp representing the tx identifier that is going to receive the commit response
+     * @param commitTimestamp
+     *            the commit timestamp
+     * @param channel
+     *            the channel used to send the response back to the client
+     */
+    void sendCommitResponse(long startTimestamp, long commitTimestamp, Channel channel);
+
+    /**
+     * Allows to send an abort response back to the client.
+     *
+     * @param startTimestamp
+     *            the start timestamp representing the tx identifier that is going to receive the abort response
+     * @param channel
+     *            the channel used to send the response back to the client
+     */
+    void sendAbortResponse(long startTimestamp, Channel channel);
+
+    /**
+     * Allow to send a timestamp response back to the client.
+     *
+     * @param startTimestamp
+     *            the start timestamp to return that will represent the tx identifier for the created transaction
+     * @param channel
+     *            the channel used to send the response back to the client
+     */
+
+    void sendTimestampResponse(long startTimestamp, Channel channel);
 
 }
 

@@ -46,8 +46,6 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
 
     private static final Logger LOG = LoggerFactory.getLogger(ReplyProcessorImpl.class);
 
-    private static final int NO_ORDER = (-1);
-
     private final ObjectPool<Batch> batchPool;
 
     private final RingBuffer<ReplyBatchEvent> replyRing;
@@ -82,7 +80,7 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
 
         this.futureEvents = new PriorityQueue<>(10, new Comparator<ReplyBatchEvent>() {
             public int compare(ReplyBatchEvent replyBatchEvent1, ReplyBatchEvent replyBatchEvent2) {
-                return Long.compare(replyBatchEvent1.getBatchID(), replyBatchEvent2.getBatchID());
+                return Long.compare(replyBatchEvent1.getBatchSequence(), replyBatchEvent2.getBatchSequence());
             }
         });
 
@@ -96,28 +94,29 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
 
         String name;
         Batch batch = event.getBatch();
-        for (int i=0; batch != null && i < batch.getNumEvents(); ++i) {
+        for (int i = 0; batch != null && i < batch.getNumEvents(); ++i) {
             PersistEvent localEvent = batch.get(i);
 
             switch (localEvent.getType()) {
             case COMMIT:
                 name = "commitReplyProcessor";
                 localEvent.getMonCtx().timerStart(name);
-                handleCommitResponse(localEvent.getStartTimestamp(), localEvent.getCommitTimestamp(), localEvent.getChannel());
+                sendCommitResponse(localEvent.getStartTimestamp(), localEvent.getCommitTimestamp(), localEvent.getChannel());
                 localEvent.getMonCtx().timerStop(name);
                  break;
             case ABORT:
                 name = "abortReplyProcessor";
                 localEvent.getMonCtx().timerStart(name);
-                handleAbortResponse(localEvent.getStartTimestamp(), localEvent.getChannel());
+                sendAbortResponse(localEvent.getStartTimestamp(), localEvent.getChannel());
                 localEvent.getMonCtx().timerStop(name);
                 break;
             case TIMESTAMP:
                 name = "timestampReplyProcessor";
                 localEvent.getMonCtx().timerStart(name);
-                handleTimestampResponse(localEvent.getStartTimestamp(), localEvent.getChannel());
+                sendTimestampResponse(localEvent.getStartTimestamp(), localEvent.getChannel());
                 localEvent.getMonCtx().timerStop(name);
                 break;
+            // TODO Check if we still need this
             case LOW_WATERMARK:
                 break;
             default:
@@ -135,7 +134,7 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
 
     private void processWaitingEvents() throws Exception {
 
-        while (!futureEvents.isEmpty() && futureEvents.peek().getBatchID() == nextIDToHandle.get()) {
+        while (!futureEvents.isEmpty() && futureEvents.peek().getBatchSequence() == nextIDToHandle.get()) {
             ReplyBatchEvent e = futureEvents.poll();
             handleReplyBatchEvent(e);
             nextIDToHandle.incrementAndGet();
@@ -150,16 +149,12 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
         // while commit smaller than still does not appear in the commit table.
 
         // If previous events were not processed yet (events contain smaller id)
-        if (event.getBatchID() > nextIDToHandle.get()) {
+        if (event.getBatchSequence() > nextIDToHandle.get()) {
             futureEvents.add(event);
             return;
         }
 
         handleReplyBatchEvent(event);
-
-        if (event.getBatchID() == NO_ORDER) {
-            return;
-        }
 
         nextIDToHandle.incrementAndGet();
 
@@ -178,25 +173,8 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
 
     }
 
-    // TODO This method can be removed if we return the responses from the retry processor
     @Override
-    public void addAbort(Batch batch, long startTimestamp, Channel c, MonitoringContext context) {
-
-        batch.addAbort(startTimestamp, true, c, context);
-        manageResponsesBatch(NO_ORDER, batch);
-
-    }
-
-    // TODO This method can be removed if we return the responses from the retry processor
-    @Override
-    public void addCommit(Batch batch, long startTimestamp, long commitTimestamp, Channel c, MonitoringContext context) {
-
-        batch.addCommit(startTimestamp, commitTimestamp, c, context);
-        manageResponsesBatch(NO_ORDER, batch);
-
-    }
-
-    private void handleCommitResponse(long startTimestamp, long commitTimestamp, Channel c) {
+    public void sendCommitResponse(long startTimestamp, long commitTimestamp, Channel c) {
 
         TSOProto.Response.Builder builder = TSOProto.Response.newBuilder();
         TSOProto.CommitResponse.Builder commitBuilder = TSOProto.CommitResponse.newBuilder();
@@ -210,7 +188,8 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
 
     }
 
-    private void handleAbortResponse(long startTimestamp, Channel c) {
+    @Override
+    public void sendAbortResponse(long startTimestamp, Channel c) {
 
         TSOProto.Response.Builder builder = TSOProto.Response.newBuilder();
         TSOProto.CommitResponse.Builder commitBuilder = TSOProto.CommitResponse.newBuilder();
@@ -223,7 +202,8 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
 
     }
 
-    private void handleTimestampResponse(long startTimestamp, Channel c) {
+    @Override
+    public void sendTimestampResponse(long startTimestamp, Channel c) {
 
         TSOProto.Response.Builder builder = TSOProto.Response.newBuilder();
         TSOProto.TimestampResponse.Builder respBuilder = TSOProto.TimestampResponse.newBuilder();
@@ -238,19 +218,19 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
     final static class ReplyBatchEvent {
 
         private Batch batch;
-        private long batchID;
+        private long batchSequence;
 
-        static void makeReplyBatch(ReplyBatchEvent e, Batch batch, long batchID) {
+        static void makeReplyBatch(ReplyBatchEvent e, Batch batch, long batchSequence) {
             e.batch = batch;
-            e.batchID = batchID;
+            e.batchSequence = batchSequence;
         }
 
         Batch getBatch() {
             return batch;
         }
 
-        long getBatchID() {
-            return batchID;
+        long getBatchSequence() {
+            return batchSequence;
         }
 
         final static EventFactory<ReplyBatchEvent> EVENT_FACTORY = new EventFactory<ReplyBatchEvent>() {

@@ -43,8 +43,6 @@ public class TestRetryProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestRetryProcessor.class);
 
-    private MetricsRegistry metrics = new NullMetricsProvider();
-
     private static long NON_EXISTING_ST_TX = 1000;
     private static long ST_TX_1 = 0;
     private static long CT_TX_1 = 1;
@@ -55,6 +53,8 @@ public class TestRetryProcessor {
     private ReplyProcessor replyProc;
     @Mock
     private Panicker panicker;
+    @Mock
+    private MetricsRegistry metrics;
 
     private CommitTable commitTable;
 
@@ -63,7 +63,6 @@ public class TestRetryProcessor {
         MockitoAnnotations.initMocks(this);
         // Init components
         commitTable = new InMemoryCommitTable();
-        metrics = new NullMetricsProvider();
     }
 
     @Test(timeOut = 10_000)
@@ -77,8 +76,7 @@ public class TestRetryProcessor {
         retryProc.disambiguateRetryRequestHeuristically(NON_EXISTING_ST_TX, channel, new MonitoringContext(metrics));
         ArgumentCaptor<Long> firstTSCapture = ArgumentCaptor.forClass(Long.class);
 
-        verify(replyProc, timeout(100).times(1))
-                .addAbort(any(Batch.class), firstTSCapture.capture(), any(Channel.class), any(MonitoringContext.class));
+        verify(replyProc, timeout(100).times(1)).sendAbortResponse(firstTSCapture.capture(), any(Channel.class));
         long startTS = firstTSCapture.getValue();
         assertEquals(startTS, NON_EXISTING_ST_TX, "Captured timestamp should be the same as NON_EXISTING_ST_TX");
     }
@@ -96,16 +94,15 @@ public class TestRetryProcessor {
         ArgumentCaptor<Long> firstTSCapture = ArgumentCaptor.forClass(Long.class);
         ArgumentCaptor<Long> secondTSCapture = ArgumentCaptor.forClass(Long.class);
 
-        verify(replyProc, timeout(100).times(1)).addCommit(any(Batch.class),
-                                                           firstTSCapture.capture(),
-                                                           secondTSCapture.capture(),
-                                                           any(Channel.class),
-                                                           any(MonitoringContext.class));
+        verify(replyProc, timeout(100).times(1)).sendCommitResponse(firstTSCapture.capture(),
+                                                                    secondTSCapture.capture(),
+                                                                    any(Channel.class));
 
         long startTS = firstTSCapture.getValue();
         long commitTS = secondTSCapture.getValue();
         assertEquals(startTS, ST_TX_1, "Captured timestamp should be the same as ST_TX_1");
         assertEquals(commitTS, CT_TX_1, "Captured timestamp should be the same as CT_TX_1");
+
     }
 
     @Test(timeOut = 10_000)
@@ -125,12 +122,10 @@ public class TestRetryProcessor {
         // The element to test
         RetryProcessor retryProc = new RetryProcessorImpl(metrics, commitTable, replyProc, panicker, batchPool);
 
-        // Test we'll reply with an abort for a retry request when the
-        // transaction id IS in the commit table BUT invalidated
+        // Test we return an Abort to a retry request when the transaction id IS in the commit table BUT invalidated
         retryProc.disambiguateRetryRequestHeuristically(ST_TX_1, channel, new MonitoringContext(metrics));
         ArgumentCaptor<Long> startTSCapture = ArgumentCaptor.forClass(Long.class);
-        verify(replyProc, timeout(100).times(1))
-                .addAbort(any(Batch.class), startTSCapture.capture(), any(Channel.class), any(MonitoringContext.class));
+        verify(replyProc, timeout(100).times(1)).sendAbortResponse(startTSCapture.capture(), any(Channel.class));
         long startTS = startTSCapture.getValue();
         Assert.assertEquals(startTS, ST_TX_1, "Captured timestamp should be the same as NON_EXISTING_ST_TX");
 

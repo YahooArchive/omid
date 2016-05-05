@@ -24,7 +24,6 @@ import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
-import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.YieldingWaitStrategy;
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.omid.committable.CommitTable;
@@ -48,7 +47,8 @@ import java.util.concurrent.ThreadFactory;
 import static com.codahale.metrics.MetricRegistry.name;
 
 /**
- * Manages the retry requests that clients can send when they did not received the response in the specified timeout.
+ * Manages the disambiguation of the retry requests that clients send when they did not received a response in the
+ * specified timeout. It replies directly to the client with the outcome identified.
  */
 class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>, RetryProcessor {
 
@@ -59,7 +59,6 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
     final RingBuffer<RetryEvent> retryRing;
 
     final CommitTable.Client commitTableClient;
-    final CommitTable.Writer writer; // TODO This is not used. Remove
     final ObjectPool<Batch> batchPool;
 
     // Metrics
@@ -74,7 +73,6 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
             throws InterruptedException, ExecutionException, IOException {
 
         this.commitTableClient = commitTable.getClient();
-        this.writer = commitTable.getWriter();
         this.replyProc = replyProc;
         this.batchPool = batchPool;
 
@@ -109,24 +107,22 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
 
     }
 
-    // TODO Reply to the client directly here instead of adding new workload to the reply processor. This avoids a lot
-    // of complexity
     private void handleCommitRetry(RetryEvent event) throws Exception {
+
         long startTimestamp = event.getStartTimestamp();
         try {
             Optional<CommitTimestamp> commitTimestamp = commitTableClient.getCommitTimestamp(startTimestamp).get();
-            Batch batch = batchPool.borrowObject();
             if(commitTimestamp.isPresent()) {
                 if (commitTimestamp.get().isValid()) {
-                    LOG.trace("Valid commit TS found in Commit Table");
-                    replyProc.addCommit(batch, startTimestamp, commitTimestamp.get().getValue(), event.getChannel(), event.getMonCtx());
+                    LOG.trace("Valid commit TS found in Commit Table. Replying Commit to the client...");
+                    replyProc.sendCommitResponse(startTimestamp, commitTimestamp.get().getValue(), event.getChannel());
                 } else {
-                    LOG.trace("Invalid commit TS found in Commit Table");
-                    replyProc.addAbort(batch, startTimestamp, event.getChannel(), event.getMonCtx());
+                    LOG.trace("Invalid commit TS found in Commit Table. Replying Abort to the client...");
+                    replyProc.sendAbortResponse(startTimestamp, event.getChannel());
                 }
             } else {
-                LOG.trace("No commit TS found in Commit Table");
-                replyProc.addAbort(batch, startTimestamp, event.getChannel(), event.getMonCtx());
+                LOG.trace("No commit TS found in Commit Table. Replying Abort to the client..");
+                replyProc.sendAbortResponse(startTimestamp, event.getChannel());
             }
         } catch (InterruptedException e) {
             LOG.error("Interrupted reading from commit table");
