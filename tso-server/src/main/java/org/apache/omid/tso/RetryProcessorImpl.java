@@ -26,6 +26,7 @@ import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.YieldingWaitStrategy;
+import org.apache.commons.pool2.ObjectPool;
 import org.apache.omid.committable.CommitTable;
 import org.apache.omid.committable.CommitTable.CommitTimestamp;
 import org.apache.omid.metrics.Meter;
@@ -59,7 +60,7 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
 
     final CommitTable.Client commitTableClient;
     final CommitTable.Writer writer; // TODO This is not used. Remove
-    final BatchPool batchPool;
+    final ObjectPool<Batch> batchPool;
 
     // Metrics
     final Meter retriesMeter;
@@ -69,7 +70,7 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
                        CommitTable commitTable,
                        ReplyProcessor replyProc,
                        Panicker panicker,
-                       BatchPool batchPool)
+                       ObjectPool<Batch> batchPool)
             throws InterruptedException, ExecutionException, IOException {
 
         this.commitTableClient = commitTable.getClient();
@@ -108,11 +109,13 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
 
     }
 
-    private void handleCommitRetry(RetryEvent event) throws InterruptedException, ExecutionException {
+    // TODO Reply to the client directly here instead of adding new workload to the reply processor. This avoids a lot
+    // of complexity
+    private void handleCommitRetry(RetryEvent event) throws Exception {
         long startTimestamp = event.getStartTimestamp();
         try {
             Optional<CommitTimestamp> commitTimestamp = commitTableClient.getCommitTimestamp(startTimestamp).get();
-            Batch batch = batchPool.getNextEmptyBatch();
+            Batch batch = batchPool.borrowObject();
             if(commitTimestamp.isPresent()) {
                 if (commitTimestamp.get().isValid()) {
                     LOG.trace("Valid commit TS found in Commit Table");

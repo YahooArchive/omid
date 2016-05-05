@@ -26,6 +26,7 @@ import org.apache.omid.metrics.MetricsRegistry;
 import org.apache.omid.metrics.NullMetricsProvider;
 import org.apache.omid.timestamp.storage.HBaseTimestampStorage;
 import org.apache.omid.timestamp.storage.TimestampStorage;
+import org.apache.omid.tso.BatchPoolModule;
 import org.apache.omid.tso.DisruptorModule;
 import org.apache.omid.tso.LeaseManagement;
 import org.apache.omid.tso.MockPanicker;
@@ -76,6 +77,7 @@ class TSOForHBaseCompactorTestModule extends AbstractModule {
         bind(TimestampStorage.class).to(HBaseTimestampStorage.class).in(Singleton.class);
         bind(TimestampOracle.class).to(TimestampOracleImpl.class).in(Singleton.class);
 
+        install(new BatchPoolModule(config));
         // DisruptorConfig
         install(new DisruptorModule());
 

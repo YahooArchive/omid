@@ -17,6 +17,7 @@
  */
 package org.apache.omid.tso;
 
+import org.apache.commons.pool2.ObjectPool;
 import org.apache.omid.committable.CommitTable;
 import org.apache.omid.metrics.MetricsRegistry;
 import org.apache.omid.metrics.NullMetricsProvider;
@@ -38,7 +39,6 @@ import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
@@ -107,7 +107,9 @@ public class TestPersistenceProcessor {
         tsoConfig.setBatchSizePerCTWriter(BATCH_SIZE_PER_CT_WRITER);
         tsoConfig.setNumConcurrentCTWriters(NUM_CT_WRITERS);
 
-        ReplyProcessor replyProcessor = new ReplyProcessorImpl(metrics, panicker);
+        ObjectPool<Batch> batchPool = spy(new BatchPoolModule(tsoConfig).getBatchPool());
+
+        ReplyProcessor replyProcessor = new ReplyProcessorImpl(metrics, panicker, batchPool);
 
         PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[tsoConfig.getNumConcurrentCTWriters()];
         for (int i = 0; i < tsoConfig.getNumConcurrentCTWriters(); i++) {
@@ -120,20 +122,17 @@ public class TestPersistenceProcessor {
         }
 
         // Component under test
-        BatchPool batchPool = spy(new BatchPool(tsoConfig));
-
         PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, batchPool, panicker, handlers);
+        proc.addLowWatermarkToBatch(ANY_LWM, new MonitoringContext(metrics)); // Add a fake DUMMY_LWM
 
-        proc.addLowWatermarkToBatch(ANY_LWM, new MonitoringContext(metrics)); // Add a fake LWM
-
-        verify(batchPool, times(1)).getNextEmptyBatch(); // Called during initialization
+        verify(batchPool, times(1)).borrowObject(); // Called during initialization
 
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class));
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class)); // Flush: batch full
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class));
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class)); // Flush: batch full
 
-        verify(batchPool, times(1 + BATCH_SIZE_PER_CT_WRITER)).getNextEmptyBatch(); // 3: 1 in init + 2 when flushing
+        verify(batchPool, times(1 + BATCH_SIZE_PER_CT_WRITER)).borrowObject(); // 3: 1 in init + 2 when flushing
 
     }
 
@@ -151,7 +150,9 @@ public class TestPersistenceProcessor {
         tsoConfig.setBatchSizePerCTWriter(BATCH_SIZE_PER_CT_WRITER);
         tsoConfig.setNumConcurrentCTWriters(NUM_CT_WRITERS);
 
-        ReplyProcessor replyProcessor = new ReplyProcessorImpl(metrics, panicker);
+        ObjectPool<Batch> batchPool = spy(new BatchPoolModule(tsoConfig).getBatchPool());
+
+        ReplyProcessor replyProcessor = new ReplyProcessorImpl(metrics, panicker, batchPool);
 
         PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[tsoConfig.getNumConcurrentCTWriters()];
         for (int i = 0; i < tsoConfig.getNumConcurrentCTWriters(); i++) {
@@ -165,37 +166,36 @@ public class TestPersistenceProcessor {
         }
 
         // Component under test
-        BatchPool batchPool = spy(new BatchPool(tsoConfig));
         PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, batchPool, panicker, handlers);
 
-        proc.addLowWatermarkToBatch(ANY_LWM, mock(MonitoringContext.class)); // Add a fake LWM
+        proc.addLowWatermarkToBatch(ANY_LWM, mock(MonitoringContext.class)); // Add a fake DUMMY_LWM
 
-        verify(batchPool, times(1)).getNextEmptyBatch(); // Called during initialization
+        verify(batchPool, times(1)).borrowObject(); // Called during initialization
 
         // Fill 1st handler Batches completely
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class));
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class)); // 1st batch full
-        verify(batchPool, times(2)).getNextEmptyBatch();
+        verify(batchPool, times(2)).borrowObject();
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class));
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class)); // 2nd batch full
-        verify(batchPool, times(3)).getNextEmptyBatch();
+        verify(batchPool, times(3)).borrowObject();
 
         // Test empty flush does not trigger response in getting a new currentBatch
         proc.triggerCurrentBatchFlush();
-        verify(batchPool, times(3)).getNextEmptyBatch();
+        verify(batchPool, times(3)).borrowObject();
 
         // Fill 2nd handler Batches completely
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class));
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class)); // 1st batch full
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class));
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class)); // 2nd batch full
-        verify(batchPool, times(1 + (NUM_CT_WRITERS * BATCH_SIZE_PER_CT_WRITER))).getNextEmptyBatch();
+        verify(batchPool, times(1 + (NUM_CT_WRITERS * BATCH_SIZE_PER_CT_WRITER))).borrowObject();
 
         // Start filling a new currentBatch and flush it immediately
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class)); // Batch not full
-        verify(batchPool, times(5)).getNextEmptyBatch();
+        verify(batchPool, times(5)).borrowObject();
         proc.triggerCurrentBatchFlush(); // Flushing should provoke invocation of a new batch
-        verify(batchPool, times(6)).getNextEmptyBatch();
+        verify(batchPool, times(6)).borrowObject();
 
         // Test empty flush does not trigger response
         proc.triggerCurrentBatchFlush();
@@ -203,7 +203,7 @@ public class TestPersistenceProcessor {
         proc.triggerCurrentBatchFlush();
         proc.triggerCurrentBatchFlush();
         proc.triggerCurrentBatchFlush();
-        verify(batchPool, times(6)).getNextEmptyBatch();
+        verify(batchPool, times(6)).borrowObject();
 
     }
 
@@ -218,7 +218,9 @@ public class TestPersistenceProcessor {
         tsoConfig.setNumConcurrentCTWriters(BATCH_SIZE_PER_CT_WRITER);
         tsoConfig.setBatchPersistTimeoutInMs(100);
 
-        ReplyProcessor replyProcessor = new ReplyProcessorImpl(metrics, panicker);
+        ObjectPool<Batch> batchPool = spy(new BatchPoolModule(tsoConfig).getBatchPool());
+
+        ReplyProcessor replyProcessor = new ReplyProcessorImpl(metrics, panicker, batchPool);
 
         // Init a non-HA lease manager
         VoidLeaseManager leaseManager = spy(new VoidLeaseManager(mock(TSOChannelHandler.class),
@@ -235,26 +237,24 @@ public class TestPersistenceProcessor {
                                                           panicker);
         }
 
-        BatchPool batchPool = spy(new BatchPool(tsoConfig));
-
         // Component under test
         PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, batchPool, panicker, handlers);
 
-        proc.addLowWatermarkToBatch(ANY_LWM, new MonitoringContext(metrics)); // Add a fake LWM
+        proc.addLowWatermarkToBatch(ANY_LWM, new MonitoringContext(metrics)); // Add a fake DUMMY_LWM
 
         // The non-ha lease manager always return true for
         // stillInLeasePeriod(), so verify the currentBatch sends replies as master
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class));
         proc.triggerCurrentBatchFlush();
         verify(leaseManager, timeout(1000).times(2)).stillInLeasePeriod();
-        verify(batchPool, times(2)).getNextEmptyBatch();
+        verify(batchPool, times(2)).borrowObject();
 
     }
 
     @Test(timeOut=10_000)
-    public void testCommitPersistenceWithHALeaseManagerAndSingleCommitTableWriter() throws Exception {
+    public void testCommitPersistenceWithHALeaseManagerAndMinimumCommitTableWriters() throws Exception {
 
-        final int NUM_PERSIST_HANDLERS = 1;
+        final int NUM_PERSIST_HANDLERS = 2; // Minimum commit table writers is 2
 
         TSOServerConfig tsoConfig = new TSOServerConfig();
         tsoConfig.setNumConcurrentCTWriters(NUM_PERSIST_HANDLERS);
@@ -289,21 +289,21 @@ public class TestPersistenceProcessor {
         // Init a HA lease manager
         LeaseManager simulatedHALeaseManager = mock(LeaseManager.class);
 
-        PersistenceProcessorHandler[] handlers = configureHandlers (tsoConfig, simulatedHALeaseManager);
+        ObjectPool<Batch> batchPool = spy(new BatchPoolModule(tsoConfig).getBatchPool());
 
-        BatchPool batchPool = spy(new BatchPool(tsoConfig));
+        PersistenceProcessorHandler[] handlers = configureHandlers (tsoConfig, simulatedHALeaseManager, batchPool);
 
         // Component under test
         PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, batchPool, panicker, handlers);
 
-        proc.addLowWatermarkToBatch(ANY_LWM, new MonitoringContext(metrics)); // Add a fake LWM
+        proc.addLowWatermarkToBatch(ANY_LWM, new MonitoringContext(metrics)); // Add a fake DUMMY_LWM
 
         // Test: Configure the lease manager to return true always
         doReturn(true).when(simulatedHALeaseManager).stillInLeasePeriod();
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class));
         proc.triggerCurrentBatchFlush();
         verify(simulatedHALeaseManager, timeout(1000).times(2)).stillInLeasePeriod();
-        verify(batchPool, times(2)).getNextEmptyBatch();
+        verify(batchPool, times(2)).borrowObject();
     }
 
     private void testPersistenceWithHALeaseManagerFailingToPreserveLease1(TSOServerConfig tsoConfig) throws Exception {
@@ -311,20 +311,20 @@ public class TestPersistenceProcessor {
         // Init a HA lease manager
         LeaseManager simulatedHALeaseManager = mock(LeaseManager.class);
 
-        PersistenceProcessorHandler[] handlers = configureHandlers (tsoConfig, simulatedHALeaseManager);
+        ObjectPool<Batch> batchPool = spy(new BatchPoolModule(tsoConfig).getBatchPool());
 
-        BatchPool batchPool = spy(new BatchPool(tsoConfig));
+        PersistenceProcessorHandler[] handlers = configureHandlers (tsoConfig, simulatedHALeaseManager, batchPool);
 
         // Component under test
         PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, batchPool, panicker, handlers);
 
         // Test: Configure the lease manager to return true first and false later for stillInLeasePeriod
         doReturn(true).doReturn(false).when(simulatedHALeaseManager).stillInLeasePeriod();
-        batchPool.notifyEmptyBatch(0); // Unlock this thread to check the panicker
+        //batchPool.notifyEmptyBatch(0); // Unlock this thread to check the panicker
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class));
         proc.triggerCurrentBatchFlush();
         verify(simulatedHALeaseManager, timeout(1000).times(2)).stillInLeasePeriod();
-        verify(batchPool, times(2)).getNextEmptyBatch();
+        verify(batchPool, times(2)).borrowObject();
     }
 
     private void testPersistenceWithHALeaseManagerFailingToPreserveLease2(TSOServerConfig tsoConfig) throws Exception {
@@ -332,20 +332,20 @@ public class TestPersistenceProcessor {
         // Init a HA lease manager
         LeaseManager simulatedHALeaseManager = mock(LeaseManager.class);
 
-        PersistenceProcessorHandler[] handlers = configureHandlers (tsoConfig, simulatedHALeaseManager);
+        ObjectPool<Batch> batchPool = spy(new BatchPoolModule(tsoConfig).getBatchPool());
 
-        BatchPool batchPool = spy(new BatchPool(tsoConfig));
+        PersistenceProcessorHandler[] handlers = configureHandlers (tsoConfig, simulatedHALeaseManager, batchPool);
 
         // Component under test
         PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, batchPool, panicker, handlers);
 
         // Test: Configure the lease manager to return false for stillInLeasePeriod
         doReturn(false).when(simulatedHALeaseManager).stillInLeasePeriod();
-        batchPool.notifyEmptyBatch(0); // Unlock this thread to check the panicker
+        //batchPool.notifyEmptyBatch(0); // Unlock this thread to check the panicker
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class));
         proc.triggerCurrentBatchFlush();
         verify(simulatedHALeaseManager, timeout(1000).times(1)).stillInLeasePeriod();
-        verify(batchPool, times(2)).getNextEmptyBatch();
+        verify(batchPool, times(2)).borrowObject();
     }
 
     private void testPersistenceWithHALeaseManagerFailingToPreserveLease3(TSOServerConfig tsoConfig) throws Exception {
@@ -353,9 +353,9 @@ public class TestPersistenceProcessor {
         // Init a HA lease manager
         LeaseManager simulatedHALeaseManager = mock(LeaseManager.class);
 
-        PersistenceProcessorHandler[] handlers = configureHandlers (tsoConfig, simulatedHALeaseManager);
+        ObjectPool<Batch> batchPool = spy(new BatchPoolModule(tsoConfig).getBatchPool());
 
-        BatchPool batchPool = spy(new BatchPool(tsoConfig));
+        PersistenceProcessorHandler[] handlers = configureHandlers (tsoConfig, simulatedHALeaseManager, batchPool);
 
         // Component under test
         PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, batchPool, panicker, handlers);
@@ -365,15 +365,17 @@ public class TestPersistenceProcessor {
         // Configure mock writer to flush unsuccessfully
         doThrow(new IOException("Unable to write")).when(mockWriter).flush();
         doReturn(true).doReturn(false).when(simulatedHALeaseManager).stillInLeasePeriod();
-        batchPool.notifyEmptyBatch(0); // Unlock this thread to check the panicker
+//        batchPool.notifyEmptyBatch(0); // Unlock this thread to check the panicker
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class));
         proc.triggerCurrentBatchFlush();
         verify(simulatedHALeaseManager, timeout(1000).times(1)).stillInLeasePeriod();
-        verify(batchPool, times(2)).getNextEmptyBatch();
+        verify(batchPool, times(2)).borrowObject();
 
     }
 
-    private PersistenceProcessorHandler[] configureHandlers(TSOServerConfig tsoConfig, LeaseManager leaseManager)
+    private PersistenceProcessorHandler[] configureHandlers(TSOServerConfig tsoConfig,
+                                                            LeaseManager leaseManager,
+                                                            ObjectPool<Batch> batchPool)
             throws Exception {
         PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[tsoConfig.getNumConcurrentCTWriters()];
         for (int i = 0; i < tsoConfig.getNumConcurrentCTWriters(); i++) {
@@ -381,7 +383,7 @@ public class TestPersistenceProcessor {
                                                           "localhost:1234",
                                                           leaseManager,
                                                           commitTable,
-                                                          new ReplyProcessorImpl(metrics, panicker),
+                                                          new ReplyProcessorImpl(metrics, panicker, batchPool),
                                                           retryProcessor,
                                                           new RuntimeExceptionPanicker());
         }
@@ -393,10 +395,12 @@ public class TestPersistenceProcessor {
 
         // Init lease management (doesn't matter if HA or not)
         LeaseManagement leaseManager = mock(LeaseManagement.class);
-        TSOServerConfig config = new TSOServerConfig();
-        BatchPool batchPool = new BatchPool(config);
 
-        ReplyProcessor replyProcessor = new ReplyProcessorImpl(metrics, panicker);
+        TSOServerConfig config = new TSOServerConfig();
+
+        ObjectPool<Batch> batchPool = spy(new BatchPoolModule(config).getBatchPool());
+
+        ReplyProcessor replyProcessor = new ReplyProcessorImpl(metrics, panicker, batchPool);
 
         PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[config.getNumConcurrentCTWriters()];
         for (int i = 0; i < config.getNumConcurrentCTWriters(); i++) {
@@ -419,7 +423,7 @@ public class TestPersistenceProcessor {
         // Configure commit table writer to explode when flushing changes to DB
         doThrow(new IOException("Unable to write@TestPersistenceProcessor2")).when(mockWriter).flush();
 
-        proc.addLowWatermarkToBatch(ANY_LWM, new MonitoringContext(metrics)); // Add a fake LWM
+        proc.addLowWatermarkToBatch(ANY_LWM, new MonitoringContext(metrics)); // Add a fake DUMMY_LWM
 
         // Check the panic is extended!
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), monCtx);
@@ -432,9 +436,10 @@ public class TestPersistenceProcessor {
     public void testRuntimeExceptionOnCommitPersistenceTakesDownDaemon() throws Exception {
 
         TSOServerConfig config = new TSOServerConfig();
-        BatchPool batchPool = new BatchPool(config);
 
-        ReplyProcessor replyProcessor = new ReplyProcessorImpl(metrics, panicker);
+        ObjectPool<Batch> batchPool = new BatchPoolModule(config).getBatchPool();
+
+        ReplyProcessor replyProcessor = new ReplyProcessorImpl(metrics, panicker, batchPool);
 
         PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[config.getNumConcurrentCTWriters()];
         for (int i = 0; i < config.getNumConcurrentCTWriters(); i++) {
@@ -453,9 +458,8 @@ public class TestPersistenceProcessor {
         doThrow(new RuntimeException("Kaboom!")).when(mockWriter).addCommittedTransaction(anyLong(), anyLong());
         MonitoringContext monCtx = new MonitoringContext(metrics);
 
-        proc.addLowWatermarkToBatch(ANY_LWM, new MonitoringContext(metrics)); // Add a fake LWM
+        proc.addLowWatermarkToBatch(ANY_LWM, new MonitoringContext(metrics)); // Add a fake DUMMY_LWM
 
-        batchPool.notifyEmptyBatch(0); // Unlock this thread to check the panicker
         // Check the panic is extended!
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), monCtx);
         proc.triggerCurrentBatchFlush();

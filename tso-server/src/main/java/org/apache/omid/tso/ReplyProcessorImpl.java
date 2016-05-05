@@ -25,10 +25,10 @@ import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.SequenceBarrier;
+import org.apache.commons.pool2.ObjectPool;
 import org.apache.omid.metrics.Meter;
 import org.apache.omid.metrics.MetricsRegistry;
 import org.apache.omid.proto.TSOProto;
-
 import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +48,8 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
 
     private static final int NO_ORDER = (-1);
 
+    private final ObjectPool<Batch> batchPool;
+
     private final RingBuffer<ReplyBatchEvent> replyRing;
 
     private AtomicLong nextIDToHandle = new AtomicLong();
@@ -60,7 +62,9 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
     private final Meter timestampMeter;
 
     @Inject
-    ReplyProcessorImpl(MetricsRegistry metrics, Panicker panicker) {
+    ReplyProcessorImpl(MetricsRegistry metrics, Panicker panicker, ObjectPool<Batch> batchPool) {
+
+        this.batchPool = batchPool;
 
         this.nextIDToHandle.set(0);
 
@@ -88,12 +92,12 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
 
     }
 
-    private void handleReplyBatchEvent(ReplyBatchEvent event) {
+    private void handleReplyBatchEvent(ReplyBatchEvent event) throws Exception {
 
         String name;
         Batch batch = event.getBatch();
         for (int i=0; batch != null && i < batch.getNumEvents(); ++i) {
-            PersistEvent localEvent = batch.getEvent(i);
+            PersistEvent localEvent = batch.get(i);
 
             switch (localEvent.getType()) {
             case COMMIT:
@@ -124,12 +128,12 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
         }
 
         if (batch != null) {
-            batch.clear();
+            batchPool.returnObject(batch);
         }
 
     }
 
-    private void processWaitingEvents() {
+    private void processWaitingEvents() throws Exception {
 
         while (!futureEvents.isEmpty() && futureEvents.peek().getBatchID() == nextIDToHandle.get()) {
             ReplyBatchEvent e = futureEvents.poll();
@@ -149,7 +153,7 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
         if (event.getBatchID() > nextIDToHandle.get()) {
             futureEvents.add(event);
             return;
-         }
+        }
 
         handleReplyBatchEvent(event);
 

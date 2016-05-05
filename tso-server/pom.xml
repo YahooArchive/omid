@@ -125,6 +125,11 @@
             <artifactId>jsr305</artifactId>
             <version>${google.findbugs.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+            <version>${commons-pool2.version}</version>
+        </dependency>
 
         <!-- end utils -->
 

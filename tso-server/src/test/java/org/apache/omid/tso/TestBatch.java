@@ -17,19 +17,13 @@
  */
 package org.apache.omid.tso;
 
-import org.apache.omid.metrics.MetricsRegistry;
-import org.apache.omid.metrics.NullMetricsProvider;
+import org.apache.commons.pool2.PooledObject;
 import org.jboss.netty.channel.Channel;
 import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import static org.mockito.Mockito.timeout;
-import static org.mockito.Mockito.verify;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
@@ -40,104 +34,130 @@ public class TestBatch {
     private static final Logger LOG = LoggerFactory.getLogger(TestBatch.class);
 
     private static final int BATCH_SIZE = 1000;
-    private MetricsRegistry metrics = new NullMetricsProvider();
+
+    private static final long ANY_ST = 1231;
+    private static final long ANY_CT = 2241;
+
+    private static final int DUMMY_LWM = 212;
+    private static final int NEW_LWM = 123;
 
     @Mock
     private Channel channel;
     @Mock
-    private RetryProcessor retryProcessor;
-    @Mock
-    private ReplyProcessor replyProcessor;
+    private MonitoringContext monCtx;
 
-    // The batch element to test
-    private Batch batch;
-
-    @BeforeMethod(alwaysRun = true, timeOut = 30_000)
-    public void initMocksAndComponents() {
-        MockitoAnnotations.initMocks(this);
-        batch = new Batch(BATCH_SIZE, 0, null);
-    }
-
-    // TODO. Refactor the batch and test it properly. See commented asserts below
-    @Test
+    @Test(timeOut = 10_000)
     public void testBatchFunctionality() {
 
+        // Component to test
+        Batch batch = new Batch(0, BATCH_SIZE);
+
         // Test initial state is OK
+        assertTrue(batch.isEmpty(), "Batch should be empty");
         assertFalse(batch.isFull(), "Batch shouldn't be full");
         assertEquals(batch.getNumEvents(), 0, "Num events should be 0");
 
-        // Test adding a single commit event is OK
-        MonitoringContext monCtx = new MonitoringContext(metrics);
-        monCtx.timerStart("commitPersistProcessor");
-        batch.addCommit(0, 1, channel, monCtx);
-        assertFalse(batch.isFull(), "Batch shouldn't be full");
-        assertEquals(batch.getNumEvents(), 1, "Num events should be 1");
+        // Test getting or setting an element in the batch greater than the current number of events is illegal
+        try {
+            batch.get(1);
+            fail();
+        } catch (IllegalStateException ex) {
+            // Expected, as we can not access elements in the batch greater than the current number of events
+        }
+        try {
+            batch.set(1, new PersistEvent());
+            fail();
+        } catch (IllegalStateException ex) {
+            // Expected, as we can not access elements in the batch greater than the current number of events
+        }
 
-        // Test when filling the batch with events, batch is full
+        // Test when filling the batch with different types of events, that becomes full
         for (int i = 0; i < (BATCH_SIZE - 1); i++) {
-            if (i % 2 == 0) {
-                monCtx = new MonitoringContext(metrics);
-                monCtx.timerStart("timestampPersistProcessor");
-                batch.addTimestamp(i, channel, monCtx);
+            if (i % 3 == 0) {
+                batch.addTimestamp(ANY_ST, channel, monCtx);
+            } else if (i % 3 == 1) {
+                batch.addCommit(ANY_ST, ANY_CT, channel, monCtx);
             } else {
-                monCtx = new MonitoringContext(metrics);
-                monCtx.timerStart("commitPersistProcessor");
-                batch.addCommit(i, i + 1, channel, monCtx);
+                batch.addAbort(ANY_ST, false, channel, monCtx);
             }
         }
+        assertTrue(batch.isLastEntryEmpty(), "Should be only one entry left in the batch");
+        batch.addLowWatermark(DUMMY_LWM, monCtx); // Add DUMMY_LWM as last element
+        assertFalse(batch.isEmpty(), "Batch should contain elements");
         assertTrue(batch.isFull(), "Batch should be full");
         assertEquals(batch.getNumEvents(), BATCH_SIZE, "Num events should be " + BATCH_SIZE);
 
         // Test an exception is thrown when batch is full and a new element is going to be added
         try {
-            monCtx = new MonitoringContext(metrics);
-            monCtx.timerStart("commitPersistProcessor");
-            batch.addCommit(0, 1, channel, new MonitoringContext(metrics));
+            batch.addCommit(ANY_ST, ANY_CT, channel, monCtx);
             fail("Should throw an IllegalStateException");
         } catch (IllegalStateException e) {
             assertEquals(e.getMessage(), "batch is full", "message returned doesn't match");
             LOG.debug("IllegalStateException catched properly");
         }
-
-        // Test that sending replies empties the batch
-// TODO. Fix these asserts in new code
-//<<<<<<< HEAD
-//        batch.sendRepliesAndReset(replyProcessor, retryProcessor);
-//        verify(replyProcessor, timeout(100).times(BATCH_SIZE / 2))
-//                .timestampResponse(anyLong(), any(Channel.class), any(MonitoringContext.class));
-//        verify(replyProcessor, timeout(100).times(BATCH_SIZE / 2))
-//                .commitResponse(anyLong(), anyLong(), any(Channel.class), any(MonitoringContext.class));
-//        assertFalse(batch.isFull(), "Batch shouldn't be full");
-//        assertEquals(batch.getNumEvents(), 0, "Num events should be 0");
-//=======
-//        batch.sendReply(replyProcessor, retryProcessor, (-1));
-        //verify(replyProcessor, timeout(100).times(1)).manageResponsesBatch((-1), batch);
         assertTrue(batch.isFull(), "Batch shouldn't be empty");
+
+        // Check the first 3 events and the last one correspond to the filling done above
+        assertTrue(batch.get(0).getType().equals(PersistEvent.Type.TIMESTAMP));
+        assertTrue(batch.get(1).getType().equals(PersistEvent.Type.COMMIT));
+        assertTrue(batch.get(2).getType().equals(PersistEvent.Type.ABORT));
+        assertTrue(batch.get(BATCH_SIZE - 1).getType().equals(PersistEvent.Type.LOW_WATERMARK));
+
+        // Set a new value for last element in Batch and check we obtain the right result
+        batch.decreaseNumEvents();
+        assertEquals(batch.getNumEvents(), BATCH_SIZE - 1, "Num events should be " + (BATCH_SIZE - 1));
+        assertTrue(batch.isLastEntryEmpty(), "Should be only one entry left in the batch");
+        try {
+            batch.get(BATCH_SIZE - 1);
+            fail();
+        } catch (IllegalStateException ex) {
+            // Expected, as we can not access elements in the batch greater than the current number of events
+        }
+        batch.addLowWatermark(NEW_LWM, monCtx); // Add new LWM as last element
+        assertTrue(batch.get(BATCH_SIZE - 1).getType().equals(PersistEvent.Type.LOW_WATERMARK));
+        assertEquals(batch.get(BATCH_SIZE - 1).getLowWatermark(), NEW_LWM);
+
+        // Re-check that batch is full again
+        assertTrue(batch.isFull(), "Batch shouldn't be empty");
+
+        // Clear the batch and goes back to its initial state
+        batch.clear();
+        assertTrue(batch.isEmpty(), "Batch should be empty");
+        assertFalse(batch.isFull(), "Batch shouldn't be full");
+        assertEquals(batch.getNumEvents(), 0, "Num events should be 0");
+
     }
 
-    // TODO Check this test with the contents of the master branch
-    @Test
-    public void testBatchFunctionalityWhenMastershipIsLost() {
-        Channel channel = Mockito.mock(Channel.class);
+    @Test(timeOut = 10_000)
+    public void testBatchFactoryFunctionality() throws Exception {
 
-        // Fill the batch with events till full
-        for (int i = 0; i < BATCH_SIZE; i++) {
-            if (i % 2 == 0) {
-                MonitoringContext monCtx = new MonitoringContext(metrics);
-                monCtx.timerStart("timestampPersistProcessor");
-                batch.addTimestamp(i, channel, monCtx);
-            } else {
-                MonitoringContext monCtx = new MonitoringContext(metrics);
-                monCtx.timerStart("commitPersistProcessor");
-                batch.addCommit(i, i + 1, channel, monCtx);
-            }
-        }
+        // Component to test
+        Batch.BatchFactory factory = new Batch.BatchFactory(BATCH_SIZE);
 
-        // Test that sending replies empties the batch also when the replica  is NOT master and calls the
-        // ambiguousCommitResponse() method on the reply processor
-        //batch.sendReply(replyProcessor, retryProcessor, (-1));
-        //verify(replyProcessor, timeout(100).times(1)).manageResponsesBatch((-1), batch);
-        assertTrue(batch.isFull(), "Batch should be full");
+        // Check the factory creates a new batch properly...
+        Batch batch = factory.create();
+        assertTrue(batch.isEmpty(), "Batch should be empty");
+        assertFalse(batch.isFull(), "Batch shouldn't be full");
+        assertEquals(batch.getNumEvents(), 0, "Num events should be 0");
+
+        // ...and is wrapped in to a pooled object
+        PooledObject<Batch> pooledBatch = factory.wrap(batch);
+        assertEquals(pooledBatch.getObject(), batch);
+
+        // Put some elements in the batch...
+        batch.addTimestamp(ANY_ST, channel, monCtx);
+        batch.addCommit(ANY_ST, ANY_CT, channel, monCtx);
+        batch.addAbort(ANY_ST, false, channel, monCtx);
+        assertFalse(batch.isEmpty(), "Batch should contain elements");
+        assertFalse(batch.isFull(), "Batch should NOT be full");
+        assertEquals(batch.getNumEvents(), 3, "Num events should be 3");
+
+        // ... and passivate the object through the factory. It should reset the state of the batch
+        factory.passivateObject(pooledBatch);
+        assertTrue(batch.isEmpty(), "Batch should NOT contain elements");
+        assertFalse(batch.isFull(), "Batch should NOT be full");
+        assertEquals(batch.getNumEvents(), 0, "Num events should be 0");
+
     }
 
 }

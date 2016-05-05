@@ -24,13 +24,12 @@ import com.lmax.disruptor.BusySpinWaitStrategy;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.WorkerPool;
+import org.apache.commons.pool2.ObjectPool;
 import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.io.IOException;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -45,7 +44,7 @@ class PersistenceProcessorImpl implements PersistenceProcessor {
 
     private final RingBuffer<PersistBatchEvent> persistRing;
 
-    private final BatchPool batchPool;
+    private final ObjectPool<Batch> batchPool;
     @VisibleForTesting
     Batch currentBatch;
 
@@ -57,14 +56,14 @@ class PersistenceProcessorImpl implements PersistenceProcessor {
 
     @Inject
     PersistenceProcessorImpl(TSOServerConfig config,
-                             BatchPool batchPool,
+                             ObjectPool<Batch> batchPool,
                              Panicker panicker,
                              PersistenceProcessorHandler[] handlers)
-            throws InterruptedException, ExecutionException, IOException {
+            throws Exception {
 
         this.batchSequence = 0L;
         this.batchPool = batchPool;
-        this.currentBatch = batchPool.getNextEmptyBatch();
+        this.currentBatch = batchPool.borrowObject();
 
         // Disruptor configuration
         this.persistRing = RingBuffer.createSingleProducer(EVENT_FACTORY, 1 << 20, new BusySpinWaitStrategy());
@@ -83,7 +82,7 @@ class PersistenceProcessorImpl implements PersistenceProcessor {
     }
 
     @Override
-    public void triggerCurrentBatchFlush() throws InterruptedException {
+    public void triggerCurrentBatchFlush() throws Exception {
 
         if (currentBatch.isEmpty()) {
             return;
@@ -93,13 +92,13 @@ class PersistenceProcessorImpl implements PersistenceProcessor {
         PersistBatchEvent e = persistRing.get(seq);
         makePersistBatch(e, batchSequence++, currentBatch);
         persistRing.publish(seq);
-        currentBatch = batchPool.getNextEmptyBatch();
+        currentBatch = batchPool.borrowObject();
 
     }
 
     @Override
     public void addCommitToBatch(long startTimestamp, long commitTimestamp, Channel c, MonitoringContext monCtx)
-            throws InterruptedException {
+            throws Exception {
 
         currentBatch.addCommit(startTimestamp, commitTimestamp, c, monCtx);
         if (currentBatch.isLastEntryEmpty()) {
@@ -110,7 +109,7 @@ class PersistenceProcessorImpl implements PersistenceProcessor {
 
     @Override
     public void addAbortToBatch(long startTimestamp, boolean isRetry, Channel c, MonitoringContext context)
-            throws InterruptedException {
+            throws Exception {
 
         currentBatch.addAbort(startTimestamp, isRetry, c, context);
         if (currentBatch.isLastEntryEmpty()) {
@@ -121,7 +120,7 @@ class PersistenceProcessorImpl implements PersistenceProcessor {
 
     @Override
     public void addTimestampToBatch(long startTimestamp, Channel c, MonitoringContext context)
-            throws InterruptedException {
+            throws Exception {
 
         currentBatch.addTimestamp(startTimestamp, c, context);
         if (currentBatch.isLastEntryEmpty()) {

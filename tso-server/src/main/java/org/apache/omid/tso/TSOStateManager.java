@@ -64,7 +64,7 @@ public interface TSOStateManager {
          *            the new TSOState
          * @throws InterruptedException
          */
-        void update(TSOState state) throws IOException, InterruptedException;
+        void update(TSOState state) throws Exception;
 
     }
 
@@ -92,6 +92,6 @@ public interface TSOStateManager {
      *             when problems resetting occur
      * @throws InterruptedException
      */
-    TSOState initialize() throws IOException, InterruptedException;
+    TSOState initialize() throws Exception;
 
 }

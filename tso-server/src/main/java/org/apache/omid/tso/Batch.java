@@ -19,7 +19,9 @@ package org.apache.omid.tso;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
-import org.apache.omid.tso.PersistEvent.Type;
+import org.apache.commons.pool2.BasePooledObjectFactory;
+import org.apache.commons.pool2.PooledObject;
+import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,13 +36,11 @@ public class Batch {
     private final int size;
     private int numEvents;
     private final PersistEvent[] events;
-    private final BatchPool batchPool;
 
-    Batch(int size, int id, BatchPool batchPool) {
+    Batch(int id, int size) {
 
         Preconditions.checkArgument(size > 0, "Size must be positive");
         this.size = size;
-        this.batchPool = batchPool;
         this.id = id;
         this.numEvents = 0;
         this.events = new PersistEvent[size];
@@ -75,27 +75,19 @@ public class Batch {
         return numEvents;
     }
 
-    PersistEvent getEvent(int i) {
-
-        assert (0 <= i && i < numEvents);
-        return events[i];
-
-    }
-
     void clear() {
 
         numEvents = 0;
-        if (batchPool != null) {
-            batchPool.notifyEmptyBatch(id);
-        }
 
     }
 
     PersistEvent get(int idx) {
+        Preconditions.checkState(numEvents > 0  && 0 <= idx && idx < numEvents);
         return events[idx];
     }
 
     void set(int idx, PersistEvent event) {
+        Preconditions.checkState(0 <= idx && idx < numEvents);
         events[idx] = event;
     }
 
@@ -143,6 +135,33 @@ public class Batch {
                 .add("num events", numEvents)
                 .add("events", Arrays.toString(events))
                 .toString();
+    }
+
+    public static class BatchFactory extends BasePooledObjectFactory<Batch> {
+
+        private static int batchId = 0;
+
+        private int batchSize;
+
+        BatchFactory(int batchSize) {
+            this.batchSize = batchSize;
+        }
+
+        @Override
+        public Batch create() throws Exception {
+            return new Batch(batchId++, batchSize);
+        }
+
+        @Override
+        public PooledObject<Batch> wrap(Batch batch) {
+            return new DefaultPooledObject<>(batch);
+        }
+
+        @Override
+        public void passivateObject(PooledObject<Batch> pooledObject) {
+            pooledObject.getObject().clear(); // Reset num events when returning the batch to the pool
+        }
+
     }
 
 }

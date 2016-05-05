@@ -24,7 +24,6 @@ import com.google.inject.Provides;
 
 import javax.inject.Named;
 import javax.inject.Singleton;
-
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
@@ -46,8 +45,8 @@ class TSOModule extends AbstractModule {
         bind(TSOStateManager.class).to(TSOStateManagerImpl.class).in(Singleton.class);
         bind(TimestampOracle.class).to(TimestampOracleImpl.class).in(Singleton.class);
         bind(Panicker.class).to(RuntimeExceptionPanicker.class).in(Singleton.class);
-        bind(BatchPool.class).in(Singleton.class);
 
+        install(new BatchPoolModule(config));
         // Disruptor setup
         install(new DisruptorModule());
 

@@ -30,7 +30,7 @@ public class VoidLeaseManager implements LeaseManagement {
     }
 
     @Override
-    public void startService() throws LeaseManagementException, InterruptedException {
+    public void startService() throws Exception {
         try {
             stateManager.initialize();
             tsoChannelHandler.reconnect();
@@ -40,7 +40,7 @@ public class VoidLeaseManager implements LeaseManagement {
     }
 
     @Override
-    public void stopService() throws LeaseManagementException {
+    public void stopService() throws Exception {
         tsoChannelHandler.closeConnection();
     }
 

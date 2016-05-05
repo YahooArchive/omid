@@ -18,6 +18,7 @@
 package org.apache.omid.tso;
 
 import com.google.common.base.Optional;
+import org.apache.commons.pool2.ObjectPool;
 import org.apache.omid.committable.CommitTable;
 import org.apache.omid.committable.CommitTable.CommitTimestamp;
 import org.apache.omid.committable.InMemoryCommitTable;
@@ -67,7 +68,7 @@ public class TestRetryProcessor {
 
     @Test(timeOut = 10_000)
     public void testRetriedRequestForANonExistingTxReturnsAbort() throws Exception {
-        BatchPool batchPool = new BatchPool(new TSOServerConfig());
+        ObjectPool<Batch> batchPool = new BatchPoolModule(new TSOServerConfig()).getBatchPool();
 
         // The element to test
         RetryProcessor retryProc = new RetryProcessorImpl(metrics, commitTable, replyProc, panicker, batchPool);
@@ -84,7 +85,7 @@ public class TestRetryProcessor {
 
     @Test(timeOut = 10_000)
     public void testRetriedRequestForAnExistingTxReturnsCommit() throws Exception {
-        BatchPool batchPool = new BatchPool(new TSOServerConfig());
+        ObjectPool<Batch> batchPool = new BatchPoolModule(new TSOServerConfig()).getBatchPool();
 
         // The element to test
         RetryProcessor retryProc = new RetryProcessorImpl(metrics, commitTable, replyProc, panicker, batchPool);
@@ -119,7 +120,7 @@ public class TestRetryProcessor {
         Assert.assertTrue(invalidTxMarker.isPresent());
         Assert.assertEquals(invalidTxMarker.get().getValue(), InMemoryCommitTable.INVALID_TRANSACTION_MARKER);
 
-        BatchPool batchPool = new BatchPool(new TSOServerConfig());
+        ObjectPool<Batch> batchPool = new BatchPoolModule(new TSOServerConfig()).getBatchPool();
 
         // The element to test
         RetryProcessor retryProc = new RetryProcessorImpl(metrics, commitTable, replyProc, panicker, batchPool);

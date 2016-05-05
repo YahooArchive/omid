@@ -18,13 +18,10 @@
 package org.apache.omid.tso;
 
 import com.google.common.base.Preconditions;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -60,7 +57,7 @@ public class TSOStateManagerImpl implements TSOStateManager {
     }
 
     @Override
-    public TSOState initialize() throws IOException, InterruptedException {
+    public TSOState initialize() throws Exception {
 
         LOG.info("Initializing TSO Server state...");
         // The timestamp oracle dictates the new state

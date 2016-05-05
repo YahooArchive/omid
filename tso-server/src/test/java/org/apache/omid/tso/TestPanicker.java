@@ -17,6 +17,7 @@
  */
 package org.apache.omid.tso;
 
+import org.apache.commons.pool2.ObjectPool;
 import org.apache.omid.committable.CommitTable;
 import org.apache.omid.metrics.MetricsRegistry;
 import org.apache.omid.timestamp.storage.TimestampStorage;
@@ -117,7 +118,7 @@ public class TestPanicker {
         LeaseManager leaseManager = mock(LeaseManager.class);
         doReturn(true).when(leaseManager).stillInLeasePeriod();
         TSOServerConfig config = new TSOServerConfig();
-        BatchPool batchPool = new BatchPool(config);
+        ObjectPool<Batch> batchPool = new BatchPoolModule(config).getBatchPool();
 
         PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[config.getNumConcurrentCTWriters()];
         for (int i = 0; i < config.getNumConcurrentCTWriters(); i++) {
@@ -167,7 +168,7 @@ public class TestPanicker {
             }
         };
         TSOServerConfig config = new TSOServerConfig();
-        BatchPool batchPool = new BatchPool(config);
+        ObjectPool<Batch> batchPool = new BatchPoolModule(config).getBatchPool();
 
         PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[config.getNumConcurrentCTWriters()];
         for (int i = 0; i < config.getNumConcurrentCTWriters(); i++) {

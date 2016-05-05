@@ -88,7 +88,7 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
      * This should be called when the TSO gets leadership
      */
     @Override
-    public void update(TSOState state) throws InterruptedException {
+    public void update(TSOState state) throws Exception {
         LOG.info("Initializing RequestProcessor...");
         this.lowWatermark = state.getLowWatermark();
         persistProc.addLowWatermarkToBatch(lowWatermark, new MonitoringContext(metrics));
@@ -150,7 +150,7 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
 
     }
 
-    private void handleTimestamp(RequestEvent requestEvent) throws InterruptedException {
+    private void handleTimestamp(RequestEvent requestEvent) throws Exception {
 
         long timestamp;
 
@@ -165,7 +165,7 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
 
     }
 
-    private long handleCommit(RequestEvent event) throws InterruptedException {
+    private long handleCommit(RequestEvent event) throws Exception {
 
         long startTimestamp = event.getStartTimestamp();
         Iterable<Long> writeSet = event.writeSet();

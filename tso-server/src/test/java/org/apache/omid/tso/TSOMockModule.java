@@ -30,7 +30,6 @@ import org.apache.omid.tso.TimestampOracleImpl.InMemoryTimestampStorage;
 
 import javax.inject.Named;
 import javax.inject.Singleton;
-
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
@@ -54,8 +53,8 @@ public class TSOMockModule extends AbstractModule {
         bind(TimestampStorage.class).to(InMemoryTimestampStorage.class).in(Singleton.class);
         bind(TimestampOracle.class).to(PausableTimestampOracle.class).in(Singleton.class);
         bind(Panicker.class).to(MockPanicker.class).in(Singleton.class);
-        bind(BatchPool.class).in(Singleton.class);
 
+        install(new BatchPoolModule(config));
         install(config.getLeaseModule());
         install(new DisruptorModule());
 

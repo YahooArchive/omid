@@ -22,15 +22,14 @@ import org.jboss.netty.channel.Channel;
 interface PersistenceProcessor {
 
     void addCommitToBatch(long startTimestamp, long commitTimestamp, Channel c, MonitoringContext monCtx)
-            throws InterruptedException;
+            throws Exception;
 
-    void addAbortToBatch(long startTimestamp, boolean isRetry, Channel c, MonitoringContext monCtx)
-            throws InterruptedException;
+    void addAbortToBatch(long startTimestamp, boolean isRetry, Channel c, MonitoringContext monCtx) throws Exception;
 
-    void addTimestampToBatch(long startTimestamp, Channel c, MonitoringContext monCtx) throws InterruptedException;
+    void addTimestampToBatch(long startTimestamp, Channel c, MonitoringContext monCtx) throws Exception;
 
     void addLowWatermarkToBatch(long lowWatermark, MonitoringContext monCtx);
 
-    void triggerCurrentBatchFlush() throws InterruptedException;
+    void triggerCurrentBatchFlush() throws Exception;
 
 }

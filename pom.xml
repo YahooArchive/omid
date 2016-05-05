@@ -154,6 +154,7 @@
         <beanutils.version>1.8.3</beanutils.version>
         <commons-io.version>2.4</commons-io.version>
         <google.findbugs.version>3.0.1</google.findbugs.version>
+        <commons-pool2.version>2.4.2</commons-pool2.version>
 
         <!-- Maven Plugin Versioning -->
         <maven-antrun-plugin.version>1.7</maven-antrun-plugin.version>
