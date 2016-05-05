@@ -100,7 +100,7 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
     public void onEvent(RequestEvent event, long sequence, boolean endOfBatch) throws Exception {
 
         String name = null;
-        try {
+        try { // TODO this should be a switch. Re-check why it's NOT now
             if (event.getType() == RequestEvent.Type.TIMESTAMP) {
                 name = "timestampReqProcessor";
                 event.getMonCtx().timerStart(name);
@@ -111,13 +111,9 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
                 handleCommit(event);
             }
         } finally {
-            if (name != null) {
+            if (null != name) {
                 event.getMonCtx().timerStop(name);
             }
-        }
-
-        if (endOfBatch) {
-            persistProc.triggerCurrentBatchFlush();
         }
 
     }
@@ -125,6 +121,12 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
     @Override
     public void onTimeout(long sequence) throws Exception {
 
+        // TODO We can not use this as a timeout trigger for flushing. This timeout is related to the time between
+        // TODO (cont) arrivals of requests to the disruptor. We need another mechanism to trigger timeouts
+        // TODO (cont) WARNING!!! Take care with the implementation because if there's other thread than request-0
+        // TODO (cont) thread the one that calls persistProc.triggerCurrentBatchFlush(); we'll incur in concurrency issues
+        // TODO (cont) This is because, in the current implementation, only the request-0 thread calls the public methods
+        // TODO (cont) in persistProc and it is guaranteed that access them serially.
         persistProc.triggerCurrentBatchFlush();
 
     }
