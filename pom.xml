@@ -139,7 +139,7 @@
         <guice.version>3.0</guice.version>
         <testng.version>6.8.8</testng.version>
         <slf4j.version>1.7.7</slf4j.version>
-        <log4j.version>1.2.14</log4j.version>
+        <log4j.version>1.2.17</log4j.version>
         <netty.version>3.2.6.Final</netty.version>
         <protobuf.version>2.5.0</protobuf.version>
         <mockito.version>1.9.5</mockito.version>

@@ -36,6 +36,12 @@
             <version>${slf4j.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>apache-log4j-extras</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+
     </dependencies>
 
     <build>
