@@ -22,7 +22,7 @@ function show_help() {
     # $ $0 <example> [ tablename ] [column family name]
     #
     # where:
-    # - <example> can be [ basic | si | conf ]
+    # - <example> can be [ basic | si | conf | parallel ]
     #
     # Example execution:
     # ------------------
@@ -84,13 +84,16 @@ USER_OPTION=$1
 shift
 case ${USER_OPTION} in
     basic)
-        java -cp $KLASSPATH org.apache.omid.examples.BasicExample "$@"
+        java -cp $KLASSPATH -Dlog4j.configuration=file:${SCRIPTDIR}/conf/log4j.properties org.apache.omid.examples.BasicExample "$@"
         ;;
     si)
-        java -cp $KLASSPATH org.apache.omid.examples.SnapshotIsolationExample "$@"
+        java -cp $KLASSPATH -Dlog4j.configuration=file:${SCRIPTDIR}/conf/log4j.properties org.apache.omid.examples.SnapshotIsolationExample "$@"
+        ;;
+    parallel)
+        java -cp $KLASSPATH -Dlog4j.configuration=file:${SCRIPTDIR}/conf/log4j.properties org.apache.omid.examples.ParallelExecution "$@"
         ;;
     conf)
-        java -cp $KLASSPATH org.apache.omid.examples.ConfigurationExample "$@"
+        java -cp $KLASSPATH -Dlog4j.configuration=file:${SCRIPTDIR}/conf/log4j.properties org.apache.omid.examples.ConfigurationExample "$@"
         ;;
     *)
         show_help
