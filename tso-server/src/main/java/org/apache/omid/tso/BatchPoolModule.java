@@ -26,6 +26,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Singleton;
+import java.util.ArrayList;
+import java.util.List;
 
 public class BatchPoolModule extends AbstractModule {
 
@@ -43,18 +45,27 @@ public class BatchPoolModule extends AbstractModule {
 
     @Provides
     @Singleton
-    ObjectPool<Batch> getBatchPool() {
+    ObjectPool<Batch> getBatchPool() throws Exception {
+
         int poolSize = config.getNumConcurrentCTWriters();
         int batchSize = config.getBatchSizePerCTWriter() + 1; // Add 1 element to batch size for storing LWM
 
-        LOG.info("Pool Size (Batches) {}; Batch Size {} (including LWM bucket)", poolSize, batchSize);
+        LOG.info("Pool Size (# of Batches) {}; Batch Size {} (including LWM bucket)", poolSize, batchSize);
         LOG.info("Total Batch Size (Pool size * Batch Size): {}", poolSize * batchSize);
         GenericObjectPoolConfig config = new GenericObjectPoolConfig();
         config.setMaxTotal(poolSize);
-        config.setMinIdle(poolSize);
-        config.setMaxIdle(poolSize);
         config.setBlockWhenExhausted(true);
-        return new GenericObjectPool<>(new Batch.BatchFactory(batchSize), config);
+        GenericObjectPool<Batch> batchPool = new GenericObjectPool<>(new Batch.BatchFactory(batchSize), config);
+        LOG.info("Pre-creating objects in the pool..."); // TODO There should be a better way to do this
+        List<Batch> batches = new ArrayList<>(poolSize);
+        for (int i = 0; i < poolSize; i++) {
+            batches.add(batchPool.borrowObject());
+        }
+        for (Batch batch : batches) {
+            batchPool.returnObject(batch);
+        }
+        return batchPool;
+
     }
 
 }
