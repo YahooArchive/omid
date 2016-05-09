@@ -26,8 +26,8 @@ import org.apache.omid.tso.client.OmidClientConfiguration;
 
 public class TSOServerBenchmarkConfig extends SecureHBaseConfig {
 
-    private static final String DEFAULT_CONFIG_FILE_NAME = "tso-server-benchmark-config.yml";
-    private static final String CONFIG_FILE_NAME = "default-tso-server-benchmark-config.yml";
+    private static final String CONFIG_FILE_NAME = "tso-server-benchmark-config.yml";
+    private static final String DEFAULT_CONFIG_FILE_NAME = "default-tso-server-benchmark-config.yml";
 
     private long benchmarkRunLengthInMins;
 
@@ -54,7 +54,7 @@ public class TSOServerBenchmarkConfig extends SecureHBaseConfig {
     }
 
     TSOServerBenchmarkConfig(String configFileName) {
-        new YAMLUtils().loadSettings(DEFAULT_CONFIG_FILE_NAME, configFileName, this);
+        new YAMLUtils().loadSettings(configFileName, DEFAULT_CONFIG_FILE_NAME, this);
     }
 
     // ----------------------------------------------------------------------------------------------------------------
