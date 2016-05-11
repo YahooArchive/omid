@@ -53,6 +53,8 @@ omidClientConfiguration: !!org.apache.omid.tso.client.OmidClientConfiguration
 # ---------------------------------------------------------------------------------------------------------------------
 commitTableStoreModule: !!org.apache.omid.committable.hbase.DefaultHBaseCommitTableStorageModule
     tableName: "OMID_COMMIT_TABLE"
+# principal: omid_hbase_user
+# keytab: /path/to/hbase/user/keytab
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Metrics configuration
