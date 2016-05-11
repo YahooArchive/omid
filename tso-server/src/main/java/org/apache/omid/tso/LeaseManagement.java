@@ -35,17 +35,17 @@ public interface LeaseManagement {
     }
 
     /**
-     * Allows to start the service implementing the lease management
+     * Allows to start the service implementing the lease management.
      */
-    void startService() throws LeaseManagementException;
+    void startService() throws Exception;
 
     /**
-     * Allows to stop the service implementing the lease management
+     * Allows to stop the service implementing the lease management.
      */
-    void stopService() throws LeaseManagementException;
+    void stopService() throws Exception;
 
     /**
-     * Check if the instance is still is under the lease period
+     * Check if the instance is still is under the lease period.
      */
     boolean stillInLeasePeriod();
 

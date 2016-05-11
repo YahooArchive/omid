@@ -17,104 +17,135 @@
  */
 package org.apache.omid.tso;
 
-import org.apache.omid.metrics.MetricsRegistry;
-import org.apache.omid.metrics.NullMetricsProvider;
+import org.apache.commons.pool2.PooledObject;
 import org.jboss.netty.channel.Channel;
 import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.Assert;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Mockito.timeout;
-import static org.mockito.Mockito.verify;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
 
 public class TestBatch {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestBatch.class);
 
     private static final int BATCH_SIZE = 1000;
-    private MetricsRegistry metrics = new NullMetricsProvider();
+
+    private static final long ANY_ST = 1231;
+    private static final long ANY_CT = 2241;
 
     @Mock
     private Channel channel;
     @Mock
-    private RetryProcessor retryProcessor;
-    @Mock
-    private ReplyProcessor replyProcessor;
+    private MonitoringContext monCtx;
 
-    // The batch element to test
-    private PersistenceProcessorImpl.Batch batch;
-
-    @BeforeMethod(alwaysRun = true, timeOut = 30_000)
-    public void initMocksAndComponents() {
-        MockitoAnnotations.initMocks(this);
-        batch = new PersistenceProcessorImpl.Batch(BATCH_SIZE);
-    }
-
-    @Test
+    @Test(timeOut = 10_000)
     public void testBatchFunctionality() {
 
-        // Required mocks
-        Channel channel = Mockito.mock(Channel.class);
-        ReplyProcessor replyProcessor = Mockito.mock(ReplyProcessor.class);
-        RetryProcessor retryProcessor = Mockito.mock(RetryProcessor.class);
-
-        // The batch element to test
-        PersistenceProcessorImpl.Batch batch = new PersistenceProcessorImpl.Batch(BATCH_SIZE);
+        // Component to test
+        Batch batch = new Batch(0, BATCH_SIZE);
 
         // Test initial state is OK
+        assertTrue(batch.isEmpty(), "Batch should be empty");
         assertFalse(batch.isFull(), "Batch shouldn't be full");
         assertEquals(batch.getNumEvents(), 0, "Num events should be 0");
 
-        // Test adding a single commit event is OK
-        MonitoringContext monCtx = new MonitoringContext(metrics);
-        monCtx.timerStart("commitPersistProcessor");
-        batch.addCommit(0, 1, channel, monCtx);
-        assertFalse(batch.isFull(), "Batch shouldn't be full");
-        assertEquals(batch.getNumEvents(), 1, "Num events should be 1");
+        // Test getting or setting an element in the batch greater than the current number of events is illegal
+        try {
+            batch.get(1);
+            fail();
+        } catch (IllegalStateException ex) {
+            // Expected, as we can not access elements in the batch greater than the current number of events
+        }
+        try {
+            batch.set(1, new PersistEvent());
+            fail();
+        } catch (IllegalStateException ex) {
+            // Expected, as we can not access elements in the batch greater than the current number of events
+        }
 
-        // Test when filling the batch with events, batch is full
-        for (int i = 0; i < (BATCH_SIZE - 1); i++) {
-            if (i % 2 == 0) {
-                monCtx = new MonitoringContext(metrics);
-                monCtx.timerStart("timestampPersistProcessor");
-                batch.addTimestamp(i, channel, monCtx);
+        // Test when filling the batch with different types of events, that becomes full
+        for (int i = 0; i < BATCH_SIZE; i++) {
+            if (i % 3 == 0) {
+                batch.addTimestamp(ANY_ST, channel, monCtx);
+            } else if (i % 3 == 1) {
+                batch.addCommit(ANY_ST, ANY_CT, channel, monCtx);
             } else {
-                monCtx = new MonitoringContext(metrics);
-                monCtx.timerStart("commitPersistProcessor");
-                batch.addCommit(i, i + 1, channel, monCtx);
+                batch.addAbort(ANY_ST, false, channel, monCtx);
             }
         }
+        assertFalse(batch.isEmpty(), "Batch should contain elements");
         assertTrue(batch.isFull(), "Batch should be full");
         assertEquals(batch.getNumEvents(), BATCH_SIZE, "Num events should be " + BATCH_SIZE);
 
         // Test an exception is thrown when batch is full and a new element is going to be added
         try {
-            monCtx = new MonitoringContext(metrics);
-            monCtx.timerStart("commitPersistProcessor");
-            batch.addCommit(0, 1, channel, new MonitoringContext(metrics));
-            Assert.fail("Should throw an IllegalStateException");
+            batch.addCommit(ANY_ST, ANY_CT, channel, monCtx);
+            fail("Should throw an IllegalStateException");
         } catch (IllegalStateException e) {
-            assertEquals(e.getMessage(), "batch full", "message returned doesn't match");
-            LOG.debug("IllegalStateException catched properly");
+            assertEquals(e.getMessage(), "batch is full", "message returned doesn't match");
+            LOG.debug("IllegalStateException catch properly");
+        }
+        assertTrue(batch.isFull(), "Batch shouldn't be empty");
+
+        // Check the first 3 events and the last one correspond to the filling done above
+        assertTrue(batch.get(0).getType().equals(PersistEvent.Type.TIMESTAMP));
+        assertTrue(batch.get(1).getType().equals(PersistEvent.Type.COMMIT));
+        assertTrue(batch.get(2).getType().equals(PersistEvent.Type.ABORT));
+
+        // Set a new value for last element in Batch and check we obtain the right result
+        batch.decreaseNumEvents();
+        assertEquals(batch.getNumEvents(), BATCH_SIZE - 1, "Num events should be " + (BATCH_SIZE - 1));
+        try {
+            batch.get(BATCH_SIZE - 1);
+            fail();
+        } catch (IllegalStateException ex) {
+            // Expected, as we can not access elements in the batch greater than the current number of events
         }
 
-        // Test that sending replies empties the batch
-        batch.sendRepliesAndReset(replyProcessor, retryProcessor);
-        verify(replyProcessor, timeout(100).times(BATCH_SIZE / 2))
-                .timestampResponse(anyLong(), any(Channel.class), any(MonitoringContext.class));
-        verify(replyProcessor, timeout(100).times(BATCH_SIZE / 2))
-                .commitResponse(anyLong(), anyLong(), any(Channel.class), any(MonitoringContext.class));
+        // Re-check that batch is NOT full
         assertFalse(batch.isFull(), "Batch shouldn't be full");
+
+        // Clear the batch and goes back to its initial state
+        batch.clear();
+        assertTrue(batch.isEmpty(), "Batch should be empty");
+        assertFalse(batch.isFull(), "Batch shouldn't be full");
+        assertEquals(batch.getNumEvents(), 0, "Num events should be 0");
+
+    }
+
+    @Test(timeOut = 10_000)
+    public void testBatchFactoryFunctionality() throws Exception {
+
+        // Component to test
+        Batch.BatchFactory factory = new Batch.BatchFactory(BATCH_SIZE);
+
+        // Check the factory creates a new batch properly...
+        Batch batch = factory.create();
+        assertTrue(batch.isEmpty(), "Batch should be empty");
+        assertFalse(batch.isFull(), "Batch shouldn't be full");
+        assertEquals(batch.getNumEvents(), 0, "Num events should be 0");
+
+        // ...and is wrapped in to a pooled object
+        PooledObject<Batch> pooledBatch = factory.wrap(batch);
+        assertEquals(pooledBatch.getObject(), batch);
+
+        // Put some elements in the batch...
+        batch.addTimestamp(ANY_ST, channel, monCtx);
+        batch.addCommit(ANY_ST, ANY_CT, channel, monCtx);
+        batch.addAbort(ANY_ST, false, channel, monCtx);
+        assertFalse(batch.isEmpty(), "Batch should contain elements");
+        assertFalse(batch.isFull(), "Batch should NOT be full");
+        assertEquals(batch.getNumEvents(), 3, "Num events should be 3");
+
+        // ... and passivate the object through the factory. It should reset the state of the batch
+        factory.passivateObject(pooledBatch);
+        assertTrue(batch.isEmpty(), "Batch should NOT contain elements");
+        assertFalse(batch.isFull(), "Batch should NOT be full");
         assertEquals(batch.getNumEvents(), 0, "Num events should be 0");
 
     }

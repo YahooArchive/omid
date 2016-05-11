@@ -20,20 +20,50 @@ package org.apache.omid.tso;
 import org.jboss.netty.channel.Channel;
 
 interface ReplyProcessor {
+
     /**
-     * Informs the client about the outcome of the Tx it was trying to commit.
+     * The each reply to a transactional operation for a client is contained in a batch. The batch must be ordered
+     * before sending the replies in order to not to break snapshot isolation properties.
+     *
+     * @param batchSequence
+     *            a batch sequence number, used to enforce order between replies
+     * @param batch
+     *            a batch containing the transaction operations
+     */
+    void manageResponsesBatch(long batchSequence, Batch batch);
+
+    /**
+     * Allows to send a commit response back to the client.
      *
      * @param startTimestamp
-     *            the start timestamp of the transaction (a.k.a. tx id)
+     *            the start timestamp representing the tx identifier that is going to receive the commit response
      * @param commitTimestamp
-     *            the commit timestamp of the transaction
+     *            the commit timestamp
      * @param channel
-     *            the communication channed with the client
+     *            the channel used to send the response back to the client
      */
-    void commitResponse(long startTimestamp, long commitTimestamp, Channel channel, MonitoringContext monCtx);
+    void sendCommitResponse(long startTimestamp, long commitTimestamp, Channel channel);
 
-    void abortResponse(long startTimestamp, Channel c, MonitoringContext monCtx);
+    /**
+     * Allows to send an abort response back to the client.
+     *
+     * @param startTimestamp
+     *            the start timestamp representing the tx identifier that is going to receive the abort response
+     * @param channel
+     *            the channel used to send the response back to the client
+     */
+    void sendAbortResponse(long startTimestamp, Channel channel);
 
-    void timestampResponse(long startTimestamp, Channel c, MonitoringContext monCtx);
+    /**
+     * Allow to send a timestamp response back to the client.
+     *
+     * @param startTimestamp
+     *            the start timestamp to return that will represent the tx identifier for the created transaction
+     * @param channel
+     *            the channel used to send the response back to the client
+     */
+
+    void sendTimestampResponse(long startTimestamp, Channel channel);
+
 }
 

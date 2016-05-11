@@ -62,8 +62,9 @@ public interface TSOStateManager {
          * Notifies the observer about the change in state
          * @param state
          *            the new TSOState
+         * @throws InterruptedException
          */
-        void update(TSOState state) throws IOException;
+        void update(TSOState state) throws Exception;
 
     }
 
@@ -89,7 +90,8 @@ public interface TSOStateManager {
      * @return the new state
      * @throws IOException
      *             when problems resetting occur
+     * @throws InterruptedException
      */
-    TSOState initialize() throws IOException;
+    TSOState initialize() throws Exception;
 
 }

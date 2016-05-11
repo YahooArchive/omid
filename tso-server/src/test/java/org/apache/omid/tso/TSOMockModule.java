@@ -17,7 +17,9 @@
  */
 package org.apache.omid.tso;
 
+import com.google.common.base.Preconditions;
 import com.google.inject.AbstractModule;
+import com.google.inject.Provider;
 import com.google.inject.Provides;
 import org.apache.omid.committable.CommitTable;
 import org.apache.omid.committable.InMemoryCommitTable;
@@ -38,6 +40,7 @@ public class TSOMockModule extends AbstractModule {
     private final TSOServerConfig config;
 
     public TSOMockModule(TSOServerConfig config) {
+        Preconditions.checkArgument(config.getNumConcurrentCTWriters() >= 2, "# of Commit Table writers must be >= 2");
         this.config = config;
     }
 
@@ -51,6 +54,7 @@ public class TSOMockModule extends AbstractModule {
         bind(TimestampOracle.class).to(PausableTimestampOracle.class).in(Singleton.class);
         bind(Panicker.class).to(MockPanicker.class).in(Singleton.class);
 
+        install(new BatchPoolModule(config));
         install(config.getLeaseModule());
         install(new DisruptorModule());
 
@@ -71,6 +75,15 @@ public class TSOMockModule extends AbstractModule {
     @Named(TSO_HOST_AND_PORT_KEY)
     String provideTSOHostAndPort() throws SocketException, UnknownHostException {
         return NetworkInterfaceUtils.getTSOHostAndPort(config);
+    }
+
+    @Provides
+    PersistenceProcessorHandler[] getPersistenceProcessorHandler(Provider<PersistenceProcessorHandler> provider) {
+        PersistenceProcessorHandler[] persistenceProcessorHandlers = new PersistenceProcessorHandler[config.getNumConcurrentCTWriters()];
+        for (int i = 0; i < persistenceProcessorHandlers.length; i++) {
+            persistenceProcessorHandlers[i] = provider.get();
+        }
+        return persistenceProcessorHandlers;
     }
 
 }

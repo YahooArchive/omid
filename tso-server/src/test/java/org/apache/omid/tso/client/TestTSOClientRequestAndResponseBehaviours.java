@@ -69,12 +69,13 @@ public class TestTSOClientRequestAndResponseBehaviours {
     private PausableTimestampOracle pausableTSOracle;
     private CommitTable commitTable;
 
-    @BeforeClass
-    public void setup() throws Exception {
+    @BeforeMethod
+    public void beforeMethod() throws Exception {
 
         TSOServerConfig tsoConfig = new TSOServerConfig();
         tsoConfig.setMaxItems(1000);
         tsoConfig.setPort(TSO_SERVER_PORT);
+        tsoConfig.setNumConcurrentCTWriters(2);
         Module tsoServerMockModule = new TSOMockModule(tsoConfig);
         Injector injector = Guice.createInjector(tsoServerMockModule);
 
@@ -93,19 +94,6 @@ public class TestTSOClientRequestAndResponseBehaviours {
         pausableTSOracle = (PausableTimestampOracle) injector.getInstance(TimestampOracle.class);
         commitTable = injector.getInstance(CommitTable.class);
 
-    }
-
-    @AfterClass
-    public void tearDown() throws Exception {
-
-        tsoServer.stopAndWait();
-        tsoServer = null;
-        TestUtils.waitForSocketNotListening(TSO_SERVER_HOST, TSO_SERVER_PORT, 1000);
-
-    }
-
-    @BeforeMethod
-    public void beforeMethod() {
         OmidClientConfiguration tsoClientConf = new OmidClientConfiguration();
         tsoClientConf.setConnectionString(TSO_SERVER_HOST + ":" + TSO_SERVER_PORT);
 
@@ -114,7 +102,12 @@ public class TestTSOClientRequestAndResponseBehaviours {
     }
 
     @AfterMethod
-    public void afterMethod() {
+    public void afterMethod() throws Exception {
+
+
+        tsoServer.stopAndWait();
+        tsoServer = null;
+        TestUtils.waitForSocketNotListening(TSO_SERVER_HOST, TSO_SERVER_PORT, 1000);
 
         pausableTSOracle.resume();
 

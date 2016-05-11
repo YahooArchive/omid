@@ -19,12 +19,19 @@ package org.apache.omid.tso;
 
 import org.jboss.netty.channel.Channel;
 
+import java.util.concurrent.Future;
+
 interface PersistenceProcessor {
-    void persistCommit(long startTimestamp, long commitTimestamp, Channel c, MonitoringContext monCtx);
 
-    void persistAbort(long startTimestamp, boolean isRetry, Channel c, MonitoringContext monCtx);
+    void addCommitToBatch(long startTimestamp, long commitTimestamp, Channel c, MonitoringContext monCtx)
+            throws Exception;
 
-    void persistTimestamp(long startTimestamp, Channel c, MonitoringContext monCtx);
+    void addAbortToBatch(long startTimestamp, boolean isRetry, Channel c, MonitoringContext monCtx) throws Exception;
 
-    void persistLowWatermark(long lowWatermark);
+    void addTimestampToBatch(long startTimestamp, Channel c, MonitoringContext monCtx) throws Exception;
+
+    void triggerCurrentBatchFlush() throws Exception;
+
+    Future<Void> persistLowWatermark(long lowWatermark);
+
 }

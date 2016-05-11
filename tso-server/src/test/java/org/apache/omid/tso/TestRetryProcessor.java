@@ -18,6 +18,7 @@
 package org.apache.omid.tso;
 
 import com.google.common.base.Optional;
+import org.apache.commons.pool2.ObjectPool;
 import org.apache.omid.committable.CommitTable;
 import org.apache.omid.committable.CommitTable.CommitTimestamp;
 import org.apache.omid.committable.InMemoryCommitTable;
@@ -42,12 +43,9 @@ public class TestRetryProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestRetryProcessor.class);
 
-    private MetricsRegistry metrics = new NullMetricsProvider();
-
     private static long NON_EXISTING_ST_TX = 1000;
     private static long ST_TX_1 = 0;
     private static long CT_TX_1 = 1;
-    private static long ST_TX_2 = 2;
 
     @Mock
     private Channel channel;
@@ -55,6 +53,8 @@ public class TestRetryProcessor {
     private ReplyProcessor replyProc;
     @Mock
     private Panicker panicker;
+    @Mock
+    private MetricsRegistry metrics;
 
     private CommitTable commitTable;
 
@@ -63,36 +63,46 @@ public class TestRetryProcessor {
         MockitoAnnotations.initMocks(this);
         // Init components
         commitTable = new InMemoryCommitTable();
-        metrics = new NullMetricsProvider();
-
     }
 
     @Test(timeOut = 10_000)
-    public void testBasicFunctionality() throws Exception {
+    public void testRetriedRequestForANonExistingTxReturnsAbort() throws Exception {
+        ObjectPool<Batch> batchPool = new BatchPoolModule(new TSOServerConfig()).getBatchPool();
 
         // The element to test
-        RetryProcessor retryProc = new RetryProcessorImpl(metrics, commitTable, replyProc, panicker);
+        RetryProcessor retryProc = new RetryProcessorImpl(metrics, commitTable, replyProc, panicker, batchPool);
 
         // Test we'll reply with an abort for a retry request when the start timestamp IS NOT in the commit table
         retryProc.disambiguateRetryRequestHeuristically(NON_EXISTING_ST_TX, channel, new MonitoringContext(metrics));
-        ArgumentCaptor<Long> firstTScapture = ArgumentCaptor.forClass(Long.class);
-        verify(replyProc, timeout(100).times(1)).abortResponse(firstTScapture.capture(), any(Channel.class), any(MonitoringContext.class));
+        ArgumentCaptor<Long> firstTSCapture = ArgumentCaptor.forClass(Long.class);
 
-        long startTS = firstTScapture.getValue();
+        verify(replyProc, timeout(100).times(1)).sendAbortResponse(firstTSCapture.capture(), any(Channel.class));
+        long startTS = firstTSCapture.getValue();
         assertEquals(startTS, NON_EXISTING_ST_TX, "Captured timestamp should be the same as NON_EXISTING_ST_TX");
+    }
+
+    @Test(timeOut = 10_000)
+    public void testRetriedRequestForAnExistingTxReturnsCommit() throws Exception {
+        ObjectPool<Batch> batchPool = new BatchPoolModule(new TSOServerConfig()).getBatchPool();
+
+        // The element to test
+        RetryProcessor retryProc = new RetryProcessorImpl(metrics, commitTable, replyProc, panicker, batchPool);
 
         // Test we'll reply with a commit for a retry request when the start timestamp IS in the commit table
-        commitTable.getWriter().addCommittedTransaction(ST_TX_1, CT_TX_1); // Add a tx to commit table
-
+        commitTable.getWriter().addCommittedTransaction(ST_TX_1, CT_TX_1);
         retryProc.disambiguateRetryRequestHeuristically(ST_TX_1, channel, new MonitoringContext(metrics));
-        ArgumentCaptor<Long> secondTScapture = ArgumentCaptor.forClass(Long.class);
-        verify(replyProc, timeout(100).times(1))
-                .commitResponse(firstTScapture.capture(), secondTScapture.capture(), any(Channel.class), any(MonitoringContext.class));
+        ArgumentCaptor<Long> firstTSCapture = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<Long> secondTSCapture = ArgumentCaptor.forClass(Long.class);
 
-        startTS = firstTScapture.getValue();
-        long commitTS = secondTScapture.getValue();
+        verify(replyProc, timeout(100).times(1)).sendCommitResponse(firstTSCapture.capture(),
+                                                                    secondTSCapture.capture(),
+                                                                    any(Channel.class));
+
+        long startTS = firstTSCapture.getValue();
+        long commitTS = secondTSCapture.getValue();
         assertEquals(startTS, ST_TX_1, "Captured timestamp should be the same as ST_TX_1");
         assertEquals(commitTS, CT_TX_1, "Captured timestamp should be the same as CT_TX_1");
+
     }
 
     @Test(timeOut = 10_000)
@@ -107,16 +117,16 @@ public class TestRetryProcessor {
         Assert.assertTrue(invalidTxMarker.isPresent());
         Assert.assertEquals(invalidTxMarker.get().getValue(), InMemoryCommitTable.INVALID_TRANSACTION_MARKER);
 
+        ObjectPool<Batch> batchPool = new BatchPoolModule(new TSOServerConfig()).getBatchPool();
+
         // The element to test
-        RetryProcessor retryProc = new RetryProcessorImpl(metrics, commitTable, replyProc, panicker);
+        RetryProcessor retryProc = new RetryProcessorImpl(metrics, commitTable, replyProc, panicker, batchPool);
 
-        // Test we'll reply with an abort for a retry request when the
-        // transaction id IS in the commit table BUT invalidated
+        // Test we return an Abort to a retry request when the transaction id IS in the commit table BUT invalidated
         retryProc.disambiguateRetryRequestHeuristically(ST_TX_1, channel, new MonitoringContext(metrics));
-        ArgumentCaptor<Long> startTScapture = ArgumentCaptor.forClass(Long.class);
-        verify(replyProc, timeout(100).times(1)).abortResponse(startTScapture.capture(), any(Channel.class), any(MonitoringContext.class));
-
-        long startTS = startTScapture.getValue();
+        ArgumentCaptor<Long> startTSCapture = ArgumentCaptor.forClass(Long.class);
+        verify(replyProc, timeout(100).times(1)).sendAbortResponse(startTSCapture.capture(), any(Channel.class));
+        long startTS = startTSCapture.getValue();
         Assert.assertEquals(startTS, ST_TX_1, "Captured timestamp should be the same as NON_EXISTING_ST_TX");
 
     }

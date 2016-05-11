@@ -17,6 +17,7 @@
  */
 package org.apache.omid.tso;
 
+import org.apache.commons.pool2.ObjectPool;
 import org.apache.omid.committable.CommitTable;
 import org.apache.omid.metrics.MetricsRegistry;
 import org.apache.omid.timestamp.storage.TimestampStorage;
@@ -41,7 +42,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
-@SuppressWarnings({"UnusedDeclaration"})
 public class TestPanicker {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestPanicker.class);
@@ -66,6 +66,7 @@ public class TestPanicker {
     // Please, remove me in a future commit
     @Test
     public void testTimestampOraclePanic() throws Exception {
+
         TimestampStorage storage = spy(new TimestampOracleImpl.InMemoryTimestampStorage());
         Panicker panicker = spy(new MockPanicker());
 
@@ -88,6 +89,7 @@ public class TestPanicker {
         allocThread.start();
 
         verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
+
     }
 
     // Note this test has been moved and refactored to TestPersistenceProcessor because
@@ -95,6 +97,7 @@ public class TestPanicker {
     // Please, remove me in a future commit
     @Test
     public void testCommitTablePanic() throws Exception {
+
         Panicker panicker = spy(new MockPanicker());
 
         doThrow(new IOException("Unable to write@TestPanicker")).when(mockWriter).flush();
@@ -114,16 +117,33 @@ public class TestPanicker {
 
         LeaseManager leaseManager = mock(LeaseManager.class);
         doReturn(true).when(leaseManager).stillInLeasePeriod();
-        PersistenceProcessor proc = new PersistenceProcessorImpl(new TSOServerConfig(),
-                                                                 metrics,
-                                                                 "localhost:1234",
-                                                                 leaseManager,
+        TSOServerConfig config = new TSOServerConfig();
+        ObjectPool<Batch> batchPool = new BatchPoolModule(config).getBatchPool();
+
+        PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[config.getNumConcurrentCTWriters()];
+        for (int i = 0; i < config.getNumConcurrentCTWriters(); i++) {
+            handlers[i] = new PersistenceProcessorHandler(metrics,
+                                                          "localhost:1234",
+                                                          leaseManager,
+                                                          commitTable,
+                                                          mock(ReplyProcessor.class),
+                                                          mock(RetryProcessor.class),
+                                                          panicker);
+        }
+
+        PersistenceProcessor proc = new PersistenceProcessorImpl(config,
                                                                  commitTable,
-                                                                 mock(ReplyProcessor.class),
-                                                                 mock(RetryProcessor.class),
-                                                                 panicker);
-        proc.persistCommit(1, 2, null, new MonitoringContext(metrics));
+                                                                 batchPool,
+                                                                 panicker,
+                                                                 handlers,
+                                                                 metrics);
+
+        proc.addCommitToBatch(1, 2, null, new MonitoringContext(metrics));
+
+        new RequestProcessorImpl(metrics, mock(TimestampOracle.class), proc, panicker, mock(TSOServerConfig.class));
+
         verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
+
     }
 
     // Note this test has been moved and refactored to TestPersistenceProcessor because
@@ -131,6 +151,7 @@ public class TestPanicker {
     // Please, remove me in a future commit
     @Test
     public void testRuntimeExceptionTakesDownDaemon() throws Exception {
+
         Panicker panicker = spy(new MockPanicker());
 
         final CommitTable.Writer mockWriter = mock(CommitTable.Writer.class);
@@ -148,16 +169,32 @@ public class TestPanicker {
                 return mockClient;
             }
         };
-        PersistenceProcessor proc = new PersistenceProcessorImpl(new TSOServerConfig(),
-                                                                 metrics,
-                                                                 "localhost:1234",
-                                                                 mock(LeaseManager.class),
+        TSOServerConfig config = new TSOServerConfig();
+        ObjectPool<Batch> batchPool = new BatchPoolModule(config).getBatchPool();
+
+        PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[config.getNumConcurrentCTWriters()];
+        for (int i = 0; i < config.getNumConcurrentCTWriters(); i++) {
+            handlers[i] = new PersistenceProcessorHandler(metrics,
+                                                          "localhost:1234",
+                                                          mock(LeaseManager.class),
+                                                          commitTable,
+                                                          mock(ReplyProcessor.class),
+                                                          mock(RetryProcessor.class),
+                                                          panicker);
+        }
+
+        PersistenceProcessor proc = new PersistenceProcessorImpl(config,
                                                                  commitTable,
-                                                                 mock(ReplyProcessor.class),
-                                                                 mock(RetryProcessor.class),
-                                                                 panicker);
-        proc.persistCommit(1, 2, null, new MonitoringContext(metrics));
+                                                                 batchPool,
+                                                                 panicker,
+                                                                 handlers,
+                                                                 metrics);
+        proc.addCommitToBatch(1, 2, null, new MonitoringContext(metrics));
+
+        new RequestProcessorImpl(metrics, mock(TimestampOracle.class), proc, panicker, mock(TSOServerConfig.class));
+
         verify(panicker, timeout(1000).atLeastOnce()).panic(anyString(), any(Throwable.class));
+
     }
 
 }

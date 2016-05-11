@@ -72,7 +72,9 @@ public class TSOServerConfig extends SecureHBaseConfig {
 
     private int maxItems;
 
-    private int maxBatchSize;
+    private int numConcurrentCTWriters;
+
+    private int batchSizePerCTWriter;
 
     private int batchPersistTimeoutInMs;
 
@@ -86,8 +88,32 @@ public class TSOServerConfig extends SecureHBaseConfig {
         this.port = port;
     }
 
-    public void setMaxBatchSize(int maxBatchSize) {
-        this.maxBatchSize = maxBatchSize;
+    public int getMaxItems() {
+        return maxItems;
+    }
+
+    public void setMaxItems(int maxItems) {
+        this.maxItems = maxItems;
+    }
+
+    public int getNumConcurrentCTWriters() {
+        return numConcurrentCTWriters;
+    }
+
+    public void setNumConcurrentCTWriters(int numConcurrentCTWriters) {
+        this.numConcurrentCTWriters = numConcurrentCTWriters;
+    }
+
+    public int getBatchSizePerCTWriter() {
+        return batchSizePerCTWriter;
+    }
+
+    public void setBatchSizePerCTWriter(int batchSizePerCTWriter) {
+        this.batchSizePerCTWriter = batchSizePerCTWriter;
+    }
+
+    public int getBatchPersistTimeoutInMs() {
+        return batchPersistTimeoutInMs;
     }
 
     public void setBatchPersistTimeoutInMs(int value) {
@@ -124,22 +150,6 @@ public class TSOServerConfig extends SecureHBaseConfig {
 
     public void setLeaseModule(Module leaseModule) {
         this.leaseModule = leaseModule;
-    }
-
-    public int getMaxItems() {
-        return maxItems;
-    }
-
-    public void setMaxItems(int maxItems) {
-        this.maxItems = maxItems;
-    }
-
-    public int getMaxBatchSize() {
-        return maxBatchSize;
-    }
-
-    public int getBatchPersistTimeoutInMs() {
-        return batchPersistTimeoutInMs;
     }
 
     public MetricsRegistry getMetrics() {

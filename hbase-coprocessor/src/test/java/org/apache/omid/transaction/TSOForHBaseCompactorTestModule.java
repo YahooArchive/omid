@@ -18,6 +18,7 @@
 package org.apache.omid.transaction;
 
 import com.google.inject.AbstractModule;
+import com.google.inject.Provider;
 import com.google.inject.Provides;
 import org.apache.omid.committable.CommitTable;
 import org.apache.omid.committable.hbase.HBaseCommitTable;
@@ -25,11 +26,13 @@ import org.apache.omid.metrics.MetricsRegistry;
 import org.apache.omid.metrics.NullMetricsProvider;
 import org.apache.omid.timestamp.storage.HBaseTimestampStorage;
 import org.apache.omid.timestamp.storage.TimestampStorage;
+import org.apache.omid.tso.BatchPoolModule;
 import org.apache.omid.tso.DisruptorModule;
 import org.apache.omid.tso.LeaseManagement;
 import org.apache.omid.tso.MockPanicker;
 import org.apache.omid.tso.NetworkInterfaceUtils;
 import org.apache.omid.tso.Panicker;
+import org.apache.omid.tso.PersistenceProcessorHandler;
 import org.apache.omid.tso.TSOChannelHandler;
 import org.apache.omid.tso.TSOServerConfig;
 import org.apache.omid.tso.TSOStateManager;
@@ -37,12 +40,14 @@ import org.apache.omid.tso.TSOStateManagerImpl;
 import org.apache.omid.tso.TimestampOracle;
 import org.apache.omid.tso.TimestampOracleImpl;
 import org.apache.omid.tso.VoidLeaseManager;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 
 import javax.inject.Named;
 import javax.inject.Singleton;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.SocketException;
@@ -72,6 +77,7 @@ class TSOForHBaseCompactorTestModule extends AbstractModule {
         bind(TimestampStorage.class).to(HBaseTimestampStorage.class).in(Singleton.class);
         bind(TimestampOracle.class).to(TimestampOracleImpl.class).in(Singleton.class);
 
+        install(new BatchPoolModule(config));
         // DisruptorConfig
         install(new DisruptorModule());
 
@@ -115,6 +121,14 @@ class TSOForHBaseCompactorTestModule extends AbstractModule {
     @Named(TSO_HOST_AND_PORT_KEY)
     String provideTSOHostAndPort() throws SocketException, UnknownHostException {
         return NetworkInterfaceUtils.getTSOHostAndPort(config);
+    }
 
+    @Provides
+    PersistenceProcessorHandler[] getPersistenceProcessorHandler(Provider<PersistenceProcessorHandler> provider) {
+        PersistenceProcessorHandler[] persistenceProcessorHandlers = new PersistenceProcessorHandler[config.getNumConcurrentCTWriters()];
+        for (int i = 0; i < persistenceProcessorHandlers.length; i++) {
+            persistenceProcessorHandlers[i] = provider.get();
+        }
+        return persistenceProcessorHandlers;
     }
 }
