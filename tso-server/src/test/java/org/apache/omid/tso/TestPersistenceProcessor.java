@@ -172,7 +172,7 @@ public class TestPersistenceProcessor {
 
     }
 
-    @Test(timeOut=10_000)
+    @Test(timeOut = 10_000)
     public void testCommitPersistenceWithMultipleCommitTableWriters() throws Exception {
 
         final int NUM_CT_WRITERS = 2;
@@ -242,7 +242,7 @@ public class TestPersistenceProcessor {
 
     }
 
-    @Test(timeOut=10_000)
+    @Test(timeOut = 10_000)
     public void testCommitPersistenceWithNonHALeaseManager() throws Exception {
 
         final int NUM_CT_WRITERS = 1;
@@ -285,7 +285,7 @@ public class TestPersistenceProcessor {
 
     }
 
-    @Test(timeOut=10_000)
+    @Test(timeOut = 10_000)
     public void testCommitPersistenceWithHALeaseManagerAndMinimumCommitTableWriters() throws Exception {
 
         final int NUM_PERSIST_HANDLERS = 2; // Minimum commit table writers is 2
@@ -300,7 +300,7 @@ public class TestPersistenceProcessor {
 
     }
 
-    @Test(timeOut=10_000)
+    @Test(timeOut = 10_000)
     public void testCommitPersistenceWithHALeaseManagerAndMultipleCommitTableWriters() throws Exception {
 
         final int NUM_CT_WRITERS = 4;
@@ -375,7 +375,6 @@ public class TestPersistenceProcessor {
 
         // Test: Configure the lease manager to return false for stillInLeasePeriod
         doReturn(false).when(simulatedHALeaseManager).stillInLeasePeriod();
-        //batchPool.notifyEmptyBatch(0); // Unlock this thread to check the panicker
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class));
         proc.triggerCurrentBatchFlush();
         verify(simulatedHALeaseManager, timeout(1000).times(1)).stillInLeasePeriod();
@@ -400,7 +399,6 @@ public class TestPersistenceProcessor {
         // Configure mock writer to flush unsuccessfully
         doThrow(new IOException("Unable to write")).when(mockWriter).flush();
         doReturn(true).doReturn(false).when(simulatedHALeaseManager).stillInLeasePeriod();
-//        batchPool.notifyEmptyBatch(0); // Unlock this thread to check the panicker
         proc.addCommitToBatch(ANY_ST, ANY_CT, mock(Channel.class), mock(MonitoringContext.class));
         proc.triggerCurrentBatchFlush();
         verify(simulatedHALeaseManager, timeout(1000).times(1)).stillInLeasePeriod();
@@ -425,7 +423,7 @@ public class TestPersistenceProcessor {
         return handlers;
     }
 
-    @Test(timeOut=10_000)
+    @Test(timeOut = 10_000)
     public void testCommitTableExceptionOnCommitPersistenceTakesDownDaemon() throws Exception {
 
         // Init lease management (doesn't matter if HA or not)
@@ -466,7 +464,7 @@ public class TestPersistenceProcessor {
 
     }
 
-    @Test(timeOut=10_000)
+    @Test(timeOut = 10_000)
     public void testRuntimeExceptionOnCommitPersistenceTakesDownDaemon() throws Exception {
 
         TSOServerConfig config = new TSOServerConfig();

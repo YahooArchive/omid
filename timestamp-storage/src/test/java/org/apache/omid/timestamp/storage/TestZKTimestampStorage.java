@@ -89,11 +89,11 @@ public class TestZKTimestampStorage {
 
         LOG.info("Creating Internal Zookeeper Client connected to {}", ZK_CLUSTER);
         storageInternalZKClient = Mockito.spy(CuratorFrameworkFactory.builder()
-                .namespace("omid")
-                .connectString(ZK_CLUSTER)
-                .retryPolicy(retryPolicy)
-                .connectionTimeoutMs(10) // Low timeout for tests
-                .build());
+                                                      .namespace("omid")
+                                                      .connectString(ZK_CLUSTER)
+                                                      .retryPolicy(retryPolicy)
+                                                      .connectionTimeoutMs(10) // Low timeout for tests
+                                                      .build());
         storageInternalZKClient.start();
         storageInternalZKClient.blockUntilConnected();
 
@@ -117,7 +117,7 @@ public class TestZKTimestampStorage {
 
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testBasicFunctionality() throws Exception {
 
         // Check ZNode for timestamp exists (storage instantiation should create it)
@@ -187,7 +187,7 @@ public class TestZKTimestampStorage {
         assertEquals(zNodeStats.getVersion(), ITERATION_COUNT);
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testZkClientWhenZKIsDownAndRestarts() throws Exception {
 
         // Iterate updating the timestamp and check the final value
@@ -217,7 +217,7 @@ public class TestZKTimestampStorage {
 
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testZkClientLosingSession() throws Exception {
 
         // Cut the session in the server through the client
@@ -238,4 +238,5 @@ public class TestZKTimestampStorage {
         assertEquals(storage.getMaxTimestamp(), 1_000_000 * ITERATION_COUNT);
 
     }
+
 }

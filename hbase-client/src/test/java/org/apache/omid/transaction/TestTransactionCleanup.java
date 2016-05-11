@@ -56,7 +56,7 @@ public class TestTransactionCleanup extends OmidTestBase {
     // lacks some assertions and includes some magic numbers, so we should
     // try to review and improve the tests in these two classes in a further
     // commit.
-    @Test
+    @Test(timeOut = 10_000)
     public void testTransactionIsCleanedUpAfterBeingAborted(ITestContext context) throws Exception {
 
         final int ROWS_MODIFIED = 1;

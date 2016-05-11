@@ -43,7 +43,7 @@ public class TestReadPath extends OmidTestBase {
     final byte[] data = Bytes.toBytes("data");
     private final byte[] uncommitted = Bytes.toBytes("uncommitted");
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testReadInterleaved(ITestContext context) throws Exception {
         TransactionManager tm = newTransactionManager(context);
         TTable table = new TTable(hbaseConf, TEST_TABLE);
@@ -62,7 +62,7 @@ public class TestReadPath extends OmidTestBase {
         assertFalse(result.containsColumn(family, col), "Should be unable to read column");
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testReadWithSeveralUncommitted(ITestContext context) throws Exception {
         TransactionManager tm = newTransactionManager(context);
         TTable table = new TTable(hbaseConf, TEST_TABLE);

@@ -34,7 +34,7 @@ public class TestMockTSOClient {
     final static public CellId c1 = new DummyCellIdImpl(0xdeadbeefL);
     final static public CellId c2 = new DummyCellIdImpl(-0xfeedcafeL);
 
-    @Test(timeOut = 10000)
+    @Test(timeOut = 10_000)
     public void testConflicts() throws Exception {
         CommitTable commitTable = new InMemoryCommitTable();
         TSOProtocol client = new MockTSOClient(commitTable.getWriter());
@@ -52,7 +52,7 @@ public class TestMockTSOClient {
         }
     }
 
-    @Test(timeOut = 10000)
+    @Test(timeOut = 10_000)
     public void testWatermarkUpdate() throws Exception {
         CommitTable commitTable = new InMemoryCommitTable();
         TSOProtocol client = new MockTSOClient(commitTable.getWriter());

@@ -22,7 +22,7 @@ import org.testng.annotations.Test;
 
 public class TestOmidClientConfiguration {
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testYamlReading() {
         OmidClientConfiguration configuration = new OmidClientConfiguration();
         Assert.assertNotNull(configuration.getConnectionString());

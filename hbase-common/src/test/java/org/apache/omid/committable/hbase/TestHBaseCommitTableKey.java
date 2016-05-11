@@ -30,7 +30,7 @@ import static org.testng.Assert.assertEquals;
 
 public class TestHBaseCommitTableKey {
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testEncodeDecode() throws Exception {
         testKeyGen(new BucketKeyGenerator());
         testKeyGen(new BadRandomKeyGenerator());
@@ -38,7 +38,7 @@ public class TestHBaseCommitTableKey {
         testKeyGen(new SeqKeyGenerator());
     }
 
-    @Test(enabled = false)
+    @Test(enabled = false, timeOut = 10_000)
     private void testKeyGen(KeyGenerator keyGen) throws IOException {
         assertEquals(keyGen.keyToStartTimestamp(keyGen.startTimestampToKey(0)), 0, "Should match");
         assertEquals(keyGen.keyToStartTimestamp(keyGen.startTimestampToKey(1)), 1, "Should match");

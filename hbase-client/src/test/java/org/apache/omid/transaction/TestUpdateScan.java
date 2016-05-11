@@ -44,7 +44,7 @@ public class TestUpdateScan extends OmidTestBase {
     private static final String TEST_COL = "value";
     private static final String TEST_COL_2 = "col_2";
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testGet(ITestContext context) throws Exception {
         try {
             TransactionManager tm = newTransactionManager(context);
@@ -64,8 +64,7 @@ public class TestUpdateScan extends OmidTestBase {
             Get g = new Get(startKey);
             Result r = table.get(t, g);
             if (!r.isEmpty()) {
-                int tmp = Bytes.toInt(r.getValue(Bytes.toBytes(TEST_FAMILY),
-                        Bytes.toBytes(TEST_COL)));
+                int tmp = Bytes.toInt(r.getValue(Bytes.toBytes(TEST_FAMILY), Bytes.toBytes(TEST_COL)));
                 LOG.info("Result:" + tmp);
                 assertTrue(tmp == startKeyValue, "Bad value, should be " + startKeyValue + " but is " + tmp);
             } else {
@@ -79,8 +78,7 @@ public class TestUpdateScan extends OmidTestBase {
             boolean startInclusive = true;
             if (!startInclusive) {
                 FilterList filters = new FilterList(FilterList.Operator.MUST_PASS_ALL);
-                filters.addFilter(new RowFilter(CompareFilter.CompareOp.GREATER,
-                        new BinaryPrefixComparator(startKey)));
+                filters.addFilter(new RowFilter(CompareFilter.CompareOp.GREATER, new BinaryPrefixComparator(startKey)));
                 filters.addFilter(new WhileMatchFilter(toFilter));
                 s.setFilter(filters);
             } else {
@@ -91,8 +89,7 @@ public class TestUpdateScan extends OmidTestBase {
             Result rr;
             int count = 0;
             while ((rr = res.next()) != null) {
-                int iTmp = Bytes.toInt(rr.getValue(Bytes.toBytes(TEST_FAMILY),
-                        Bytes.toBytes(TEST_COL)));
+                int iTmp = Bytes.toInt(rr.getValue(Bytes.toBytes(TEST_FAMILY), Bytes.toBytes(TEST_COL)));
                 LOG.info("Result: " + iTmp);
                 count++;
             }
@@ -105,7 +102,7 @@ public class TestUpdateScan extends OmidTestBase {
         }
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testScan(ITestContext context) throws Exception {
 
         try (TTable table = new TTable(hbaseConf, TEST_TABLE)) {
@@ -129,8 +126,7 @@ public class TestUpdateScan extends OmidTestBase {
             Result rr;
             int count = 0;
             while ((rr = res.next()) != null) {
-                int iTmp = Bytes.toInt(rr.getValue(Bytes.toBytes(TEST_FAMILY),
-                        Bytes.toBytes(TEST_COL)));
+                int iTmp = Bytes.toInt(rr.getValue(Bytes.toBytes(TEST_FAMILY), Bytes.toBytes(TEST_COL)));
                 LOG.info("Result: " + iTmp);
                 count++;
             }
@@ -143,8 +139,7 @@ public class TestUpdateScan extends OmidTestBase {
             res = table.getScanner(t, s);
             count = 0;
             while ((rr = res.next()) != null) {
-                int iTmp = Bytes.toInt(rr.getValue(Bytes.toBytes(TEST_FAMILY),
-                        Bytes.toBytes(TEST_COL)));
+                int iTmp = Bytes.toInt(rr.getValue(Bytes.toBytes(TEST_FAMILY), Bytes.toBytes(TEST_COL)));
                 LOG.info("Result: " + iTmp);
                 count++;
             }
@@ -155,8 +150,7 @@ public class TestUpdateScan extends OmidTestBase {
 
     }
 
-
-    @Test
+    @Test(timeOut = 10_000)
     public void testScanUncommitted(ITestContext context) throws Exception {
         try {
             TransactionManager tm = newTransactionManager(context);
@@ -197,8 +191,7 @@ public class TestUpdateScan extends OmidTestBase {
             int count = 0;
 
             while ((rr = res.next()) != null) {
-                int iTmp = Bytes.toInt(rr.getValue(Bytes.toBytes(TEST_FAMILY),
-                        Bytes.toBytes(TEST_COL)));
+                int iTmp = Bytes.toInt(rr.getValue(Bytes.toBytes(TEST_FAMILY), Bytes.toBytes(TEST_COL)));
                 LOG.info("Result: " + iTmp);
                 count++;
             }
@@ -211,4 +204,5 @@ public class TestUpdateScan extends OmidTestBase {
             LOG.error("Exception in test", e);
         }
     }
+
 }

@@ -50,7 +50,7 @@ public class TestTSOStateManager {
         when(timestampOracle.getLast()).thenReturn(INITIAL_STATE_VALUE);
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testTSOServerStateInitialization() throws Exception {
 
         // Reset the state and check we get the initial state values
@@ -71,7 +71,7 @@ public class TestTSOStateManager {
 
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testObserverRegistrationAndDeregistrationForStateChanges() throws Exception {
 
         // Register observer 1 for receiving state changes

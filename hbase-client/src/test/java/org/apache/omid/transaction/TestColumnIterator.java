@@ -57,7 +57,7 @@ public class TestColumnIterator {
             )
     );
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testGroupingCellsByColumnFilteringShadowCells() {
 
         ImmutableList<Collection<Cell>> groupedColumnsWithoutShadowCells =

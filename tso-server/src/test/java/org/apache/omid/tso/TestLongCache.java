@@ -36,7 +36,7 @@ public class TestLongCache {
 
     private Random random = new Random(System.currentTimeMillis());
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testAddAndGetElems() {
 
         // Cache configuration
@@ -65,7 +65,7 @@ public class TestLongCache {
 
     }
 
-    @Test(timeOut = 10000)
+    @Test(timeOut = 10_000)
     public void testEntriesAge() {
 
         final int entries = 1000;

@@ -22,7 +22,7 @@ import org.testng.annotations.Test;
 
 public class TestHBaseOmidClientConfiguration {
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testYamlReading() {
         HBaseOmidClientConfiguration configuration = new HBaseOmidClientConfiguration();
         Assert.assertNotNull(configuration.getCommitTableName());
@@ -31,7 +31,7 @@ public class TestHBaseOmidClientConfiguration {
         Assert.assertNotNull(configuration.getOmidClientConfiguration());
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testYamlReadingFromFile() {
         HBaseOmidClientConfiguration configuration = new HBaseOmidClientConfiguration("/test-hbase-omid-client-config.yml");
         Assert.assertNotNull(configuration.getCommitTableName());

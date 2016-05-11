@@ -398,7 +398,7 @@ public class TestShadowCells extends OmidTestBase {
     /**
      * Test that the new client can read shadow cells written by the old client.
      */
-    @Test
+    @Test(timeOut = 60_000)
     public void testGetOldShadowCells(ITestContext context) throws Exception {
 
         TransactionManager tm = newTransactionManager(context);

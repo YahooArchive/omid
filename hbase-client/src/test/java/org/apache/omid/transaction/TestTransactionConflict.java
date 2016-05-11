@@ -42,7 +42,7 @@ public class TestTransactionConflict extends OmidTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestTransactionConflict.class);
 
-    @Test
+    @Test(timeOut = 10_000)
     public void runTestWriteWriteConflict(ITestContext context) throws Exception {
         TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
@@ -76,7 +76,7 @@ public class TestTransactionConflict extends OmidTestBase {
         }
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void runTestMultiTableConflict(ITestContext context) throws Exception {
         TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
@@ -147,7 +147,7 @@ public class TestTransactionConflict extends OmidTestBase {
         assertEquals(count, 1, "Should have cell");
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void runTestCleanupAfterConflict(ITestContext context) throws Exception {
         TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
@@ -203,7 +203,7 @@ public class TestTransactionConflict extends OmidTestBase {
                    "Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)));
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testCleanupWithDeleteRow(ITestContext context) throws Exception {
 
         TransactionManager tm = newTransactionManager(context);
@@ -274,7 +274,7 @@ public class TestTransactionConflict extends OmidTestBase {
 
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testMultipleCellChangesOnSameRow(ITestContext context) throws Exception {
         TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);

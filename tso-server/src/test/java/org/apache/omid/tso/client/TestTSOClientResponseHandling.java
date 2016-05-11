@@ -54,7 +54,7 @@ public class TestTSOClientResponseHandling {
         tsoServer.cleanResponses();
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testTimestampRequestReceivingASuccessfulResponse() throws Exception {
         // test request timestamp response returns a timestamp
 
@@ -65,7 +65,7 @@ public class TestTSOClientResponseHandling {
         assertEquals(startTS, START_TS);
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testCommitRequestReceivingAnAbortResponse() throws Exception {
         // test commit request which is aborted on the server side
         // (e.g. due to conflicts with other transaction) throws an
@@ -81,7 +81,7 @@ public class TestTSOClientResponseHandling {
         }
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testCommitRequestReceivingASuccessfulResponse() throws Exception {
         // test commit request which is successfully committed on the server
         // side returns a commit timestamp

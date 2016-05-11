@@ -32,9 +32,7 @@ import org.apache.omid.tso.TimestampOracle;
 import org.apache.omid.tso.util.DummyCellIdImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -339,7 +337,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
     // The next 3 tests are similar to the ones in TestRetryProcessor but checking the result on the TSOClient side
     // (They exercise the communication protocol) TODO Remove???
     // ----------------------------------------------------------------------------------------------------------------
-    @Test
+    @Test(timeOut = 30_000)
     public void testCommitTimestampPresentInCommitTableReturnsCommit() throws Exception {
 
         TSOClient client = TSOClient.newInstance(tsoClientConf);
@@ -353,7 +351,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
         assertEquals(response.getCommitResponse().getCommitTimestamp(), tx1ST + 1);
     }
 
-    @Test
+    @Test(timeOut = 30_000)
     public void testInvalidCommitTimestampPresentInCommitTableReturnsAbort() throws Exception {
 
         TSOClient client = TSOClient.newInstance(tsoClientConf);
@@ -369,7 +367,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
         assertEquals(response.getCommitResponse().getCommitTimestamp(), 0);
     }
 
-    @Test
+    @Test(timeOut = 30_000)
     public void testCommitTimestampNotPresentInCommitTableReturnsAnAbort() throws Exception {
 
         TSOClient client = TSOClient.newInstance(tsoClientConf);

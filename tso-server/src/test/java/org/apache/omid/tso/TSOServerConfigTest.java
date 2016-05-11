@@ -21,7 +21,7 @@ import org.testng.annotations.Test;
 
 public class TSOServerConfigTest {
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testParsesOK() throws Exception {
         new TSOServerConfig("test-omid.yml");
     }

@@ -126,7 +126,7 @@ public class TestLeaseManager {
 
     }
 
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testLeaseHolderDoesNotChangeWhenPausedForALongTimeAndTheresNoOtherInstance() throws Exception {
 
         final String TEST_TSO_LEASE_PATH = "/test1_tsolease";

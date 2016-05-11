@@ -61,7 +61,7 @@ public class TestDeletion extends OmidTestBase {
 
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void runTestDeleteFamily(ITestContext context) throws Exception {
 
         TransactionManager tm = newTransactionManager(context);
@@ -98,7 +98,7 @@ public class TestDeletion extends OmidTestBase {
 
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void runTestDeleteColumn(ITestContext context) throws Exception {
 
         TransactionManager tm = newTransactionManager(context);
@@ -139,7 +139,7 @@ public class TestDeletion extends OmidTestBase {
     /**
      * This test is very similar to #runTestDeleteColumn() but exercises Delete#deleteColumns()
      */
-    @Test
+    @Test(timeOut = 10_000)
     public void runTestDeleteColumns(ITestContext context) throws Exception {
 
         TransactionManager tm = newTransactionManager(context);
@@ -178,7 +178,7 @@ public class TestDeletion extends OmidTestBase {
 
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void runTestDeleteRow(ITestContext context) throws Exception {
         TransactionManager tm = newTransactionManager(context);
         TTable tt = new TTable(hbaseConf, TEST_TABLE);
@@ -213,7 +213,7 @@ public class TestDeletion extends OmidTestBase {
 
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testDeletionOfNonExistingColumnFamilyDoesNotWriteToHBase(ITestContext context) throws Exception {
 
         // --------------------------------------------------------------------

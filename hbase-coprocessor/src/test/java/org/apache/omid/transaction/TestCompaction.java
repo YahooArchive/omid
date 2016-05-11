@@ -205,7 +205,7 @@ public class TestCompaction {
                 .build();
     }
 
-    @Test
+    @Test(timeOut = 60_000)
     public void testStandardTXsWithShadowCellsAndWithSTBelowAndAboveLWMArePresevedAfterCompaction() throws Throwable {
         String TEST_TABLE = "testStandardTXsWithShadowCellsAndWithSTBelowAndAboveLWMArePresevedAfterCompaction";
         createTableIfNotExists(TEST_TABLE, Bytes.toBytes(TEST_FAMILY));
@@ -251,7 +251,7 @@ public class TestCompaction {
         assertEquals(rowCount(TEST_TABLE, fam), ROWS_TO_ADD, "Rows in table after compacting should be " + ROWS_TO_ADD);
     }
 
-    @Test
+    @Test(timeOut = 60_000)
     public void testTXWithoutShadowCellsAndWithSTBelowLWMGetsShadowCellHealedAfterCompaction() throws Exception {
         String TEST_TABLE = "testTXWithoutShadowCellsAndWithSTBelowLWMGetsShadowCellHealedAfterCompaction";
         createTableIfNotExists(TEST_TABLE, Bytes.toBytes(TEST_FAMILY));
@@ -310,7 +310,7 @@ public class TestCompaction {
                    "Shadow cell should not be there");
     }
 
-    @Test
+    @Test(timeOut = 60_000)
     public void testNeverendingTXsWithSTBelowAndAboveLWMAreDiscardedAndPreservedRespectivelyAfterCompaction()
             throws Throwable {
         String
@@ -386,7 +386,7 @@ public class TestCompaction {
 
     }
 
-    @Test
+    @Test(timeOut = 60_000)
     public void testRowsUnalteredWhenCommitTableCannotBeReached() throws Throwable {
         String TEST_TABLE = "testRowsUnalteredWhenCommitTableCannotBeReached";
         createTableIfNotExists(TEST_TABLE, Bytes.toBytes(TEST_FAMILY));
@@ -439,7 +439,7 @@ public class TestCompaction {
                     "Shadow cell should not be there");
     }
 
-    @Test
+    @Test(timeOut = 60_000)
     public void testOriginalTableParametersAreAvoidedAlsoWhenCompacting() throws Throwable {
         String TEST_TABLE = "testOriginalTableParametersAreAvoidedAlsoWhenCompacting";
         createTableIfNotExists(TEST_TABLE, Bytes.toBytes(TEST_FAMILY));
@@ -498,7 +498,7 @@ public class TestCompaction {
         TimeUnit.SECONDS.sleep(2);
     }
 
-    @Test
+    @Test(timeOut = 60_000)
     public void testOldCellsAreDiscardedAfterCompaction() throws Exception {
         String TEST_TABLE = "testOldCellsAreDiscardedAfterCompaction";
         createTableIfNotExists(TEST_TABLE, Bytes.toBytes(TEST_FAMILY));
@@ -604,7 +604,7 @@ public class TestCompaction {
     /**
      * Tests a case where a temporary failure to flush causes the compactor to crash
      */
-    @Test
+    @Test(timeOut = 60_000)
     public void testDuplicateDeletes() throws Throwable {
         String TEST_TABLE = "testDuplicateDeletes";
         createTableIfNotExists(TEST_TABLE, Bytes.toBytes(TEST_FAMILY));
@@ -711,7 +711,7 @@ public class TestCompaction {
                     "Cell should not be be there");
     }
 
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testNonOmidCFIsUntouched() throws Throwable {
         String TEST_TABLE = "testNonOmidCFIsUntouched";
         createTableIfNotExists(TEST_TABLE, Bytes.toBytes(TEST_FAMILY));

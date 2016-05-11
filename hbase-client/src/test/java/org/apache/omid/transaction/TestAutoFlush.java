@@ -29,7 +29,7 @@ import static org.testng.Assert.assertEquals;
 @Test(groups = "sharedHBase")
 public class TestAutoFlush extends OmidTestBase {
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testReadWithSeveralUncommitted(ITestContext context) throws Exception {
 
         byte[] family = Bytes.toBytes(TEST_FAMILY);

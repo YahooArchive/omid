@@ -55,7 +55,7 @@ public class TestCompactorScanner {
         };
     }
 
-    @Test(dataProvider = "cell-retain-options")
+    @Test(dataProvider = "cell-retain-options", timeOut = 60_000)
     public void testShouldRetainNonTransactionallyDeletedCellMethod(int optionIdx, boolean retainOption)
             throws Exception {
 

@@ -64,7 +64,7 @@ public class TestPanicker {
     // Note this test has been moved and refactored to TestTimestampOracle because
     // it tests the behaviour of the TimestampOracle.
     // Please, remove me in a future commit
-    @Test
+    @Test(timeOut = 10_000)
     public void testTimestampOraclePanic() throws Exception {
 
         TimestampStorage storage = spy(new TimestampOracleImpl.InMemoryTimestampStorage());
@@ -95,7 +95,7 @@ public class TestPanicker {
     // Note this test has been moved and refactored to TestPersistenceProcessor because
     // it tests the behaviour of the PersistenceProcessor.
     // Please, remove me in a future commit
-    @Test
+    @Test(timeOut = 10_000)
     public void testCommitTablePanic() throws Exception {
 
         Panicker panicker = spy(new MockPanicker());
@@ -149,7 +149,7 @@ public class TestPanicker {
     // Note this test has been moved and refactored to TestPersistenceProcessor because
     // it tests the behaviour of the PersistenceProcessor.
     // Please, remove me in a future commit
-    @Test
+    @Test(timeOut = 10_000)
     public void testRuntimeExceptionTakesDownDaemon() throws Exception {
 
         Panicker panicker = spy(new MockPanicker());

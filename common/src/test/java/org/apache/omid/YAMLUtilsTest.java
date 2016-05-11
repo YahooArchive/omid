@@ -17,17 +17,15 @@
  */
 package org.apache.omid;
 
-
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 public class YAMLUtilsTest {
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testLoadDefaultSettings_setToBean() throws Exception {
         Map map = new HashMap();
         new YAMLUtils().loadSettings("test.yml", "default-test.yml", map);
@@ -37,7 +35,7 @@ public class YAMLUtilsTest {
         Assert.assertEquals(map.get("prop3"), 3);
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testLoadDefaultSettings_setToBean2() throws Exception {
         Map map = new HashMap();
         new YAMLUtils().loadSettings("test.yml", map);

@@ -86,7 +86,7 @@ public class TestStateMachine {
         }
     }
 
-    @Test(timeOut = 60000)
+    @Test(timeOut = 60_000)
     public void testOrdering() throws Throwable {
         Fsm fsm = new FsmImpl(Executors.newSingleThreadScheduledExecutor());
         fsm.setInitState(new DeferringState(fsm));

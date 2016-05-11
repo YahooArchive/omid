@@ -76,7 +76,7 @@ public class TestBaillisAnomaliesWithTXs extends OmidTestBase {
     private byte[] dataValue3 = Bytes.toBytes(30);
 
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testSIPreventsPredicateManyPrecedersForReadPredicates(ITestContext context) throws Exception {
         // TX History for PMP for Read Predicate:
         // begin; set transaction isolation level repeatable read; -- T1
@@ -117,7 +117,7 @@ public class TestBaillisAnomaliesWithTXs extends OmidTestBase {
         tm.commit(tx1);
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testSIPreventsPredicateManyPrecedersForWritePredicates(ITestContext context) throws Exception {
         // TX History for PMP for Write Predicate:
         // begin; set transaction isolation level repeatable read; -- T1
@@ -184,7 +184,7 @@ public class TestBaillisAnomaliesWithTXs extends OmidTestBase {
 
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testSIPreventsLostUpdates(ITestContext context) throws Exception {
         // TX History for P4:
         // begin; set transaction isolation level repeatable read; -- T1
@@ -258,7 +258,7 @@ public class TestBaillisAnomaliesWithTXs extends OmidTestBase {
 
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testSIPreventsReadSkew(ITestContext context) throws Exception {
         // TX History for G-single:
         // begin; set transaction isolation level repeatable read; -- T1
@@ -359,7 +359,7 @@ public class TestBaillisAnomaliesWithTXs extends OmidTestBase {
 
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testSIPreventsReadSkewUsingWritePredicate(ITestContext context) throws Exception {
         // TX History for G-single:
         // begin; set transaction isolation level repeatable read; -- T1
@@ -421,7 +421,7 @@ public class TestBaillisAnomaliesWithTXs extends OmidTestBase {
     }
 
     // this test shows that Omid does not provide serilizable level of isolation other wise last commit would have failed
-    @Test
+    @Test(timeOut = 10_000)
     public void testSIDoesNotPreventWriteSkew(ITestContext context) throws Exception {
         // TX History for G2-item:
         // begin; set transaction isolation level repeatable read; -- T1
@@ -508,7 +508,7 @@ public class TestBaillisAnomaliesWithTXs extends OmidTestBase {
     }
 
     // this test shows that Omid does not provide serilizable level of isolation other wise last commit would have failed
-    @Test
+    @Test(timeOut = 10_000)
     public void testSIDoesNotPreventAntiDependencyCycles(ITestContext context) throws Exception {
         // TX History for G2:
         // begin; set transaction isolation level repeatable read; -- T1

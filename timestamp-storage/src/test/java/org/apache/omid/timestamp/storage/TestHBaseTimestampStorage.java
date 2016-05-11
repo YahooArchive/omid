@@ -104,7 +104,7 @@ public class TestHBaseTimestampStorage {
         }
     }
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testHBaseTimestampStorage() throws Exception {
 
         final long INITIAL_TS_VALUE = 0;

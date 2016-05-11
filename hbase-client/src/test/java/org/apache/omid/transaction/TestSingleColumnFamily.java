@@ -34,7 +34,7 @@ public class TestSingleColumnFamily extends OmidTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestSingleColumnFamily.class);
 
-    @Test
+    @Test(timeOut = 10_000)
     public void testSingleColumnFamily(ITestContext context) throws Exception {
         TransactionManager tm = newTransactionManager(context);
         TTable table1 = new TTable(hbaseConf, TEST_TABLE);
