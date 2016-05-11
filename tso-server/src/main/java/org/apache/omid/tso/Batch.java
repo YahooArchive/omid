@@ -64,13 +64,6 @@ public class Batch {
 
     }
 
-    boolean isLastEntryEmpty() {
-
-        Preconditions.checkState(numEvents <= size, "numEvents > size");
-        return numEvents == (size - 1);
-
-    }
-
     int getNumEvents() {
         return numEvents;
     }
@@ -82,7 +75,7 @@ public class Batch {
     }
 
     PersistEvent get(int idx) {
-        Preconditions.checkState(numEvents > 0  && 0 <= idx && idx < numEvents);
+        Preconditions.checkState(numEvents > 0 && 0 <= idx && idx < numEvents);
         return events[idx];
     }
 
@@ -116,14 +109,6 @@ public class Batch {
         int index = numEvents++;
         PersistEvent e = events[index];
         e.makePersistTimestamp(startTimestamp, c, context);
-
-    }
-
-    void addLowWatermark(long lowWatermark, MonitoringContext context) {
-        Preconditions.checkState(!isFull(), "batch is full");
-        int index = numEvents++;
-        PersistEvent e = events[index];
-        e.makePersistLowWatermark(lowWatermark, context);
 
     }
 

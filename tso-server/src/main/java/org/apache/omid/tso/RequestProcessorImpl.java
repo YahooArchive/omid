@@ -38,6 +38,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestEvent>, RequestProcessor, TimeoutHandler {
@@ -91,8 +92,7 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
     public void update(TSOState state) throws Exception {
         LOG.info("Initializing RequestProcessor...");
         this.lowWatermark = state.getLowWatermark();
-        persistProc.addLowWatermarkToBatch(lowWatermark, new MonitoringContext(metrics));
-        persistProc.triggerCurrentBatchFlush();
+        persistProc.persistLowWatermark(lowWatermark).get(); // Sync persist
         LOG.info("RequestProcessor initialized with LWMs {} and Epoch {}", lowWatermark, state.getEpoch());
     }
 
@@ -210,7 +210,7 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
                     if (newLowWatermark != lowWatermark) {
                         LOG.trace("Setting new low Watermark to {}", newLowWatermark);
                         lowWatermark = newLowWatermark;
-                        persistProc.addLowWatermarkToBatch(newLowWatermark, event.getMonCtx());
+                        persistProc.persistLowWatermark(newLowWatermark); // Async persist
                     }
                 }
                 persistProc.addCommitToBatch(startTimestamp, commitTimestamp, c, event.getMonCtx());

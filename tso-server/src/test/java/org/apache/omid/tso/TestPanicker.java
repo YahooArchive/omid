@@ -132,9 +132,11 @@ public class TestPanicker {
         }
 
         PersistenceProcessor proc = new PersistenceProcessorImpl(config,
+                                                                 commitTable,
                                                                  batchPool,
                                                                  panicker,
-                                                                 handlers);
+                                                                 handlers,
+                                                                 metrics);
 
         proc.addCommitToBatch(1, 2, null, new MonitoringContext(metrics));
 
@@ -182,9 +184,11 @@ public class TestPanicker {
         }
 
         PersistenceProcessor proc = new PersistenceProcessorImpl(config,
+                                                                 commitTable,
                                                                  batchPool,
                                                                  panicker,
-                                                                 handlers);
+                                                                 handlers,
+                                                                 metrics);
         proc.addCommitToBatch(1, 2, null, new MonitoringContext(metrics));
 
         new RequestProcessorImpl(metrics, mock(TimestampOracle.class), proc, panicker, mock(TSOServerConfig.class));

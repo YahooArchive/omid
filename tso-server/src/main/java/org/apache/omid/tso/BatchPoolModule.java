@@ -48,9 +48,9 @@ public class BatchPoolModule extends AbstractModule {
     ObjectPool<Batch> getBatchPool() throws Exception {
 
         int poolSize = config.getNumConcurrentCTWriters();
-        int batchSize = config.getBatchSizePerCTWriter() + 1; // Add 1 element to batch size for storing LWM
+        int batchSize = config.getBatchSizePerCTWriter();
 
-        LOG.info("Pool Size (# of Batches) {}; Batch Size {} (including LWM bucket)", poolSize, batchSize);
+        LOG.info("Pool Size (# of Batches) {}; Batch Size {}", poolSize, batchSize);
         LOG.info("Total Batch Size (Pool size * Batch Size): {}", poolSize * batchSize);
         GenericObjectPoolConfig config = new GenericObjectPoolConfig();
         config.setMaxTotal(poolSize);

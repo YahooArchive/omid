@@ -25,7 +25,7 @@ public final class PersistEvent {
     private MonitoringContext monCtx;
 
     enum Type {
-        TIMESTAMP, COMMIT, ABORT, LOW_WATERMARK
+        TIMESTAMP, COMMIT, ABORT
     }
 
     private Type type = null;
@@ -61,14 +61,6 @@ public final class PersistEvent {
         this.type = Type.TIMESTAMP;
         this.startTimestamp = startTimestamp;
         this.channel = c;
-        this.monCtx = monCtx;
-
-    }
-
-    void makePersistLowWatermark(long lowWatermark, MonitoringContext monCtx) {
-
-        this.type = Type.LOW_WATERMARK;
-        this.lowWatermark = lowWatermark;
         this.monCtx = monCtx;
 
     }

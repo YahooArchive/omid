@@ -18,6 +18,7 @@
 package org.apache.omid.tso;
 
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.SettableFuture;
 import org.apache.omid.metrics.MetricsRegistry;
 import org.apache.omid.metrics.NullMetricsProvider;
 import org.jboss.netty.channel.Channel;
@@ -34,6 +35,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
@@ -67,6 +69,9 @@ public class TestRequestProcessor {
         stateManager = new TSOStateManagerImpl(timestampOracle);
 
         persist = mock(PersistenceProcessor.class);
+        SettableFuture<Void> f = SettableFuture.create();
+        f.set(null);
+        doReturn(f).when(persist).persistLowWatermark(any(Long.class));
 
         TSOServerConfig config = new TSOServerConfig();
         config.setMaxItems(CONFLICT_MAP_SIZE);
@@ -165,7 +170,7 @@ public class TestRequestProcessor {
         final long FIRST_COMMIT_TS_EVICTED = 1L;
         final long NEXT_COMMIT_TS_THAT_SHOULD_BE_EVICTED = 2L;
 
-                // Fill the cache to provoke a cache eviction
+        // Fill the cache to provoke a cache eviction
         for (long i = 0; i < CONFLICT_MAP_SIZE + CONFLICT_MAP_ASSOCIATIVITY; i++) {
             long writeSetElementHash = i + 1; // This is to match the assigned CT: K/V in cache = WS Element Hash/CT
             List<Long> writeSet = Lists.newArrayList(writeSetElementHash);
@@ -175,11 +180,11 @@ public class TestRequestProcessor {
         Thread.currentThread().sleep(3000); // Allow the Request processor to finish the request processing
 
         // Check that first time its called is on init
-        verify(persist, timeout(100).times(1)).addLowWatermarkToBatch(eq(0L), any(MonitoringContext.class));
+        verify(persist, timeout(100).times(1)).persistLowWatermark(eq(0L));
         // Then, check it is called when cache is full and the first element is evicted (should be a 1)
-        verify(persist, timeout(100).times(1)).addLowWatermarkToBatch(eq(FIRST_COMMIT_TS_EVICTED), any(MonitoringContext.class));
+        verify(persist, timeout(100).times(1)).persistLowWatermark(eq(FIRST_COMMIT_TS_EVICTED));
         // Finally it should never be called with the next element
-        verify(persist, timeout(100).never()).addLowWatermarkToBatch(eq(NEXT_COMMIT_TS_THAT_SHOULD_BE_EVICTED), any(MonitoringContext.class));
+        verify(persist, timeout(100).never()).persistLowWatermark(eq(NEXT_COMMIT_TS_THAT_SHOULD_BE_EVICTED));
 
     }
 

@@ -86,9 +86,6 @@ public class PersistenceProcessorHandler implements WorkHandler<PersistenceProce
             case TIMESTAMP:
                 localEvent.getMonCtx().timerStart("timestampPersistProcessor");
                 break;
-            case LOW_WATERMARK:
-                writer.updateLowWatermark(localEvent.getLowWatermark());
-                break;
             default:
                 throw new RuntimeException("Unknown event type: " + localEvent.getType().name());
             }

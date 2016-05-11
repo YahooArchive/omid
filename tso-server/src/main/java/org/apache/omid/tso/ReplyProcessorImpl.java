@@ -116,9 +116,6 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
                 sendTimestampResponse(localEvent.getStartTimestamp(), localEvent.getChannel());
                 localEvent.getMonCtx().timerStop(name);
                 break;
-            // TODO Check if we still need this
-            case LOW_WATERMARK:
-                break;
             default:
                 LOG.error("Unknown event {}", localEvent.getType());
                 break;

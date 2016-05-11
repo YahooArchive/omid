@@ -38,9 +38,6 @@ public class TestBatch {
     private static final long ANY_ST = 1231;
     private static final long ANY_CT = 2241;
 
-    private static final int DUMMY_LWM = 212;
-    private static final int NEW_LWM = 123;
-
     @Mock
     private Channel channel;
     @Mock
@@ -72,7 +69,7 @@ public class TestBatch {
         }
 
         // Test when filling the batch with different types of events, that becomes full
-        for (int i = 0; i < (BATCH_SIZE - 1); i++) {
+        for (int i = 0; i < BATCH_SIZE; i++) {
             if (i % 3 == 0) {
                 batch.addTimestamp(ANY_ST, channel, monCtx);
             } else if (i % 3 == 1) {
@@ -81,8 +78,6 @@ public class TestBatch {
                 batch.addAbort(ANY_ST, false, channel, monCtx);
             }
         }
-        assertTrue(batch.isLastEntryEmpty(), "Should be only one entry left in the batch");
-        batch.addLowWatermark(DUMMY_LWM, monCtx); // Add DUMMY_LWM as last element
         assertFalse(batch.isEmpty(), "Batch should contain elements");
         assertTrue(batch.isFull(), "Batch should be full");
         assertEquals(batch.getNumEvents(), BATCH_SIZE, "Num events should be " + BATCH_SIZE);
@@ -93,7 +88,7 @@ public class TestBatch {
             fail("Should throw an IllegalStateException");
         } catch (IllegalStateException e) {
             assertEquals(e.getMessage(), "batch is full", "message returned doesn't match");
-            LOG.debug("IllegalStateException catched properly");
+            LOG.debug("IllegalStateException catch properly");
         }
         assertTrue(batch.isFull(), "Batch shouldn't be empty");
 
@@ -101,24 +96,19 @@ public class TestBatch {
         assertTrue(batch.get(0).getType().equals(PersistEvent.Type.TIMESTAMP));
         assertTrue(batch.get(1).getType().equals(PersistEvent.Type.COMMIT));
         assertTrue(batch.get(2).getType().equals(PersistEvent.Type.ABORT));
-        assertTrue(batch.get(BATCH_SIZE - 1).getType().equals(PersistEvent.Type.LOW_WATERMARK));
 
         // Set a new value for last element in Batch and check we obtain the right result
         batch.decreaseNumEvents();
         assertEquals(batch.getNumEvents(), BATCH_SIZE - 1, "Num events should be " + (BATCH_SIZE - 1));
-        assertTrue(batch.isLastEntryEmpty(), "Should be only one entry left in the batch");
         try {
             batch.get(BATCH_SIZE - 1);
             fail();
         } catch (IllegalStateException ex) {
             // Expected, as we can not access elements in the batch greater than the current number of events
         }
-        batch.addLowWatermark(NEW_LWM, monCtx); // Add new LWM as last element
-        assertTrue(batch.get(BATCH_SIZE - 1).getType().equals(PersistEvent.Type.LOW_WATERMARK));
-        assertEquals(batch.get(BATCH_SIZE - 1).getLowWatermark(), NEW_LWM);
 
-        // Re-check that batch is full again
-        assertTrue(batch.isFull(), "Batch shouldn't be empty");
+        // Re-check that batch is NOT full
+        assertFalse(batch.isFull(), "Batch shouldn't be full");
 
         // Clear the batch and goes back to its initial state
         batch.clear();
