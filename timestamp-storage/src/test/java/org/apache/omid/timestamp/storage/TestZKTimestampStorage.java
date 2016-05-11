@@ -187,7 +187,7 @@ public class TestZKTimestampStorage {
         assertEquals(zNodeStats.getVersion(), ITERATION_COUNT);
     }
 
-    @Test(timeOut = 10_000)
+    @Test(timeOut = 20_000)
     public void testZkClientWhenZKIsDownAndRestarts() throws Exception {
 
         // Iterate updating the timestamp and check the final value
