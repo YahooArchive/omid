@@ -167,37 +167,36 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
 
     }
 
-    private long handleCommit(RequestEvent event) throws Exception {
+    private void handleCommit(RequestEvent event) throws Exception {
 
         long startTimestamp = event.getStartTimestamp();
         Iterable<Long> writeSet = event.writeSet();
         boolean isRetry = event.isRetry();
         Channel c = event.getChannel();
 
-        boolean committed;
-        long commitTimestamp = 0L;
+        boolean txCanCommit;
 
         int numCellsInWriteset = 0;
         // 0. check if it should abort
         if (startTimestamp <= lowWatermark) {
-            committed = false;
+            txCanCommit = false;
         } else {
             // 1. check the write-write conflicts
-            committed = true;
+            txCanCommit = true;
             for (long cellId : writeSet) {
                 long value = hashmap.getLatestWriteForCell(cellId);
                 if (value != 0 && value >= startTimestamp) {
-                    committed = false;
+                    txCanCommit = false;
                     break;
                 }
                 numCellsInWriteset++;
             }
         }
 
-        if (committed) {
+        if (txCanCommit) {
             // 2. commit
             try {
-                commitTimestamp = timestampOracle.next();
+                long commitTimestamp = timestampOracle.next();
 
                 if (numCellsInWriteset > 0) {
                     long newLowWatermark = lowWatermark;
@@ -215,13 +214,11 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
                 }
                 persistProc.addCommitToBatch(startTimestamp, commitTimestamp, c, event.getMonCtx());
             } catch (IOException e) {
-                LOG.error("Error committing", e);
+                LOG.error("Error committing tx {}", startTimestamp, e);
             }
         } else { // add it to the aborted list
             persistProc.addAbortToBatch(startTimestamp, isRetry, c, event.getMonCtx());
         }
-
-        return commitTimestamp;
 
     }
 
