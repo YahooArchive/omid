@@ -63,7 +63,7 @@ public class TestLeaseManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestLeaseManager.class);
 
-    private static final long TEST_LEASE_PERIOD_IN_MS = 1000; // 1 second
+    private static final long TEST_LEASE_PERIOD_IN_MS = 5000; // 5 seconds
 
     private CuratorFramework zkClient;
     private TestingServer zkServer;
@@ -96,7 +96,7 @@ public class TestLeaseManager {
 
     }
 
-    @Test(timeOut = 30_000)
+    @Test(timeOut = 80_000)
     public void testErrorInitializingTSOStateExitsTheTSO() throws Exception {
 
         final String TEST_TSO_LEASE_PATH = "/test0_tsolease";
@@ -126,7 +126,7 @@ public class TestLeaseManager {
 
     }
 
-    @Test(timeOut = 60_000)
+    @Test(timeOut = 80_000)
     public void testLeaseHolderDoesNotChangeWhenPausedForALongTimeAndTheresNoOtherInstance() throws Exception {
 
         final String TEST_TSO_LEASE_PATH = "/test1_tsolease";
@@ -177,7 +177,7 @@ public class TestLeaseManager {
 
     }
 
-    @Test(timeOut = 60_000)
+    @Test(timeOut = 80_000)
     public void testLeaseHolderDoesNotChangeWhenANewLeaseManagerIsUp() throws Exception {
 
         final String TEST_TSO_LEASE_PATH = "/test2_tsolease";
@@ -230,7 +230,7 @@ public class TestLeaseManager {
         assertFalse(leaseManager2.stillInLeasePeriod());
     }
 
-    @Test(timeOut = 60_000)
+    @Test(timeOut = 80_000)
     public void testLeaseHolderChangesWhenActiveLeaseManagerIsPaused() throws Exception {
 
         final String TEST_TSO_LEASE_PATH = "/test3_tsolease";
@@ -324,7 +324,7 @@ public class TestLeaseManager {
     }
 
 
-    @Test(timeOut = 40_000)
+    @Test(timeOut = 80_000)
     public void testLeaseManagerPanicsWhenUnexpectedInfoIsFoundInCurrentTSOZnode() throws Exception {
 
         final String TEST_TSO_LEASE_PATH = "/test_wronginfo_tsolease";
