@@ -1,0 +1,23 @@
+Apache Omid
+Copyright 2016 The Apache Software Foundation.
+
+This product includes software developed at The Apache Software Foundation (http://www.apache.org/).
+
+This distribution has a binary dependency on:
+
+Google Guava v11.0.2 (https://github.com/google/guava) [Apache 2.0]
+Guice v3.0 (https://github.com/google/guice/wiki) [Apache 2.0]
+Testng v6.8.8 (http://testng.org) [Apache 2.0]
+SLF4J (http://www.slf4j.org/) v1.7.7 [MIT License]
+Netty (http://netty.io) v3.2.6.Final [Apache 2.0]
+Google Protocol Buffers v2.5.0 (https://developers.google.com/protocol-buffers/) [BSD License]
+Mockito (http://mockito.org/) v1.9.5 [MIT License]
+LMAX Disruptor v3.2.0 (https://lmax-exchange.github.io/disruptor/) [Apache 2.0]
+Coda Hale/Yammer.com Dropwizard Metrics v3.0.1 (http://metrics.dropwizard.io/3.1.0/) [Apache 2.0]
+JCommander v1.35 (http://jcommander.org/) [Apache 2.0]
+Hamcrest v1.3 (http://hamcrest.org/JavaHamcrest/) [BSD License]
+Snakeyml v1.11 (https://bitbucket.org/asomov/snakeyaml) [Apache 2.0]
+Google FindBugs v3.0.1 (http://findbugs.sourceforge.net/) [Lesser GNU General Public License]
+
+
+
