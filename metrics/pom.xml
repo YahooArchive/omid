@@ -9,7 +9,7 @@
         <version>0.8.2.3-SNAPSHOT</version>
     </parent>
 
-    <artifactId>metrics</artifactId>
+    <artifactId>omid-metrics</artifactId>
     <name>Metrics</name>
 
     <dependencies>

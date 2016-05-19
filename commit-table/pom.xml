@@ -8,7 +8,7 @@
         <version>0.8.2.3-SNAPSHOT</version>
     </parent>
 
-    <artifactId>commit-table</artifactId>
+    <artifactId>omid-commit-table</artifactId>
     <packaging>jar</packaging>
     <name>Commit Table</name>
 

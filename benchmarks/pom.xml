@@ -8,7 +8,7 @@
         <version>0.8.2.3-SNAPSHOT</version>
     </parent>
 
-    <artifactId>benchmarks</artifactId>
+    <artifactId>omid-benchmarks</artifactId>
     <name>Benchmarks</name>
 
     <dependencies>
@@ -17,22 +17,22 @@
 
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>transaction-client</artifactId>
+            <artifactId>omid-transaction-client</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>hbase-commit-table</artifactId>
+            <artifactId>omid-hbase-commit-table</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>metrics</artifactId>
+            <artifactId>omid-metrics</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>codahale-metrics</artifactId>
+            <artifactId>omid-codahale-metrics</artifactId>
             <version>${project.version}</version>
         </dependency>
 

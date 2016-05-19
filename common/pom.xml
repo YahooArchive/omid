@@ -8,7 +8,7 @@
         <version>0.8.2.3-SNAPSHOT</version>
     </parent>
 
-    <artifactId>common</artifactId>
+    <artifactId>omid-common</artifactId>
     <name>Common</name>
     <packaging>jar</packaging>
 

@@ -8,7 +8,7 @@
         <version>0.8.2.3-SNAPSHOT</version>
     </parent>
 
-    <artifactId>transaction-client</artifactId>
+    <artifactId>omid-transaction-client</artifactId>
     <packaging>jar</packaging>
     <name>Transaction Client</name>
 
@@ -18,27 +18,27 @@
 
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>common</artifactId>
+            <artifactId>omid-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>statemachine</artifactId>
+            <artifactId>omid-statemachine</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>commit-table</artifactId>
+            <artifactId>omid-commit-table</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>metrics</artifactId>
+            <artifactId>omid-metrics</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>commit-table</artifactId>
+            <artifactId>omid-commit-table</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
             <classifier>tests</classifier>

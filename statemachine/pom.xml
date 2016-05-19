@@ -9,7 +9,7 @@
     </parent>
 
     <name>State Machine</name>
-    <artifactId>statemachine</artifactId>
+    <artifactId>omid-statemachine</artifactId>
     <packaging>jar</packaging>
 
     <dependencies>

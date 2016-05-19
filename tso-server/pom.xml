@@ -8,7 +8,7 @@
         <version>0.8.2.3-SNAPSHOT</version>
     </parent>
 
-    <artifactId>tso-server</artifactId>
+    <artifactId>omid-tso-server</artifactId>
     <packaging>jar</packaging>
     <name>TSO and TO Servers</name>
     <description>Omid Transaction Status Oracle server and Timestamp Oracle</description>
@@ -19,44 +19,44 @@
 
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>commit-table</artifactId>
+            <artifactId>omid-commit-table</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>timestamp-storage</artifactId>
+            <artifactId>omid-timestamp-storage</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>metrics</artifactId>
+            <artifactId>omid-metrics</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!-- The codahale-related dependency is added here just to include the jar in the final
         tar.gz package assembled. -->
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>codahale-metrics</artifactId>
+            <artifactId>omid-codahale-metrics</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!-- The hbase-related dependency is added here just to include the jar in the final tar.gz package assembled.
         The hbase tools are handy to create the required Omid tables from the same script that starts the TSO server -->
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>hbase-tools</artifactId>
+            <artifactId>omid-hbase-tools</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>commit-table</artifactId>
+            <artifactId>omid-commit-table</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
             <classifier>tests</classifier>
         </dependency>
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>transaction-client</artifactId>
+            <artifactId>omid-transaction-client</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
@@ -282,7 +282,7 @@
             <dependencies>
                 <dependency>
                     <groupId>org.apache.omid</groupId>
-                    <artifactId>hbase0-shims</artifactId>
+                    <artifactId>omid-hbase0-shims</artifactId>
                     <version>${project.version}</version>
                 </dependency>
             </dependencies>
@@ -293,7 +293,7 @@
             <dependencies>
                 <dependency>
                     <groupId>org.apache.omid</groupId>
-                    <artifactId>hbase1-shims</artifactId>
+                    <artifactId>omid-hbase1-shims</artifactId>
                     <version>${project.version}</version>
                 </dependency>
             </dependencies>

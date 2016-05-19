@@ -8,7 +8,7 @@
         <version>0.8.2.3-SNAPSHOT</version>
     </parent>
 
-    <artifactId>hbase-common</artifactId>
+    <artifactId>omid-hbase-common</artifactId>
     <name>HBase Common</name>
     <packaging>jar</packaging>
 
@@ -87,7 +87,7 @@
             <dependencies>
                 <dependency>
                     <groupId>org.apache.omid</groupId>
-                    <artifactId>hbase0-shims</artifactId>
+                    <artifactId>omid-hbase0-shims</artifactId>
                     <version>${project.version}</version>
                 </dependency>
             </dependencies>
@@ -98,7 +98,7 @@
             <dependencies>
                 <dependency>
                     <groupId>org.apache.omid</groupId>
-                    <artifactId>hbase1-shims</artifactId>
+                    <artifactId>omid-hbase1-shims</artifactId>
                     <version>${project.version}</version>
                 </dependency>
             </dependencies>

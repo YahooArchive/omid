@@ -8,7 +8,7 @@
         <version>0.8.2.3-SNAPSHOT</version>
     </parent>
 
-    <artifactId>hbase-tools</artifactId>
+    <artifactId>omid-hbase-tools</artifactId>
     <name>HBase tools</name>
     <packaging>jar</packaging>
 
@@ -18,13 +18,13 @@
 
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>hbase-commit-table</artifactId>
+            <artifactId>omid-hbase-commit-table</artifactId>
             <version>${project.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>timestamp-storage</artifactId>
+            <artifactId>omid-timestamp-storage</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!-- End of Dependencies on Omid modules -->
@@ -103,7 +103,7 @@
             <dependencies>
                 <dependency>
                     <groupId>org.apache.omid</groupId>
-                    <artifactId>hbase0-shims</artifactId>
+                    <artifactId>omid-hbase0-shims</artifactId>
                     <version>${project.version}</version>
                 </dependency>
             </dependencies>
@@ -114,7 +114,7 @@
             <dependencies>
                 <dependency>
                     <groupId>org.apache.omid</groupId>
-                    <artifactId>hbase1-shims</artifactId>
+                    <artifactId>omid-hbase1-shims</artifactId>
                     <version>${project.version}</version>
                 </dependency>
             </dependencies>

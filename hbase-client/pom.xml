@@ -8,7 +8,7 @@
         <version>0.8.2.3-SNAPSHOT</version>
     </parent>
 
-    <artifactId>hbase-client</artifactId>
+    <artifactId>omid-hbase-client</artifactId>
     <packaging>jar</packaging>
     <name>HBase Client</name>
     <description>HBase specific implementation of transaction-client module</description>
@@ -19,37 +19,37 @@
 
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>transaction-client</artifactId>
+            <artifactId>omid-transaction-client</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>hbase-commit-table</artifactId>
+            <artifactId>omid-hbase-commit-table</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>tso-server</artifactId>
+            <artifactId>omid-tso-server</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>tso-server</artifactId>
+            <artifactId>omid-tso-server</artifactId>
             <version>${project.version}</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>commit-table</artifactId>
+            <artifactId>omid-commit-table</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
             <classifier>tests</classifier>
         </dependency>
         <dependency>
             <groupId>org.apache.omid</groupId>
-            <artifactId>hbase-tools</artifactId>
+            <artifactId>omid-hbase-tools</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
@@ -167,7 +167,7 @@
             <dependencies>
                 <dependency>
                     <groupId>org.apache.omid</groupId>
-                    <artifactId>hbase0-shims</artifactId>
+                    <artifactId>omid-hbase0-shims</artifactId>
                     <version>${project.version}</version>
                 </dependency>
             </dependencies>
@@ -178,7 +178,7 @@
             <dependencies>
                 <dependency>
                     <groupId>org.apache.omid</groupId>
-                    <artifactId>hbase1-shims</artifactId>
+                    <artifactId>omid-hbase1-shims</artifactId>
                     <version>${project.version}</version>
                 </dependency>
             </dependencies>
