@@ -381,6 +381,8 @@
                         <include>src/**/*.java</include>
                         <include>src/**/*.xml</include>
                         <include>src/**/*.proto</include>
+                        <include>**/*.css</include>
+                        <include>**/*.sh</include>
                     </includes>
                     <excludes>
                         <!-- Add files to exclude from licensing -->
@@ -389,10 +391,7 @@
                         <exclude>**/pom.xml</exclude>
 
                         <!-- Exclude config and scripts -->
-                        <exclude>**/doc/*</exclude>
                         <exclude>**/dev-utils/*</exclude>
-                        <exclude>**/bin/*</exclude>
-                        <exclude>**/conf/*</exclude>
 
                         <!-- Exclude assembly -->
                         <exclude>**/maven/assembly/*</exclude>
