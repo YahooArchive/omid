@@ -7,12 +7,12 @@ CLASSPATH=../conf
 . ../conf/omid-env.sh
 
 # for source release
-for j in ../target/tso*.jar; do
+for j in ../target/omid-tso*.jar; do
     CLASSPATH=$CLASSPATH:$j
 done
 
 # for binary release
-for j in ../tso*.jar; do
+for j in ../omid-tso*.jar; do
     CLASSPATH=$CLASSPATH:$j
 done
 for j in ../lib/*.jar; do

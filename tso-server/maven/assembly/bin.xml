@@ -17,9 +17,9 @@
             <useAllReactorProjects>true</useAllReactorProjects>
             <!-- Now, select which projects to include in this module-set. -->
             <includes>
-                <include>org.apache.omid:hbase-commit-table</include>
-                <include>org.apache.omid:codahale-metrics</include>
-                <include>org.apache.omid:hbase-tools</include>
+                <include>org.apache.omid:omid-hbase-commit-table</include>
+                <include>org.apache.omid:omid-codahale-metrics</include>
+                <include>org.apache.omid:omid-hbase-tools</include>
             </includes>
             <binaries>
                 <outputDirectory>/lib</outputDirectory>
