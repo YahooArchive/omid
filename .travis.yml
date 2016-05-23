@@ -35,7 +35,7 @@ script:
   - if [ "${TRAVIS_PULL_REQUEST}" = "false" ] ; then
       git checkout master
       &&
-      mvn clean cobertura:cobertura
+      mvn clean cobertura:cobertura -Phbase-0
       &&
       mkdir failedTests
       &&
@@ -43,13 +43,13 @@ script:
       &&
       [ ! -f failedTests/testng-failed.xml ]
       &&
-      mvn coveralls:report
+      mvn coveralls:report -Phbase-0
       &&
       mvn -B clean release:prepare release:perform -Prelease_profile,hbase-0 --settings bintray-settings.xml ;
     else
       git checkout -b tmp-build-branch
       &&
-      mvn clean test ;
+      mvn clean test -Phbase-0 ;
     fi
 
 after_success:
