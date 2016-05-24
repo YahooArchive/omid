@@ -62,7 +62,9 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
     final ObjectPool<Batch> batchPool;
 
     // Metrics
-    final Meter retriesMeter;
+    private final Meter txAlreadyCommittedMeter;
+    private final Meter invalidTxMeter;
+    private final Meter noCTFoundMeter;
 
     @Inject
     RetryProcessorImpl(MetricsRegistry metrics,
@@ -87,42 +89,47 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
         retryExec.submit(retryProcessor);
 
         // Metrics configuration
-        retriesMeter = metrics.meter(name("tso", "retries"));
+        this.txAlreadyCommittedMeter = metrics.meter(name("tso", "retries", "commits", "tx-already-committed"));
+        this.invalidTxMeter = metrics.meter(name("tso", "retries", "aborts", "tx-invalid"));
+        this.noCTFoundMeter = metrics.meter(name("tso", "retries", "aborts", "tx-without-commit-timestamp"));
 
     }
 
     @Override
-    public void onEvent(final RetryEvent event, final long sequence, final boolean endOfBatch)
-            throws Exception {
+    public void onEvent(final RetryEvent event, final long sequence, final boolean endOfBatch) throws Exception {
 
         switch (event.getType()) {
             case COMMIT:
-                // TODO: What happens when the IOException is thrown?
                 handleCommitRetry(event);
+                event.getMonCtx().timerStop("retry.processor.commit-retry.latency");
                 break;
             default:
                 assert (false);
                 break;
         }
+        event.getMonCtx().publish();
 
     }
 
-    private void handleCommitRetry(RetryEvent event) throws Exception {
+    private void handleCommitRetry(RetryEvent event) {
 
         long startTimestamp = event.getStartTimestamp();
         try {
             Optional<CommitTimestamp> commitTimestamp = commitTableClient.getCommitTimestamp(startTimestamp).get();
             if(commitTimestamp.isPresent()) {
                 if (commitTimestamp.get().isValid()) {
-                    LOG.trace("Valid commit TS found in Commit Table. Replying Commit to the client...");
+                    LOG.trace("Tx {}: Valid commit TS found in Commit Table. Sending Commit to client.", startTimestamp);
                     replyProc.sendCommitResponse(startTimestamp, commitTimestamp.get().getValue(), event.getChannel());
+                    txAlreadyCommittedMeter.mark();
                 } else {
-                    LOG.trace("Invalid commit TS found in Commit Table. Replying Abort to the client...");
+                    LOG.trace("Tx {}: Invalid tx marker found. Sending Abort to client.", startTimestamp);
                     replyProc.sendAbortResponse(startTimestamp, event.getChannel());
+                    invalidTxMeter.mark();
                 }
             } else {
-                LOG.trace("No commit TS found in Commit Table. Replying Abort to the client..");
+                LOG.trace("Tx {}: No Commit TS found in Commit Table. Sending Abort to client.", startTimestamp);
                 replyProc.sendAbortResponse(startTimestamp, event.getChannel());
+                noCTFoundMeter.mark();
             }
         } catch (InterruptedException e) {
             LOG.error("Interrupted reading from commit table");
@@ -131,13 +138,13 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
             LOG.error("Error reading from commit table", e);
         }
 
-        retriesMeter.mark();
     }
 
     @Override
     public void disambiguateRetryRequestHeuristically(long startTimestamp, Channel c, MonitoringContext monCtx) {
         long seq = retryRing.next();
         RetryEvent e = retryRing.get(seq);
+        monCtx.timerStart("retry.processor.commit-retry.latency");
         RetryEvent.makeCommitRetry(e, startTimestamp, c, monCtx);
         retryRing.publish(seq);
     }

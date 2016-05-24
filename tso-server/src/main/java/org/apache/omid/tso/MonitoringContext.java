@@ -37,7 +37,7 @@ public class MonitoringContext {
     private static final Logger LOG = LoggerFactory.getLogger(MonitoringContext.class);
 
     private volatile boolean flag;
-    private Map<String, Long> elapsedTimeMsMap = new HashMap<>();
+    private Map<String, Long> elapsedTimeMsMap = new ConcurrentHashMap<>();
     private Map<String, Stopwatch> timers = new ConcurrentHashMap<>();
     private MetricsRegistry metrics;
 

@@ -98,21 +98,15 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
     @Override
     public void onEvent(RequestEvent event, long sequence, boolean endOfBatch) throws Exception {
 
-        String name = null;
-        try { // TODO this should be a switch. Re-check why it's NOT now
-            if (event.getType() == RequestEvent.Type.TIMESTAMP) {
-                name = "timestampReqProcessor";
-                event.getMonCtx().timerStart(name);
+        switch (event.getType()) {
+            case TIMESTAMP:
                 handleTimestamp(event);
-            } else if (event.getType() == RequestEvent.Type.COMMIT) {
-                name = "commitReqProcessor";
-                event.getMonCtx().timerStart(name);
+                break;
+            case COMMIT:
                 handleCommit(event);
-            }
-        } finally {
-            if (null != name) {
-                event.getMonCtx().timerStop(name);
-            }
+                break;
+            default:
+                throw new IllegalStateException("Event not allowed in Request Processor: " + event);
         }
 
     }
@@ -133,6 +127,7 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
     @Override
     public void timestampRequest(Channel c, MonitoringContext monCtx) {
 
+        monCtx.timerStart("request.processor.timestamp.latency");
         long seq = requestRing.next();
         RequestEvent e = requestRing.get(seq);
         RequestEvent.makeTimestampRequest(e, c, monCtx);
@@ -144,6 +139,7 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
     public void commitRequest(long startTimestamp, Collection<Long> writeSet, boolean isRetry, Channel c,
                               MonitoringContext monCtx) {
 
+        monCtx.timerStart("request.processor.commit.latency");
         long seq = requestRing.next();
         RequestEvent e = requestRing.get(seq);
         RequestEvent.makeCommitRequest(e, startTimestamp, monCtx, writeSet, isRetry, c);
@@ -154,6 +150,7 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
     private void handleTimestamp(RequestEvent requestEvent) throws Exception {
 
         long timestamp = timestampOracle.next();
+        requestEvent.getMonCtx().timerStop("request.processor.timestamp.latency");
         persistProc.addTimestampToBatch(timestamp, requestEvent.getChannel(), requestEvent.getMonCtx());
 
     }
@@ -203,10 +200,12 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
                     persistProc.persistLowWatermark(newLowWatermark); // Async persist
                 }
             }
+            event.getMonCtx().timerStop("request.processor.commit.latency");
             persistProc.addCommitToBatch(startTimestamp, commitTimestamp, c, event.getMonCtx());
 
         } else {
 
+            event.getMonCtx().timerStop("request.processor.commit.latency");
             if (isCommitRetry) { // Re-check if it was already committed but the client retried due to a lag replying
                 persistProc.addCommitRetryToBatch(startTimestamp, c, event.getMonCtx());
             } else {

@@ -96,32 +96,30 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
     @VisibleForTesting
     void handleReplyBatchEvent(ReplyBatchEvent replyBatchEvent) throws Exception {
 
-        String name;
         Batch batch = replyBatchEvent.getBatch();
         for (int i = 0; i < batch.getNumEvents(); i++) {
             PersistEvent event = batch.get(i);
 
             switch (event.getType()) {
-            case COMMIT:
-                name = "commitReplyProcessor";
-                event.getMonCtx().timerStart(name);
-                sendCommitResponse(event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel());
-                event.getMonCtx().timerStop(name);
-                break;
-            case ABORT:
-                name = "abortReplyProcessor";
-                event.getMonCtx().timerStart(name);
-                sendAbortResponse(event.getStartTimestamp(), event.getChannel());
-                event.getMonCtx().timerStop(name);
-                break;
-            case TIMESTAMP:
-                name = "timestampReplyProcessor";
-                event.getMonCtx().timerStart(name);
-                sendTimestampResponse(event.getStartTimestamp(), event.getChannel());
-                event.getMonCtx().timerStop(name);
-                break;
-            case COMMIT_RETRY:
-                throw new RuntimeException("COMMIT_RETRY events must be filtered before this step. Event: {}");
+                case COMMIT:
+                    sendCommitResponse(event.getStartTimestamp(), event.getCommitTimestamp(), event.getChannel());
+                    event.getMonCtx().timerStop("reply.processor.commit.latency");
+                    commitMeter.mark();
+                    break;
+                case ABORT:
+                    sendAbortResponse(event.getStartTimestamp(), event.getChannel());
+                    event.getMonCtx().timerStop("reply.processor.abort.latency");
+                    abortMeter.mark();
+                    break;
+                case TIMESTAMP:
+                    sendTimestampResponse(event.getStartTimestamp(), event.getChannel());
+                    event.getMonCtx().timerStop("reply.processor.timestamp.latency");
+                    timestampMeter.mark();
+                    break;
+                case COMMIT_RETRY:
+                    throw new IllegalStateException("COMMIT_RETRY events must be filtered before this step: " + event);
+                default:
+                    throw new IllegalStateException("Event not allowed in Persistent Processor Handler: " + event);
             }
             event.getMonCtx().publish();
         }
@@ -182,8 +180,6 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
         builder.setCommitResponse(commitBuilder.build());
         c.write(builder.build());
 
-        commitMeter.mark();
-
     }
 
     @Override
@@ -196,8 +192,6 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
         builder.setCommitResponse(commitBuilder.build());
         c.write(builder.build());
 
-        abortMeter.mark();
-
     }
 
     @Override
@@ -208,8 +202,6 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
         respBuilder.setStartTimestamp(startTimestamp);
         builder.setTimestampResponse(respBuilder.build());
         c.write(builder.build());
-
-        timestampMeter.mark();
 
     }
 

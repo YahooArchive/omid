@@ -79,21 +79,24 @@ public class PersistenceProcessorHandler implements WorkHandler<PersistenceProce
         Batch batch = batchEvent.getBatch();
         int numOfBatchedEvents = batch.getNumEvents();
         batchSizeHistogram.update(numOfBatchedEvents);
-        for (int i=0; i < numOfBatchedEvents; ++i) {
+        for (int i=0; i < numOfBatchedEvents; i++) {
             PersistEvent event = batch.get(i);
-
             switch (event.getType()) {
-            case COMMIT:
-                event.getMonCtx().timerStart("commitPersistProcessor");
-                // TODO: What happens when the IOException is thrown?
-                writer.addCommittedTransaction(event.getStartTimestamp(), event.getCommitTimestamp());
-                commitEventsToFlush++;
-                break;
-            case ABORT:
-                break;
-            case TIMESTAMP:
-                event.getMonCtx().timerStart("timestampPersistProcessor");
-                break;
+                case TIMESTAMP:
+                    event.getMonCtx().timerStop("persistence.processor.timestamp.latency");
+                    break;
+                case COMMIT:
+                    writer.addCommittedTransaction(event.getStartTimestamp(), event.getCommitTimestamp());
+                    commitEventsToFlush++;
+                    break;
+                case COMMIT_RETRY:
+                    event.getMonCtx().timerStop("persistence.processor.commit-retry.latency");
+                    break;
+                case ABORT:
+                    event.getMonCtx().timerStop("persistence.processor.abort.latency");
+                    break;
+                default:
+                    throw new IllegalStateException("Event not allowed in Persistent Processor Handler: " + event);
             }
         }
 
@@ -101,6 +104,25 @@ public class PersistenceProcessorHandler implements WorkHandler<PersistenceProce
         // to filter commit retries in the batch to disambiguate them.
         flush(commitEventsToFlush);
         filterAndDissambiguateClientRetries(batch);
+        for (int i=0; i < batch.getNumEvents(); i++) { // Just for statistics
+            PersistEvent event = batch.get(i);
+            switch (event.getType()) {
+                case TIMESTAMP:
+                    event.getMonCtx().timerStart("reply.processor.timestamp.latency");
+                    break;
+                case COMMIT:
+                    event.getMonCtx().timerStop("persistence.processor.commit.latency");
+                    event.getMonCtx().timerStart("reply.processor.commit.latency");
+                    break;
+                case COMMIT_RETRY:
+                    throw new IllegalStateException("COMMIT_RETRY events must be filtered before this step: " + event);
+                case ABORT:
+                    event.getMonCtx().timerStart("reply.processor.abort.latency");
+                    break;
+                default:
+                    throw new IllegalStateException("Event not allowed in Persistent Processor Handler: " + event);
+            }
+        }
         replyProcessor.manageResponsesBatch(batchEvent.getBatchSequence(), batch);
 
     }
