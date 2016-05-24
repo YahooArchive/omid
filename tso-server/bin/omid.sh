@@ -2,7 +2,7 @@
 
 SCRIPTDIR=`dirname $0`
 cd $SCRIPTDIR;
-CLASSPATH=../conf
+CLASSPATH=../conf:$(HBASE_CONF_DIR):$(HADOOP_CONF_DIR)
 
 . ../conf/omid-env.sh
 
