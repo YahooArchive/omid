@@ -93,36 +93,43 @@ public class Batch {
 
     }
 
-    void addCommit(long startTimestamp, long commitTimestamp, Channel c, MonitoringContext context) {
+    void addTimestamp(long startTimestamp, Channel c, MonitoringContext context) {
+
         Preconditions.checkState(!isFull(), "batch is full");
         int index = numEvents++;
         PersistEvent e = events[index];
+        context.timerStart("persistence.processor.timestamp.latency");
+        e.makePersistTimestamp(startTimestamp, c, context);
+
+    }
+
+    void addCommit(long startTimestamp, long commitTimestamp, Channel c, MonitoringContext context) {
+
+        Preconditions.checkState(!isFull(), "batch is full");
+        int index = numEvents++;
+        PersistEvent e = events[index];
+        context.timerStart("persistence.processor.commit.latency");
         e.makePersistCommit(startTimestamp, commitTimestamp, c, context);
 
     }
 
-    public void addCommitRetry(long startTimestamp, Channel c, MonitoringContext context) {
+    void addCommitRetry(long startTimestamp, Channel c, MonitoringContext context) {
 
         Preconditions.checkState(!isFull(), "batch is full");
         int index = numEvents++;
         PersistEvent e = events[index];
+        context.timerStart("persistence.processor.commit-retry.latency");
         e.makeCommitRetry(startTimestamp, c, context);
 
     }
 
     void addAbort(long startTimestamp, Channel c, MonitoringContext context) {
+
         Preconditions.checkState(!isFull(), "batch is full");
         int index = numEvents++;
         PersistEvent e = events[index];
+        context.timerStart("persistence.processor.abort.latency");
         e.makePersistAbort(startTimestamp, c, context);
-
-    }
-
-    void addTimestamp(long startTimestamp, Channel c, MonitoringContext context) {
-        Preconditions.checkState(!isFull(), "batch is full");
-        int index = numEvents++;
-        PersistEvent e = events[index];
-        e.makePersistTimestamp(startTimestamp, c, context);
 
     }
 
@@ -136,7 +143,7 @@ public class Batch {
                 .toString();
     }
 
-    public static class BatchFactory extends BasePooledObjectFactory<Batch> {
+    static class BatchFactory extends BasePooledObjectFactory<Batch> {
 
         private static int batchId = 0;
 

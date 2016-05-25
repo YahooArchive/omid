@@ -20,12 +20,10 @@ package org.apache.omid.tso;
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.omid.metrics.MetricsRegistry;
 import org.apache.omid.metrics.NullMetricsProvider;
-import org.apache.omid.tso.PersistenceProcessorImpl.PersistBatchEvent;
 import org.apache.omid.tso.ReplyProcessorImpl.ReplyBatchEvent;
 import org.jboss.netty.channel.Channel;
 import org.mockito.InOrder;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,14 +31,8 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import java.io.IOException;
-
 import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -48,7 +40,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertEqualsNoOrder;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
@@ -75,6 +66,9 @@ public class TestReplyProcessor {
 
     @Mock
     private Panicker panicker;
+
+    @Mock
+    private MonitoringContext monCtx;
 
     private MetricsRegistry metrics;
 
@@ -112,7 +106,7 @@ public class TestReplyProcessor {
 
         // Prepare test batch
         Batch batch = batchPool.borrowObject();
-        batch.addCommitRetry(FIRST_ST, null, null  );
+        batch.addCommitRetry(FIRST_ST, null, monCtx);
         ReplyBatchEvent e = ReplyBatchEvent.EVENT_FACTORY.newInstance();
         ReplyBatchEvent.makeReplyBatch(e, batch, 0);
 
@@ -124,7 +118,7 @@ public class TestReplyProcessor {
         try {
             replyProcessor.onEvent(e, ANY_DISRUPTOR_SEQUENCE, false);
             fail();
-        } catch(RuntimeException re) {
+        } catch (RuntimeException re) {
             // Expected
         }
 
@@ -192,8 +186,8 @@ public class TestReplyProcessor {
 
         // Prepare first a delayed batch (Batch #3)
         Batch thirdBatch = batchPool.borrowObject();
-        thirdBatch.addTimestamp(FIRST_ST, mock(Channel.class), mock(MonitoringContext.class));
-        thirdBatch.addCommit(SECOND_ST, SECOND_CT, mock(Channel.class), mock(MonitoringContext.class));
+        thirdBatch.addTimestamp(FIRST_ST, mock(Channel.class), monCtx);
+        thirdBatch.addCommit(SECOND_ST, SECOND_CT, mock(Channel.class), monCtx);
         ReplyBatchEvent thirdBatchEvent = ReplyBatchEvent.EVENT_FACTORY.newInstance();
         ReplyBatchEvent.makeReplyBatch(thirdBatchEvent, thirdBatch, 2); // Set a higher sequence than the initial one
 
@@ -213,8 +207,8 @@ public class TestReplyProcessor {
 
         // Prepare another delayed batch (Batch #2)
         Batch secondBatch = batchPool.borrowObject();
-        secondBatch.addTimestamp(THIRD_ST, mock(Channel.class), mock(MonitoringContext.class));
-        secondBatch.addCommit(FOURTH_ST, FOURTH_CT, mock(Channel.class), mock(MonitoringContext.class));
+        secondBatch.addTimestamp(THIRD_ST, mock(Channel.class), monCtx);
+        secondBatch.addCommit(FOURTH_ST, FOURTH_CT, mock(Channel.class), monCtx);
         ReplyBatchEvent secondBatchEvent = ReplyBatchEvent.EVENT_FACTORY.newInstance();
         ReplyBatchEvent.makeReplyBatch(secondBatchEvent, secondBatch, 1); // Set another higher sequence
 
@@ -229,7 +223,7 @@ public class TestReplyProcessor {
 
         // Finally, prepare the batch that should trigger the execution of the other two
         Batch firstBatch = batchPool.borrowObject();
-        firstBatch.addAbort(FIFTH_ST, mock(Channel.class), mock(MonitoringContext.class));
+        firstBatch.addAbort(FIFTH_ST, mock(Channel.class), monCtx);
         ReplyBatchEvent firstBatchEvent = ReplyBatchEvent.EVENT_FACTORY.newInstance();
         ReplyBatchEvent.makeReplyBatch(firstBatchEvent, firstBatch, 0); // Set the first batch with a higher sequence
 

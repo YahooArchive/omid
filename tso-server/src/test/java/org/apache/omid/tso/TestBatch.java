@@ -22,8 +22,10 @@ import org.jboss.netty.channel.Channel;
 import org.mockito.Mock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import static org.mockito.MockitoAnnotations.initMocks;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
@@ -42,6 +44,11 @@ public class TestBatch {
     private Channel channel;
     @Mock
     private MonitoringContext monCtx;
+
+    @BeforeMethod
+    void setup() {
+        initMocks(this);
+    }
 
     @Test(timeOut = 10_000)
     public void testBatchFunctionality() {
