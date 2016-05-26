@@ -19,9 +19,10 @@ package org.apache.omid.tso;
 
 import org.jboss.netty.channel.Channel;
 
+import java.io.Closeable;
 import java.util.concurrent.Future;
 
-interface PersistenceProcessor {
+interface PersistenceProcessor extends Closeable {
 
     void addCommitToBatch(long startTimestamp, long commitTimestamp, Channel c, MonitoringContext monCtx)
             throws Exception;

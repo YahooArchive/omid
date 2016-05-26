@@ -19,7 +19,9 @@ package org.apache.omid.tso;
 
 import org.jboss.netty.channel.Channel;
 
-interface ReplyProcessor {
+import java.io.Closeable;
+
+interface ReplyProcessor extends Closeable {
 
     /**
      * The each reply to a transactional operation for a client is contained in a batch. The batch must be ordered

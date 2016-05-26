@@ -23,7 +23,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BusySpinWaitStrategy;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.WorkerPool;
 import com.lmax.disruptor.dsl.Disruptor;
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.omid.committable.CommitTable;
@@ -41,6 +40,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static com.lmax.disruptor.dsl.ProducerType.SINGLE;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.omid.metrics.MetricsUtils.name;
 import static org.apache.omid.tso.PersistenceProcessorImpl.PersistBatchEvent.EVENT_FACTORY;
 import static org.apache.omid.tso.PersistenceProcessorImpl.PersistBatchEvent.makePersistBatch;
@@ -49,6 +49,9 @@ class PersistenceProcessorImpl implements PersistenceProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(PersistenceProcessorImpl.class);
 
+    // Disruptor-related attributes
+    private final ExecutorService disruptorExec;
+    private final Disruptor<PersistBatchEvent> disruptor;
     private final RingBuffer<PersistBatchEvent> persistRing;
 
     private final ObjectPool<Batch> batchPool;
@@ -78,10 +81,10 @@ class PersistenceProcessorImpl implements PersistenceProcessor {
         // ------------------------------------------------------------------------------------------------------------
 
         ThreadFactoryBuilder threadFactory = new ThreadFactoryBuilder().setNameFormat("persist-%d");
-        ExecutorService requestExec = Executors.newFixedThreadPool(config.getNumConcurrentCTWriters(), threadFactory.build());
+        this.disruptorExec = Executors.newFixedThreadPool(config.getNumConcurrentCTWriters(), threadFactory.build());
 
-        Disruptor<PersistBatchEvent> disruptor = new Disruptor<>(EVENT_FACTORY, 1 << 20, requestExec , SINGLE, new BusySpinWaitStrategy());
-        disruptor.handleExceptionsWith(new FatalExceptionHandler(panicker));
+        this.disruptor = new Disruptor<>(EVENT_FACTORY, 1 << 20, disruptorExec , SINGLE, new BusySpinWaitStrategy());
+        disruptor.handleExceptionsWith(new FatalExceptionHandler(panicker)); // This must be before handleEventsWith()
         disruptor.handleEventsWithWorkerPool(handlers);
         this.persistRing = disruptor.start();
 
@@ -100,6 +103,8 @@ class PersistenceProcessorImpl implements PersistenceProcessor {
 
         // Metrics config
         this.lwmWriteTimer = metrics.timer(name("tso", "lwmWriter", "latency"));
+
+        LOG.info("PersistentProcessor initialized");
 
     }
 
@@ -173,6 +178,25 @@ class PersistenceProcessorImpl implements PersistenceProcessor {
                 return null;
             }
         });
+
+    }
+
+    @Override
+    public void close() throws IOException {
+
+        LOG.info("Terminating Persistence Processor...");
+        disruptor.halt();
+        disruptor.shutdown();
+        LOG.info("\tPersistence Processor Disruptor shutdown");
+        disruptorExec.shutdownNow();
+        try {
+            disruptorExec.awaitTermination(3, SECONDS);
+            LOG.info("\tPersistence Processor Disruptor executor shutdown");
+        } catch (InterruptedException e) {
+            LOG.error("Interrupted whilst finishing Persistence Processor Disruptor executor");
+            Thread.currentThread().interrupt();
+        }
+        LOG.info("Persistence Processor terminated");
 
     }
 

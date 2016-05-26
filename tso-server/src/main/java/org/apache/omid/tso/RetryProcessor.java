@@ -19,6 +19,8 @@ package org.apache.omid.tso;
 
 import org.jboss.netty.channel.Channel;
 
-interface RetryProcessor {
+import java.io.Closeable;
+
+interface RetryProcessor extends Closeable {
     void disambiguateRetryRequestHeuristically(long startTimestamp, Channel c, MonitoringContext monCtx);
 }
