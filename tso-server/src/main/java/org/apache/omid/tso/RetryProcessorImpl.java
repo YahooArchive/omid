@@ -19,25 +19,21 @@ package org.apache.omid.tso;
 
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.SequenceBarrier;
 import com.lmax.disruptor.YieldingWaitStrategy;
+import com.lmax.disruptor.dsl.Disruptor;
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.omid.committable.CommitTable;
 import org.apache.omid.committable.CommitTable.CommitTimestamp;
 import org.apache.omid.metrics.Meter;
 import org.apache.omid.metrics.MetricsRegistry;
-
 import org.jboss.netty.channel.Channel;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -45,6 +41,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
 import static com.codahale.metrics.MetricRegistry.name;
+import static com.lmax.disruptor.dsl.ProducerType.SINGLE;
+import static org.apache.omid.tso.RetryProcessorImpl.RetryEvent.EVENT_FACTORY;
 
 /**
  * Manages the disambiguation of the retry requests that clients send when they did not received a response in the
@@ -74,19 +72,25 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
                        ObjectPool<Batch> batchPool)
             throws InterruptedException, ExecutionException, IOException {
 
+        // ------------------------------------------------------------------------------------------------------------
+        // Disruptor initialization
+        // ------------------------------------------------------------------------------------------------------------
+
+        ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("retry-%d").build();
+        ExecutorService requestExec = Executors.newSingleThreadExecutor(threadFactory);
+
+        Disruptor<RetryProcessorImpl.RetryEvent> disruptor = new Disruptor<>(EVENT_FACTORY, 1 << 12, requestExec, SINGLE, new YieldingWaitStrategy());
+        disruptor.handleExceptionsWith(new FatalExceptionHandler(panicker)); // This should be before the event handler
+        disruptor.handleEventsWith(this);
+        this.retryRing = disruptor.start();
+
+        // ------------------------------------------------------------------------------------------------------------
+        // Attribute initialization
+        // ------------------------------------------------------------------------------------------------------------
+
         this.commitTableClient = commitTable.getClient();
         this.replyProc = replyProc;
         this.batchPool = batchPool;
-
-        retryRing = RingBuffer.createSingleProducer(RetryEvent.EVENT_FACTORY, 1 << 12, new YieldingWaitStrategy());
-        SequenceBarrier retrySequenceBarrier = retryRing.newBarrier();
-        BatchEventProcessor<RetryEvent> retryProcessor = new BatchEventProcessor<>(retryRing, retrySequenceBarrier, this);
-        retryProcessor.setExceptionHandler(new FatalExceptionHandler(panicker));
-        retryRing.addGatingSequences(retryProcessor.getSequence());
-
-        ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("retry-%d").build();
-        ExecutorService retryExec = Executors.newSingleThreadExecutor(threadFactory);
-        retryExec.submit(retryProcessor);
 
         // Metrics configuration
         this.txAlreadyCommittedMeter = metrics.meter(name("tso", "retries", "commits", "tx-already-committed"));
@@ -116,7 +120,7 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
         long startTimestamp = event.getStartTimestamp();
         try {
             Optional<CommitTimestamp> commitTimestamp = commitTableClient.getCommitTimestamp(startTimestamp).get();
-            if(commitTimestamp.isPresent()) {
+            if (commitTimestamp.isPresent()) {
                 if (commitTimestamp.get().isValid()) {
                     LOG.trace("Tx {}: Valid commit TS found in Commit Table. Sending Commit to client.", startTimestamp);
                     replyProc.sendCommitResponse(startTimestamp, commitTimestamp.get().getValue(), event.getChannel());
