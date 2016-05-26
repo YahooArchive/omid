@@ -24,6 +24,7 @@ import com.lmax.disruptor.BusySpinWaitStrategy;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.WorkerPool;
+import com.lmax.disruptor.dsl.Disruptor;
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.omid.committable.CommitTable;
 import org.apache.omid.metrics.MetricsRegistry;
@@ -39,6 +40,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import static com.lmax.disruptor.dsl.ProducerType.SINGLE;
 import static org.apache.omid.metrics.MetricsUtils.name;
 import static org.apache.omid.tso.PersistenceProcessorImpl.PersistBatchEvent.EVENT_FACTORY;
 import static org.apache.omid.tso.PersistenceProcessorImpl.PersistBatchEvent.makePersistBatch;
@@ -46,8 +48,6 @@ import static org.apache.omid.tso.PersistenceProcessorImpl.PersistBatchEvent.mak
 class PersistenceProcessorImpl implements PersistenceProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(PersistenceProcessorImpl.class);
-
-    private static final long INITIAL_LWM_VALUE = -1L;
 
     private final RingBuffer<PersistBatchEvent> persistRing;
 
@@ -73,29 +73,30 @@ class PersistenceProcessorImpl implements PersistenceProcessor {
                              MetricsRegistry metrics)
             throws Exception {
 
+        // ------------------------------------------------------------------------------------------------------------
+        // Disruptor initialization
+        // ------------------------------------------------------------------------------------------------------------
+
+        ThreadFactoryBuilder threadFactory = new ThreadFactoryBuilder().setNameFormat("persist-%d");
+        ExecutorService requestExec = Executors.newFixedThreadPool(config.getNumConcurrentCTWriters(), threadFactory.build());
+
+        Disruptor<PersistBatchEvent> disruptor = new Disruptor<>(EVENT_FACTORY, 1 << 20, requestExec , SINGLE, new BusySpinWaitStrategy());
+        disruptor.handleExceptionsWith(new FatalExceptionHandler(panicker));
+        disruptor.handleEventsWithWorkerPool(handlers);
+        this.persistRing = disruptor.start();
+
+        // ------------------------------------------------------------------------------------------------------------
+        // Attribute initialization
+        // ------------------------------------------------------------------------------------------------------------
+
         this.metrics = metrics;
         this.lowWatermarkWriter = commitTable.getWriter();
         this.batchSequence = 0L;
         this.batchPool = batchPool;
         this.currentBatch = batchPool.borrowObject();
-
         // Low Watermark writer
         ThreadFactoryBuilder lwmThreadFactory = new ThreadFactoryBuilder().setNameFormat("lwm-writer-%d");
-        lowWatermarkWriterExecutor = Executors.newSingleThreadExecutor(lwmThreadFactory.build());
-
-        // Disruptor configuration
-        this.persistRing = RingBuffer.createSingleProducer(EVENT_FACTORY, 1 << 20, new BusySpinWaitStrategy());
-
-        ThreadFactoryBuilder threadFactory = new ThreadFactoryBuilder().setNameFormat("persist-%d");
-        ExecutorService requestExec = Executors.newFixedThreadPool(config.getNumConcurrentCTWriters(),
-                                                                   threadFactory.build());
-
-        WorkerPool<PersistBatchEvent> persistProcessor = new WorkerPool<>(persistRing,
-                                                                          persistRing.newBarrier(),
-                                                                          new FatalExceptionHandler(panicker),
-                                                                          handlers);
-        this.persistRing.addGatingSequences(persistProcessor.getWorkerSequences());
-        persistProcessor.start(requestExec);
+        this.lowWatermarkWriterExecutor = Executors.newSingleThreadExecutor(lwmThreadFactory.build());
 
         // Metrics config
         this.lwmWriteTimer = metrics.timer(name("tso", "lwmWriter", "latency"));

@@ -20,12 +20,11 @@ package org.apache.omid.tso;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.Inject;
-import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.BusySpinWaitStrategy;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.SequenceBarrier;
+import com.lmax.disruptor.dsl.Disruptor;
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.omid.metrics.Meter;
 import org.apache.omid.metrics.MetricsRegistry;
@@ -38,10 +37,10 @@ import java.util.Comparator;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.codahale.metrics.MetricRegistry.name;
+import static com.lmax.disruptor.dsl.ProducerType.MULTI;
 
 class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEvent>, ReplyProcessor {
 
@@ -65,28 +64,31 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
     @Inject
     ReplyProcessorImpl(MetricsRegistry metrics, Panicker panicker, ObjectPool<Batch> batchPool) {
 
+        // ------------------------------------------------------------------------------------------------------------
+        // Disruptor initialization
+        // ------------------------------------------------------------------------------------------------------------
+
+        ThreadFactoryBuilder threadFactory = new ThreadFactoryBuilder().setNameFormat("reply-%d");
+        ExecutorService requestExec = Executors.newSingleThreadExecutor(threadFactory.build());
+
+        Disruptor<ReplyProcessorImpl.ReplyBatchEvent> disruptor = new Disruptor<>(ReplyBatchEvent.EVENT_FACTORY, 1 << 12, requestExec, MULTI, new BusySpinWaitStrategy());
+        disruptor.handleExceptionsWith(new FatalExceptionHandler(panicker));
+        disruptor.handleEventsWith(this);
+        this.replyRing = disruptor.start();
+
+        // ------------------------------------------------------------------------------------------------------------
+        // Attribute initialization
+        // ------------------------------------------------------------------------------------------------------------
+
         this.batchPool = batchPool;
-
         this.nextIDToHandle.set(0);
-
-        this.replyRing = RingBuffer.createMultiProducer(ReplyBatchEvent.EVENT_FACTORY, 1 << 12, new BusySpinWaitStrategy());
-
-        SequenceBarrier replySequenceBarrier = replyRing.newBarrier();
-        BatchEventProcessor<ReplyBatchEvent> replyProcessor = new BatchEventProcessor<>(replyRing, replySequenceBarrier, this);
-        replyProcessor.setExceptionHandler(new FatalExceptionHandler(panicker));
-
-        replyRing.addGatingSequences(replyProcessor.getSequence());
-
-        ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("reply-%d").build();
-        ExecutorService replyExec = Executors.newSingleThreadExecutor(threadFactory);
-        replyExec.submit(replyProcessor);
-
         this.futureEvents = new PriorityQueue<>(10, new Comparator<ReplyBatchEvent>() {
             public int compare(ReplyBatchEvent replyBatchEvent1, ReplyBatchEvent replyBatchEvent2) {
                 return Long.compare(replyBatchEvent1.getBatchSequence(), replyBatchEvent2.getBatchSequence());
             }
         });
 
+        // Metrics config
         this.abortMeter = metrics.meter(name("tso", "aborts"));
         this.commitMeter = metrics.meter(name("tso", "commits"));
         this.timestampMeter = metrics.meter(name("tso", "timestampAllocation"));
