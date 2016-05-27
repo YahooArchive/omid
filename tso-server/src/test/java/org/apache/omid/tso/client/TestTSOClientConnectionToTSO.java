@@ -117,7 +117,7 @@ public class TestTSOClientConnectionToTSO {
 
         // Launch a TSO WITHOUT publishing the address in HA...
         TSOServerConfig tsoConfig = new TSOServerConfig();
-        tsoConfig.setMaxItems(1000);
+        tsoConfig.setConflictMapSize(1000);
         tsoConfig.setPort(tsoPortForTest);
         tsoConfig.setLeaseModule(new VoidLeaseManagementModule());
         injector = Guice.createInjector(new TSOMockModule(tsoConfig));
@@ -153,7 +153,7 @@ public class TestTSOClientConnectionToTSO {
 
         // Launch a TSO publishing the address in HA...
         TSOServerConfig config = new TSOServerConfig();
-        config.setMaxItems(1000);
+        config.setConflictMapSize(1000);
         config.setPort(tsoPortForTest);
         config.setLeaseModule(new HALeaseManagementModule(1000, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkClusterForTest, "omid"));
         injector = Guice.createInjector(new TSOMockModule(config));
@@ -191,7 +191,7 @@ public class TestTSOClientConnectionToTSO {
 
         // Start a TSO with HA...
         TSOServerConfig config = new TSOServerConfig();
-        config.setMaxItems(1000);
+        config.setConflictMapSize(1000);
         config.setPort(tsoPortForTest);
         config.setLeaseModule(new HALeaseManagementModule(1000, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkClusterForTest, "omid"));
         injector = Guice.createInjector(new TSOMockModule(config));

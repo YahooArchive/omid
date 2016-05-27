@@ -1,5 +1,5 @@
 # =====================================================================================================================
-# Omid TSO Server Configuration
+# Omid TSO Server Configuration (Default parameters)
 # =====================================================================================================================
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -14,8 +14,7 @@
 # Port reserved by the Status Oracle
 port: 54758
 # The number of elements reserved in the conflict map to perform conflict resolution
-# TODO Rename to conflictMapSize
-maxItems: 100000000
+conflictMapSize: 100000000
 # The number of Commit Table writers that persist data concurrently to the datastore. It has to be at least 2.
 numConcurrentCTWriters: 2
 # The size of the batch of operations that each Commit Table writes has. The maximum number of operations that can be

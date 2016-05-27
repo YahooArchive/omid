@@ -111,7 +111,7 @@ public class TestCompaction {
     public void setupTestCompation() throws Exception {
         TSOServerConfig tsoConfig = new TSOServerConfig();
         tsoConfig.setPort(1234);
-        tsoConfig.setMaxItems(1);
+        tsoConfig.setConflictMapSize(1);
         injector = Guice.createInjector(new TSOForHBaseCompactorTestModule(tsoConfig));
         hbaseConf = injector.getInstance(Configuration.class);
         HBaseCommitTableConfig hBaseCommitTableConfig = injector.getInstance(HBaseCommitTableConfig.class);

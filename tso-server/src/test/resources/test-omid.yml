@@ -1,10 +1,7 @@
 # Non High Availability configuration with HBase for everything
 
-principal: sieve_omid0@YGRID.YAHOO.COM
-keytab: /home/sieve_omid0/sieve_omid0.prod.headless.keytab
-
 port: 54758
-maxItems: 100000000
+conflictMapSize: 100000000
 numConcurrentCTWriters: 2
 batchSizePerCTWriter: 500
 batchPersistTimeoutInMs: 100

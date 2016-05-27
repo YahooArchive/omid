@@ -17,19 +17,21 @@
 # limitations under the License.
 #
 
-
 SCRIPTDIR=`dirname $0`
 cd $SCRIPTDIR;
+
+# Load Omid environment variables
+source omid-env.sh
+
+# Configure classpath...
 CLASSPATH=../conf:$(HBASE_CONF_DIR):$(HADOOP_CONF_DIR)
 
-. ../conf/omid-env.sh
-
-# for source release
+# ...for source release and...
 for j in ../target/omid-tso*.jar; do
     CLASSPATH=$CLASSPATH:$j
 done
 
-# for binary release
+# and for binary release
 for j in ../omid-tso*.jar; do
     CLASSPATH=$CLASSPATH:$j
 done
@@ -38,7 +40,7 @@ for j in ../lib/*.jar; do
 done
 
 tso() {
-    exec java $JVM_FLAGS -cp $CLASSPATH org.apache.omid.tso.TSOServer @../conf/omid.conf $@
+    exec java $JVM_FLAGS -cp $CLASSPATH org.apache.omid.tso.TSOServer $@
 }
 
 tsoRelauncher() {

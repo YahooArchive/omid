@@ -18,11 +18,9 @@
 package org.apache.omid.tso;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.SequenceBarrier;
 import com.lmax.disruptor.TimeoutBlockingWaitStrategy;
 import com.lmax.disruptor.TimeoutHandler;
 import com.lmax.disruptor.dsl.Disruptor;
@@ -40,7 +38,6 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
 
 import static com.lmax.disruptor.dsl.ProducerType.MULTI;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -86,7 +83,7 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
         this.metrics = metrics;
         this.persistProc = persistProc;
         this.timestampOracle = timestampOracle;
-        this.hashmap = new CommitHashMap(config.getMaxItems());
+        this.hashmap = new CommitHashMap(config.getConflictMapSize());
 
     }
 
