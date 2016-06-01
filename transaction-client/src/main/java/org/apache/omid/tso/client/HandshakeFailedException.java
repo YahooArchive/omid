@@ -18,7 +18,7 @@
 package org.apache.omid.tso.client;
 
 /**
- * Thrown when some incompatibilities between the TSO client & server are
+ * Thrown when some incompatibilities between the TSO client and server are
  * found
  */
 public class HandshakeFailedException extends Exception {

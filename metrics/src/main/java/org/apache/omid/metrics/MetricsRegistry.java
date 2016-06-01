@@ -23,7 +23,6 @@ public interface MetricsRegistry {
      * Registers the {@link Gauge} under the given name.
      *
      * @param name the name of the metric
-     * @returns a new {@link Counter}
      */
     <T extends Number> void gauge(String name, Gauge<T> gauge);
 

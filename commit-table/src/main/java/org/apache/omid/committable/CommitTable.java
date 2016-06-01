@@ -55,7 +55,7 @@ public interface CommitTable {
          * transaction was invalidated and returns a commit timestamp type accordingly.
          *
          * @param startTimestamp the transaction start timestamp
-         * @return Optional<CommitTimestamp> that represents a valid, invalid, or no timestamp.
+         * @return Optional of CommitTimestamp that represents a valid, invalid, or no timestamp.
          */
         ListenableFuture<Optional<CommitTimestamp>> getCommitTimestamp(long startTimestamp);
 

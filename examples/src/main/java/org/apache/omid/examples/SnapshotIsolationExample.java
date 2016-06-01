@@ -19,7 +19,6 @@ package org.apache.omid.examples;
 
 import com.google.common.base.Preconditions;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
@@ -45,12 +44,12 @@ import java.util.Arrays;
  *
  * Please @see{BasicExample} first
  *
- * In the code below, two concurrent transactions (Tx1 & Tx2), try to update the same column in HBase. This will result
- * in the rollback of Tx2 -the last one trying to commit- due to conflicts in the writeset with the previously committed
- * transaction Tx1. Also shows how Tx2 reads the right values from its own snapshot in HBase data.
+ * In the code below, two concurrent transactions (Tx1 and Tx2), try to update the same column in HBase. This will
+ * result in the rollback of Tx2 -the last one trying to commit- due to conflicts in the writeset with the previously
+ * committed transaction Tx1. Also shows how Tx2 reads the right values from its own snapshot in HBase data.
  *
- * After building the package with 'mvn clean package' find the resulting examples-<version>-bin.tar.gz file in the
- * 'examples/target' folder. Copy it to the target host and expand with 'tar -zxvf examples-<version>-bin.tar.gz'.
+ * After building the package with 'mvn clean package' find the resulting examples-{version}-bin.tar.gz file in the
+ * 'examples/target' folder. Copy it to the target host and expand with 'tar -zxvf examples-{version}-bin.tar.gz'.
  *
  * Make sure that 'hbase-site.xml' and 'core-site.xml' are either in classpath (see run.sh) or explicitly referenced via
  * command line arguments. If a secure HBase deployment is needed, use also command line arguments to specify the
@@ -60,12 +59,12 @@ import java.util.Arrays;
  * default configuration, and can be created with the following command using the 'hbase shell':
  *
  * <pre>
- * create 'MY_TX_TABLE', {NAME => 'MY_CF', VERSIONS => '2147483647', TTL => '2147483647'}
+ * create 'MY_TX_TABLE', {NAME =&gt; 'MY_CF', VERSIONS =&gt; '2147483647', TTL =&gt; '2147483647'}
  * </pre>
  *
  * Make sure that the principal/user has RW permissions for the given table using also the 'hbase shell':
  * <pre>
- * grant '<principal/user>', 'RW', 'MY_TX_TABLE'
+ * grant '{principal/user}', 'RW', 'MY_TX_TABLE'
  * </pre>
  *
  * Alternatively, a table with a column family already created can be used by specifying the table name and column

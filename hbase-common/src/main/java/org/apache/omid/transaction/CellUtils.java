@@ -59,6 +59,11 @@ public final class CellUtils {
 
     /**
      * Returns true if the particular cell passed exists in the datastore.
+     * @param row row
+     * @param family column family
+     * @param qualifier columnn name
+     * @param version version
+     * @param cellGetter an instance of CellGetter
      * @return true if the cell specified exists. false otherwise
      * @throws IOException
      */
@@ -78,7 +83,12 @@ public final class CellUtils {
     }
 
     /**
-     * Returns true if the particular cell passed has a corresponding shadow cell in the datastore.
+     * Returns true if the particular cell passed has a corresponding shadow cell in the datastore
+     * @param row row
+     * @param family column family
+     * @param qualifier columnn name
+     * @param version version
+     * @param cellGetter an instance of CellGetter
      * @return true if it has a shadow cell. false otherwise.
      * @throws IOException
      */
@@ -93,12 +103,9 @@ public final class CellUtils {
 
     /**
      * Builds a new qualifier composed of the HBase qualifier passed + the shadow cell suffix.
-     * @param qualifierArray
-     *            the qualifier to be suffixed
-     * @param qualOffset
-     *            the offset where the qualifier starts
-     * @param qualLength
-     *            the qualifier length
+     * @param qualifierArray the qualifier to be suffixed
+     * @param qualOffset the offset where the qualifier starts
+     * @param qualLength the qualifier length
      * @return the suffixed qualifier
      */
     public static byte[] addShadowCellSuffix(byte[] qualifierArray, int qualOffset, int qualLength) {
@@ -122,12 +129,9 @@ public final class CellUtils {
     /**
      * Builds a new qualifier removing the shadow cell suffix from the
      * passed HBase qualifier.
-     * @param qualifier
-     *            the qualifier to remove the suffix from
-     * @param qualOffset
-     *            the offset where the qualifier starts
-     * @param qualLength
-     *            the qualifier length
+     * @param qualifier the qualifier to remove the suffix from
+     * @param qualOffset the offset where the qualifier starts
+     * @param qualLength the qualifier length
      * @return the new qualifier without the suffix
      */
     public static byte[] removeShadowCellSuffix(byte[] qualifier, int qualOffset, int qualLength) {
@@ -146,12 +150,9 @@ public final class CellUtils {
     /**
      * Returns the qualifier length removing the shadow cell suffix. In case that que suffix is not found,
      * just returns the length of the qualifier passed.
-     * @param qualifier
-     *            the qualifier to remove the suffix from
-     * @param qualOffset
-     *            the offset where the qualifier starts
-     * @param qualLength
-     *            the qualifier length
+     * @param qualifier the qualifier to remove the suffix from
+     * @param qualOffset the offset where the qualifier starts
+     * @param qualLength the qualifier length
      * @return the qualifier length without the suffix
      */
     public static int qualifierLengthFromShadowCellQualifier(byte[] qualifier, int qualOffset, int qualLength) {
@@ -166,14 +167,10 @@ public final class CellUtils {
 
     /**
      * Complement to matchingQualifier() methods in HBase's CellUtil.class
-     * @param left
-     *            the cell to compare the qualifier
-     * @param qualArray
-     *            the explicit qualifier array passed
-     * @param qualOffset
-     *            the explicit qualifier offset passed
-     * @param qualLen
-     *            the explicit qualifier length passed
+     * @param left the cell to compare the qualifier
+     * @param qualArray the explicit qualifier array passed
+     * @param qualOffset the explicit qualifier offset passed
+     * @param qualLen the explicit qualifier length passed
      * @return whether the qualifiers are equal or not
      */
     public static boolean matchingQualifier(final Cell left, final byte[] qualArray, int qualOffset, int qualLen) {
@@ -203,8 +200,7 @@ public final class CellUtils {
     /**
      * Returns whether a cell contains a qualifier that is a shadow cell
      * column qualifier or not.
-     * @param cell
-     *            the cell to check if contains the shadow cell qualifier
+     * @param cell the cell to check if contains the shadow cell qualifier
      * @return whether the cell passed contains a shadow cell qualifier or not
      */
     public static boolean isShadowCell(Cell cell) {
@@ -228,8 +224,7 @@ public final class CellUtils {
 
     /**
      * Returns if a cell is marked as a tombstone.
-     * @param cell
-     *            the cell to check
+     * @param cell the cell to check
      * @return whether the cell is marked as a tombstone or not
      */
     public static boolean isTombstone(Cell cell) {
@@ -259,8 +254,7 @@ public final class CellUtils {
     /**
      * Analyzes a list of cells, associating the corresponding shadow cell if present.
      *
-     * @param cells
-     *            the list of cells to classify
+     * @param cells the list of cells to classify
      * @return a sorted map associating each cell with its shadow cell
      */
     public static SortedMap<Cell, Optional<Cell>> mapCellsToShadowCells(List<Cell> cells) {

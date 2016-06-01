@@ -54,6 +54,7 @@ public class HBaseTransaction extends AbstractTransaction<HBaseCellId> {
 
     /**
      * Flushes pending operations for tables touched by transaction
+     * @throws IOException in case of any I/O related issues
      */
     public void flushTables() throws IOException {
 

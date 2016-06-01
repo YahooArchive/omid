@@ -29,7 +29,7 @@ import java.util.Set;
 /**
  * Omid's base abstract implementation of the {@link Transaction} interface.
  * Provides extra methods to access other basic transaction state required by
- * {@link TransactionManagerExtension} implementations based on snapshot
+ * {@link TransactionManager} implementations based on snapshot
  * isolation.
  *
  * So, this abstract class must be extended by particular implementations of

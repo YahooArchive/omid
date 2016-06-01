@@ -20,7 +20,7 @@ package org.apache.omid.transaction;
 import com.google.common.base.Optional;
 
 /**
- * This interface defines the transaction state & behavior exposed to users.
+ * This interface defines the transaction state and behavior exposed to users.
  */
 public interface Transaction {
 
@@ -66,8 +66,11 @@ public interface Transaction {
      *
      * Expects they metadata stored under key "key" to be of the "Set" type,
      * append "value" to the existing set or creates a new one
+     * @param key a key, like in hashtable
+     * @param value a value to associate with the given key
      */
     void appendMetadata(String key, Object value);
+
 
     void setMetadata(String key, Object value);
 

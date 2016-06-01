@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,6 +18,7 @@
 package org.apache.omid.committable.hbase;
 
 import com.google.common.base.Preconditions;
+
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -35,13 +36,14 @@ public class RegionSplitter {
 
     /**
      * A generic interface for the RegionSplitter code to use for all it's functionality. Note that the original authors
-     * of this code use {@link HexStringSplit} to partition their table and set it as default, but provided this for
+     * of this code use see org.apache.hadoop.hbase.util.HexStringSplit to partition their table and set it as default, but provided this for
      * your custom algorithm. To use, create a new derived class from this interface and call
-     * {@link RegionSplitter#createPresplitTable} or
-     * {@link RegionSplitter#rollingSplit(String, SplitAlgorithm, Configuration)} with the argument splitClassName
+     * see RegionSplitter#createPresplitTable or
+     * see RegionSplitter#rollingSplit(String, SplitAlgorithm, Configuration)} with the argument splitClassName
      * giving the name of your class.
      */
     public interface SplitAlgorithm {
+
         /**
          * Split a pre-existing region into 2 regions.
          *
@@ -97,8 +99,7 @@ public class RegionSplitter {
          * understand how to evenly divide the last region. Note that this last row is inclusive for all rows sharing
          * the same prefix.
          *
-         * @param userInput
-         *            raw user input (may throw RuntimeException on parse failure)
+         * @param userInput raw user input (may throw RuntimeException on parse failure)
          */
         void setLastRow(String userInput);
 
@@ -110,9 +111,8 @@ public class RegionSplitter {
         byte[] strToRow(String input);
 
         /**
-         * @param row
-         *            byte array representing a row in HBase
-         * @return String to use for debug & file printing
+         * @param row byte array representing a row in HBase
+         * @return String to use for debug and file printing
          */
         String rowToStr(byte[] row);
 
@@ -139,8 +139,10 @@ public class RegionSplitter {
     }
 
     /**
-     * @throws IOException
-     *             if the specified SplitAlgorithm class couldn't be instantiated
+     * @param conf Hbase conf
+     * @param splitClassName split class name to be used
+     * @return an instance of SplitAlgorithm
+     * @throws IOException if the specified SplitAlgorithm class couldn't be instantiated
      */
     public static SplitAlgorithm newSplitAlgoInstance(Configuration conf,
                                                       String splitClassName) throws IOException {
@@ -161,7 +163,7 @@ public class RegionSplitter {
             }
             if (!SplitAlgorithm.class.isAssignableFrom(splitClass)) {
                 throw new IOException(
-                        "Specified split class doesn't implement SplitAlgorithm");
+                    "Specified split class doesn't implement SplitAlgorithm");
             }
         }
         try {
@@ -173,15 +175,16 @@ public class RegionSplitter {
 
     /**
      * A SplitAlgorithm that divides the space of possible keys evenly. Useful when the keys are approximately uniform
-     * random bytes (e.g. hashes). Rows are raw byte values in the range <b>00 => FF</b> and are right-padded with zeros
+     * random bytes (e.g. hashes). Rows are raw byte values in the range [00..FF] and are right-padded with zeros
      * to keep the same memcmp() order. This is the natural algorithm to use for a byte[] environment and saves space,
      * but is not necessarily the easiest for readability.
      */
     public static class UniformSplit implements SplitAlgorithm {
+
         static final byte xFF = (byte) 0xFF;
         byte[] firstRowBytes = ArrayUtils.EMPTY_BYTE_ARRAY;
         byte[] lastRowBytes =
-                new byte[]{xFF, xFF, xFF, xFF, xFF, xFF, xFF, xFF};
+            new byte[]{xFF, xFF, xFF, xFF, xFF, xFF, xFF, xFF};
 
         public byte[] split(byte[] start, byte[] end) {
             return Bytes.split(start, end, 1)[1];
@@ -190,15 +193,15 @@ public class RegionSplitter {
         @Override
         public byte[][] split(int numRegions) {
             Preconditions.checkArgument(
-                    Bytes.compareTo(lastRowBytes, firstRowBytes) > 0,
-                    "last row (%s) is configured less than first row (%s)",
-                    Bytes.toStringBinary(lastRowBytes),
-                    Bytes.toStringBinary(firstRowBytes));
+                Bytes.compareTo(lastRowBytes, firstRowBytes) > 0,
+                "last row (%s) is configured less than first row (%s)",
+                Bytes.toStringBinary(lastRowBytes),
+                Bytes.toStringBinary(firstRowBytes));
 
             byte[][] splits = Bytes.split(firstRowBytes, lastRowBytes, true,
-                    numRegions - 1);
+                                          numRegions - 1);
             Preconditions.checkState(splits != null,
-                    "Could not split region with given user input: " + this);
+                                     "Could not split region with given user input: " + this);
 
             // remove endpoints, which are included in the splits list
             return Arrays.copyOfRange(splits, 1, splits.length - 1);
@@ -252,7 +255,7 @@ public class RegionSplitter {
         @Override
         public String toString() {
             return this.getClass().getSimpleName() + " [" + rowToStr(firstRow())
-                    + "," + rowToStr(lastRow()) + "]";
+                   + "," + rowToStr(lastRow()) + "]";
         }
     }
 }
