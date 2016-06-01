@@ -91,7 +91,7 @@ public class ScrambledZipfianGenerator extends IntegerGenerator {
     }
 
     /**
-     * Return the next long in the sequence.
+     * @return the next long in the sequence.
      */
     public long nextLong() {
         long ret = gen.nextLong();

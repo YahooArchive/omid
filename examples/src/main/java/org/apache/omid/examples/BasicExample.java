@@ -34,8 +34,8 @@ import org.slf4j.LoggerFactory;
  *
  * ****************************************************************************************************
  *
- * After building the package with 'mvn clean package' find the resulting examples-<version>-bin.tar.gz file in the
- * 'examples/target' folder. Copy it to the target host and expand with 'tar -zxvf examples-<version>-bin.tar.gz'.
+ * After building the package with 'mvn clean package' find the resulting examples-{version}-bin.tar.gz file in the
+ * 'examples/target' folder. Copy it to the target host and expand with 'tar -zxvf examples-{version}-bin.tar.gz'.
  *
  * Make sure that 'hbase-site.xml' and 'core-site.xml' are either in classpath (see run.sh) or explicitly referenced in
  * configuration file. If a secure HBase deployment is needed, make sure to specify the principal (user) and keytab file.
@@ -44,12 +44,12 @@ import org.slf4j.LoggerFactory;
  * the default configuration, and can be created with the following command using the 'hbase shell':
  *
  * <pre>
- * create 'MY_TX_TABLE', {NAME => 'MY_CF', VERSIONS => '2147483647', TTL => '2147483647'}
+ * create 'MY_TX_TABLE', {NAME =&gt; 'MY_CF', VERSIONS =&gt; '2147483647', TTL =&gt; '2147483647'}
  * </pre>
  *
  * Make sure that the principal/user has RW permissions for the given table using also the 'hbase shell':
  * <pre>
- * grant '<principal/user>', 'RW', 'MY_TX_TABLE'
+ * grant '{principal/user}', 'RW', 'MY_TX_TABLE'
  * </pre>
  *
  * Alternatively, a table with a column family already created can be used by specifying the table name and column

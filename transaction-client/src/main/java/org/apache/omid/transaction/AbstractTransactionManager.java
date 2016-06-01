@@ -113,7 +113,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
 
     /**
      * Allows transaction manager developers to perform actions before creating a transaction.
-     * @throws TransactionManagerException
+     * @throws TransactionManagerException in case of any issues
      */
     public void preBegin() throws TransactionManagerException {}
 
@@ -163,7 +163,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      * Allows transaction manager developers to perform actions after having started a transaction.
      * @param transaction
      *            the transaction that was just created.
-     * @throws TransactionManagerException
+     * @throws TransactionManagerException  in case of any issues
      */
     public void postBegin(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {}
 
@@ -171,7 +171,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      * Allows transaction manager developers to perform actions before committing a transaction.
      * @param transaction
      *            the transaction that is going to be committed.
-     * @throws TransactionManagerException
+     * @throws TransactionManagerException  in case of any issues
      */
     public void preCommit(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {}
 
@@ -217,15 +217,14 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      * Allows transaction manager developers to perform actions after committing a transaction.
      * @param transaction
      *            the transaction that was committed.
-     * @throws TransactionManagerException
+     * @throws TransactionManagerException in case of any issues
      */
     public void postCommit(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {}
 
     /**
      * Allows transaction manager developers to perform actions before rolling-back a transaction.
-     * @param transaction
-     *            the transaction that is going to be rolled-back.
-     * @throws TransactionManagerException
+     * @param transaction the transaction that is going to be rolled-back.
+     * @throws TransactionManagerException in case of any issues
      */
     public void preRollback(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {}
 
@@ -260,7 +259,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      * Allows transaction manager developers to perform actions after rolling-back a transaction.
      * @param transaction
      *            the transaction that was rolled-back.
-     * @throws TransactionManagerException
+     * @throws TransactionManagerException in case of any issues
      */
     public void postRollback(AbstractTransaction<? extends CellId> transaction) throws TransactionManagerException {}
 
@@ -299,7 +298,7 @@ public abstract class AbstractTransactionManager implements TransactionManager {
      *          a locator to find the commit timestamp in the system.
      * @return the commit timestamp joint with the location where it was found
      *         or an object indicating that it was not found in the system
-     * @throws IOException
+     * @throws IOException  in case of any I/O issues
      */
     public CommitTimestamp locateCellCommitTimestamp(long cellStartTimestamp, long epoch,
                                                      CommitTimestampLocator locator) throws IOException {

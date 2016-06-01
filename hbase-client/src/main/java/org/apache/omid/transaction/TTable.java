@@ -23,6 +23,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimaps;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
@@ -61,9 +62,8 @@ import java.util.NavigableMap;
 import java.util.NavigableSet;
 
 /**
- * Provides transactional methods for accessing and modifying a given snapshot
- * of data identified by an opaque {@link Transaction} object. It mimics the
- * behavior in {@link org.apache.hadoop.hbase.client.HTableInterface}
+ * Provides transactional methods for accessing and modifying a given snapshot of data identified by an opaque {@link
+ * Transaction} object. It mimics the behavior in {@link org.apache.hadoop.hbase.client.HTableInterface}
  */
 public class TTable implements Closeable {
 
@@ -106,8 +106,7 @@ public class TTable implements Closeable {
     /**
      * Releases any resources held or pending changes in internal buffers.
      *
-     * @throws IOException
-     *             if a remote or network exception occurs.
+     * @throws IOException if a remote or network exception occurs.
      */
     @Override
     public void close() throws IOException {
@@ -121,6 +120,11 @@ public class TTable implements Closeable {
 
     /**
      * Transactional version of {@link HTableInterface#get(Get get)}
+     *
+     * @param get an instance of Get
+     * @param tx  an instance of transaction to be used
+     * @return Result an instance of Result
+     * @throws IOException if a remote or network exception occurs.
      */
     public Result get(Transaction tx, final Get get) throws IOException {
 
@@ -162,6 +166,10 @@ public class TTable implements Closeable {
 
     /**
      * Transactional version of {@link HTableInterface#delete(Delete delete)}
+     *
+     * @param delete an instance of Delete
+     * @param tx     an instance of transaction to be used
+     * @throws IOException if a remote or network exception occurs.
      */
     public void delete(Transaction tx, Delete delete) throws IOException {
 
@@ -188,11 +196,11 @@ public class TTable implements Closeable {
                                     startTimestamp,
                                     CellUtils.DELETE_TOMBSTONE);
                         transaction.addWriteSetElement(
-                                new HBaseCellId(table,
-                                                delete.getRow(),
-                                                CellUtil.cloneFamily(cell),
-                                                CellUtil.cloneQualifier(cell),
-                                                cell.getTimestamp()));
+                            new HBaseCellId(table,
+                                            delete.getRow(),
+                                            CellUtil.cloneFamily(cell),
+                                            CellUtil.cloneQualifier(cell),
+                                            cell.getTimestamp()));
                         break;
                     case DeleteFamily:
                         deleteG.addFamily(CellUtil.cloneFamily(cell));
@@ -205,15 +213,15 @@ public class TTable implements Closeable {
                                         startTimestamp,
                                         CellUtils.DELETE_TOMBSTONE);
                             transaction.addWriteSetElement(
-                                    new HBaseCellId(table,
-                                                    delete.getRow(),
-                                                    CellUtil.cloneFamily(cell),
-                                                    CellUtil.cloneQualifier(cell),
-                                                    cell.getTimestamp()));
+                                new HBaseCellId(table,
+                                                delete.getRow(),
+                                                CellUtil.cloneFamily(cell),
+                                                CellUtil.cloneQualifier(cell),
+                                                cell.getTimestamp()));
                             break;
                         } else {
                             throw new UnsupportedOperationException(
-                                    "Cannot delete specific versions on Snapshot Isolation.");
+                                "Cannot delete specific versions on Snapshot Isolation.");
                         }
                     default:
                         break;
@@ -226,12 +234,13 @@ public class TTable implements Closeable {
             Result result = this.get(transaction, deleteG);
             if (!result.isEmpty()) {
                 for (Entry<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> entryF : result.getMap()
-                        .entrySet()) {
+                    .entrySet()) {
                     byte[] family = entryF.getKey();
                     for (Entry<byte[], NavigableMap<Long, byte[]>> entryQ : entryF.getValue().entrySet()) {
                         byte[] qualifier = entryQ.getKey();
                         deleteP.add(family, qualifier, CellUtils.DELETE_TOMBSTONE);
-                        transaction.addWriteSetElement(new HBaseCellId(table, delete.getRow(), family, qualifier, transaction.getStartTimestamp()));
+                        transaction.addWriteSetElement(new HBaseCellId(table, delete.getRow(), family, qualifier,
+                                                                       transaction.getStartTimestamp()));
                     }
                 }
             }
@@ -245,6 +254,10 @@ public class TTable implements Closeable {
 
     /**
      * Transactional version of {@link HTableInterface#put(Put put)}
+     *
+     * @param put an instance of Put
+     * @param tx  an instance of transaction to be used
+     * @throws IOException if a remote or network exception occurs.
      */
     public void put(Transaction tx, Put put) throws IOException {
 
@@ -267,11 +280,11 @@ public class TTable implements Closeable {
                 tsput.add(kv);
 
                 transaction.addWriteSetElement(
-                        new HBaseCellId(table,
-                                        CellUtil.cloneRow(kv),
-                                        CellUtil.cloneFamily(kv),
-                                        CellUtil.cloneQualifier(kv),
-                                        kv.getTimestamp()));
+                    new HBaseCellId(table,
+                                    CellUtil.cloneRow(kv),
+                                    CellUtil.cloneFamily(kv),
+                                    CellUtil.cloneQualifier(kv),
+                                    kv.getTimestamp()));
             }
         }
 
@@ -280,6 +293,11 @@ public class TTable implements Closeable {
 
     /**
      * Transactional version of {@link HTableInterface#getScanner(Scan scan)}
+     *
+     * @param scan an instance of Scan
+     * @param tx   an instance of transaction to be used
+     * @return ResultScanner an instance of ResultScanner
+     * @throws IOException if a remote or network exception occurs.
      */
     public ResultScanner getScanner(Transaction tx, Scan scan) throws IOException {
 
@@ -305,19 +323,14 @@ public class TTable implements Closeable {
     }
 
     /**
-     * Filters the raw results returned from HBase and returns only those
-     * belonging to the current snapshot, as defined by the transaction
-     * object. If the raw results don't contain enough information for a
-     * particular qualifier, it will request more versions from HBase.
+     * Filters the raw results returned from HBase and returns only those belonging to the current snapshot, as defined
+     * by the transaction object. If the raw results don't contain enough information for a particular qualifier, it
+     * will request more versions from HBase.
      *
-     * @param rawCells
-     *            Raw cells that we are going to filter
-     * @param transaction
-     *            Defines the current snapshot
-     * @param versionsToRequest
-     *            Number of versions requested from hbase
+     * @param rawCells          Raw cells that we are going to filter
+     * @param transaction       Defines the current snapshot
+     * @param versionsToRequest Number of versions requested from hbase
      * @return Filtered KVs belonging to the transaction snapshot
-     * @throws IOException
      */
     List<Cell> filterCellsForSnapshot(List<Cell> rawCells, HBaseTransaction transaction,
                                       int versionsToRequest) throws IOException {
@@ -359,7 +372,7 @@ public class TTable implements Closeable {
             for (Result pendingGetResult : pendingGetsResults) {
                 if (!pendingGetResult.isEmpty()) {
                     keyValuesInSnapshot.addAll(
-                            filterCellsForSnapshot(pendingGetResult.listCells(), transaction, numberOfVersionsToFetch));
+                        filterCellsForSnapshot(pendingGetResult.listCells(), transaction, numberOfVersionsToFetch));
                 }
             }
         }
@@ -384,7 +397,7 @@ public class TTable implements Closeable {
     }
 
     private boolean isCellInSnapshot(Cell kv, HBaseTransaction transaction, Map<Long, Long> commitCache)
-            throws IOException {
+        throws IOException {
 
         long startTimestamp = transaction.getStartTimestamp();
 
@@ -393,7 +406,8 @@ public class TTable implements Closeable {
         }
 
         Optional<Long> commitTimestamp =
-                tryToLocateCellCommitTimestamp(transaction.getTransactionManager(), transaction.getEpoch(), kv, commitCache);
+            tryToLocateCellCommitTimestamp(transaction.getTransactionManager(), transaction.getEpoch(), kv,
+                                           commitCache);
 
         return commitTimestamp.isPresent() && commitTimestamp.get() < startTimestamp;
     }
@@ -415,19 +429,19 @@ public class TTable implements Closeable {
                                                           long epoch,
                                                           Cell cell,
                                                           Map<Long, Long> commitCache)
-            throws IOException {
+        throws IOException {
 
         CommitTimestamp tentativeCommitTimestamp =
-                transactionManager.locateCellCommitTimestamp(
-                        cell.getTimestamp(),
-                        epoch,
-                        new CommitTimestampLocatorImpl(
-                                new HBaseCellId(table,
-                                                CellUtil.cloneRow(cell),
-                                                CellUtil.cloneFamily(cell),
-                                                CellUtil.cloneQualifier(cell),
-                                                cell.getTimestamp()),
-                                commitCache));
+            transactionManager.locateCellCommitTimestamp(
+                cell.getTimestamp(),
+                epoch,
+                new CommitTimestampLocatorImpl(
+                    new HBaseCellId(table,
+                                    CellUtil.cloneRow(cell),
+                                    CellUtil.cloneFamily(cell),
+                                    CellUtil.cloneQualifier(cell),
+                                    cell.getTimestamp()),
+                    commitCache));
 
         // If transaction that added the cell was invalidated
         if (!tentativeCommitTimestamp.isValid()) {
@@ -469,12 +483,13 @@ public class TTable implements Closeable {
     }
 
     protected class TransactionalClientScanner implements ResultScanner {
+
         private HBaseTransaction state;
         private ResultScanner innerScanner;
         private int maxVersions;
 
         TransactionalClientScanner(HBaseTransaction state, Scan scan, int maxVersions)
-                throws IOException {
+            throws IOException {
             this.state = state;
             this.innerScanner = table.getScanner(scan);
             this.maxVersions = maxVersions;
@@ -569,6 +584,8 @@ public class TTable implements Closeable {
 
     /**
      * Delegates to {@link HTable#getTableName()}
+     *
+     * @return array of byte
      */
     public byte[] getTableName() {
         return table.getTableName();
@@ -576,6 +593,8 @@ public class TTable implements Closeable {
 
     /**
      * Delegates to {@link HTable#getConfiguration()}
+     *
+     * @return standard configuration object
      */
     public Configuration getConfiguration() {
         return table.getConfiguration();
@@ -583,6 +602,9 @@ public class TTable implements Closeable {
 
     /**
      * Delegates to {@link HTable#getTableDescriptor()}
+     *
+     * @return HTableDescriptor an instance of HTableDescriptor
+     * @throws IOException if a remote or network exception occurs.
      */
     public HTableDescriptor getTableDescriptor() throws IOException {
         return table.getTableDescriptor();
@@ -590,6 +612,11 @@ public class TTable implements Closeable {
 
     /**
      * Transactional version of {@link HTableInterface#exists(Get get)}
+     *
+     * @param transaction an instance of transaction to be used
+     * @param get         an instance of Get
+     * @return true if cell exists
+     * @throws IOException if a remote or network exception occurs.
      */
     public boolean exists(Transaction transaction, Get get) throws IOException {
         Result result = get(transaction, get);
@@ -612,7 +639,12 @@ public class TTable implements Closeable {
      */
 
     /**
-     * Transactional version of {@link HTableInterface#get(List<Get> gets)}
+     * Transactional version of {@link HTableInterface#get(List gets)}
+     *
+     * @param transaction an instance of transaction to be used
+     * @param gets        list of Get instances
+     * @return array of Results
+     * @throws IOException if a remote or network exception occurs
      */
     public Result[] get(Transaction transaction, List<Get> gets) throws IOException {
         Result[] results = new Result[gets.size()];
@@ -625,6 +657,11 @@ public class TTable implements Closeable {
 
     /**
      * Transactional version of {@link HTableInterface#getScanner(byte[] family)}
+     *
+     * @param transaction an instance of transaction to be used
+     * @param family      column family
+     * @return an instance of ResultScanner
+     * @throws IOException if a remote or network exception occurs
      */
     public ResultScanner getScanner(Transaction transaction, byte[] family) throws IOException {
         Scan scan = new Scan();
@@ -634,16 +671,26 @@ public class TTable implements Closeable {
 
     /**
      * Transactional version of {@link HTableInterface#getScanner(byte[] family, byte[] qualifier)}
+     *
+     * @param transaction an instance of transaction to be used
+     * @param family      column family
+     * @param qualifier   column name
+     * @return an instance of ResultScanner
+     * @throws IOException if a remote or network exception occurs
      */
     public ResultScanner getScanner(Transaction transaction, byte[] family, byte[] qualifier)
-            throws IOException {
+        throws IOException {
         Scan scan = new Scan();
         scan.addColumn(family, qualifier);
         return getScanner(transaction, scan);
     }
 
     /**
-     * Transactional version of {@link HTableInterface#put(List<Put> puts)}
+     * Transactional version of {@link HTableInterface#put(List puts)}
+     *
+     * @param transaction an instance of transaction to be used
+     * @param puts        List of puts
+     * @throws IOException if a remote or network exception occurs
      */
     public void put(Transaction transaction, List<Put> puts) throws IOException {
         for (Put put : puts) {
@@ -652,7 +699,11 @@ public class TTable implements Closeable {
     }
 
     /**
-     * Transactional version of {@link HTableInterface#delete(List<Delete> deletes)}
+     * Transactional version of {@link HTableInterface#delete(List deletes)}
+     *
+     * @param transaction an instance of transaction to be used
+     * @param deletes        List of deletes
+     * @throws IOException if a remote or network exception occurs
      */
     public void delete(Transaction transaction, List<Delete> deletes) throws IOException {
         for (Delete delete : deletes) {
@@ -661,9 +712,8 @@ public class TTable implements Closeable {
     }
 
     /**
-     * Provides access to the underliying HTable in order to configure it or to
-     * perform unsafe (non-transactional) operations. The latter would break the
-     * transactional guarantees of the whole system.
+     * Provides access to the underliying HTable in order to configure it or to perform unsafe (non-transactional)
+     * operations. The latter would break the transactional guarantees of the whole system.
      *
      * @return The underlying HTable object
      */
@@ -686,21 +736,21 @@ public class TTable implements Closeable {
     }
 
     /**
-     * Delegates to {@link HTable.getWriteBufferSize()}
+     * Delegates to see HTable.getWriteBufferSize()
      */
     public long getWriteBufferSize() {
         return table.getWriteBufferSize();
     }
 
     /**
-     * Delegates to {@link HTable.setWriteBufferSize()}
+     * Delegates to see HTable.setWriteBufferSize()
      */
     public void setWriteBufferSize(long writeBufferSize) throws IOException {
         table.setWriteBufferSize(writeBufferSize);
     }
 
     /**
-     * Delegates to {@link HTable.flushCommits()}
+     * Delegates to see HTable.flushCommits()
      */
     public void flushCommits() throws IOException {
         table.flushCommits();
@@ -723,14 +773,14 @@ public class TTable implements Closeable {
     private void checkTimerangeIsSetToDefaultValuesOrThrowException(TimeRange tr) {
         if (tr.getMin() != 0L || tr.getMax() != Long.MAX_VALUE) {
             throw new IllegalArgumentException(
-                    "Timestamp/timerange not allowed in transactional user operations");
+                "Timestamp/timerange not allowed in transactional user operations");
         }
     }
 
     private void throwExceptionIfOpSetsTimerange(Mutation userOperation) {
         if (userOperation.getTimeStamp() != HConstants.LATEST_TIMESTAMP) {
             throw new IllegalArgumentException(
-                    "Timestamp not allowed in transactional user operations");
+                "Timestamp not allowed in transactional user operations");
         }
     }
 
@@ -739,8 +789,8 @@ public class TTable implements Closeable {
             return (HBaseTransaction) tx;
         } else {
             throw new IllegalArgumentException(
-                    String.format("The transaction object passed %s is not an instance of HBaseTransaction",
-                                  tx.getClass().getName()));
+                String.format("The transaction object passed %s is not an instance of HBaseTransaction",
+                              tx.getClass().getName()));
         }
     }
 
@@ -765,7 +815,7 @@ public class TTable implements Closeable {
         };
 
         return Multimaps.index(Iterables.filter(rawCells, shadowCellFilter), cellToColumnWrapper)
-                .asMap().values()
-                .asList();
+            .asMap().values()
+            .asList();
     }
 }
