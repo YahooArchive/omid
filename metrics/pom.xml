@@ -6,7 +6,7 @@
     <parent>
         <artifactId>omid</artifactId>
         <groupId>org.apache.omid</groupId>
-        <version>0.8.2.6-SNAPSHOT</version>
+        <version>0.8.2.6</version>
     </parent>
 
     <artifactId>omid-metrics</artifactId>
