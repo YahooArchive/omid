@@ -82,7 +82,7 @@ public abstract class OmidTestBase {
         // TSO Setup
         TSOServerConfig tsoConfig = new TSOServerConfig();
         tsoConfig.setPort(1234);
-        tsoConfig.setMaxItems(1000);
+        tsoConfig.setConflictMapSize(1000);
         Injector injector = Guice.createInjector(new TSOMockModule(tsoConfig));
         LOG.info("Starting TSO");
         TSOServer tso = injector.getInstance(TSOServer.class);

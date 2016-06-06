@@ -66,7 +66,7 @@ public class TestIntegrationOfTSOClientServerBasicFunctionality {
         tsoServerPortForTest = TestUtils.getFreeLocalPort();
 
         TSOServerConfig tsoConfig = new TSOServerConfig();
-        tsoConfig.setMaxItems(1000);
+        tsoConfig.setConflictMapSize(1000);
         tsoConfig.setPort(tsoServerPortForTest);
         Module tsoServerMockModule = new TSOMockModule(tsoConfig);
         Injector injector = Guice.createInjector(tsoServerMockModule);

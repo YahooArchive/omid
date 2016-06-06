@@ -115,7 +115,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         // Configure TSO 1
         TSOServerConfig config1 = new TSOServerConfig();
         config1.setPort(TSO1_PORT);
-        config1.setMaxItems(1000);
+        config1.setConflictMapSize(1000);
         config1.setLeaseModule(new TestHALeaseManagementModule(TEST_LEASE_PERIOD_MS, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkConnection, NAMESPACE));
         Injector injector1 = Guice.createInjector(new TestTSOModule(hbaseConf, config1));
         LOG.info("===================== Starting TSO 1 =====================");
@@ -128,7 +128,7 @@ public class TestEndToEndScenariosWithHA extends OmidTestBase {
         // Configure TSO 2
         TSOServerConfig config2 = new TSOServerConfig();
         config2.setPort(TSO2_PORT);
-        config2.setMaxItems(1000);
+        config2.setConflictMapSize(1000);
         config2.setLeaseModule(new TestHALeaseManagementModule(TEST_LEASE_PERIOD_MS, TSO_LEASE_PATH, CURRENT_TSO_PATH, zkConnection, NAMESPACE));
         Injector injector2 = Guice.createInjector(new TestTSOModule(hbaseConf, config2));
         LOG.info("===================== Starting TSO 2 =====================");

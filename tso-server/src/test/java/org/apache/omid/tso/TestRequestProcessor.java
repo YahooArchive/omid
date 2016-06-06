@@ -32,7 +32,6 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -74,7 +73,7 @@ public class TestRequestProcessor {
         doReturn(f).when(persist).persistLowWatermark(any(Long.class));
 
         TSOServerConfig config = new TSOServerConfig();
-        config.setMaxItems(CONFLICT_MAP_SIZE);
+        config.setConflictMapSize(CONFLICT_MAP_SIZE);
 
         requestProc = new RequestProcessorImpl(metrics, timestampOracle, persist, new MockPanicker(), config);
 

@@ -89,7 +89,7 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
         this.metrics = metrics;
         this.persistProc = persistProc;
         this.timestampOracle = timestampOracle;
-        this.hashmap = new CommitHashMap(config.getMaxItems());
+        this.hashmap = new CommitHashMap(config.getConflictMapSize());
 
         LOG.info("RequestProcessor initialized");
 

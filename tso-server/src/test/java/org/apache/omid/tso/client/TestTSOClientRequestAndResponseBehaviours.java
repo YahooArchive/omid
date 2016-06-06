@@ -71,7 +71,7 @@ public class TestTSOClientRequestAndResponseBehaviours {
     public void beforeMethod() throws Exception {
 
         TSOServerConfig tsoConfig = new TSOServerConfig();
-        tsoConfig.setMaxItems(1000);
+        tsoConfig.setConflictMapSize(1000);
         tsoConfig.setPort(TSO_SERVER_PORT);
         tsoConfig.setNumConcurrentCTWriters(2);
         Module tsoServerMockModule = new TSOMockModule(tsoConfig);

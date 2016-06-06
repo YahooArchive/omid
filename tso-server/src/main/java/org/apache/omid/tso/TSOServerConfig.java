@@ -19,15 +19,12 @@ package org.apache.omid.tso;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Module;
+import org.apache.omid.NetworkUtils;
 import org.apache.omid.YAMLUtils;
 import org.apache.omid.metrics.MetricsRegistry;
 import org.apache.omid.tools.hbase.SecureHBaseConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.util.Enumeration;
 
 /**
  * Reads the configuration parameters of a TSO server instance from CONFIG_FILE_NAME.
@@ -38,11 +35,8 @@ public class TSOServerConfig extends SecureHBaseConfig {
 
     private static final Logger LOG = LoggerFactory.getLogger(TSOServerConfig.class);
 
-    private static final String DEFAULT_CONFIG_FILE_NAME = "default-omid.yml";
-    private static final String CONFIG_FILE_NAME = "omid.yml";
-
-    private static final String LINUX_TSO_NET_IFACE_PREFIX = "eth";
-    private static final String MAC_TSO_NET_IFACE_PREFIX = "en";
+    private static final String CONFIG_FILE_NAME = "omid-server-configuration.yml";
+    private static final String DEFAULT_CONFIG_FILE_NAME = "default-omid-server-configuration.yml";
 
     // ----------------------------------------------------------------------------------------------------------------
     // Instantiation
@@ -70,7 +64,7 @@ public class TSOServerConfig extends SecureHBaseConfig {
 
     private MetricsRegistry metrics;
 
-    private int maxItems;
+    private int conflictMapSize;
 
     private int numConcurrentCTWriters;
 
@@ -78,7 +72,7 @@ public class TSOServerConfig extends SecureHBaseConfig {
 
     private int batchPersistTimeoutInMs;
 
-    private String networkIfaceName = getDefaultNetworkInterface();
+    private String networkIfaceName = NetworkUtils.getDefaultNetworkInterface();
 
     public int getPort() {
         return port;
@@ -88,12 +82,12 @@ public class TSOServerConfig extends SecureHBaseConfig {
         this.port = port;
     }
 
-    public int getMaxItems() {
-        return maxItems;
+    public int getConflictMapSize() {
+        return conflictMapSize;
     }
 
-    public void setMaxItems(int maxItems) {
-        this.maxItems = maxItems;
+    public void setConflictMapSize(int conflictMapSize) {
+        this.conflictMapSize = conflictMapSize;
     }
 
     public int getNumConcurrentCTWriters() {
@@ -158,29 +152,6 @@ public class TSOServerConfig extends SecureHBaseConfig {
 
     public void setMetrics(MetricsRegistry metrics) {
         this.metrics = metrics;
-    }
-
-    // ----------------------------------------------------------------------------------------------------------------
-    // Helper methods
-    // ----------------------------------------------------------------------------------------------------------------
-
-    private String getDefaultNetworkInterface() {
-
-        try {
-            Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
-            while (networkInterfaces.hasMoreElements()) {
-                String name = networkInterfaces.nextElement().getDisplayName();
-                LOG.info("Iterating over network interfaces, found '{}'", name);
-                if (name.startsWith(MAC_TSO_NET_IFACE_PREFIX) || name.startsWith(LINUX_TSO_NET_IFACE_PREFIX)) {
-                    return name;
-                }
-            }
-        } catch (SocketException ignored) {
-            throw new RuntimeException("Failed to find any network interfaces", ignored);
-        }
-        throw new IllegalArgumentException(String.format("No network '%s*'/'%s*' interfaces found",
-                                                         MAC_TSO_NET_IFACE_PREFIX, LINUX_TSO_NET_IFACE_PREFIX));
-
     }
 
 }
