@@ -18,11 +18,9 @@
 package org.apache.omid.tso;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.SequenceBarrier;
 import com.lmax.disruptor.TimeoutBlockingWaitStrategy;
 import com.lmax.disruptor.TimeoutHandler;
 import com.lmax.disruptor.dsl.Disruptor;
@@ -40,21 +38,26 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
 
 import static com.lmax.disruptor.dsl.ProducerType.MULTI;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.omid.tso.RequestProcessorImpl.RequestEvent.EVENT_FACTORY;
 
 class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestEvent>, RequestProcessor, TimeoutHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(RequestProcessorImpl.class);
 
+    // Disruptor-related attributes
+    private final ExecutorService disruptorExec;
+    private final Disruptor<RequestEvent> disruptor;
+    private final RingBuffer<RequestEvent> requestRing;
+
     private final TimestampOracle timestampOracle;
     private final CommitHashMap hashmap;
     private final MetricsRegistry metrics;
     private final PersistenceProcessor persistProc;
-    private final RingBuffer<RequestEvent> requestRing;
+
     private long lowWatermark = -1L;
 
     @Inject
@@ -72,10 +75,10 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
         TimeoutBlockingWaitStrategy timeoutStrategy = new TimeoutBlockingWaitStrategy(config.getBatchPersistTimeoutInMs(), MILLISECONDS);
 
         ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("request-%d").build();
-        ExecutorService requestExec = Executors.newSingleThreadExecutor(threadFactory);
+        this.disruptorExec = Executors.newSingleThreadExecutor(threadFactory);
 
-        Disruptor<RequestEvent> disruptor = new Disruptor<>(EVENT_FACTORY, 1 << 12, requestExec, MULTI, timeoutStrategy);
-        disruptor.handleExceptionsWith(new FatalExceptionHandler(panicker)); // This should be before the event handler
+        this.disruptor = new Disruptor<>(EVENT_FACTORY, 1 << 12, disruptorExec, MULTI, timeoutStrategy);
+        disruptor.handleExceptionsWith(new FatalExceptionHandler(panicker)); // This must be before handleEventsWith()
         disruptor.handleEventsWith(this);
         this.requestRing = disruptor.start();
 
@@ -88,6 +91,8 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
         this.timestampOracle = timestampOracle;
         this.hashmap = new CommitHashMap(config.getMaxItems());
 
+        LOG.info("RequestProcessor initialized");
+
     }
 
     /**
@@ -95,10 +100,10 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
      */
     @Override
     public void update(TSOState state) throws Exception {
-        LOG.info("Initializing RequestProcessor...");
+        LOG.info("Initializing RequestProcessor state...");
         this.lowWatermark = state.getLowWatermark();
         persistProc.persistLowWatermark(lowWatermark).get(); // Sync persist
-        LOG.info("RequestProcessor initialized with LWMs {} and Epoch {}", lowWatermark, state.getEpoch());
+        LOG.info("RequestProcessor state initialized with LWMs {} and Epoch {}", lowWatermark, state.getEpoch());
     }
 
     @Override
@@ -219,6 +224,25 @@ class RequestProcessorImpl implements EventHandler<RequestProcessorImpl.RequestE
             }
 
         }
+
+    }
+
+    @Override
+    public void close() throws IOException {
+
+        LOG.info("Terminating Request Processor...");
+        disruptor.halt();
+        disruptor.shutdown();
+        LOG.info("\tRequest Processor Disruptor shutdown");
+        disruptorExec.shutdownNow();
+        try {
+            disruptorExec.awaitTermination(3, SECONDS);
+            LOG.info("\tRequest Processor Disruptor executor shutdown");
+        } catch (InterruptedException e) {
+            LOG.error("Interrupted whilst finishing Request Processor Disruptor executor");
+            Thread.currentThread().interrupt();
+        }
+        LOG.info("Request Processor terminated");
 
     }
 

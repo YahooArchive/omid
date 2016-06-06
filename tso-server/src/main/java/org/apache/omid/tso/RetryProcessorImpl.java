@@ -42,6 +42,7 @@ import java.util.concurrent.ThreadFactory;
 
 import static com.codahale.metrics.MetricRegistry.name;
 import static com.lmax.disruptor.dsl.ProducerType.SINGLE;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.omid.tso.RetryProcessorImpl.RetryEvent.EVENT_FACTORY;
 
 /**
@@ -52,9 +53,12 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
 
     private static final Logger LOG = LoggerFactory.getLogger(RetryProcessor.class);
 
-    // Disruptor chain stuff
+    // Disruptor-related attributes
+    private final ExecutorService disruptorExec;
+    private final Disruptor<RetryEvent> disruptor;
+    private final RingBuffer<RetryEvent> retryRing;
+
     final ReplyProcessor replyProc;
-    final RingBuffer<RetryEvent> retryRing;
 
     final CommitTable.Client commitTableClient;
     final ObjectPool<Batch> batchPool;
@@ -77,10 +81,10 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
         // ------------------------------------------------------------------------------------------------------------
 
         ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("retry-%d").build();
-        ExecutorService requestExec = Executors.newSingleThreadExecutor(threadFactory);
+        this.disruptorExec = Executors.newSingleThreadExecutor(threadFactory);
 
-        Disruptor<RetryProcessorImpl.RetryEvent> disruptor = new Disruptor<>(EVENT_FACTORY, 1 << 12, requestExec, SINGLE, new YieldingWaitStrategy());
-        disruptor.handleExceptionsWith(new FatalExceptionHandler(panicker)); // This should be before the event handler
+        this.disruptor = new Disruptor<>(EVENT_FACTORY, 1 << 12, disruptorExec, SINGLE, new YieldingWaitStrategy());
+        disruptor.handleExceptionsWith(new FatalExceptionHandler(panicker)); // This must be before handleEventsWith()
         disruptor.handleEventsWith(this);
         this.retryRing = disruptor.start();
 
@@ -96,6 +100,8 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
         this.txAlreadyCommittedMeter = metrics.meter(name("tso", "retries", "commits", "tx-already-committed"));
         this.invalidTxMeter = metrics.meter(name("tso", "retries", "aborts", "tx-invalid"));
         this.noCTFoundMeter = metrics.meter(name("tso", "retries", "aborts", "tx-without-commit-timestamp"));
+
+        LOG.info("RetryProcessor initialized");
 
     }
 
@@ -151,6 +157,25 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
         monCtx.timerStart("retry.processor.commit-retry.latency");
         RetryEvent.makeCommitRetry(e, startTimestamp, c, monCtx);
         retryRing.publish(seq);
+    }
+
+    @Override
+    public void close() throws IOException {
+
+        LOG.info("Terminating Retry Processor...");
+        disruptor.halt();
+        disruptor.shutdown();
+        LOG.info("\tRetry Processor Disruptor shutdown");
+        disruptorExec.shutdownNow();
+        try {
+            disruptorExec.awaitTermination(3, SECONDS);
+            LOG.info("\tRetry Processor Disruptor executor shutdown");
+        } catch (InterruptedException e) {
+            LOG.error("Interrupted whilst finishing Retry Processor Disruptor executor");
+            Thread.currentThread().interrupt();
+        }
+        LOG.info("Retry Processor terminated");
+
     }
 
     public final static class RetryEvent {

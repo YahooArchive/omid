@@ -41,14 +41,19 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static com.codahale.metrics.MetricRegistry.name;
 import static com.lmax.disruptor.dsl.ProducerType.MULTI;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.apache.omid.tso.ReplyProcessorImpl.ReplyBatchEvent.EVENT_FACTORY;
 
 class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEvent>, ReplyProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(ReplyProcessorImpl.class);
 
-    private final ObjectPool<Batch> batchPool;
-
+    // Disruptor-related attributes
+    private final ExecutorService disruptorExec;
+    private final Disruptor<ReplyBatchEvent> disruptor;
     private final RingBuffer<ReplyBatchEvent> replyRing;
+
+    private final ObjectPool<Batch> batchPool;
 
     @VisibleForTesting
     AtomicLong nextIDToHandle = new AtomicLong();
@@ -69,9 +74,9 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
         // ------------------------------------------------------------------------------------------------------------
 
         ThreadFactoryBuilder threadFactory = new ThreadFactoryBuilder().setNameFormat("reply-%d");
-        ExecutorService requestExec = Executors.newSingleThreadExecutor(threadFactory.build());
+        this.disruptorExec = Executors.newSingleThreadExecutor(threadFactory.build());
 
-        Disruptor<ReplyProcessorImpl.ReplyBatchEvent> disruptor = new Disruptor<>(ReplyBatchEvent.EVENT_FACTORY, 1 << 12, requestExec, MULTI, new BusySpinWaitStrategy());
+        this.disruptor = new Disruptor<>(EVENT_FACTORY, 1 << 12, disruptorExec, MULTI, new BusySpinWaitStrategy());
         disruptor.handleExceptionsWith(new FatalExceptionHandler(panicker));
         disruptor.handleEventsWith(this);
         this.replyRing = disruptor.start();
@@ -92,6 +97,8 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
         this.abortMeter = metrics.meter(name("tso", "aborts"));
         this.commitMeter = metrics.meter(name("tso", "commits"));
         this.timestampMeter = metrics.meter(name("tso", "timestampAllocation"));
+
+        LOG.info("ReplyProcessor initialized");
 
     }
 
@@ -204,6 +211,25 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
         respBuilder.setStartTimestamp(startTimestamp);
         builder.setTimestampResponse(respBuilder.build());
         c.write(builder.build());
+
+    }
+
+    @Override
+    public void close() {
+
+        LOG.info("Terminating Reply Processor...");
+        disruptor.halt();
+        disruptor.shutdown();
+        LOG.info("\tReply Processor Disruptor shutdown");
+        disruptorExec.shutdownNow();
+        try {
+            disruptorExec.awaitTermination(3, SECONDS);
+            LOG.info("\tReply Processor Disruptor executor shutdown");
+        } catch (InterruptedException e) {
+            LOG.error("Interrupted whilst finishing Reply Processor Disruptor executor");
+            Thread.currentThread().interrupt();
+        }
+        LOG.info("Reply Processor terminated");
 
     }
 

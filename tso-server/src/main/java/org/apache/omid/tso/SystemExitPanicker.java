@@ -17,16 +17,22 @@
  */
 package org.apache.omid.tso;
 
-import org.jboss.netty.channel.Channel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.Closeable;
-import java.util.Collection;
+public class SystemExitPanicker implements Panicker {
 
-// NOTE: public is required explicitly in the interface definition for Guice injection
-public interface RequestProcessor extends TSOStateManager.StateObserver, Closeable {
+    private static final Logger LOG = LoggerFactory.getLogger(SystemExitPanicker.class);
 
-    void timestampRequest(Channel c, MonitoringContext monCtx);
+    @Override
+    public void panic(String reason) {
+        panic(reason, new Throwable("TSO Error"));
+    }
 
-    void commitRequest(long startTimestamp, Collection<Long> writeSet, boolean isRetry, Channel c, MonitoringContext monCtx);
+    @Override
+    public void panic(String reason, Throwable cause) {
+        LOG.error(reason, cause);
+        System.exit(-1);
+    }
 
 }

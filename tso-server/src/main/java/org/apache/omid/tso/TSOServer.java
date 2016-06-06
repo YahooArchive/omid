@@ -37,12 +37,21 @@ public class TSOServer extends AbstractIdleService {
 
     private static final Logger LOG = LoggerFactory.getLogger(TSOServer.class);
 
+    public static final String DASH_SEPARATOR_80_CHARS =
+            "--------------------------------------------------------------------------------";
+
     public static final String TSO_HOST_AND_PORT_KEY = "tso.hostandport";
 
     @Inject
     private TSOStateManager tsoStateManager;
     @Inject
     private RequestProcessor requestProcessor;
+    @Inject
+    private PersistenceProcessor persistenceProcessor;
+    @Inject
+    private RetryProcessor retryProcessor;
+    @Inject
+    private ReplyProcessor replyProcessor;
 
     // ----------------------------------------------------------------------------------------------------------------
     // High availability related variables
@@ -84,16 +93,36 @@ public class TSOServer extends AbstractIdleService {
 
     @Override
     protected void startUp() throws Exception {
+        LOG.info("{}", DASH_SEPARATOR_80_CHARS);
+        LOG.info("Starting TSO Server");
+        LOG.info("{}", DASH_SEPARATOR_80_CHARS);
         tsoStateManager.register(requestProcessor);
         leaseManagement.startService();
-        LOG.info("********** TSO Server running **********");
+        LOG.info("{}", DASH_SEPARATOR_80_CHARS);
+        if (leaseManagement instanceof VoidLeaseManager) {
+            LOG.info("TSO Server running and accepting connections");
+        } else if (leaseManagement instanceof LeaseManager) {
+            LOG.info("TSO Server running on HA mode. Waiting to be signaled as the Master replica...");
+        } else {
+            throw new RuntimeException("Wrong TSO mode");
+        }
+        LOG.info("{}", DASH_SEPARATOR_80_CHARS);
     }
 
     @Override
     protected void shutDown() throws Exception {
+        LOG.info("{}", DASH_SEPARATOR_80_CHARS);
+        LOG.info("Shutting Down TSO Server");
+        LOG.info("{}", DASH_SEPARATOR_80_CHARS);
         leaseManagement.stopService();
         tsoStateManager.unregister(requestProcessor);
-        LOG.info("********** TSO Server stopped successfully **********");
+        requestProcessor.close();
+        persistenceProcessor.close();
+        retryProcessor.close();
+        replyProcessor.close();
+        LOG.info("{}", DASH_SEPARATOR_80_CHARS);
+        LOG.info("TSO Server stopped");
+        LOG.info("{}", DASH_SEPARATOR_80_CHARS);
     }
 
     // ----------------------------------------------------------------------------------------------------------------
