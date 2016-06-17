@@ -20,7 +20,9 @@ Then start HBase in [standalone mode](https://hbase.apache.org/book.html#quickst
 ```sh
 $ git clone git@github.com:yahoo/omid.git
 $ cd omid
-$ mvn clean install
+$ mvn clean install -Phbase-0 (for HBase 0.x versions)
+or
+$ mvn clean install -Phbase-1 (for HBase 1.x versions)
 ```
 This will generate a binary package containing all dependencies for the TSO in tso-server/target/tso-server-\<VERSION\>-bin.tar.gz. 
 
