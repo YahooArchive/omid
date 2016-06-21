@@ -34,7 +34,7 @@
                 <configuration>
                     <tarLongFileMode>gnu</tarLongFileMode>
                     <skipAssembly>false</skipAssembly>
-                    <finalName>apache-omid-incubating-${project.version}-src</finalName>
+                    <finalName>apache-omid-incubating-${project.version}</finalName>
                     <descriptors>
                         <descriptor>maven/assembly/src.xml</descriptor>
                     </descriptors>
