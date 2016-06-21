@@ -90,6 +90,7 @@
         <module>hbase-coprocessor</module>
         <module>hbase-tools</module>
         <module>examples</module>
+        <module>packaging</module>
     </modules>
 
     <pluginRepositories>
