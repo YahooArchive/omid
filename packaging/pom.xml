@@ -19,10 +19,11 @@
     <parent>
         <groupId>org.apache.omid</groupId>
         <artifactId>omid</artifactId>
-        <version>0.8.2.0</version>
+        <version>0.8.2.10</version>
     </parent>
 
     <artifactId>omid-packaging</artifactId>
+  <version>0.8.2.0</version>
     <packaging>pom</packaging>
     <name>Omid Packaging</name>
 
