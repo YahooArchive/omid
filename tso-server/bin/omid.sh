@@ -24,7 +24,7 @@ cd $SCRIPTDIR;
 source omid-env.sh
 
 # Configure classpath...
-CLASSPATH=../conf:$(HBASE_CONF_DIR):$(HADOOP_CONF_DIR)
+CLASSPATH=../conf:${HBASE_CONF_DIR}:${HADOOP_CONF_DIR}
 
 # ...for source release and...
 for j in ../target/omid-tso*.jar; do
