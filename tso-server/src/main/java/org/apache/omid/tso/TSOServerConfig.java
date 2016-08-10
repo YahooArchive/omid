@@ -19,6 +19,7 @@ package org.apache.omid.tso;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Module;
+
 import org.apache.omid.NetworkUtils;
 import org.apache.omid.YAMLUtils;
 import org.apache.omid.metrics.MetricsRegistry;
@@ -37,6 +38,11 @@ public class TSOServerConfig extends SecureHBaseConfig {
 
     private static final String CONFIG_FILE_NAME = "omid-server-configuration.yml";
     private static final String DEFAULT_CONFIG_FILE_NAME = "default-omid-server-configuration.yml";
+
+    public static enum WAIT_STRATEGY {
+        HIGH_THROUGHPUT,
+        LOW_CPU
+    };
 
     // ----------------------------------------------------------------------------------------------------------------
     // Instantiation
@@ -71,6 +77,8 @@ public class TSOServerConfig extends SecureHBaseConfig {
     private int batchSizePerCTWriter;
 
     private int batchPersistTimeoutInMs;
+
+    private String waitStrategy;
 
     private String networkIfaceName = NetworkUtils.getDefaultNetworkInterface();
 
@@ -154,4 +162,15 @@ public class TSOServerConfig extends SecureHBaseConfig {
         this.metrics = metrics;
     }
 
+    public String getWaitStrategy() {
+        return waitStrategy;
+    }
+
+    public WAIT_STRATEGY getWaitStrategyEnum() {
+        return TSOServerConfig.WAIT_STRATEGY.valueOf(waitStrategy);
+    }
+
+    public void setWaitStrategy(String waitStrategy) {
+        this.waitStrategy = waitStrategy;
+    }
 }

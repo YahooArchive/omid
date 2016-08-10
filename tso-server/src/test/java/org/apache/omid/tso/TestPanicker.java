@@ -30,6 +30,8 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import com.lmax.disruptor.BlockingWaitStrategy;
+
 import java.io.IOException;
 
 import static org.mockito.Matchers.any;
@@ -128,6 +130,7 @@ public class TestPanicker {
         }
 
         PersistenceProcessor proc = new PersistenceProcessorImpl(config,
+                                                                 new BlockingWaitStrategy(),
                                                                  commitTable,
                                                                  batchPool,
                                                                  panicker,
@@ -180,6 +183,7 @@ public class TestPanicker {
         }
 
         PersistenceProcessor proc = new PersistenceProcessorImpl(config,
+                                                                 new BlockingWaitStrategy(),
                                                                  commitTable,
                                                                  batchPool,
                                                                  panicker,

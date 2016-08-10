@@ -13,6 +13,10 @@
 
 # Port reserved by the Status Oracle
 port: 54758
+# Wait strategy for the Disruptor processors in TSO pipeline. Options:
+# 1) HIGH_THROUGHPUT - [Default] Use this in production deployments for maximum performance
+# 2) LOW_CPU - Use this option when testing or in deployments where saving CPU cycles is more important than throughput
+waitStrategy: HIGH_THROUGHPUT
 # The number of elements reserved in the conflict map to perform conflict resolution
 conflictMapSize: 100000000
 # The number of Commit Table writers that persist data concurrently to the datastore. It has to be at least 2.
@@ -143,6 +147,3 @@ metrics: !!org.apache.omid.metrics.NullMetricsProvider [ ]
 #     zkCluster: "localhost:2181"
 #     zkNamespace: "omid"
 # metrics: !!org.apache.omid.metrics.NullMetricsProvider [ ]
-
-
-

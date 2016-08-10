@@ -18,14 +18,39 @@
 package org.apache.omid.tso;
 
 import com.google.inject.AbstractModule;
+import com.google.inject.name.Names;
+import com.lmax.disruptor.BlockingWaitStrategy;
+import com.lmax.disruptor.BusySpinWaitStrategy;
+import com.lmax.disruptor.WaitStrategy;
+import com.lmax.disruptor.YieldingWaitStrategy;
 
 import javax.inject.Singleton;
 
 public class DisruptorModule extends AbstractModule {
 
+    private final TSOServerConfig config;
+
+    public DisruptorModule(TSOServerConfig config) {
+        this.config = config;
+    }
+
     @Override
     protected void configure() {
-
+        switch (config.getWaitStrategyEnum()) {
+        // A low-cpu usage Disruptor configuration for using in local/test environments
+        case LOW_CPU:
+             bind(WaitStrategy.class).annotatedWith(Names.named("PersistenceStrategy")).to(BlockingWaitStrategy.class);
+             bind(WaitStrategy.class).annotatedWith(Names.named("ReplyStrategy")).to(BlockingWaitStrategy.class);
+             bind(WaitStrategy.class).annotatedWith(Names.named("RetryStrategy")).to(BlockingWaitStrategy.class);
+             break;
+        // The default high-cpu usage Disruptor configuration for getting high throughput on production environments
+        case HIGH_THROUGHPUT:
+        default:
+             bind(WaitStrategy.class).annotatedWith(Names.named("PersistenceStrategy")).to(BusySpinWaitStrategy.class);
+             bind(WaitStrategy.class).annotatedWith(Names.named("ReplyStrategy")).to(BusySpinWaitStrategy.class);
+             bind(WaitStrategy.class).annotatedWith(Names.named("RetryStrategy")).to(YieldingWaitStrategy.class);
+             break;
+        }
         bind(RequestProcessor.class).to(RequestProcessorImpl.class).in(Singleton.class);
         bind(PersistenceProcessor.class).to(PersistenceProcessorImpl.class).in(Singleton.class);
         bind(ReplyProcessor.class).to(ReplyProcessorImpl.class).in(Singleton.class);

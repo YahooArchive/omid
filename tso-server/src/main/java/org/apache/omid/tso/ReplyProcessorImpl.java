@@ -20,11 +20,13 @@ package org.apache.omid.tso;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.Inject;
-import com.lmax.disruptor.BusySpinWaitStrategy;
+import com.google.inject.name.Named;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.Disruptor;
+
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.omid.metrics.Meter;
 import org.apache.omid.metrics.MetricsRegistry;
@@ -67,7 +69,8 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
     private final Meter timestampMeter;
 
     @Inject
-    ReplyProcessorImpl(MetricsRegistry metrics, Panicker panicker, ObjectPool<Batch> batchPool) {
+    ReplyProcessorImpl(@Named("ReplyStrategy") WaitStrategy strategy,
+            MetricsRegistry metrics, Panicker panicker, ObjectPool<Batch> batchPool) {
 
         // ------------------------------------------------------------------------------------------------------------
         // Disruptor initialization
@@ -76,7 +79,7 @@ class ReplyProcessorImpl implements EventHandler<ReplyProcessorImpl.ReplyBatchEv
         ThreadFactoryBuilder threadFactory = new ThreadFactoryBuilder().setNameFormat("reply-%d");
         this.disruptorExec = Executors.newSingleThreadExecutor(threadFactory.build());
 
-        this.disruptor = new Disruptor<>(EVENT_FACTORY, 1 << 12, disruptorExec, MULTI, new BusySpinWaitStrategy());
+        this.disruptor = new Disruptor<>(EVENT_FACTORY, 1 << 12, disruptorExec, MULTI, strategy);
         disruptor.handleExceptionsWith(new FatalExceptionHandler(panicker));
         disruptor.handleEventsWith(this);
         this.replyRing = disruptor.start();

@@ -76,7 +76,7 @@ class TestTSOModule extends AbstractModule {
         install(new BatchPoolModule(config));
 
         // Disruptor setup
-        install(new DisruptorModule());
+        install(new DisruptorModule(config));
 
         // LeaseManagement setup
         install(config.getLeaseModule());

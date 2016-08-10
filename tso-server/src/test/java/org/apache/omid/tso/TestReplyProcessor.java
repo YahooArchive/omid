@@ -31,6 +31,8 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import com.lmax.disruptor.BlockingWaitStrategy;
+
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.inOrder;
@@ -90,7 +92,7 @@ public class TestReplyProcessor {
 
         batchPool = spy(new BatchPoolModule(tsoConfig).getBatchPool());
 
-        replyProcessor = spy(new ReplyProcessorImpl(metrics, panicker, batchPool));
+        replyProcessor = spy(new ReplyProcessorImpl(new BlockingWaitStrategy(), metrics, panicker, batchPool));
 
     }
 
@@ -102,7 +104,7 @@ public class TestReplyProcessor {
     public void testBadFormedPackageThrowsException() throws Exception {
 
         // We need an instance throwing exceptions for this test
-        replyProcessor = spy(new ReplyProcessorImpl(metrics, new RuntimeExceptionPanicker(), batchPool));
+        replyProcessor = spy(new ReplyProcessorImpl(new BlockingWaitStrategy(), metrics, new RuntimeExceptionPanicker(), batchPool));
 
         // Prepare test batch
         Batch batch = batchPool.borrowObject();

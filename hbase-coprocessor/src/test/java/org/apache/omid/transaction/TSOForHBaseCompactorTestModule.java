@@ -79,7 +79,7 @@ class TSOForHBaseCompactorTestModule extends AbstractModule {
 
         install(new BatchPoolModule(config));
         // DisruptorConfig
-        install(new DisruptorModule());
+        install(new DisruptorModule(config));
 
     }
 

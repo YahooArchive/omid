@@ -32,6 +32,8 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import com.lmax.disruptor.BlockingWaitStrategy;
+
 import java.io.IOException;
 
 import static org.mockito.Matchers.any;
@@ -114,6 +116,7 @@ public class TestPersistenceProcessor {
         // Component under test
         PersistenceProcessorImpl persistenceProcessor =
                 new PersistenceProcessorImpl(tsoConfig,
+                                             new BlockingWaitStrategy(),
                                              commitTable,
                                              mock(ObjectPool.class),
                                              panicker,
@@ -145,7 +148,7 @@ public class TestPersistenceProcessor {
 
         ObjectPool<Batch> batchPool = spy(new BatchPoolModule(tsoConfig).getBatchPool());
 
-        ReplyProcessor replyProcessor = new ReplyProcessorImpl(metrics, panicker, batchPool);
+        ReplyProcessor replyProcessor = new ReplyProcessorImpl(new BlockingWaitStrategy(), metrics, panicker, batchPool);
 
         PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[tsoConfig.getNumConcurrentCTWriters()];
         for (int i = 0; i < tsoConfig.getNumConcurrentCTWriters(); i++) {
@@ -158,7 +161,7 @@ public class TestPersistenceProcessor {
         }
 
         // Component under test
-        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, commitTable, batchPool,
+        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, new BlockingWaitStrategy(), commitTable, batchPool,
                                                                      panicker, handlers, metrics);
 
         verify(batchPool, times(1)).borrowObject(); // Called during initialization
@@ -188,7 +191,7 @@ public class TestPersistenceProcessor {
 
         ObjectPool<Batch> batchPool = spy(new BatchPoolModule(tsoConfig).getBatchPool());
 
-        ReplyProcessor replyProcessor = new ReplyProcessorImpl(metrics, panicker, batchPool);
+        ReplyProcessor replyProcessor = new ReplyProcessorImpl(new BlockingWaitStrategy(), metrics, panicker, batchPool);
 
         PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[tsoConfig.getNumConcurrentCTWriters()];
         for (int i = 0; i < tsoConfig.getNumConcurrentCTWriters(); i++) {
@@ -202,7 +205,7 @@ public class TestPersistenceProcessor {
         }
 
         // Component under test
-        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, commitTable, batchPool,
+        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, new BlockingWaitStrategy(), commitTable, batchPool,
                                                                      panicker, handlers, metrics);
 
         verify(batchPool, times(1)).borrowObject(); // Called during initialization
@@ -255,7 +258,7 @@ public class TestPersistenceProcessor {
 
         ObjectPool<Batch> batchPool = spy(new BatchPoolModule(tsoConfig).getBatchPool());
 
-        ReplyProcessor replyProcessor = new ReplyProcessorImpl(metrics, panicker, batchPool);
+        ReplyProcessor replyProcessor = new ReplyProcessorImpl(new BlockingWaitStrategy(), metrics, panicker, batchPool);
 
         // Init a non-HA lease manager
         VoidLeaseManager leaseManager = spy(new VoidLeaseManager(mock(TSOChannelHandler.class),
@@ -273,7 +276,7 @@ public class TestPersistenceProcessor {
         }
 
         // Component under test
-        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, commitTable, batchPool,
+        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, new BlockingWaitStrategy(), commitTable, batchPool,
                                                                      panicker, handlers, metrics);
 
         // The non-ha lease manager always return true for
@@ -328,7 +331,7 @@ public class TestPersistenceProcessor {
         PersistenceProcessorHandler[] handlers = configureHandlers (tsoConfig, simulatedHALeaseManager, batchPool);
 
         // Component under test
-        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, commitTable, batchPool,
+        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, new BlockingWaitStrategy(), commitTable, batchPool,
                                                                      panicker, handlers, metrics);
 
         // Test: Configure the lease manager to return true always
@@ -349,7 +352,7 @@ public class TestPersistenceProcessor {
         PersistenceProcessorHandler[] handlers = configureHandlers (tsoConfig, simulatedHALeaseManager, batchPool);
 
         // Component under test
-        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, commitTable, batchPool,
+        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, new BlockingWaitStrategy(), commitTable, batchPool,
                                                                      panicker, handlers, metrics);
 
         // Test: Configure the lease manager to return true first and false later for stillInLeasePeriod
@@ -370,7 +373,7 @@ public class TestPersistenceProcessor {
         PersistenceProcessorHandler[] handlers = configureHandlers (tsoConfig, simulatedHALeaseManager, batchPool);
 
         // Component under test
-        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, commitTable, batchPool,
+        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, new BlockingWaitStrategy(), commitTable, batchPool,
                                                                      panicker, handlers, metrics);
 
         // Test: Configure the lease manager to return false for stillInLeasePeriod
@@ -391,7 +394,7 @@ public class TestPersistenceProcessor {
         PersistenceProcessorHandler[] handlers = configureHandlers (tsoConfig, simulatedHALeaseManager, batchPool);
 
         // Component under test
-        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, commitTable, batchPool,
+        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(tsoConfig, new BlockingWaitStrategy(), commitTable, batchPool,
                                                                      panicker, handlers, metrics);
 
         // Test: Configure the lease manager to return true first and false later for stillInLeasePeriod and raise
@@ -416,7 +419,7 @@ public class TestPersistenceProcessor {
                                                           "localhost:1234",
                                                           leaseManager,
                                                           commitTable,
-                                                          new ReplyProcessorImpl(metrics, panicker, batchPool),
+                                                          new ReplyProcessorImpl(new BlockingWaitStrategy(), metrics, panicker, batchPool),
                                                           retryProcessor,
                                                           new RuntimeExceptionPanicker());
         }
@@ -433,7 +436,7 @@ public class TestPersistenceProcessor {
 
         ObjectPool<Batch> batchPool = spy(new BatchPoolModule(config).getBatchPool());
 
-        ReplyProcessor replyProcessor = new ReplyProcessorImpl(metrics, panicker, batchPool);
+        ReplyProcessor replyProcessor = new ReplyProcessorImpl(new BlockingWaitStrategy(), metrics, panicker, batchPool);
 
         PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[config.getNumConcurrentCTWriters()];
         for (int i = 0; i < config.getNumConcurrentCTWriters(); i++) {
@@ -446,7 +449,7 @@ public class TestPersistenceProcessor {
                                                           panicker);
         }
 
-        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(config, commitTable, batchPool,
+        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(config, new BlockingWaitStrategy(), commitTable, batchPool,
                                                                      panicker, handlers, metrics);
 
         MonitoringContext monCtx = new MonitoringContext(metrics);
@@ -471,7 +474,7 @@ public class TestPersistenceProcessor {
 
         ObjectPool<Batch> batchPool = new BatchPoolModule(config).getBatchPool();
 
-        ReplyProcessor replyProcessor = new ReplyProcessorImpl(metrics, panicker, batchPool);
+        ReplyProcessor replyProcessor = new ReplyProcessorImpl(new BlockingWaitStrategy(), metrics, panicker, batchPool);
 
         PersistenceProcessorHandler[] handlers = new PersistenceProcessorHandler[config.getNumConcurrentCTWriters()];
         for (int i = 0; i < config.getNumConcurrentCTWriters(); i++) {
@@ -484,7 +487,7 @@ public class TestPersistenceProcessor {
                                                           panicker);
         }
 
-        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(config, commitTable, batchPool,
+        PersistenceProcessorImpl proc = new PersistenceProcessorImpl(config, new BlockingWaitStrategy(), commitTable, batchPool,
                                                                      panicker, handlers, metrics);
 
         // Configure writer to explode with a runtime exception

@@ -19,11 +19,13 @@ package org.apache.omid.tso;
 
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.inject.name.Named;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.YieldingWaitStrategy;
+import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.Disruptor;
+
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.omid.committable.CommitTable;
 import org.apache.omid.committable.CommitTable.CommitTimestamp;
@@ -34,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -69,7 +72,8 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
     private final Meter noCTFoundMeter;
 
     @Inject
-    RetryProcessorImpl(MetricsRegistry metrics,
+    RetryProcessorImpl(@Named("RetryStrategy") WaitStrategy strategy,
+                       MetricsRegistry metrics,
                        CommitTable commitTable,
                        ReplyProcessor replyProc,
                        Panicker panicker,
@@ -83,7 +87,7 @@ class RetryProcessorImpl implements EventHandler<RetryProcessorImpl.RetryEvent>,
         ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("retry-%d").build();
         this.disruptorExec = Executors.newSingleThreadExecutor(threadFactory);
 
-        this.disruptor = new Disruptor<>(EVENT_FACTORY, 1 << 12, disruptorExec, SINGLE, new YieldingWaitStrategy());
+        this.disruptor = new Disruptor<>(EVENT_FACTORY, 1 << 12, disruptorExec, SINGLE, strategy);
         disruptor.handleExceptionsWith(new FatalExceptionHandler(panicker)); // This must be before handleEventsWith()
         disruptor.handleEventsWith(this);
         this.retryRing = disruptor.start();

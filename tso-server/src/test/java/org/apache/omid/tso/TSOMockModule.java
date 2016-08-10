@@ -56,7 +56,7 @@ public class TSOMockModule extends AbstractModule {
 
         install(new BatchPoolModule(config));
         install(config.getLeaseModule());
-        install(new DisruptorModule());
+        install(new DisruptorModule(config));
 
     }
 

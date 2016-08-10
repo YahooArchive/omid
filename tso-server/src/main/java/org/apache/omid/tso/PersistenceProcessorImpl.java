@@ -20,10 +20,12 @@ package org.apache.omid.tso;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Objects;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.lmax.disruptor.BusySpinWaitStrategy;
+import com.google.inject.name.Named;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.Disruptor;
+
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.omid.committable.CommitTable;
 import org.apache.omid.metrics.MetricsRegistry;
@@ -33,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+
 import java.io.IOException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -69,6 +72,7 @@ class PersistenceProcessorImpl implements PersistenceProcessor {
 
     @Inject
     PersistenceProcessorImpl(TSOServerConfig config,
+                             @Named("PersistenceStrategy") WaitStrategy strategy,
                              CommitTable commitTable,
                              ObjectPool<Batch> batchPool,
                              Panicker panicker,
@@ -83,7 +87,7 @@ class PersistenceProcessorImpl implements PersistenceProcessor {
         ThreadFactoryBuilder threadFactory = new ThreadFactoryBuilder().setNameFormat("persist-%d");
         this.disruptorExec = Executors.newFixedThreadPool(config.getNumConcurrentCTWriters(), threadFactory.build());
 
-        this.disruptor = new Disruptor<>(EVENT_FACTORY, 1 << 20, disruptorExec , SINGLE, new BusySpinWaitStrategy());
+        this.disruptor = new Disruptor<>(EVENT_FACTORY, 1 << 20, disruptorExec , SINGLE, strategy);
         disruptor.handleExceptionsWith(new FatalExceptionHandler(panicker)); // This must be before handleEventsWith()
         disruptor.handleEventsWithWorkerPool(handlers);
         this.persistRing = disruptor.start();
