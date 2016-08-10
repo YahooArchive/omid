@@ -3,7 +3,7 @@ language: java
 notifications:
   email:
     recepients:
-      - omid-ci@yahoo-inc.com
+      - dev@omid.incubator.apache.org
   on_success: always
   on_failure: always
 
@@ -23,54 +23,22 @@ install: true
 before_script:
   # This is required to avoid failures of HBase minicluster related to Hadoop 1.x releases
   - umask 022
-  - git config --global user.email "omid-ci@yahoo-inc.com"
+  - git config --global user.email "dev@omid.incubator.apache.org"
   - git config --global user.name "Omid CI"
   # Install protobuf to genearte TSO client-server protocol in each compilation
   - cd ..
   - wget https://protobuf.googlecode.com/files/protobuf-2.5.0.tar.gz
   - tar -xzvf protobuf-2.5.0.tar.gz
   - cd protobuf-2.5.0 && ./configure --prefix=/usr && make && sudo make install
-  - cd ../omid
+  - cd ../incubator-omid
 
 script:
   - if [ "${TRAVIS_PULL_REQUEST}" = "false" ] ; then
       git checkout master
       &&
-      mvn clean cobertura:cobertura -Phbase-0
-      &&
-      mkdir failedTests
-      &&
-      find -name testng-failed.xml -exec cp -vf "{}" failedTests/ \;
-      &&
-      [ ! -f failedTests/testng-failed.xml ]
-      &&
-      mvn coveralls:report -Phbase-0
-      &&
-      mvn -B clean release:prepare release:perform -Prelease_profile,hbase-0 --settings bintray-settings.xml ;
+      mvn clean cobertura:cobertura -Phbase-0 ;
     else
       git checkout -b tmp-build-branch
       &&
       mvn clean test -Phbase-0 ;
     fi
-
-after_success:
-  - echo ******************************************************************************************
-  - echo Omid release/pull-request process finished successfully
-  - echo ******************************************************************************************
-
-after_failure:
-  - echo ******************************************************************************************
-  - echo Omid failed during the release/pull-request process
-  - echo ******************************************************************************************
-  - VERSION_SUFFIX=`date +%s`
-    VERSION=`mvn org.apache.maven.plugins:maven-help-plugin:2.1.1:evaluate -Dexpression=project.version | grep -v '\[' | grep SNAPSHOT`
-    &&
-    git checkout -b "failed-build-$VERSION"
-    &&
-    git config core.autocrlf false
-    &&
-    git add -f */surefire-reports/*
-    &&
-    git commit --verbose -m"Surefile output"
-    &&
-    git push -f "https://${GH_TOKEN}@github.com/yahoo/omid.git" failed-build-$VERSION:failed-build-$VERSION-$TRAVIS_PULL_REQUEST-$VERSION_SUFFIX
