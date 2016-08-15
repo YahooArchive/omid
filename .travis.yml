@@ -36,7 +36,7 @@ script:
   - if [ "${TRAVIS_PULL_REQUEST}" = "false" ] ; then
       git checkout master
       &&
-      mvn clean cobertura:cobertura -Phbase-0 ;
+      mvn clean cobertura:cobertura coveralls:report -Phbase-0 ;
     else
       git checkout -b tmp-build-branch
       &&

@@ -1,6 +1,7 @@
 <img src="https://github.com/yahoo/omid/blob/master/doc/images/omid-logo.png" width="200">
 
 [ ![Build Status](https://travis-ci.org/apache/incubator-omid.svg?branch=master) ](https://travis-ci.org/apache/incubator-omid) 
+[ ![Coverage Status](https://coveralls.io/repos/github/apache/incubator-omid/badge.svg?branch=master) ](https://coveralls.io/github/apache/incubator-omid?branch=master)
 
 The Omid project provides transactional support for HBase-based applications.
 
