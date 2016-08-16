@@ -8,7 +8,7 @@ The current implementation provides multi-row transactions on top of Apache HBas
 flexible enough to support other datastore implementations as long as they provide MVCC features in their API.
 
 The following sections introduce the motivation behind Omid and its high-level architecture and 
-basic concepts. If you want to jump to a more hands-on approach to Omid, please jump to the [[Quickstart]] section. 
+basic concepts. If you want to jump to a more hands-on approach to Omid, please jump to the [Quickstart](quickstart.html) section.
 On the other hand, if you want more information about Omid's design and its internals, please refer to the 
 sections in the Technical Documentation menuf.
 
@@ -58,7 +58,7 @@ paragraphs.
 
 ![Omid's architecture](images/architecture.png)
 
-For a detailed picture of the Omid architecture, please refer to the [[Omid Components]] section in the Technical Documentation.
+For a detailed picture of the Omid architecture, please refer to the [Omid Components](omid-components.html) section in the Technical Documentation.
 
 ## Component Roles
 
@@ -91,4 +91,4 @@ boundaries of the last transaction in writing to the data cell.
 
 For a more in-depth description of how Omid works, please refer to the sections in the Technical Documentation menu.
 
-**Do you want to try Omid now?** Please, go to the [[Quickstart]] section.
+**Do you want to try Omid now?** Please, go to the [Quickstart](quickstart.html) section.

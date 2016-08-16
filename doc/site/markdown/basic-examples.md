@@ -89,7 +89,7 @@ of the transaction manager instance:
     ...
 ```
 
-Please, refer to the [ConfigurationExample](https://github.com/yahoo/omid/blob/master/examples/src/main/java/com/yahoo/omid/examples/ConfigurationExample.java)
+Please, refer to the [ConfigurationExample](https://github.com/apache/incubator-omid/tree/master/examples/src/main/java/org/apache/omid/examples/ConfigurationExample.java)
 in the source code to experiment with the configuration options.
 
 ## Creating Transactions
@@ -114,7 +114,7 @@ they should operate (See next section).
 
 In order to perform transaction operations on data, the client application requires to use a wrapper on the HBase's 
 `HTableInterface` abstraction. The wrapper is called `TTable` and is also part of what is described as Transactional
-Client in the Omid architecture (See section [[About Omid]]). `TTable` basically offers the same interface as 
+Client in the Omid architecture (See section [About Omid](index.html#What_is_Omid?)). `TTable` basically offers the same interface as
 `HTableInterface` enhanced with a parameter representing the transactional context. As was previously described, a
 `Transaction` instance is obtained on return of `TransactionManager.begin()` method calls.
 
@@ -258,7 +258,7 @@ public class Example {
 
 ## Additional Examples
 
-The `examples` module contains [complete examples](https://github.com/yahoo/omid/tree/master/examples/src/main/java/com/yahoo/omid/examples) 
+The `examples` module contains [complete examples](https://github.com/apache/incubator-omid/tree/master/examples/src/main/java/org/apache/omid/examples)
 showing the Omid functionality that can be executed in your Omid+HBase environment. Just clone the Omid project, go
 to the `examples` module and execute `mvn clean package` to create a tar.gz file that includes all the examples. 
 In order to execute each example, just execute the `run.sh` script and follow the instructions.

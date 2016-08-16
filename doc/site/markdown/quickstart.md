@@ -15,7 +15,7 @@ Below are instructions to quickly set up an environment to test Omid in your loc
 You can find HBase distributions in [this page](http://www.apache.org/dyn/closer.cgi/hbase/).
 Then start HBase in [standalone mode](https://hbase.apache.org/book.html#quickstart).
 
-### 2. Clone the [Omid repository](https://github.com/francisco-perez-sorrosal/omid) and Build the TSO Package:
+### 2. Clone the [Omid repository](https://github.com/apache/incubator-omid) and Build the TSO Package:
 
 ```sh
 $ git clone git@github.com:yahoo/omid.git
@@ -30,9 +30,9 @@ This will generate a binary package containing all dependencies for the TSO in t
 Unit tests coverage is also quite extensive and take a while to run on each build (~15min at the moment of writing). So, consider using
 `mvn clean install -DskipTests` to speed temporal builds. Note that `-Dmaven.test.skip=true` [is NOT an equivalent](http://ericlefevre.net/wordpress/2008/02/21/skipping-tests-with-maven/).
 
-As an alternative to clone the project, you can download the required version for the TSO tar.gz package from the [release repository](https://bintray.com/yahoo/maven/omid/view).
+As an alternative to clone the project, you can download the required version for the TSO tar.gz package from the [release repository](https://dist.apache.org/repos/dist/release/incubator/omid/).
 
-You can also see the [build history here](https://github.com/yahoo/omid/tags).
+You can also see the [build history here](https://github.com/apache/incubator-omid/tags).
 
 ### 3. Extract the TSO Package
 
@@ -93,7 +93,7 @@ first parameter in the transactional aware methods (e.g. `put(Transaction tx, Pu
 
 Below is provided a sample application accessing data transactionally. Its a dummy application that writes two cells in two 
 different rows of a table in a transactional context, but is enough to show how the different Omid client APIs are used. A 
-detailed explanation of the client interfaces can be found in the [Basic Examples] section.
+detailed explanation of the client interfaces can be found in the [Basic Examples](basic-examples.html) section.
 
 ```java
 import org.apache.hadoop.hbase.client.Put;

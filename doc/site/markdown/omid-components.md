@@ -19,7 +19,7 @@ and markRollbackOnly() transactions.
 2. The Data Operation interface (represented by the `TTable` class in the HBase implementation): Allows user applications 
 to trigger transactional operations to the datasource. For example in the HBase, put, get and scan operations.
   
-Examples about how to add transactions using these interfaces are described in the [[Basic Examples]] section.
+Examples about how to add transactions using these interfaces are described in the [Basic Examples](basic-examples.html) section.
 
 ## Timestamp Oracle (TO)
 The single responsibility of the Timestamp Oracle is to manage transaction timestamps. Transaction timestamps serve as a 

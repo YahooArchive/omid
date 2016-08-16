@@ -54,8 +54,8 @@
         </menu>
 
         <menu name="Download">
-            <item name="Omid Sources" href="https://github.com/yahoo/omid" />
-            <item name="Bintray Repository" href="https://bintray.com/yahoo/maven/omid/_latestVersion" />
+            <item name="Omid Sources" href="https://github.com/apache/incubator-omid" />
+            <item name="Apache Version Repository" href="https://dist.apache.org/repos/dist/release/incubator/omid/" />
         </menu>
 
         <menu name="User Guide &amp; API">
